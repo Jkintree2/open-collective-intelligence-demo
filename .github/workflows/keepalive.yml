@@ -1,0 +1,14 @@
+# Build-time only. Keeps the free Render service and the Aura instance awake while the
+# demo is being built. This workflow is deleted before the repository is transferred.
+name: keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS "${{ vars.APP_URL }}/health"
