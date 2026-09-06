@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block nav %}{% endblock %}
+{% block content %}
+<section class="card gate">
+  <h1>{{ site_name }}</h1>
+  <p>A closed test of a shared record of what people are claiming, proposing and citing.</p>
+  <p>Everything written here is merged into a shared record that other testers can read. It is not a private conversation. Use it for things you are happy to say in public.</p>
+  <p>A reading service run by an outside company, DeepSeek, reads what you write to fill in the form. Do not write anything you would not want a company to store.</p>
+  {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
+  <form method="post" action="/enter">
+    <input type="hidden" name="next" value="{{ next }}">
+    <label for="passphrase">Passphrase:</label>
+    <input id="passphrase" name="passphrase" type="password" autocomplete="off" required autofocus>
+    <button type="submit" class="primary">Enter</button>
+  </form>
+</section>
+{% endblock %}
