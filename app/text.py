@@ -1,0 +1,65 @@
+"""Text rules from docs/planning/03_schema.md: keys, display names and relative times."""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+from datetime import datetime, timezone
+
+ARTICLES = ("the", "a", "an")
+NAME_MAX = 120
+TRAILING_PUNCTUATION = ".,;:!?"
+_NOT_ALPHANUMERIC = re.compile(r"[\W_]+")
+
+
+def normalise(s: str) -> str:
+    """NFKC, lowercase, runs of non alphanumerics to one space, trimmed."""
+    s = unicodedata.normalize("NFKC", s).lower()
+    return _NOT_ALPHANUMERIC.sub(" ", s).strip()
+
+
+def _strip_leading_article(s: str) -> str:
+    """Drop a leading the/a/an only when a space follows it (or it is the whole string)."""
+    for article in ARTICLES:
+        if s == article:
+            return ""
+        if s.startswith(article + " "):
+            return s[len(article) + 1 :]
+    return s
+
+
+def make_key(s: str) -> str | None:
+    """The node key for a name, or None when the key would be shorter than two characters.
+
+    The article check runs on the lowercased text before punctuation is collapsed, so
+    "A/B testing" keeps its A while "The need for ..." loses its "the".
+    """
+    lowered = unicodedata.normalize("NFKC", s).lower().strip()
+    key = normalise(_strip_leading_article(lowered))
+    return key if len(key) >= 2 else None
+
+
+def clean_name(s: str) -> str:
+    """The display form of a name: newlines to spaces, trimmed, capped at 120, first letter
+    upper cased only when it is lower case and the second is not upper case, trailing
+    punctuation removed."""
+    name = s.replace("\r\n", " ").replace("\n", " ").replace("\r", " ").strip()
+    name = name[:NAME_MAX].rstrip(TRAILING_PUNCTUATION).strip()
+    if name and name[0].islower() and not (len(name) > 1 and name[1].isupper()):
+        name = name[0].upper() + name[1:]
+    return name
+
+
+def relative_time(then: datetime, now: datetime | None = None) -> str:
+    """"just now", "5 minutes ago", "2 hours ago", "3 days ago"."""
+    now = now or datetime.now(timezone.utc)
+    if then.tzinfo is None:
+        then = then.replace(tzinfo=timezone.utc)
+    seconds = max(0, int((now - then).total_seconds()))
+    if seconds < 60:
+        return "just now"
+    for unit, size in (("day", 86400), ("hour", 3600), ("minute", 60)):
+        if seconds >= size:
+            count = seconds // size
+            return f"{count} {unit}{'' if count == 1 else 's'} ago"
+    return "just now"
