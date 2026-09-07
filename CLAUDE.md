@@ -55,7 +55,7 @@ pytest                      # no network needed for the default set
 
 Open http://localhost:8000, enter the passphrase, write something. Without `LLM_API_KEY` the card opens empty and you fill it by hand; that path must always work.
 
-The local `.env` points at the development database, a local Neo4j 5 in Docker (`docker run -d --name oci-neo4j -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/localpass neo4j:5`, then `NEO4J_URI=neo4j://localhost:7687`), never at production. Production is an Aura Free instance and is written to only by the deployed app and by one deliberate seed load with the connection variables typed inline. `--reset` against production is never run from a saved file.
+The local `.env` points at the development database, a local Neo4j 5 in Docker (`docker run -d --name oci-neo4j -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/localpass neo4j:5`, then `NEO4J_URI=neo4j://localhost:7687`), never at production. Production is an Aura Free instance and is written to only by the deployed app and by one deliberate seed load with the connection variables typed inline. On Aura Free the only user database is named after the instance id, not `neo4j`, so `NEO4J_DATABASE` must be set to that id on Render (it is `sync: false` in the blueprint); without it startup fails with `DatabaseNotFound`. `--reset` against production is never run from a saved file.
 
 ## Deploy
 
