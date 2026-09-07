@@ -1,0 +1,399 @@
+{
+  "issues": [
+    {
+      "name": "Need for world government",
+      "parent": null
+    },
+    {
+      "name": "Need for supreme law above nations",
+      "parent": "Need for world government"
+    },
+    {
+      "name": "Enforcement of international law",
+      "parent": "Need for world government"
+    },
+    {
+      "name": "Security Council veto",
+      "parent": "Need for world government"
+    },
+    {
+      "name": "Global climate coordination",
+      "parent": "Need for world government"
+    },
+    {
+      "name": "Democratic legitimacy of global institutions",
+      "parent": "Need for world government"
+    }
+  ],
+  "posts": [
+    {
+      "id": "seed-01",
+      "author": "John Kintree",
+      "created_at": "2026-09-01T10:00:00Z",
+      "text": "Our best protection from all of those risks might be using CTI software to ratify a World Constitution that is based on the principles of the Universal Declaration of Human Rights and the Earth Charter.",
+      "issues": [
+        {
+          "name": "Need for world government",
+          "parent": null
+        }
+      ],
+      "solutions": [
+        {
+          "name": "World Constitution based on the UDHR and Earth Charter",
+          "for_issue": "Need for world government",
+          "stance": "approve"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "Universal Declaration of Human Rights",
+          "url": "https://www.ohchr.org/en/human-rights/universal-declaration/translations/english",
+          "stance": "supports",
+          "about": "World Constitution based on the UDHR and Earth Charter"
+        },
+        {
+          "name": "Earth Charter",
+          "url": "https://earthcharter.org/read-the-earth-charter/",
+          "stance": "supports",
+          "about": "World Constitution based on the UDHR and Earth Charter"
+        }
+      ]
+    },
+    {
+      "id": "seed-02",
+      "author": "John Kintree",
+      "created_at": "2026-09-01T11:00:00Z",
+      "text": "Laws are passed by elected representatives. Supreme laws are approved by referendums with direct votes by the people, whether it's at the local, state, national, or global level.",
+      "issues": [
+        {
+          "name": "Need for supreme law above nations",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Global referendums to approve supreme law",
+          "for_issue": "Need for supreme law above nations",
+          "stance": "approve"
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "seed-03",
+      "author": "John Kintree",
+      "created_at": "2026-09-01T12:00:00Z",
+      "text": "Ratification of the principles of the Universal Declaration of Human Rights and the Earth Charter by a global referendum would give those principles the force of supreme law for all nations.",
+      "issues": [
+        {
+          "name": "Need for supreme law above nations",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Global referendum on the UDHR and Earth Charter",
+          "for_issue": "Need for supreme law above nations",
+          "stance": "approve"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "Universal Declaration of Human Rights",
+          "url": "https://www.ohchr.org/en/human-rights/universal-declaration/translations/english",
+          "stance": "supports",
+          "about": "Global referendum on the UDHR and Earth Charter"
+        },
+        {
+          "name": "Earth Charter",
+          "url": "https://earthcharter.org/read-the-earth-charter/",
+          "stance": "supports",
+          "about": "Global referendum on the UDHR and Earth Charter"
+        }
+      ]
+    },
+    {
+      "id": "seed-04",
+      "author": "Seed",
+      "created_at": "2026-09-02T09:00:00Z",
+      "text": "The International Court of Justice can rule on disputes between states, but its judgments are only enforced if the Security Council chooses to act. A court whose rulings depend on the goodwill of the parties is not a court in the ordinary sense.",
+      "issues": [
+        {
+          "name": "Enforcement of international law",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Compulsory jurisdiction of the International Court of Justice",
+          "for_issue": "Enforcement of international law",
+          "stance": "approve"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "UN Charter, Article 94",
+          "url": "https://www.un.org/en/about-us/un-charter/chapter-14",
+          "stance": "supports",
+          "about": "Enforcement of international law"
+        }
+      ]
+    },
+    {
+      "id": "seed-05",
+      "author": "Seed",
+      "created_at": "2026-09-02T10:00:00Z",
+      "text": "Most states have never accepted the International Court of Justice's compulsory jurisdiction, and several that once did have since withdrawn. International law binds only those who agree to be bound.",
+      "issues": [
+        {
+          "name": "Enforcement of international law",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [],
+      "evidence": [
+        {
+          "name": "International Court of Justice, declarations recognizing the jurisdiction of the Court as compulsory",
+          "url": "https://www.icj-cij.org/declarations",
+          "stance": "supports",
+          "about": "Enforcement of international law"
+        }
+      ]
+    },
+    {
+      "id": "seed-06",
+      "author": "Counterpoint",
+      "created_at": "2026-09-04T15:00:00Z",
+      "text": "Global rules can be enforced without a world government. The Montreal Protocol phased out ozone depleting chemicals through trade measures and a funding mechanism, and nearly every country complied.",
+      "issues": [
+        {
+          "name": "Enforcement of international law",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Treaty based enforcement with trade measures",
+          "for_issue": "Enforcement of international law",
+          "stance": "none"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "Montreal Protocol on Substances that Deplete the Ozone Layer",
+          "url": "https://ozone.unep.org/treaties/montreal-protocol",
+          "stance": "refutes",
+          "about": "Enforcement of international law"
+        }
+      ]
+    },
+    {
+      "id": "seed-07",
+      "author": "Seed",
+      "created_at": "2026-09-02T14:00:00Z",
+      "text": "Any one of the five permanent members can block a Security Council resolution, whatever the rest of the world thinks. Since 1946 the veto has been used hundreds of times, often to shield the member casting it or its allies.",
+      "issues": [
+        {
+          "name": "Security Council veto",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Limit or abolish the Security Council veto",
+          "for_issue": "Security Council veto",
+          "stance": "approve"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "UN Charter, Article 27",
+          "url": "https://www.un.org/en/about-us/un-charter/chapter-5",
+          "stance": "supports",
+          "about": "Security Council veto"
+        },
+        {
+          "name": "Dag Hammarskjöld Library's list of Security Council vetoes",
+          "url": "https://research.un.org/en/docs/sc/quick",
+          "stance": "supports",
+          "about": "Security Council veto"
+        }
+      ]
+    },
+    {
+      "id": "seed-08",
+      "author": "Counterpoint",
+      "created_at": "2026-09-03T09:00:00Z",
+      "text": "The General Assembly can act when the Council is blocked. The Uniting for Peace resolution of 1950 lets the Assembly recommend collective measures, and since 2022 the Assembly meets within ten days of any veto to debate it.",
+      "issues": [
+        {
+          "name": "Security Council veto",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [],
+      "evidence": [
+        {
+          "name": "Uniting for Peace, General Assembly resolution 377 (V)",
+          "url": "https://research.un.org/en/docs/ga/quick/emergency",
+          "stance": "refutes",
+          "about": "Security Council veto"
+        },
+        {
+          "name": "General Assembly resolution 76/262 of 2022, the veto initiative",
+          "url": "https://docs.un.org/en/A/RES/76/262",
+          "stance": "refutes",
+          "about": "Security Council veto"
+        }
+      ]
+    },
+    {
+      "id": "seed-09",
+      "author": "John Kintree",
+      "created_at": "2026-09-03T10:00:00Z",
+      "text": "A carbon tax approved by a global referendum would be supreme law for all nations. The referendum would specify how the carbon tax money, $1 trillion per year for instance, would be spent. If the damages caused by greenhouse gas emissions from burning fossil fuels was less than $1 trillion per year, the remainder could be spent on financing the transition to solar, wind, battery, and other technologies to reduce our greenhouse gas emissions.",
+      "issues": [
+        {
+          "name": "Global climate coordination",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Global carbon tax by referendum",
+          "for_issue": "Global climate coordination",
+          "stance": "approve"
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "seed-10",
+      "author": "Seed",
+      "created_at": "2026-09-03T11:00:00Z",
+      "text": "National climate pledges under the Paris Agreement are voluntary, and the gap between what countries have promised and what the science requires has not closed. Without a body that can set and enforce a shared limit, each country has a reason to wait for the others.",
+      "issues": [
+        {
+          "name": "Global climate coordination",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [],
+      "evidence": [
+        {
+          "name": "UNEP Emissions Gap Report 2024",
+          "url": "https://www.unep.org/resources/emissions-gap-report-2024",
+          "stance": "supports",
+          "about": "Global climate coordination"
+        }
+      ]
+    },
+    {
+      "id": "seed-11",
+      "author": "Seed",
+      "created_at": "2026-09-03T12:00:00Z",
+      "text": "Carbon pricing now exists in dozens of countries, but it covers only about a quarter of global emissions and most prices are far below what would be needed to meet the Paris goals. A single global price would remove the incentive to move pollution across borders.",
+      "issues": [
+        {
+          "name": "Global climate coordination",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Global carbon tax by referendum",
+          "for_issue": "Global climate coordination",
+          "stance": "approve"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "World Bank Carbon Pricing Dashboard",
+          "url": "https://carbonpricingdashboard.worldbank.org/",
+          "stance": "supports",
+          "about": "Global climate coordination"
+        }
+      ]
+    },
+    {
+      "id": "seed-12",
+      "author": "Seed",
+      "created_at": "2026-09-02T16:00:00Z",
+      "text": "No global body is directly elected. The General Assembly represents governments, not people, and a citizen of a large democracy has no more say in it than the ruler of a small dictatorship.",
+      "issues": [
+        {
+          "name": "Democratic legitimacy of global institutions",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "United Nations Parliamentary Assembly",
+          "for_issue": "Democratic legitimacy of global institutions",
+          "stance": "approve"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "UN Charter, Article 18",
+          "url": "https://www.un.org/en/about-us/un-charter/chapter-4",
+          "stance": "supports",
+          "about": "Democratic legitimacy of global institutions"
+        },
+        {
+          "name": "Campaign for a UN Parliamentary Assembly",
+          "url": "https://www.unpacampaign.org/",
+          "stance": "supports",
+          "about": "United Nations Parliamentary Assembly"
+        }
+      ]
+    },
+    {
+      "id": "seed-13",
+      "author": "Seed",
+      "created_at": "2026-09-03T14:00:00Z",
+      "text": "Estonia shows that a whole country can vote, sign and govern online with a trusted digital identity. The tools for direct participation at a large scale already exist.",
+      "issues": [
+        {
+          "name": "Democratic legitimacy of global institutions",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Platform for digital democracy",
+          "for_issue": "Democratic legitimacy of global institutions",
+          "stance": "approve"
+        }
+      ],
+      "evidence": [
+        {
+          "name": "e-Estonia",
+          "url": "https://e-estonia.com/",
+          "stance": "supports",
+          "about": "Platform for digital democracy"
+        }
+      ]
+    },
+    {
+      "id": "seed-14",
+      "author": "John Kintree",
+      "created_at": "2026-09-04T09:00:00Z",
+      "text": "Who has control now? The higher, the fewer. Autonomy requires controls, rules, and laws. I would like to see the principles of the Universal Declaration of Human Rights and the Earth Charter ratified as supreme law for all nations.",
+      "issues": [
+        {
+          "name": "Need for supreme law above nations",
+          "parent": "Need for world government"
+        }
+      ],
+      "solutions": [
+        {
+          "name": "Global referendum on the UDHR and Earth Charter",
+          "for_issue": "Need for supreme law above nations",
+          "stance": "approve"
+        }
+      ],
+      "evidence": []
+    }
+  ]
+}

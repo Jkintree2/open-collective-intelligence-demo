@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Issues · {{ site_name }}{% endblock %}
+{% block content %}
+<h1>Issues</h1>
+<nav class="sorts" aria-label="Sort">
+  {% for value, label in sorts %}
+  <a href="/issues?sort={{ value }}"{% if value == sort %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+{% for issue in issues %}
+<section class="issue-card">
+  <h2><a href="/issues/{{ issue.key|urlencode }}">{{ issue.name }}</a></h2>
+  <p class="counts">{{ issue.line }}</p>
+  {% if issue.children %}
+  <ul class="sub-issues">
+    {% for child in issue.children %}
+    <li>
+      <a href="/issues/{{ child.key|urlencode }}">{{ child.name }}</a>
+      <span class="counts">{{ child.line }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% else %}
+<p class="empty">No issues yet. Write something on the front page and it will appear here.</p>
+{% endfor %}
+{% endblock %}

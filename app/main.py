@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import AsyncIterator
 from urllib.parse import quote, unquote
 
-from fastapi import Depends, FastAPI, Form, Request
+from fastapi import Depends, FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -32,7 +32,7 @@ from app.auth import (
 )
 from app.config import get_settings
 from app.graph import RecordAsleep
-from app.text import clean_name, make_key, relative_time
+from app.text import clean_name, count_line, make_key, relative_time
 
 settings = get_settings()
 
@@ -42,6 +42,19 @@ templates.env.globals["site_name"] = settings.site_name
 
 TEXT_MAX = 4000
 FEED_LIMIT = 60
+CHIP_LIMIT = 5
+SORTS = (("people", "Most people"), ("recent", "Most recent"), ("evidence", "Most evidence"))
+# Display verbs from docs/planning/03_schema.md; PART_OF has no sentence.
+VERBS = {
+    "CLAIM": "claims",
+    "SUBMIT": "submits",
+    "PROPOSE": "proposes",
+    "HAVE_PROPOSED": "has proposed",
+    "SUPPORTS": "supports",
+    "REFUTES": "refutes",
+    "APPROVE": "approves",
+    "OPPOSE": "opposes",
+}
 NAME_COOKIE = "oci_name"
 ANON_COOKIE = "oci_anon"
 YEAR_SECONDS = 365 * 86400
@@ -125,16 +138,53 @@ def _safe_next(next_path: str | None) -> str:
     return "/"
 
 
-def _render_index(
-    request: Request, *, message: str | None = None, text: str = "", status_code: int = 200
-) -> Response:
-    posts = graph.list_posts(FEED_LIMIT)
+def _issue_href(key: str | None) -> str:
+    return f"/issues/{quote(key, safe='')}" if key else "/issues"
+
+
+def _decorate_posts(posts: list[dict]) -> list[dict]:
+    """Relative times, chips and the sentence list for a page of posts."""
     now = datetime.now(timezone.utc)
+    structure = graph.post_structure([post["id"] for post in posts])
     for post in posts:
         created = post.get("created_at")
         post["when"] = relative_time(created, now) if created else ""
         post["absolute"] = created.strftime("%Y-%m-%d %H:%M UTC") if created else ""
         post["iso"] = created.isoformat() if created else ""
+        rows = structure.get(post["id"], [])
+        issue_keys = [r["to_key"] for r in rows if r["rel"] == "CLAIM"]
+        first_issue = issue_keys[0] if issue_keys else None
+        chips: dict[tuple[str, str], dict] = {}
+        sentences: list[str] = []
+        for row in rows:
+            for label, key, name, home in (
+                (row["from_label"], row["from_key"], row["from_name"], None),
+                (row["to_label"], row["to_key"], row["to_name"], row.get("home_key")),
+            ):
+                if label not in ("Issue", "Solution", "Evidence") or not key or (label, key) in chips:
+                    continue
+                if label == "Issue":
+                    href = _issue_href(key)
+                elif label == "Solution":
+                    href = _issue_href(home or first_issue)
+                else:
+                    target = row["to_key"] if row["to_label"] == "Issue" else row.get("home_key")
+                    href = _issue_href(target or first_issue)
+                chips[(label, key)] = {"label": label, "key": key, "name": name, "href": href}
+            verb = VERBS.get(row["rel"])
+            if verb:
+                subject = "Anonymous" if row["from_label"] == "Person" and row.get("anonymous") else row["from_name"]
+                sentences.append(f"{subject or 'Anonymous'} {verb} {row['to_name']}")
+        post["chips"] = list(chips.values())
+        post["sentences"] = sentences
+    return posts
+
+
+def _render_index(
+    request: Request, *, message: str | None = None, text: str = "", status_code: int = 200
+) -> Response:
+    posts = _decorate_posts(graph.list_posts(FEED_LIMIT))
+    chips = graph.top_issues(CHIP_LIMIT)
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
     return templates.TemplateResponse(
         request,
@@ -142,11 +192,43 @@ def _render_index(
         {
             "site_sentence": settings.site_sentence,
             "posts": posts,
+            "chips": chips,
             "name": name,
             "message": message,
             "text": text,
         },
         status_code=status_code,
+    )
+
+
+@app.get("/issues", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
+def issues_page(request: Request, sort: str = Query("people")) -> Response:
+    sort = sort if sort in graph.SORTS else "people"
+    grouped = graph.group_issues(graph.list_issues(), sort)
+    for issue in grouped:
+        issue["line"] = count_line(issue)
+        for child in issue["children"]:
+            child["line"] = count_line(child)
+    return templates.TemplateResponse(
+        request, "issues.html", {"issues": grouped, "sort": sort, "sorts": SORTS}
+    )
+
+
+@app.get("/issues/{key}", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
+def issue_page(request: Request, key: str) -> Response:
+    header = graph.issue_header(key)
+    if header is None:
+        return RedirectResponse("/issues", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "issue.html",
+        {
+            "issue": header,
+            "claimants": graph.issue_claimants(key),
+            "solutions": graph.issue_solutions(key),
+            "evidence": graph.issue_evidence(key),
+            "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT)),
+        },
     )
 
 

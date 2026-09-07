@@ -1,0 +1,12 @@
+<article class="post">
+  <p class="byline">{{ post.display_name if (not post.anonymous and post.display_name) else "Anonymous" }} · <time datetime="{{ post.iso }}" title="{{ post.absolute }}">{{ post.when }}</time>{% if post.seed %} <span class="tag">seed</span>{% endif %}</p>
+  <p class="statement">{{ post.text }}</p>
+  {% if post.chips %}
+  <p class="chips">{% for chip in post.chips %}<a class="chip chip-{{ chip.label|lower }}" href="{{ chip.href }}">{{ chip.name }}</a>{% endfor %}</p>
+  {% endif %}
+  {% if post.sentences %}
+  <details class="added"><summary>show what was added</summary>
+    <ul>{% for sentence in post.sentences %}<li>{{ sentence }}</li>{% endfor %}</ul>
+  </details>
+  {% endif %}
+</article>

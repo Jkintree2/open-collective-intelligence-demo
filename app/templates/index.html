@@ -10,6 +10,9 @@
     </div>
     <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
   </div>
+  {% if chips %}
+  <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/issues/{{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
+  {% endif %}
   <label for="text">A claim, a piece of evidence, or a proposed solution</label>
   <textarea id="text" name="text" rows="4" maxlength="4000" required placeholder="For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs.">{{ text }}</textarea>
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
@@ -24,10 +27,7 @@
 <section class="feed">
   <h2>Recent posts</h2>
   {% for post in posts %}
-  <article class="post">
-    <p class="byline">{{ post.display_name if (not post.anonymous and post.display_name) else "Anonymous" }} · <time datetime="{{ post.iso }}" title="{{ post.absolute }}">{{ post.when }}</time></p>
-    <p class="statement">{{ post.text }}</p>
-  </article>
+  {% include "_post.html" %}
   {% else %}
   <p class="empty">Nothing here yet. Be the first to write something.</p>
   {% endfor %}

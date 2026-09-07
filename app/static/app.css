@@ -212,3 +212,104 @@ button.primary:hover { background: var(--accent-hover); }
 .gate form label { margin: 0; }
 
 .gate form input { flex: 1 1 160px; }
+
+/* Session 2: chips, the Issues page and the issue page. */
+h1 {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  margin: 8px 0 12px;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin: 24px 0 8px;
+}
+
+h3 {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  font-weight: normal;
+  margin: 0 0 2px;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  padding: 4px 10px;
+  margin: 4px 6px 4px 0;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  color: var(--ink-soft);
+  text-decoration: none;
+  background: var(--input);
+}
+
+.chip-issue { color: var(--issue); }
+.chip-solution { color: var(--solution); }
+.chip-evidence { color: var(--evidence); }
+.chip-person { color: var(--person); }
+
+.chips { margin: 8px 0 0; }
+
+.writing-about {
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+
+.tag {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+}
+
+.added { margin-top: 6px; font-size: 0.9rem; }
+.added summary { color: var(--accent); cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.added ul { margin: 4px 0 0; padding-left: 20px; color: var(--ink-soft); }
+
+.sorts { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
+.sorts a {
+  color: var(--accent);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 6px;
+}
+.sorts a[aria-current] { background: var(--paper-2); color: var(--ink); }
+
+.issue-card {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.issue-card h2 { margin: 0 0 2px; font-family: var(--serif); font-weight: normal; font-size: 1.25rem; }
+.issue-card h2 a, .sub-issues a, .crumbs a { color: var(--ink); text-decoration: none; }
+.issue-card h2 a:hover, .sub-issues a:hover { color: var(--accent); }
+
+.counts { margin: 0; font-size: 0.9rem; color: var(--ink-soft); }
+
+.sub-issues { list-style: none; margin: 8px 0 0; padding: 0 0 0 16px; border-left: 2px solid var(--rule); }
+.sub-issues li { padding: 6px 0; }
+.sub-issues li a { display: block; min-height: 24px; }
+.sub-issues.plain { border-left: 0; padding-left: 20px; list-style: disc; }
+
+.crumbs { font-size: 0.9rem; color: var(--ink-soft); margin: 4px 0 0; }
+.crumbs a { color: var(--accent); }
+.claimed { margin: 0 0 8px; }
+
+.solution { padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.ev-label { margin: 8px 0 2px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); }
+.evidence { margin: 0; padding-left: 20px; }
+.evidence li { padding: 2px 0; }
+.evidence a { color: var(--accent); }
+.by { font-size: 0.85rem; color: var(--ink-soft); }
+
+.site-header nav { display: flex; white-space: nowrap; }
+.site-header .site-name { padding-right: 12px; }

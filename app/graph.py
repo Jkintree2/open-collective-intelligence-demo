@@ -170,8 +170,9 @@ ISSUE_EVIDENCE = """
 MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(i:Issue {key: $key})
 OPTIONAL MATCH (p:Person)-[sub:SUBMIT]->(ev)
 RETURN ev.key AS key, ev.name AS name, ev.url AS url, type(r) AS stance,
-       collect(DISTINCT CASE WHEN sub.anonymous THEN 'Anonymous' ELSE p.name END) AS submitted_by
-ORDER BY stance, ev.created_at
+       collect(DISTINCT CASE WHEN sub.anonymous THEN 'Anonymous' ELSE p.name END) AS submitted_by,
+       ev.created_at AS created_at
+ORDER BY stance, created_at
 """
 
 ISSUE_POSTS = """
@@ -219,7 +220,7 @@ RETURN i.key AS key, i.name AS name
 """
 
 CANDIDATE_ISSUES = """
-CALL {
+CALL () {
   MATCH (i:Issue)
   OPTIONAL MATCH (i)<-[c:CLAIM]-()
   WITH i, count(c) AS claims

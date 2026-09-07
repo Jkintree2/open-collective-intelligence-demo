@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ issue.name }} · {{ site_name }}{% endblock %}
+{% block content %}
+<p class="crumbs"><a href="/issues">Issues</a>{% if issue.parent_key %} › <a href="/issues/{{ issue.parent_key|urlencode }}">{{ issue.parent_name }}</a>{% endif %} › {{ issue.name }}</p>
+<h1>{{ issue.name }}</h1>
+<p class="claimed">Claimed by {{ claimants.people }} {{ "person" if claimants.people == 1 else "people" }} ({{ claimants.claims }} {{ "claim" if claimants.claims == 1 else "claims" }}){% if claimants.names %}: {{ claimants.names|join(", ") }}{% endif %}</p>
+
+{% if issue.children %}
+<h2>Sub-issues</h2>
+<ul class="sub-issues plain">
+  {% for child in issue.children %}<li><a href="/issues/{{ child.key|urlencode }}">{{ child.name }}</a></li>{% endfor %}
+</ul>
+{% endif %}
+
+<h2>Proposed solutions</h2>
+{% for solution in solutions %}
+<section class="solution">
+  <h3>{{ solution.name }}</h3>
+  <p class="counts">proposed by {{ solution.proposers }} · approved by {{ solution.approves }} · opposed by {{ solution.opposes }}</p>
+  {% set supports = solution.evidence|selectattr("stance", "equalto", "SUPPORTS")|list %}
+  {% set refutes = solution.evidence|selectattr("stance", "equalto", "REFUTES")|list %}
+  {% if supports %}<p class="ev-label">Supported by</p><ul class="evidence">{% for item in supports %}<li>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+  {% if refutes %}<p class="ev-label">Refuted by</p><ul class="evidence">{% for item in refutes %}<li>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+</section>
+{% else %}
+<p class="empty">No solutions proposed yet.</p>
+{% endfor %}
+
+<h2>Evidence about this issue</h2>
+{% set supports = evidence|selectattr("stance", "equalto", "SUPPORTS")|list %}
+{% set refutes = evidence|selectattr("stance", "equalto", "REFUTES")|list %}
+{% if supports %}<p class="ev-label">Supported by</p><ul class="evidence">{% for item in supports %}<li>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}{% if item.submitted_by %} <span class="by">submitted by {{ item.submitted_by|join(", ") }}</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
+{% if refutes %}<p class="ev-label">Refuted by</p><ul class="evidence">{% for item in refutes %}<li>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}{% if item.submitted_by %} <span class="by">submitted by {{ item.submitted_by|join(", ") }}</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
+{% if not evidence %}<p class="empty">No evidence attached to the issue itself yet.</p>{% endif %}
+
+<section class="feed">
+  <h2>Posts about this issue</h2>
+  {% for post in posts %}
+  {% include "_post.html" %}
+  {% else %}
+  <p class="empty">No posts yet.</p>
+  {% endfor %}
+</section>
+{% endblock %}
