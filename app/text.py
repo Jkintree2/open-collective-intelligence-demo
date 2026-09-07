@@ -63,3 +63,19 @@ def relative_time(then: datetime, now: datetime | None = None) -> str:
             count = seconds // size
             return f"{count} {unit}{'' if count == 1 else 's'} ago"
     return "just now"
+
+
+def _plural(count: int, singular: str, plural: str) -> str:
+    return f"{count} {singular if count == 1 else plural}"
+
+
+def count_line(row: dict) -> str:
+    """The count line under an issue, from docs/planning/04_interface.md screen 3."""
+    people = _plural(row["people"], "person", "people")
+    solutions = _plural(row["solutions"], "solution", "solutions")
+    evidence = _plural(row["evidence"], "piece of evidence", "pieces of evidence")
+    if row.get("children"):
+        claims = f"{row['claims']} claims in total · {_plural(row['own_claims'], 'claim', 'claims')} on the issue itself"
+    else:
+        claims = _plural(row["claims"], "claim", "claims")
+    return f"{people} · {claims} · {solutions} · {evidence}"
