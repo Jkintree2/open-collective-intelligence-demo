@@ -31,3 +31,10 @@ services:
         value: Write what you think about an issue that matters to you. We will pull out the issue, your claim, any evidence and any solution, show you what we found, and add it to a record everyone here shares.
       - key: APP_ENV
         value: production
+      # Reading service. The key is typed into the dashboard; without it the card is filled by hand.
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://api.deepseek.com
+      - key: LLM_MODEL
+        value: deepseek-v4-flash
