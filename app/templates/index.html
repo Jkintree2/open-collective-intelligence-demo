@@ -2,7 +2,7 @@
 {% block content %}
 <p class="sentence">{{ site_sentence }}</p>
 
-<form method="post" action="/posts" class="write">
+<form method="post" action="/posts" class="write" id="compose">
   <div class="name-row">
     <div class="field">
       <label for="display_name">Your name</label>
@@ -11,25 +11,46 @@
     <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
   </div>
   {% if chips %}
-  <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/issues/{{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
+  <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/?issue={{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
   {% endif %}
   <label for="text">A claim, a piece of evidence, or a proposed solution</label>
   <textarea id="text" name="text" rows="4" maxlength="4000" required placeholder="For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs.">{{ text }}</textarea>
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
-  <button type="submit" class="primary">Post</button>
+  <p id="counter" hidden></p>
+  <p id="compose-message" class="notice" role="status" aria-live="polite"></p>
+  <div class="compose-actions">
+    <button type="button" id="dictate" class="quiet" aria-pressed="false" hidden>🎙 Dictate</button>
+    <button type="submit" class="primary" id="read">Post</button>
+    <button type="button" id="skip" class="quiet" hidden>Skip the reading and fill in the form myself</button>
+    <button type="button" id="stop" class="quiet" hidden>Stop and fill it in myself</button>
+    <button type="button" id="retry" class="quiet" hidden>Try again</button>
+  </div>
+  <section id="card" class="card" hidden aria-labelledby="card-title">
+    <h2 id="card-title">Here is what we found</h2>
+    <p id="card-message" class="notice" role="status"></p>
+    <p id="card-note" class="counts"></p>
+    <h3>Issue</h3><div id="issue-rows"></div>
+    <button type="button" class="quiet" id="add-issue">+ another issue</button>
+    <h3>Solutions</h3><div id="solution-rows"></div>
+    <button type="button" class="quiet" id="add-solution">+ add a solution</button>
+    <h3>Evidence</h3><div id="evidence-rows"></div>
+    <button type="button" class="quiet" id="add-evidence">+ add evidence</button>
+    <h3>What this will add</h3><ul id="sentences" aria-live="polite"></ul>
+    <p id="card-errors" class="notice" role="status"></p>
+    <button type="button" id="post" class="primary" disabled>Post</button>
+    <button type="button" id="discard" class="quiet">Discard</button>
+    <button type="button" id="plain" class="quiet">post it as a plain statement anyway</button>
+    <p id="credit" class="counts"></p>
+  </section>
 </form>
 <script>
   var anon = document.getElementById('anonymous'), nameField = document.getElementById('display_name');
   function syncName() { if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
   anon.addEventListener('change', syncName); syncName();
 </script>
+<script src="/static/app.js" defer></script>
 
-<section class="feed">
-  <h2>Recent posts</h2>
-  {% for post in posts %}
-  {% include "_post.html" %}
-  {% else %}
-  <p class="empty">Nothing here yet. Be the first to write something.</p>
-  {% endfor %}
+<section class="feed" id="feed">
+  {% include "_feed.html" %}
 </section>
 {% endblock %}

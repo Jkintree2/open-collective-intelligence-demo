@@ -2,33 +2,25 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from neo4j import Driver, GraphDatabase, RoutingControl
 from neo4j.exceptions import ServiceUnavailable
 
-from app.config import Settings
 from app.extract import Candidates, ResolvedPayload
 from app.text import make_key
+from app.issue_groups import SORTS, group_issues
+from app.graph_runtime import (RecordAsleep, _read, _write, close_driver, database, driver, open_driver)
 
 log = logging.getLogger("oci")
 
-# How long a managed transaction keeps retrying before the caller hears that the
-# database is unreachable. Kept short so the asleep page appears in seconds.
-RETRY_SECONDS = 10.0
-
-SORTS = ("people", "recent", "evidence")
 STANCE_TYPES = {"approve": "APPROVE", "oppose": "OPPOSE"}
 EVIDENCE_TYPES = {"supports": "SUPPORTS", "refutes": "REFUTES"}
 TARGET_LABELS = ("Issue", "Solution", "Evidence")
-
-
-class RecordAsleep(Exception):
-    """The database cannot be reached. The tester sees the client facing asleep page."""
 
 
 CONSTRAINTS = (
@@ -54,7 +46,7 @@ CREATE (post:Post {
   id: $post_id, text: $text, created_at: $now,
   anonymous: $anonymous, display_name: $display_name, seed: $seed,
   source: $source, extraction_raw: $extraction_raw,
-  model: $model, latency_ms: $latency_ms
+  model: $model, latency_ms: $latency_ms, payload: $payload
 })
 CREATE (p)-[:POSTED {created_at: $now}]->(post)
 """
@@ -69,9 +61,12 @@ CREATE (p)-[:CLAIM {post_id: $post_id, anonymous: $anonymous, created_at: $now}]
 
 MERGE_PART_OF = """
 MATCH (child:Issue {key: $issue_key}), (parent:Issue {key: $parent_key})
+SET child.key = child.key, parent.key = parent.key
+WITH child, parent
 WHERE child <> parent
   AND NOT (parent)-[:PART_OF]->(:Issue)
   AND NOT (child)-[:PART_OF]->(:Issue)
+  AND NOT (:Issue)-[:PART_OF]->(child)
 MERGE (child)-[r:PART_OF]->(parent)
 ON CREATE SET r.post_id = $post_id, r.created_at = $now
 """
@@ -84,6 +79,7 @@ MATCH (p:Person {key: $person_key}), (i:Issue {key: $for_issue_key})
 CREATE (p)-[:PROPOSE {post_id: $post_id, anonymous: $anonymous, created_at: $now}]->(s)
 MERGE (i)-[hp:HAVE_PROPOSED]->(s)
 ON CREATE SET hp.post_id = $post_id, hp.created_at = $now
+ON MATCH  SET hp.last_post_id = $post_id
 """
 
 # {stance} is APPROVE or OPPOSE, substituted from STANCE_TYPES; never from input.
@@ -181,8 +177,9 @@ OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
 WITH i, collect(child) AS children
 UNWIND [i] + children AS x
 MATCH (x)-[r]-()
-WHERE r.post_id IS NOT NULL
-WITH DISTINCT r.post_id AS pid
+UNWIND [r.post_id, r.last_post_id] AS pid
+WITH DISTINCT pid
+WHERE pid IS NOT NULL
 MATCH (post:Post {id: pid})
 RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
        post.anonymous AS anonymous, post.created_at AS created_at, post.seed AS seed
@@ -238,8 +235,9 @@ ORDER BY parent IS NOT NULL, i.name
 
 CANDIDATE_SOLUTIONS = """
 MATCH (s:Solution)
-RETURN s.name AS name, s.key AS key
-ORDER BY s.created_at DESC LIMIT 200
+WITH s ORDER BY s.created_at DESC LIMIT 200
+OPTIONAL MATCH (i:Issue)-[:HAVE_PROPOSED]->(s)
+RETURN s.name AS name, s.key AS key, collect(i.name) AS issues
 """
 
 CANDIDATE_EVIDENCE = """
@@ -255,69 +253,46 @@ COUNT_NON_SEED = "MATCH (n) WHERE coalesce(n.seed, false) = false RETURN count(n
 EXISTING_POST_IDS = "MATCH (p:Post) WHERE p.id IN $ids RETURN collect(p.id) AS ids"
 DELETE_EVERYTHING = "MATCH (n) DETACH DELETE n"
 
-_driver: Driver | None = None
-_database: str = "neo4j"
-
-
-def open_driver(settings: Settings) -> Driver:
-    """Create the process's one driver. A database that does not answer is a warning, not a stop."""
-    global _driver, _database
-    _driver = GraphDatabase.driver(
-        settings.neo4j_uri,
-        auth=(settings.neo4j_username, settings.neo4j_password),
-        max_transaction_retry_time=RETRY_SECONDS,
-    )
-    _database = settings.neo4j_database
-    try:
-        _driver.verify_connectivity()
-    except Exception as exc:  # noqa: BLE001  a paused database must not stop the process
-        log.warning(json.dumps({"event": "database_unreachable", "error": str(exc)}))
-    return _driver
-
-
-def close_driver() -> None:
-    global _driver
-    if _driver is not None:
-        _driver.close()
-        _driver = None
-
-
-def driver() -> Driver:
-    if _driver is None:
-        raise RuntimeError("the database driver is not open")
-    return _driver
-
-
-def _read(query: str, **params: Any) -> list[dict[str, Any]]:
-    try:
-        result = driver().execute_query(
-            query, params, database_=_database, routing_=RoutingControl.READ
-        )
-    except ServiceUnavailable as exc:
-        raise RecordAsleep(str(exc)) from exc
-    return [_native(record.data()) for record in result.records]
-
-
-def _write(query: str, **params: Any) -> None:
-    try:
-        driver().execute_query(query, params, database_=_database)
-    except ServiceUnavailable as exc:
-        raise RecordAsleep(str(exc)) from exc
-
-
-def _native(row: dict[str, Any]) -> dict[str, Any]:
-    """Driver temporal values to Python datetimes, one level deep."""
-    for name, value in row.items():
-        if hasattr(value, "to_native"):
-            row[name] = value.to_native()
-    return row
-
+# Q11 uses element ids only inside its transaction so equal keys on different
+# labels cannot cause cleanup of an unrelated orphan.
+DELETE_POST = """
+MATCH (post:Post {id: $id})
+OPTIONAL MATCH (a)-[r]->(b)
+WHERE r.post_id = $id
+  AND type(r) IN ['CLAIM', 'SUBMIT', 'PROPOSE', 'SUPPORTS', 'REFUTES']
+WITH post, collect(DISTINCT elementId(a)) + collect(DISTINCT elementId(b)) AS touched,
+     collect(r) AS rels
+FOREACH (x IN rels | DELETE x)
+DETACH DELETE post
+RETURN touched
+"""
+DELETE_POST_ORPHANS = """
+MATCH (n)
+WHERE elementId(n) IN $touched AND (n:Issue OR n:Solution OR n:Evidence)
+  AND coalesce(n.seed, false) = false AND NOT (n)--()
+DELETE n
+"""
+EXPORT_NODES = "MATCH (n) RETURN labels(n) AS labels, properties(n) AS properties"
+EXPORT_RELATIONSHIPS = """
+MATCH (a)-[r]->(b)
+RETURN labels(a) AS source_labels, properties(a) AS source_properties,
+       labels(b) AS target_labels, properties(b) AS target_properties,
+       type(r) AS type, properties(r) AS properties
+"""
+# Placeholders below are substituted only after backup validation, from its
+# fixed label/type whitelist. Properties and identities always use parameters.
+RESTORE_NODE = "MERGE (n:{label} {{{key}: $identity}}) SET n = $properties"
+RESTORE_RELATIONSHIP = """
+MATCH (a:{source_label} {{{source_key}: $source}}),
+      (b:{target_label} {{{target_key}: $target}})
+CREATE (a)-[r:{type}]->(b) SET r = $properties
+"""
 
 def ensure_constraints() -> None:
     """Run the schema statements from docs/planning/03_schema.md. Idempotent."""
     try:
         for statement in CONSTRAINTS:
-            driver().execute_query(statement, database_=_database)
+            driver().execute_query(statement, database_=database())
     except ServiceUnavailable as exc:
         raise RecordAsleep(str(exc)) from exc
 
@@ -333,135 +308,25 @@ def person_key(name: str | None, anonymous: bool, anon_id: str | None) -> str:
 
 
 # The write path.
+#
+# Post and admin orchestration live in their own modules, and those modules read the query
+# text from here. Resolving them on first use rather than importing them at the bottom of
+# this file keeps the two directions apart: `import app.graph_posts` on its own works, and
+# callers keep writing graph.merge_post().
+_ELSEWHERE = {
+    "merge_post": "app.graph_posts",
+    "create_raw_post": "app.graph_posts",
+    "seed_issues": "app.graph_posts",
+    "delete_post": "app.graph_backup",
+    "export_record": "app.graph_backup",
+    "restore_record": "app.graph_backup",
+}
 
 
-def merge_post(
-    person_key: str,
-    name: str | None,
-    anonymous: bool,
-    display_name: str | None,
-    text: str,
-    payload: ResolvedPayload,
-    *,
-    source: str = "manual",
-    seed: bool = False,
-    post_id: str | None = None,
-    created_at: datetime | None = None,
-    extraction_raw: str | None = None,
-    model: str | None = None,
-    latency_ms: int | None = None,
-) -> str:
-    """Merge one post and everything it adds, in one write transaction. Returns the post id.
-
-    `created_at` and `post_id` are for the seed only; the app never passes them.
-    """
-    post_id = post_id or str(uuid.uuid4())
-    now = created_at or datetime.now(timezone.utc)
-    common = {
-        "person_key": person_key,
-        "post_id": post_id,
-        "anonymous": anonymous,
-        "now": now,
-        "seed": seed,
-    }
-
-    def work(tx: Any) -> None:
-        tx.run(MERGE_PERSON, name=name, **common)
-        tx.run(
-            CREATE_POST,
-            text=text,
-            display_name=display_name,
-            source=source,
-            extraction_raw=extraction_raw,
-            model=model,
-            latency_ms=latency_ms,
-            **common,
-        )
-        for issue in payload.issues:
-            tx.run(MERGE_ISSUE_CLAIM, issue_key=issue["key"], issue_name=issue["name"], **common)
-        for issue in payload.issues:
-            if issue.get("parent_key"):
-                tx.run(MERGE_PART_OF, issue_key=issue["key"], parent_key=issue["parent_key"], **common)
-        for solution in payload.solutions:
-            tx.run(
-                MERGE_SOLUTION_PROPOSE,
-                solution_key=solution["key"],
-                solution_name=solution["name"],
-                for_issue_key=solution["for_issue_key"],
-                **common,
-            )
-            stance = STANCE_TYPES.get(solution.get("stance", "none"))
-            if stance:
-                tx.run(MERGE_STANCE.replace("{stance}", stance), solution_key=solution["key"], **common)
-        for item in payload.evidence:
-            tx.run(
-                MERGE_EVIDENCE_SUBMIT,
-                evidence_key=item["key"],
-                evidence_name=item["name"],
-                url=item.get("url"),
-                **common,
-            )
-            rel = EVIDENCE_TYPES[item["stance"]]
-            label = item["target_label"]
-            if label not in TARGET_LABELS:
-                raise ValueError(f"unknown target label {label!r}")
-            tx.run(
-                CREATE_EVIDENCE_STANCE.replace("{label}", label).replace("{rel}", rel),
-                evidence_key=item["key"],
-                target_key=item["target_key"],
-                **common,
-            )
-
-    try:
-        with driver().session(database=_database) as session:
-            session.execute_write(work)
-    except ServiceUnavailable as exc:
-        raise RecordAsleep(str(exc)) from exc
-    log.info(
-        json.dumps(
-            {
-                "event": "merge",
-                "post_id": post_id,
-                "person_key": person_key,
-                "source": source,
-                "issues": len(payload.issues),
-                "solutions": len(payload.solutions),
-                "evidence": len(payload.evidence),
-            }
-        )
-    )
-    return post_id
-
-
-def create_raw_post(
-    person_key: str, name: str | None, anonymous: bool, display_name: str | None, text: str
-) -> str:
-    """Store one post with no structure (the plain statement path)."""
-    return merge_post(person_key, name, anonymous, display_name, text, ResolvedPayload())
-
-
-def seed_issues(issues: list[dict[str, Any]], created_at: datetime) -> None:
-    """The seed file's issues block: nodes first, then PART_OF, all seed, dated `created_at`."""
-    keyed = []
-    for item in issues:
-        key = make_key(item["name"])
-        if key is None:
-            raise ValueError(f"seed issue {item['name']!r} has no usable key")
-        parent_key = make_key(item["parent"]) if item.get("parent") else None
-        keyed.append((key, item["name"], parent_key))
-
-    def work(tx: Any) -> None:
-        for key, name, _ in keyed:
-            tx.run(MERGE_SEED_ISSUE, key=key, name=name, now=created_at)
-        for key, _, parent_key in keyed:
-            if parent_key:
-                tx.run(MERGE_PART_OF, issue_key=key, parent_key=parent_key, post_id=None, now=created_at)
-
-    try:
-        with driver().session(database=_database) as session:
-            session.execute_write(work)
-    except ServiceUnavailable as exc:
-        raise RecordAsleep(str(exc)) from exc
+def __getattr__(name: str) -> Any:
+    if name in _ELSEWHERE:
+        return getattr(importlib.import_module(_ELSEWHERE[name]), name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # Reads.
@@ -519,9 +384,11 @@ def candidates() -> Candidates:
         row["key"]: {"name": row["name"], "parent_key": row["parent_key"]}
         for row in _read(CANDIDATE_ISSUES)
     }
-    solutions = {row["key"]: row["name"] for row in _read(CANDIDATE_SOLUTIONS)}
+    solution_rows = _read(CANDIDATE_SOLUTIONS)
+    solutions = {row["key"]: row["name"] for row in solution_rows}
     evidence = {row["key"]: row["name"] for row in _read(CANDIDATE_EVIDENCE)}
-    return Candidates(issues=issues, solutions=solutions, evidence=evidence)
+    return Candidates(issues=issues, solutions=solutions, evidence=evidence,
+                      solution_issues={row["key"]: row["issues"] for row in solution_rows})
 
 
 def health() -> int:
@@ -548,48 +415,3 @@ def existing_post_ids(ids: list[str]) -> set[str]:
 def delete_everything() -> None:
     """Q10. Reset. Always followed by a seed load."""
     _write(DELETE_EVERYTHING)
-
-
-# Grouping for the Issues page, in Python (03_schema.md, Q1).
-
-
-def _sort_key(sort: str):
-    if sort == "recent":
-        return lambda r: (r["last_activity"],)
-    if sort == "evidence":
-        return lambda r: (r["evidence"], r["claims"], r["last_activity"])
-    return lambda r: (r["people"], r["claims"], r["last_activity"])
-
-
-def group_issues(rows: list[dict[str, Any]], sort: str = "people") -> list[dict[str, Any]]:
-    """Top-level rows with their children attached, ranked on inclusive counts."""
-    sort = sort if sort in SORTS else "people"
-    by_key: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        item = dict(row)
-        item["own_claims"] = row["claims"]
-        item["children"] = []
-        by_key[row["key"]] = item
-    top: list[dict[str, Any]] = []
-    for item in by_key.values():
-        parent = by_key.get(item["parent_key"]) if item.get("parent_key") else None
-        if parent is not None and parent is not item:
-            parent["children"].append(item)
-        else:
-            top.append(item)
-    for item in top:
-        if item["children"]:
-            family = [item] + item["children"]
-            people = set()
-            evidence = set()
-            for member in family:
-                people.update(member.get("person_keys") or [])
-                evidence.update(member.get("evidence_keys") or [])
-            item["people"] = len(people)
-            item["evidence"] = len(evidence)
-            item["claims"] = sum(member["own_claims"] for member in family)
-            item["solutions"] = sum(member["solutions"] for member in family)
-            item["last_activity"] = max(member["last_activity"] for member in family)
-            item["children"].sort(key=_sort_key(sort), reverse=True)
-    top.sort(key=_sort_key(sort), reverse=True)
-    return top

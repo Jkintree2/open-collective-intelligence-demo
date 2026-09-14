@@ -313,3 +313,30 @@ h3 {
 
 .site-header nav { display: flex; white-space: nowrap; }
 .site-header .site-name { padding-right: 12px; }
+
+[hidden] { display: none !important; }
+.card { margin-top: 24px; padding: 16px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; }
+.card-row { border-bottom: 1px solid var(--rule); padding: 12px 0; }
+.card h3 { margin-top: 18px; }
+.card fieldset { border: 0; margin: 12px 0; padding: 0; }
+.card legend { color: var(--ink-soft); font-size: .9rem; }
+.card .check { min-height: 44px; }
+.card select { width: 100%; min-height: 44px; font: inherit; background: var(--input); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 8px; }
+.quiet { color: var(--accent); background: transparent; border: 0; text-align: left; min-height: 44px; cursor: pointer; }
+.badge { display: block; font-size: .8rem; color: var(--ink-soft); margin: 4px 0; }
+.write-issue { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
+.card input, .card select { min-width: 0; max-width: 100%; }
+.card ul, .statement, .chip { overflow-wrap: anywhere; }
+button:disabled { opacity: .6; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Keep the compose controls and long issue names usable at 360 px. */
+#dictate[aria-pressed="true"] { color: #fff; background: var(--solution); border-radius: 6px; padding: 0 12px; }
+.site-header { flex-wrap: wrap; }
+.site-name, .name-row .field { min-width: 0; }
+.column, .site-name { overflow-wrap: anywhere; }
+.compose-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; }
+.compose-actions button { max-width: 100%; }
+.chip { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; }
+.added summary, .sub-issues li a { min-height: 44px; }
+.issue-card h2 a, .crumbs a, .evidence a { display: inline-block; min-height: 44px; }

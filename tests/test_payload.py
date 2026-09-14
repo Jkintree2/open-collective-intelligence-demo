@@ -76,6 +76,36 @@ def test_a_parent_that_does_not_exist_is_dropped():
     assert resolved.issues[0]["parent_key"] is None
 
 
+def test_a_parent_introduced_by_the_same_card_is_kept():
+    payload = _payload(issues=[{"name": "Coastal flooding"},
+                               {"name": "Harbor district drainage", "parent": "Coastal flooding"}])
+    resolved = resolve_payload(payload, Candidates.empty())
+    assert [item["parent_key"] for item in resolved.issues] == [None, "coastal flooding"]
+    assert not resolved.dropped and not resolved.corrected
+
+
+def test_a_missing_parent_is_a_correction_and_does_not_stop_the_post():
+    resolved = resolve_payload(_payload(issues=[{"name": "Veto reform timetable", "parent": "Nowhere"}]), CANDIDATES)
+    assert resolved.issues[0]["parent_key"] is None
+    assert not resolved.dropped and len(resolved.corrected) == 1
+
+
+def test_short_names_are_reused_when_they_exist_and_refused_when_they_are_new():
+    known = Candidates(issues={"ai": {"name": "AI", "parent_key": None}})
+    resolved = resolve_payload(_payload(issues=[{"name": "AI"}, {"name": "EU"}]), known)
+    assert [item["key"] for item in resolved.issues] == ["ai"]
+    assert resolved.issues[0]["existing"] is True
+    assert resolved.dropped == ["issue 'EU'"]
+
+
+def test_a_reference_to_a_short_existing_issue_is_not_repointed():
+    known = Candidates(issues={"ai": {"name": "AI", "parent_key": None}})
+    payload = _payload(issues=[{"name": ISSUE}],
+                       solutions=[{"name": "Publish the training data", "for_issue": "AI"}])
+    resolved = resolve_payload(payload, known)
+    assert resolved.solutions[0]["for_issue_key"] == "ai"
+
+
 def test_evidence_about_a_solution_in_the_payload_targets_that_solution():
     payload = _payload(
         solutions=[{"name": "Seawall in the harbor district", "for_issue": ISSUE, "stance": "approve"}],
@@ -107,3 +137,33 @@ def test_a_solution_with_no_issue_anywhere_is_dropped():
     resolved = resolve_payload(payload, Candidates.empty())
     assert resolved.solutions == []
     assert resolved.is_empty
+
+
+def test_cleared_and_malformed_names_do_not_reject_other_rows():
+    payload = _payload(issues=[{"name": ""}, {"name": None}, {"name": 42}, {"name": ISSUE}])
+    resolved = resolve_payload(payload, Candidates.empty())
+    assert [item["name"] for item in resolved.issues] == [ISSUE]
+
+
+def test_existing_sub_issue_keeps_its_parent_even_when_card_omits_it():
+    resolved = resolve_payload(_payload(issues=[{"name": "Security Council veto"}]), CANDIDATES)
+    assert resolved.issues[0]["parent_key"] == "need for world government"
+
+
+def test_existing_parent_cannot_be_made_a_child_and_new_parents_are_not_invented():
+    payload = _payload(issues=[{"name": "Need for world government", "parent": "Security Council veto"},
+                               {"name": "New issue", "parent": "Another new issue"},
+                               {"name": "Another new issue", "parent": "New issue"}])
+    resolved = resolve_payload(payload, CANDIDATES)
+    assert all(item["parent_key"] is None for item in resolved.issues)
+
+
+def test_empty_and_non_english_results_cannot_retain_structure():
+    for flags in ({"found": False}, {"language_ok": False}):
+        payload = CardPayload.model_validate({"issues": [{"name": ISSUE}], **flags})
+        assert payload.issues == []
+
+
+def test_invalid_http_urls_are_removed():
+    payload = _payload(evidence=[{"name": "Study", "about": ISSUE, "url": "https://"}])
+    assert payload.evidence[0].url is None

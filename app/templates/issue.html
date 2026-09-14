@@ -3,6 +3,7 @@
 {% block content %}
 <p class="crumbs"><a href="/issues">Issues</a>{% if issue.parent_key %} › <a href="/issues/{{ issue.parent_key|urlencode }}">{{ issue.parent_name }}</a>{% endif %} › {{ issue.name }}</p>
 <h1>{{ issue.name }}</h1>
+<a class="write-issue" href="/?issue={{ issue.key|urlencode }}">Write about this issue</a>
 <p class="claimed">Claimed by {{ claimants.people }} {{ "person" if claimants.people == 1 else "people" }} ({{ claimants.claims }} {{ "claim" if claimants.claims == 1 else "claims" }}){% if claimants.names %}: {{ claimants.names|join(", ") }}{% endif %}</p>
 
 {% if issue.children %}

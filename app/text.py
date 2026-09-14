@@ -79,3 +79,15 @@ def count_line(row: dict) -> str:
     else:
         claims = _plural(row["claims"], "claim", "claims")
     return f"{people} · {claims} · {solutions} · {evidence}"
+
+
+def sentences(payload, display_name: str) -> list[str]:
+    """The card's sentences, in the order of the acceptance examples."""
+    name = clean_name(display_name) or "Anonymous"
+    result = [f"{name} claims {item.name}" for item in payload.issues]
+    result.extend(f"{name} proposes {item.name}" for item in payload.solutions)
+    result.extend(f"{item.for_issue} has proposed {item.name}" for item in payload.solutions)
+    result.extend(f"{name} {item.stance}s {item.name}" for item in payload.solutions if item.stance != "none")
+    result.extend(f"{name} submits {item.name}" for item in payload.evidence)
+    result.extend(f"{item.name} {item.stance} {item.about}" for item in payload.evidence)
+    return result

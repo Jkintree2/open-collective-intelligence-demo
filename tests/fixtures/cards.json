@@ -1,0 +1,7 @@
+{
+  "1": {"found":true,"issues":[{"name":"Drug dealing problem"}],"solutions":[{"name":"Decriminalize drug sales","for_issue":"Drug dealing problem","stance":"none"},{"name":"Treat drug use as medical issue","for_issue":"Drug dealing problem","stance":"approve"}],"evidence":[]},
+  "4": {"found":true,"issues":[{"name":"Rising sea levels threaten coastal housing"}],"solutions":[{"name":"Seawall in the harbor district","for_issue":"Rising sea levels threaten coastal housing","stance":"none"}],"evidence":[{"name":"2024 NOAA flooding survey","stance":"supports","about":"Rising sea levels threaten coastal housing"}]},
+  "5": {"found":false,"issues":[],"solutions":[],"evidence":[],"note":"This is a question about the site."},
+  "6A": {"found":false,"issues":[],"solutions":[],"evidence":[],"note":"This asks for changes to the form rather than making a civic statement."},
+  "7": {"found":true,"issues":[{"name":"Drug dealing problem"}],"solutions":[{"name":"Decriminalize drug possession","for_issue":"Drug dealing problem","stance":"none"}],"evidence":[{"name":"Portugal decriminalization in 2001","stance":"supports","about":"Decriminalize drug possession"}]}
+}

@@ -8,6 +8,9 @@
 
 The connection comes from the environment (and `.env` when it exists). Production is seeded
 from a shell with the variables typed inline, never from a saved file.
+
+Exit codes: 0 loaded, 2 --reset without --yes, 3 refused because non seed nodes exist,
+4 a seed statement could not be loaded.
 """
 
 from __future__ import annotations
@@ -24,6 +27,14 @@ from app.extract import CardPayload, resolve_payload
 from app.text import clean_name, make_key
 
 SEED_FILE = Path(__file__).resolve().parent.parent / "seed" / "seed.json"
+
+
+class SeedError(ValueError):
+    """A seed statement cannot be loaded as written.
+
+    An ordinary exception, not SystemExit: the admin page calls load() inside a request,
+    where a BaseException would slip past the error handler and answer with a blank 500.
+    """
 
 
 def _parse_time(value: str) -> datetime:
@@ -54,13 +65,13 @@ def load(data: dict) -> tuple[int, int]:
         author = clean_name(post["author"])
         key = make_key(author)
         if key is None:
-            raise SystemExit(f"seed post {post['id']} has no usable author name")
+            raise SeedError(f"seed post {post['id']} has no usable author name")
         payload = CardPayload.model_validate(
             {"issues": post["issues"], "solutions": post["solutions"], "evidence": post["evidence"]}
         )
         resolved = resolve_payload(payload, graph.candidates())
         if resolved.dropped:
-            raise SystemExit(f"seed post {post['id']} lost items: {resolved.dropped}")
+            raise SeedError(f"seed post {post['id']} lost items: {resolved.dropped}")
         graph.merge_post(
             f"name:{key}",
             author,
@@ -108,7 +119,11 @@ def main(argv: list[str] | None = None) -> int:
             graph.delete_everything()
             print("deleted everything")
         data = json.loads(Path(args.file).read_text(encoding="utf-8"))
-        loaded, skipped = load(data)
+        try:
+            loaded, skipped = load(data)
+        except SeedError as exc:
+            print(exc, file=sys.stderr)
+            return 4
         print(f"loaded {loaded} seed post(s), {skipped} already present")
         print_counts()
         return 0
