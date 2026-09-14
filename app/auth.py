@@ -7,7 +7,10 @@ import hmac
 import threading
 import time
 
-from fastapi import Request
+from fastapi import Depends, Form, HTTPException, Request
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from urllib.parse import urlsplit
+import secrets
 
 from app.config import get_settings
 
@@ -119,3 +122,73 @@ class MinuteBucket:
 
 # Failed passphrase attempts draw from this bucket. Session 3 shares it with the reading service.
 attempt_bucket = MinuteBucket(capacity=6, period=60.0)
+
+
+class DailyLimit:
+    def __init__(self, capacity: int = 300) -> None:
+        self.capacity = capacity
+        self.day: int | None = None
+        self.used = 0
+        self.lock = threading.Lock()
+
+    def take(self, minute: MinuteBucket, now: float | None = None) -> bool:
+        today = int((time.time() if now is None else now) // 86400)
+        with self.lock:
+            if self.day != today:
+                self.day, self.used = today, 0
+            if self.used >= self.capacity or not minute.take():
+                return False
+            self.used += 1
+            return True
+
+
+reading_limit = DailyLimit()
+
+admin_basic = HTTPBasic()
+
+
+def require_admin(credentials: HTTPBasicCredentials = Depends(admin_basic)) -> None:
+    if not hmac.compare_digest(credentials.password.encode(), get_settings().admin_token.encode()):
+        raise HTTPException(401, "Password required", headers={"WWW-Authenticate": "Basic"})
+
+
+def _admin_signature(value: str) -> str:
+    settings = get_settings()
+    message = f"admin:{settings.admin_token}:{value}".encode()
+    return hmac.new(settings.secret_key.encode(), message, hashlib.sha256).hexdigest()
+
+
+def make_admin_csrf() -> str:
+    value = f"{int(time.time()) + 3600}.{secrets.token_hex(16)}"
+    return f"{value}.{_admin_signature(value)}"
+
+
+def require_admin_mutation(request: Request, csrf_token: str = Form(""),
+                           _: None = Depends(require_admin)) -> None:
+    """Basic auth is attached automatically, so mutations also need form proof."""
+    try:
+        expiry, nonce, signature = csrf_token.split(".")
+        valid = (len(expiry) <= 12 and expiry.isascii() and expiry.isdigit()
+                 and int(expiry) > time.time() and len(nonce) == 32
+                 and hmac.compare_digest(signature, _admin_signature(f"{expiry}.{nonce}")))
+    except (ValueError, TypeError):
+        valid = False
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    # Hosts only. Behind a proxy that ends TLS this request reads as http while the browser
+    # sends https, so comparing schemes would refuse every real mutation; the signed token
+    # above is what proves the form came from the back room.
+    expected = request.url.netloc
+    try:
+        if origin:
+            parsed = urlsplit(origin)
+            valid = valid and parsed.scheme in ("http", "https") and parsed.netloc == expected and not parsed.path
+        elif referer:
+            parsed = urlsplit(referer)
+            valid = valid and parsed.scheme in ("http", "https") and parsed.netloc == expected
+    except ValueError:
+        valid = False
+    if request.headers.get("sec-fetch-site") == "cross-site":
+        valid = False
+    if not valid:
+        raise HTTPException(403, "Please open the back room again and retry.")

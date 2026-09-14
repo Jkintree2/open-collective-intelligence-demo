@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Back room · {{ site_name }}{% endblock %}
+{% block content %}
+<h1>Back room</h1>
+{% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
+<h2>The shared record</h2>
+<dl>{% for label, count in counts %}<dt>{{ label }}</dt><dd>{{ count }}</dd>{% endfor %}</dl>
+<details><summary class="quiet">Connections in the record</summary>
+<dl>{% for label, count in relations %}<dt>{{ label }}</dt><dd>{{ count }}</dd>{% endfor %}</dl>
+</details>
+<h2>Reading service</h2><p>{{ reading_error }}</p>
+<h2>Keep a copy</h2><p><a href="/admin/export.json">Download a copy</a></p>
+<h2>Seed statements</h2>
+<form action="/admin/reload" method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p>Add any missing seed statements to the record.</p><button class="primary" type="submit">Reload seed</button>
+</form>
+<details><summary class="quiet">Reset to seed</summary>
+  <form action="/admin/reset" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <p>This deletes every post and restores the seed statements. Download a copy first if you want to keep the current record.</p>
+    <label for="confirmation">Type RESET to confirm</label>
+    <input type="text" id="confirmation" name="confirmation" required pattern="RESET" autocomplete="off">
+    <button class="primary" type="submit">Reset to seed</button>
+  </form>
+</details>
+<h2>Last fifty posts</h2>
+<p>Deleting removes the post and what it alone added. Shared connections, approvals, oppositions and seed items stay.</p>
+{% for post in posts %}
+<article class="post">
+  <p>{{ post.display_name or "Anonymous" }}{% if post.seed %} · seed{% endif %}</p>
+  <blockquote>{{ post.text }}</blockquote>
+  <form action="/admin/posts/{{ post.id | urlencode }}/delete" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="quiet" type="submit">Delete</button>
+  </form>
+</article>
+{% else %}<p>Nothing here yet.</p>{% endfor %}
+{% endblock %}

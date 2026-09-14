@@ -11,15 +11,18 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import AsyncIterator
+from typing import AsyncIterator, Literal
+from dataclasses import asdict
 from urllib.parse import quote, unquote
 
 from fastapi import Depends, FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
 
-from app import graph
+from app import graph, extract as reading
+from app.extract import CardPayload, resolve_payload
 from app.auth import (
     GATE_COOKIE,
     GATE_SECONDS,
@@ -29,10 +32,11 @@ from app.auth import (
     make_gate_token,
     passphrase_matches,
     require_gate,
+    reading_limit,
 )
 from app.config import get_settings
 from app.graph import RecordAsleep
-from app.text import clean_name, count_line, make_key, relative_time
+from app.text import clean_name, count_line, make_key, relative_time, sentences
 
 settings = get_settings()
 
@@ -64,6 +68,10 @@ WRONG_PASSPHRASE = "That passphrase did not match. Check the message from John a
 TOO_LONG = "That is longer than this demo can read at once. Please shorten it to a few paragraphs."
 # Not in the interface doc: shown when the passphrase bucket is empty.
 TOO_MANY_TRIES = "Too many tries. Please wait a minute and try again."
+NOT_ANSWERING = "The reading service is not answering right now. You can fill in the form by hand, or try again in a minute."
+NOT_FOUND = "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again."
+ENGLISH_ONLY = "This demo reads English only for now."
+READING_LIMIT = "Too many requests. Please wait a minute or fill in the form by hand."
 
 log = logging.getLogger("oci")
 
@@ -279,9 +287,9 @@ def create_post(
     anonymous: str | None = Form(None),
     text: str = Form(""),
 ) -> Response:
-    text = text.strip()
     if len(text) > TEXT_MAX:
         return _render_index(request, message=TOO_LONG, text=text, status_code=413)
+    text = text.strip()
     if not text:
         return RedirectResponse("/", status_code=303)
     name = clean_name(display_name)
@@ -305,8 +313,126 @@ def health_check() -> dict[str, object]:
     return {"ok": True, "nodes": graph.health()}
 
 
+class ReadingRequest(BaseModel):
+    text: str
+    display_name: str = Field(default="", max_length=120)
+    anonymous: bool = False
+
+
+class PostRequest(CardPayload):
+    text: str
+    display_name: str = Field(default="", max_length=120)
+    anonymous: bool = False
+    source: Literal["model", "manual"] = "manual"
+    extraction_raw: str | None = Field(default=None, max_length=32000)
+    model: str | None = Field(default=None, max_length=120)
+    latency_ms: int | None = Field(default=None, ge=0, le=300000)
+    plain: bool = False
+
+
+def _text_error(text: str) -> Response | None:
+    if len(text) > TEXT_MAX:
+        return JSONResponse({"message": TOO_LONG}, status_code=413)
+    if not text.strip():
+        return JSONResponse({"message": "Please write a statement first."}, status_code=422)
+    return None
+
+
+def _poster(data: ReadingRequest | PostRequest) -> tuple[str | None, bool]:
+    name = clean_name(data.display_name)
+    anonymous = data.anonymous or make_key(name) is None
+    return (None if anonymous else name), anonymous
+
+
+@app.get("/api/candidates", dependencies=[Depends(require_gate)])
+def card_candidates() -> dict:
+    return asdict(graph.candidates())
+
+
+@app.post("/api/extract", dependencies=[Depends(require_gate)])
+def read_statement(request: Request, data: ReadingRequest) -> Response:
+    error = _text_error(data.text)
+    if error is not None:
+        return error
+    # The budget belongs to the reading service. Without a key the card opens empty and no
+    # request is made, so that path must not spend anyone's allowance.
+    if settings.llm_api_key and not reading_limit.take(attempt_bucket):
+        return JSONResponse({"message": READING_LIMIT}, status_code=429)
+    name, _ = _poster(data)
+    candidates = graph.candidates() if settings.llm_api_key else reading.Candidates.empty()
+    result = reading.extract(data.text, name or "Anonymous", candidates, settings, request_id=_request_id(request))
+    if result is None:
+        return JSONResponse({"payload": {"found": False}, "message": NOT_ANSWERING, "source": "manual"})
+    message = ENGLISH_ONLY if not result.payload.language_ok else NOT_FOUND if not result.payload.found else ""
+    return JSONResponse({"payload": result.payload.model_dump(), "message": message,
+                         "source": "model" if result.payload.found else "manual", "extraction_raw": result.extraction_raw,
+                         "model": result.model, "latency_ms": result.latency_ms})
+
+
+def _card_result(data: PostRequest):
+    candidates = graph.candidates()
+    incoming = data.model_copy(update={"found": True, "language_ok": True})
+    resolved = resolve_payload(incoming, candidates)
+    card = reading.prepared_card(incoming, candidates)
+    return candidates, resolved, card
+
+
+@app.post("/api/preview", dependencies=[Depends(require_gate)])
+def preview_card(data: PostRequest) -> Response:
+    error = _text_error(data.text)
+    if error is not None:
+        return error
+    _, resolved, card = _card_result(data)
+    name, _ = _poster(data)
+    valid = not resolved.dropped and (not resolved.is_empty or data.plain)
+    return JSONResponse({"sentences": sentences(card, name or "Anonymous"), "valid": valid,
+                         "dropped": resolved.dropped, "corrected": resolved.corrected,
+                         "payload": card.model_dump()})
+
+
+@app.post("/api/posts", dependencies=[Depends(require_gate)])
+def post_card(request: Request, data: PostRequest) -> Response:
+    error = _text_error(data.text)
+    if error is not None:
+        return error
+    candidates, resolved, card = _card_result(data)
+    if resolved.dropped or (resolved.is_empty and not data.plain):
+        return JSONResponse({"message": "Please check the form before posting.",
+                             "dropped": resolved.dropped}, status_code=422)
+    name, anonymous = _poster(data)
+    anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
+    source = data.source if not resolved.is_empty else "manual"
+    edited = False
+    if data.extraction_raw:
+        try:
+            original = reading.prepared_card(reading.parse_payload(data.extraction_raw), candidates, data.text)
+            edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
+        except ValueError:
+            edited = True
+    # What the reading service returned is kept whenever it returned something, even when the
+    # tester emptied the card, so "it did something weird" can be answered from the one post.
+    post_id = graph.merge_post(graph.person_key(name, anonymous, anon_id), name, anonymous, name,
+                               data.text.strip(), resolved, source=source,
+                               extraction_raw=data.extraction_raw, model=data.model,
+                               latency_ms=data.latency_ms,
+                               request_id=_request_id(request), edited=edited)
+    response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
+    if anonymous:
+        _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
+    else:
+        _set_cookie(response, NAME_COOKIE, quote(name), YEAR_SECONDS)
+    return response
+
+
+@app.get("/feed", dependencies=[Depends(require_gate)])
+def feed(request: Request) -> Response:
+    return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT))})
+
+
 @app.exception_handler(GateRequired)
-async def gate_redirect(_: Request, exc: GateRequired) -> Response:
+async def gate_redirect(request: Request, exc: GateRequired) -> Response:
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"message": "Please enter the passphrase again.", "redirect": "/enter"}, status_code=401)
     return RedirectResponse(f"/enter?next={quote(exc.next_path, safe='/')}", status_code=303)
 
 
@@ -317,6 +443,8 @@ async def record_asleep(request: Request, exc: RecordAsleep) -> Response:
     )
     if request.url.path == "/health":
         return JSONResponse({"ok": False}, status_code=503)
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"message": "The record is asleep. John needs to press Play in the Neo4j console, and it wakes up in a few minutes."}, status_code=503)
     return templates.TemplateResponse(request, "asleep.html", {}, status_code=503)
 
 
@@ -331,4 +459,10 @@ async def unhandled_error(request: Request, exc: Exception) -> Response:
             }
         )
     )
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"message": "Something went wrong. Please try again in a minute."}, status_code=500)
     return templates.TemplateResponse(request, "error.html", {}, status_code=500)
+
+# Imported after app/templates exist; admin imports templates only when rendering.
+from app.admin import router as admin_router
+app.include_router(admin_router)
