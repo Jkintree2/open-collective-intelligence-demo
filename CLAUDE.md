@@ -26,7 +26,14 @@ app/main.py        FastAPI app, routes, lifespan (driver open/close, non-fatal c
 app/config.py      settings from environment variables; app refuses to start without DEMO_PASSPHRASE, SECRET_KEY, ADMIN_TOKEN, NEO4J_*; SITE_NAME and SITE_SENTENCE have defaults
 app/auth.py        passphrase cookie (signed, 30 days, embeds a hash of the passphrase), admin HTTP basic auth
 app/graph.py       driver, constraints, all Cypher as constants, merge_post(), group_issues(), read queries; RecordAsleep on ServiceUnavailable
-app/extract.py     prompt, model call with one retry, last_model_error, pydantic models: Extraction, CardPayload
+app/extract.py     prompt, model call with one retry, last_model_error, Extraction; re-exports CardPayload and resolution
+app/payload.py     card models, cleaning, reference resolution
+app/graph_runtime.py process driver, query execution, RecordAsleep; no Cypher
+app/graph_posts.py post and seed write orchestration; no Cypher
+app/graph_backup.py admin deletion, export and restore transactions; no Cypher
+app/backup.py      portable export format, typed values and input validation
+app/admin.py       Basic-auth admin routes and safe reading-error summaries
+app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
 app/templates/     base, enter, index, issues, issue, admin, error, asleep, _feed (fragment)
 app/static/        app.css, app.js
