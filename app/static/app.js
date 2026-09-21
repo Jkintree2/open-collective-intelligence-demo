@@ -380,16 +380,18 @@
     finally { controls.forEach((control, index) => { control.disabled = disabled[index]; }); posting = false; updateText(); changed(); }
   });
   // The summary above the form (about_issue.js) sets a position on a solution the record already holds.
+  // The answer lets the panel undo the choice and say why: 'reading', 'full' or true.
   window.oci = {
     setPositionOnExisting(name, forIssue, stance) {
+      if (reading) return 'reading';  // A reading in flight is never abandoned by a choice up there.
       if (card.hidden) openCard();
-      let row = groups.solutions.find(r => key(r.name.value) === key(name));
-      if (stance === 'none') { if (row) { groups.solutions = groups.solutions.filter(r => r !== row); row.element.remove(); changed(); } return; }
+      const mine = () => groups.solutions.find(r => key(r.name.value) === key(name)); let row = mine();
+      if (stance === 'none') { if (row) { groups.solutions = groups.solutions.filter(r => r !== row); row.element.remove(); changed(); } return true; }
       // A full card takes no more rows, and the last row there belongs to someone else.
-      if (!row) { addRow('solutions', {name, for_issue: forIssue, stance}); row = groups.solutions.find(r => key(r.name.value) === key(name)); }
-      if (!row) return;
+      if (!row) { addRow('solutions', {name, for_issue: forIssue, stance}); row = mine(); }
+      if (!row) return 'full';
       row.radios.forEach(r => { r.checked = r.value === stance; });
-      changed();
+      changed(); return true;
     }
   };
   find('read').textContent = 'Read my statement'; updateText(); loadCandidates();

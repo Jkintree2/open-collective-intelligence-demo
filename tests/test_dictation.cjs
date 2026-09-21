@@ -326,3 +326,20 @@ test('a position choice when the card is already full does not change another ro
   const radios = last.children.find(c => c.tag === 'fieldset').children.map(l => l.children[0]).filter(c => c && c.type === 'radio');
   assert.equal(radios.find(r => r.checked).value, 'approve');
 });
+
+test('a position choice reports whether it was taken, so the panel can say why not', async () => {
+  const {get, type, win, flush} = await setup();
+  await flush();
+  assert.equal(win.oci.setPositionOnExisting('One', 'An issue', 'approve'), true);
+  for (const name of ['Two', 'Three', 'Four', 'Five']) win.oci.setPositionOnExisting(name, 'An issue', 'approve');
+  assert.equal(get('solution-rows').children.length, 5);
+  assert.equal(win.oci.setPositionOnExisting('Sixth', 'An issue', 'oppose'), 'full');
+  assert.equal(get('solution-rows').children.length, 5);
+  // A reading in flight is left alone: the card stays hidden and the reading is not abandoned.
+  await type('Statement'); await get('compose').emit('submit');
+  assert.equal(get('card').hidden, true);
+  assert.equal(win.oci.setPositionOnExisting('Seventh', 'An issue', 'approve'), 'reading');
+  assert.equal(win.oci.setPositionOnExisting('Seventh', 'An issue', 'none'), 'reading');
+  assert.equal(get('card').hidden, true);
+  assert.equal(get('text').readOnly, true);
+});
