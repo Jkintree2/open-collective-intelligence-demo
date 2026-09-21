@@ -53,6 +53,22 @@ Started at kickoff. Everything John raises that is outside the list above goes h
 | 5 Sep | A graph picture (his artifact's Map tab) | planning | Not in the SOW; ask before building |
 | 5 Sep | Feed paging beyond the sixty most recent posts | review | Sixty is plenty for a closed test |
 | 5 Sep | Restoring a downloaded copy from the admin page | review | In 0.1 a developer runs `scripts/restore.py`; the guide says so |
+| 14 Sep | Server-side speech to text for better dictation (browser engine quality is the limit) | Dictation email | Web Speech API is the 0.1 dictation; repeated words on Android is a bug for Session 5 |
+| 14 Sep | Platform answers questions from the knowledge graph | Conversational email | Needs a retrieval and answer path, a second model call |
+| 14 Sep | Tools: calculator, calendar, Wikidata, Wikipedia, fact-checking sites | Conversational email | |
+| 14 Sep | Platform describes itself: model, software, host, hardware, energy, and the sources of each answer | Conversational email | A static About page is the cheap part |
+| 14 Sep | Platform asks who, when, where, why and how for each issue, evidence and solution | Conversational email | The card already asks about the what |
+| 15 Sep | One-click approve and oppose buttons on the issue page | Sentiment on solutions | Only meaningful once each person is counted once; needs accounts |
+| 15 Sep | Location on each post, issues filtered by place | Sentiment clarification | SOW "not included": geographic filtering |
+| 15 Sep | Working through reasons for opposition and amendments towards consensus | Sentiment clarification | A process, not a field |
+| 15 Sep | Solutions of the current issue listed on the write-about card with the three stance choices | Sentiment on solutions | Done as goodwill in the 0.1 revision round (promised 16 Sep); done 21 Sep |
+| 15 Sep | Delay between repeated posts from one source (anti-flood) | Security email | Done as goodwill in the 0.1 revision round (promised 16 Sep); done 21 Sep |
+| 16 Sep | Fetch the page behind an evidence link, verify it says what the poster claims, extract further entities from it | Links to evidence | Document ingestion plus a second model pass per link; biggest 0.2 candidate |
+| 16 Sep | Confidence level for the trustworthiness of each linked source | Links to evidence | Method needs discussion with John first |
+| 16 Sep | Reader told which issue the tester is writing about; card lists grouped (this card, this issue's family, the rest); summary of the issue above the write-about form | Fix emails | Done as goodwill in the 0.1 revision round (promised 17 Sep); done 21 Sep. The new-parent-on-same-card case and issue-name link styling are bugs, not goodwill |
+| 21 Sep | Keyword search on the Issues page | Session 5 feedback | Priced separately after the handover |
+| 21 Sep | Moving an issue under another, renaming, or merging two issues that mean the same thing | Session 5 feedback | A childless top-level issue can already gain a parent through the card; anything else is tree editing, priced separately after the handover |
+| 21 Sep | Deleting an issue with its evidence and solutions from the site | Session 5 feedback | Not wanted: deletion stays in the back room, per post |
 
 ## What to watch for
 
