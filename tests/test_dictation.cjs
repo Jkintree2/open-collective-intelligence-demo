@@ -15,6 +15,7 @@ class Element {
   replaceChildren(...children) { this.children = children; }
   add(child) { this.children.push(child); }
   remove() {}
+  after() {}
   focus() {}
   querySelectorAll() { return []; }
 }
@@ -42,7 +43,7 @@ async function setup(speech = 'SpeechRecognition') {
       }})}));
   };
   const location = {search: ''};
-  const context = {document: {getElementById: get, createElement: () => new Element(), createTextNode: text => text},
+  const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text},
     window: win, location, Option: class extends Element { constructor(text, value) { super(); this.value = value; } },
     AbortController, URLSearchParams, fetch,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
@@ -174,6 +175,15 @@ test('an expired passphrase sends the writer back to the gate', async () => {
   await flush();
   assert.equal(location.href, '/enter');
   assert.equal(get('card-message').textContent, 'Please enter the passphrase again.');
+});
+
+test('card name fields are wrapping text areas capped at 300 characters', async () => {
+  const {get} = await setup();
+  await get('skip').emit('click');
+  const control = get('issue-rows').children.at(-1).children[1];
+  assert.equal(control.tag, 'textarea');
+  assert.equal(control.maxLength, 300);
+  assert.equal(control.rows, 1);
 });
 
 test('overlong paste leaves text unchanged and explains the limit', async () => {

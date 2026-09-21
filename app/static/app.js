@@ -87,13 +87,27 @@
     if (values.includes(previous)) select.value = previous;
   }
   function field(row, name, labelText, type = 'input') {
-    const label = node('label', labelText), control = node(type);
+    const label = node('label', labelText);
+    const control = node(type === 'input' && name === 'name' ? 'textarea' : type);
     control.id = `card-${++serial}`;
     label.htmlFor = control.id;
-    if (type === 'input') { control.type = 'text'; control.maxLength = name === 'url' ? 2000 : 120; }
+    if (type === 'input' && name === 'name') {
+      control.className = 'name';
+      control.rows = 1; control.maxLength = 300;
+      control.addEventListener('input', () => { control.value = control.value.replace(/[\r\n]+/g, ' '); control.style.height = 'auto'; control.style.height = `${control.scrollHeight}px`; });
+    } else if (type === 'input') { control.type = 'text'; control.maxLength = name === 'url' ? 2000 : 120; }
     row.element.append(label, control);
     row[name] = control;
     return control;
+  }
+  function suggest(row, group) {
+    const box = row.suggest || (row.suggest = node('div', '', 'suggest'));
+    if (!box.parentNode) row.name.after(box);
+    const typed = key(row.name.value);
+    const pool = group === 'issues' ? Object.values(candidates.issues).map(item => item.name) : Object.values(candidates[group]);
+    const hits = typed ? pool.filter(name => key(name).includes(typed) && key(name) !== typed).slice(0, 8) : [];
+    box.replaceChildren(...hits.map(name => { const b = node('button', name, 'quiet suggestion'); b.type = 'button';
+      b.addEventListener('click', () => { row.name.value = name; box.replaceChildren(); changed(); }); return b; }));
   }
   function collect() {
     const payload = {...identity(), ...metadata, text: text.value, plain};
@@ -166,7 +180,6 @@
     const row = {element: node('div', '', 'card-row')};
     const label = group === 'issues' ? 'Issue' : group === 'solutions' ? 'Solution' : 'Evidence';
     field(row, 'name', label).value = item.name || '';
-    row.name.setAttribute('list', `names-${group}`);
     row.badge = node('span', '', 'badge'); row.element.append(row.badge);
     if (group === 'issues') field(row, 'parent', 'Part of', 'select');
     if (group === 'solutions') {
@@ -192,7 +205,8 @@
     const remove = node('button', 'remove', 'quiet'); remove.type = 'button';
     remove.addEventListener('click', () => { groups[group] = groups[group].filter(other => other !== row); row.element.remove(); changed(); });
     row.element.append(remove);
-    row.element.addEventListener('input', changed); row.element.addEventListener('change', changed);
+    row.element.addEventListener('input', () => { suggest(row, group); changed(); });
+    row.element.addEventListener('change', changed);
     groups[group].push(row);
     find(group === 'issues' ? 'issue-rows' : group === 'solutions' ? 'solution-rows' : 'evidence-rows').append(row.element);
     refresh();
@@ -219,6 +233,11 @@
     if ((!payload.issues || !payload.issues.length) && prefill) payload.issues = [{name: prefill.name, parent: candidates.issues[prefill.parent_key]?.name}];
     for (const group of Object.keys(groups)) (payload[group] || []).forEach(item => addRow(group, item));
     if (!groups.issues.length) addRow('issues');
+    const shortened = ['issues', 'solutions', 'evidence'].some(group => (payload[group] || []).some(item => (item.name || '').length > 300));
+    if (shortened) {
+      const note = find('card-note');
+      note.textContent = [note.textContent, 'A long name was shortened to 300 characters. You can edit it.'].filter(Boolean).join(' ');
+    }
     changed();
   }
   async function read() {

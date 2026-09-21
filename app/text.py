@@ -7,7 +7,7 @@ import unicodedata
 from datetime import datetime, timezone
 
 ARTICLES = ("the", "a", "an")
-NAME_MAX = 120
+NAME_MAX = 300
 TRAILING_PUNCTUATION = ".,;:!?"
 _NOT_ALPHANUMERIC = re.compile(r"[\W_]+")
 
@@ -40,7 +40,7 @@ def make_key(s: str) -> str | None:
 
 
 def clean_name(s: str) -> str:
-    """The display form of a name: newlines to spaces, trimmed, capped at 120, first letter
+    """The display form of a name: newlines to spaces, trimmed, capped at 300, first letter
     upper cased only when it is lower case and the second is not upper case, trailing
     punctuation removed."""
     name = s.replace("\r\n", " ").replace("\n", " ").replace("\r", " ").strip()

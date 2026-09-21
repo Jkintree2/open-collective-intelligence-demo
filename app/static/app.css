@@ -340,3 +340,5 @@ button:disabled { opacity: .6; cursor: default; }
 .chip { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; }
 .added summary, .sub-issues li a { min-height: 44px; }
 .issue-card h2 a, .crumbs a, .evidence a { display: inline-block; min-height: 44px; }
+
+.card textarea.name, .card-row textarea { width: 100%; min-height: 44px; resize: none; font: inherit; background: var(--input); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; overflow: hidden; }
