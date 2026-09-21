@@ -80,11 +80,31 @@
     if (response.status === 401 && data && data.redirect) location.href = data.redirect;
     throw failure;
   }
-  function options(select, values, emptyLabel) {
+  function options(select, groups, emptyLabel) {
     const previous = select.value;
     select.replaceChildren(new Option(emptyLabel, ''));
-    [...new Set(values.filter(Boolean))].forEach(value => select.add(new Option(value, value)));
-    if (values.includes(previous)) select.value = previous;
+    const seen = new Set();
+    for (const [label, values] of groups) {
+      const fresh = [...new Set(values.filter(Boolean))].filter(value => !seen.has(value));
+      fresh.forEach(value => seen.add(value));
+      if (!fresh.length) continue;
+      if (!label) { fresh.forEach(value => select.add(new Option(value, value))); continue; }
+      const group = document.createElement('optgroup'); group.label = label;
+      fresh.forEach(value => group.append(new Option(value, value)));
+      select.add(group);
+    }
+    if (seen.has(previous)) select.value = previous;
+  }
+  // The issue the writer is writing about, its top level issue and that issue's family.
+  function family() {
+    const issueKey = new URLSearchParams(location.search).get('issue');
+    const about = candidates.issues[issueKey];
+    if (!about) return {label: '', names: []};
+    const topKey = about.parent_key || issueKey;
+    const top = candidates.issues[topKey];
+    const names = [top?.name, ...Object.entries(candidates.issues)
+      .filter(([, item]) => item.parent_key === topKey).map(([, item]) => item.name)];
+    return {label: `About ${top?.name || about.name}`, names: names.filter(Boolean)};
   }
   function field(row, name, labelText, type = 'input') {
     const label = node('label', labelText);
@@ -129,21 +149,29 @@
     const issues = groups.issues.map(row => row.name.value.trim()).filter(Boolean);
     const solutions = groups.solutions.map(row => row.name.value.trim()).filter(Boolean);
     const top = Object.values(candidates.issues).filter(item => !item.parent_key).map(item => item.name);
+    const fam = family();
+    // A row that is itself part of something is not offered as a parent; the record allows one level.
+    const cardTop = groups.issues.filter(row => row.name.value.trim() && !row.parent?.value
+      && !candidates.issues[key(row.name.value)]?.parent_key).map(row => row.name.value.trim());
     for (const [group, rows] of Object.entries(groups)) {
       for (const row of rows) {
         const known = candidates[group][key(row.name.value)];
         row.badge.textContent = row.name.value.trim() ? known ? 'existing' : 'new' : '';
         if (row.parent) {
-          options(row.parent, top.filter(name => key(name) !== key(row.name.value)), 'none, this is a new top level issue');
+          const self = key(row.name.value);
+          options(row.parent, [['On this form', cardTop.filter(name => key(name) !== self)],
+            [fam.label, fam.names.filter(name => key(name) !== self)],
+            ['All issues', top.filter(name => key(name) !== self)]], 'none, this is a new top level issue');
           if (known?.parent_key) row.parent.value = candidates.issues[known.parent_key]?.name || '';
           row.parent.disabled = Boolean(known?.parent_key);
         }
         if (row.for_issue) {
-          options(row.for_issue, [...issues, ...names], 'Choose an issue');
+          options(row.for_issue, [['On this form', issues], [fam.label, fam.names], ['All issues', names]], 'Choose an issue');
           if (!row.for_issue.value && issues.length) row.for_issue.value = issues[0];
         }
         if (row.about) {
-          options(row.about, [...issues, ...solutions, ...names, ...Object.values(candidates.solutions), ...Object.values(candidates.evidence)], 'Choose what this is about');
+          options(row.about, [['On this form', [...issues, ...solutions]], [fam.label, fam.names], ['All issues', names],
+            ['Solutions', Object.values(candidates.solutions)], ['Evidence', Object.values(candidates.evidence)]], 'Choose what this is about');
           if (!row.about.value && issues.length) row.about.value = issues[0];
         }
       }

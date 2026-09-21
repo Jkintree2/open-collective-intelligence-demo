@@ -322,6 +322,8 @@ h3 {
 .card legend { color: var(--ink-soft); font-size: .9rem; }
 .card .check { min-height: 44px; }
 .card select { width: 100%; min-height: 44px; font: inherit; background: var(--input); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 8px; }
+.card optgroup { font: inherit; font-weight: 600; font-style: normal; color: var(--ink); }
+.card optgroup option { font-weight: 400; }
 .quiet { color: var(--accent); background: transparent; border: 0; text-align: left; min-height: 44px; cursor: pointer; }
 .badge { display: block; font-size: .8rem; color: var(--ink-soft); margin: 4px 0; }
 .write-issue { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }

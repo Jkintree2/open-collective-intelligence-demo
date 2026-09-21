@@ -19,7 +19,9 @@ class Element {
   focus() {}
   querySelectorAll() { return []; }
 }
-async function setup(speech = 'SpeechRecognition') {
+async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, solutions: {}, evidence: {}}) {
+  // Candidates may be passed alone, as the only thing a card test cares about.
+  if (speech && typeof speech === 'object') { candidates = speech; speech = 'SpeechRecognition'; }
   const elements = new Map();
   const get = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   get('card').hidden = true;
@@ -33,7 +35,7 @@ async function setup(speech = 'SpeechRecognition') {
   }
   const win = new Element(); if (speech) win[speech] = Recognition;
   const fetch = (url, options = {}) => {
-    if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => ({issues: {}, solutions: {}, evidence: {}})});
+    if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
     return new Promise(resolve => requests.push({url, options,
       resolve: data => resolve({ok: true, status: 200, json: async () => data}),
       // No body means a reply that is not ours, such as a gateway page during a restart.
@@ -44,7 +46,7 @@ async function setup(speech = 'SpeechRecognition') {
   };
   const location = {search: ''};
   const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text},
-    window: win, location, Option: class extends Element { constructor(text, value) { super(); this.value = value; } },
+    window: win, location, Option: class extends Element { constructor(text, value) { super(); this.text = text; this.value = value; } },
     AbortController, URLSearchParams, fetch,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
     clearTimeout: id => timers.delete(id)};
@@ -208,4 +210,23 @@ test('reading sends the issue from the address', async () => {
   location.search = '?issue=veto';
   await type('Statement'); await get('compose').emit('submit');
   assert.equal(JSON.parse(requests[0].options.body).issue, 'veto');
+});
+
+test('part of offers a new top level issue from this card and lists are grouped', async () => {
+  const {get, location, flush} = await setup({issues: {
+    'short term': {name: 'Short term rental properties', parent_key: null},
+    'downtown': {name: 'Downtown', parent_key: null},
+    'parking': {name: 'Parking', parent_key: 'downtown'}}});
+  location.search = '?issue=parking';
+  await get('skip').emit('click'); await flush();
+  await get('add-issue').emit('click');
+  const rows = get('issue-rows').children;
+  rows[1].children[1].value = 'Riverfront'; await rows[1].emit('input');
+  await get('add-issue').emit('click');
+  rows[2].children[1].value = 'Short term rental properties'; await rows[2].emit('input');
+  const parent = rows[2].children.find(c => c.tag === 'select');
+  const labels = parent.children.map(c => c.label || c.value);
+  assert.deepEqual(labels.slice(0, 3), ['', 'On this form', 'About Downtown']);
+  const onForm = parent.children[1];
+  assert.deepEqual(onForm.children.map(o => o.value), ['Riverfront']);
 });
