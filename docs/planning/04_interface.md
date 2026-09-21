@@ -80,7 +80,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 **The card.** Appears under the text box. Heading **client-facing**: "Here is what we found". Then, in this order, each section editable:
 
-* **Issue.** One text input with autocomplete from existing issue names, and below it a select "Part of" listing top-level issues plus "none, this is a new top-level issue". A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three.
+* **Issue.** One text input with autocomplete from existing issue names, and below it a select "Part of" listing top-level issues plus "none, this is a new top-level issue". A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three. When the page was not opened from an issue chip or link (no "Already on record" panel above), a line under the issue rows reads, **client-facing**: "To add a sub-issue, write it here and choose the issue it is part of."
 * **Solutions.** Zero or more rows. Each row: name input with autocomplete, a "for issue" select (defaults to the first issue), and three radio buttons: "no position", "I approve this", "I oppose this". The model pre-selects a position only when the text states one. "+ add a solution" link.
 * **Evidence.** Zero or more rows. Each row: name input with autocomplete, a link input (optional), a select "supports / refutes", and a select "about" listing the issues and solutions in the card plus existing nodes. "+ add evidence" link.
 * **What this will add.** A read-only list of sentences generated live from the fields, in John's format, for example:
@@ -89,7 +89,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
   > John Kintree proposes Decriminalize drug sales
   > Drug dealing problem has proposed Decriminalize drug sales
 
-  Anonymous posts read "Anonymous claims …". A row is removed by clearing its name or pressing its "remove" link, and the sentence list updates.
+  Anonymous posts read "Anonymous claims …". A row is removed by clearing its name or pressing its "remove from this form" button, and the sentence list updates.
 * **Buttons.** "Post" (primary; disabled while any solution lacks an issue, any evidence lacks a target, or both the text box and the card are empty) and "Discard". With a filled card and an empty text box the card's own sentences are posted as the statement, and this line appears at the top of the card, **client-facing**: "No statement written. The lines under \"What this will add\" will be posted as your statement." The "post it as a plain statement anyway" link needs text, so it is disabled while the box is empty.
 * **Footnote** **client-facing**: "Posting adds this to the shared record, credited to John Kintree." or "… listed as Anonymous."
 
@@ -114,7 +114,7 @@ Empty feed **client-facing**: "Nothing here yet. Be the first to write something
 
 ## Screen 3: Issues (`/issues`)
 
-Heading "Issues". Under it a three-way control: "Most people", "Most recent", "Most evidence". The chosen sort is in the URL (`?sort=people|recent|evidence`) so it can be linked.
+Heading "Issues". Under it a three-way control labelled "Sort" for assistive technology, with a visible **client-facing** label "Sort by" beside the choices: "Most people", "Most recent", "Most evidence". The chosen sort is in the URL (`?sort=people|recent|evidence`) so it can be linked.
 
 Each top-level issue is a card: the name (a link), then one line of counts, then its sub-issues indented, each with its own count line. A top-level issue is ranked on its whole family, so a conversation with five sub-issues sits above a one-line post. Count line for a sub-issue or an issue without children: "3 people · 5 claims · 2 solutions · 4 pieces of evidence". For a top-level issue with sub-issues: "3 people · 13 claims in total · 1 claim on the issue itself · 4 solutions · 14 pieces of evidence". Numbers are plain; no bars, no percentages.
 

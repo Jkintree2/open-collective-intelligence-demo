@@ -125,3 +125,11 @@ def test_position_choices_for_one_solution_share_a_name_so_only_one_is_chosen(st
     # The three choices for one solution are one group; two solutions do not share a group.
     assert names[:3] == [names[0]] * 3 and names[3:] == [names[3]] * 3
     assert names[0] != names[3]
+
+
+def test_issue_links_are_visible_and_sorts_are_labelled(state_client):
+    client, _ = state_client
+    page = client.get("/issues").text
+    assert 'aria-label="Sort"' in page and 'Sort by' in page
+    css = client.get("/static/app.css").text
+    assert ".issue-card h2 a, .sub-issues a, .crumbs a { color: var(--accent); text-decoration: underline;" in css

@@ -251,7 +251,7 @@
       row.stance.value = item.stance || 'supports';
       field(row, 'about', 'about', 'select');
     }
-    const remove = node('button', 'remove', 'quiet'); remove.type = 'button';
+    const remove = node('button', 'remove from this form', 'quiet'); remove.type = 'button';
     remove.addEventListener('click', () => { groups[group] = groups[group].filter(other => other !== row); row.element.remove(); changed(); });
     row.element.append(remove);
     row.element.addEventListener('input', () => { suggest(row, group); changed(); });

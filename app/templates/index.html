@@ -32,6 +32,7 @@
     <p id="card-message" class="notice" role="status"></p>
     <p id="card-note" class="counts"></p>
     <h3>Issue</h3><div id="issue-rows"></div>
+    {% if not about %}<p class="counts">To add a sub-issue, write it here and choose the issue it is part of.</p>{% endif %}
     <button type="button" class="quiet" id="add-issue">+ another issue</button>
     <h3>Solutions</h3><div id="solution-rows"></div>
     <button type="button" class="quiet" id="add-solution">+ add a solution</button>
