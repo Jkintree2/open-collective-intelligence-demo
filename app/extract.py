@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from app.config import Settings
 from app.payload import Candidates, CardPayload, IssueItem, SolutionItem, EvidenceItem, ResolvedPayload, resolve_payload
+from app.text import NAME_MAX
 
 log = logging.getLogger("oci")
 last_model_error: dict[str, Any] | None = None
@@ -59,6 +60,7 @@ class Extraction:
     extraction_raw: str
     model: str
     latency_ms: int
+    shortened: bool = False
 
 
 def build_messages(text: str, display_name: str, candidates: Candidates) -> list[dict[str, str]]:
@@ -183,5 +185,7 @@ def extract(text: str, display_name: str, candidates: Candidates, settings: Sett
             **kwargs: Any) -> Extraction | None:
     result = call_model(build_messages(text, display_name, candidates), settings, chars=len(text), **kwargs)
     if result is not None:
+        raw = result.payload.issues + result.payload.solutions + result.payload.evidence
+        result.shortened = any(len(item.name or "") > NAME_MAX for item in raw)
         result.payload = prepared_card(result.payload, candidates, text)
     return result

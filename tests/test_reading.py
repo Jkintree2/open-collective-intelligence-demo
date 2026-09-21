@@ -88,6 +88,18 @@ def test_fenced_json_is_parsed_and_invented_urls_removed():
     assert prepared.evidence[1].url is None
 
 
+def test_a_long_name_from_the_model_is_flagged_shortened():
+    long_name = "a" * 400
+
+    def respond(request):
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(
+            {"found": True, "issues": [{"name": long_name}], "solutions": [], "evidence": []})}}]})
+
+    result = reading.extract("Coastal flooding", "Tester", Candidates.empty(), SETTINGS, transport=httpx.MockTransport(respond))
+    assert result.shortened is True
+    assert len(result.payload.issues[0].name) == 300
+
+
 def test_prompt_carries_parents_and_solution_context_as_data():
     candidates = Candidates(issues={"parent": {"name": "Parent", "parent_key": None},
                                     "child": {"name": "Child", "parent_key": "parent"}},

@@ -366,7 +366,7 @@ def read_statement(request: Request, data: ReadingRequest) -> Response:
     message = ENGLISH_ONLY if not result.payload.language_ok else NOT_FOUND if not result.payload.found else ""
     return JSONResponse({"payload": result.payload.model_dump(), "message": message,
                          "source": "model" if result.payload.found else "manual", "extraction_raw": result.extraction_raw,
-                         "model": result.model, "latency_ms": result.latency_ms})
+                         "model": result.model, "latency_ms": result.latency_ms, "shortened": result.shortened})
 
 
 def _card_result(data: PostRequest):

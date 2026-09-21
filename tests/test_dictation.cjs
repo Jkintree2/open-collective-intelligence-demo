@@ -186,6 +186,15 @@ test('card name fields are wrapping text areas capped at 300 characters', async 
   assert.equal(control.rows, 1);
 });
 
+test('a shortened name from the reading service adds a note to the card', async () => {
+  const {get, type, requests, flush} = await setup();
+  await type('Statement'); await get('compose').emit('submit');
+  requests[0].resolve({payload: {found: true, language_ok: true, issues: [{name: 'X'}], solutions: [], evidence: []},
+    shortened: true, source: 'model'});
+  await flush();
+  assert.match(get('card-note').textContent, /A long name was shortened to 300 characters\. You can edit it\./);
+});
+
 test('overlong paste leaves text unchanged and explains the limit', async () => {
   const {get, type} = await setup();
   await type('Keep me'); get('text').selectionStart = 7; get('text').selectionEnd = 7;

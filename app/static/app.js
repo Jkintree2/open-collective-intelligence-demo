@@ -233,12 +233,11 @@
     if ((!payload.issues || !payload.issues.length) && prefill) payload.issues = [{name: prefill.name, parent: candidates.issues[prefill.parent_key]?.name}];
     for (const group of Object.keys(groups)) (payload[group] || []).forEach(item => addRow(group, item));
     if (!groups.issues.length) addRow('issues');
-    const shortened = ['issues', 'solutions', 'evidence'].some(group => (payload[group] || []).some(item => (item.name || '').length > 300));
-    if (shortened) {
-      const note = find('card-note');
-      note.textContent = [note.textContent, 'A long name was shortened to 300 characters. You can edit it.'].filter(Boolean).join(' ');
-    }
     changed();
+  }
+  function noteShortened() {
+    const note = find('card-note');
+    note.textContent = [note.textContent, 'A long name was shortened to 300 characters. You can edit it.'].filter(Boolean).join(' ');
   }
   async function read() {
     stopDictation();
@@ -258,6 +257,7 @@
       }
       openCard(result.payload, result.message, {source: result.source, extraction_raw: result.extraction_raw,
         model: result.model, latency_ms: result.latency_ms});
+      if (result.shortened) noteShortened();
     } catch (error) {
       if (readController !== controller) return;
       openCard({}, error.name === 'TypeError' || error.offline ? unavailable : error.message);
