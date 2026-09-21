@@ -171,3 +171,22 @@ def test_reading_passes_the_issue_key_to_the_reader(api, monkeypatch):
     monkeypatch.setattr(main.reading, "extract", lambda text, name, candidates, settings, **kw: seen.update(kw) or None)
     client.post("/api/extract", json={"text": "Hello", "issue": "veto"})
     assert seen["writing_about"] == "veto"
+
+
+def test_a_filled_card_posts_without_a_statement_and_stores_its_sentences(api):
+    client, _, writes = api
+    body = {"text": "", "display_name": "John", "issues": [{"name": "Veto"}],
+            "solutions": [{"name": "Abolish the veto", "for_issue": "Veto", "stance": "approve"}]}
+    preview = client.post("/api/preview", json=body)
+    assert preview.status_code == 200 and preview.json()["valid"]
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, _ = writes[0]
+    assert args[4] == "John claims Veto. John proposes Abolish the veto. Veto has proposed Abolish the veto. John approves Abolish the veto."
+
+
+def test_an_empty_card_with_no_statement_is_refused(api):
+    client, _, writes = api
+    assert client.post("/api/preview", json={"text": ""}).json()["valid"] is False
+    assert client.post("/api/posts", json={"text": "", "plain": True}).status_code == 422
+    assert client.post("/api/extract", json={"text": ""}).status_code == 422
+    assert not writes

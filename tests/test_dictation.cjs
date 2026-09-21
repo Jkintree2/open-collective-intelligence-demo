@@ -54,7 +54,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
   await flush();
   const type = async value => { get('text').value = value; await get('text').emit('input'); };
-  const runTimer = async delay => { for (const [id, timer] of [...timers]) if (timer.delay === delay) { timers.delete(id); await timer.fn(); } await flush(); };
+  // The fired callback is not awaited: a preview timer waits on a request the test resolves afterwards.
+  const runTimer = async delay => { for (const [id, timer] of [...timers]) if (timer.delay === delay) { timers.delete(id); timer.fn(); } await flush(); };
   return {get, recognizers, requests, type, flush, runTimer, win, location};
 }
 
@@ -231,4 +232,18 @@ test('part of offers a new top level issue from this card and lists are grouped'
   assert.deepEqual(onForm.children.map(o => o.value), ['Riverfront']);
   // One level only: the family group offers the top level issue, never its sub-issues.
   assert.deepEqual(parent.children[2].children.map(o => o.value), ['Downtown']);
+});
+
+test('a filled card previews and posts with an empty text box', async () => {
+  const {get, requests, runTimer, flush} = await setup();
+  await get('skip').emit('click');
+  const row = get('issue-rows').children.at(-1);
+  row.children[1].value = 'Downtown'; await row.emit('input');
+  await runTimer(200);
+  assert.equal(requests.at(-1).url, '/api/preview');
+  assert.equal(JSON.parse(requests.at(-1).options.body).text, '');
+  assert.equal(get('card-message').textContent, 'No statement written. The lines under "What this will add" will be posted as your statement.');
+  requests.at(-1).resolve({sentences: ['Anonymous claims Downtown'], valid: true, dropped: [], corrected: []});
+  await flush();
+  assert.equal(get('post').disabled, false);
 });

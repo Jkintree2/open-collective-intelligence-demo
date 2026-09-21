@@ -331,10 +331,10 @@ class PostRequest(CardPayload):
     plain: bool = False
 
 
-def _text_error(text: str) -> Response | None:
+def _text_error(text: str, *, allow_empty: bool = False) -> Response | None:
     if len(text) > TEXT_MAX:
         return JSONResponse({"message": TOO_LONG}, status_code=413)
-    if not text.strip():
+    if not text.strip() and not allow_empty:
         return JSONResponse({"message": "Please write a statement first."}, status_code=422)
     return None
 
@@ -381,12 +381,12 @@ def _card_result(data: PostRequest):
 
 @app.post("/api/preview", dependencies=[Depends(require_gate)])
 def preview_card(data: PostRequest) -> Response:
-    error = _text_error(data.text)
+    error = _text_error(data.text, allow_empty=True)
     if error is not None:
         return error
     _, resolved, card = _card_result(data)
     name, _ = _poster(data)
-    valid = not resolved.dropped and (not resolved.is_empty or data.plain)
+    valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     return JSONResponse({"sentences": sentences(card, name or "Anonymous"), "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
                          "payload": card.model_dump()})
@@ -394,28 +394,34 @@ def preview_card(data: PostRequest) -> Response:
 
 @app.post("/api/posts", dependencies=[Depends(require_gate)])
 def post_card(request: Request, data: PostRequest) -> Response:
-    error = _text_error(data.text)
+    error = _text_error(data.text, allow_empty=True)
     if error is not None:
         return error
     candidates, resolved, card = _card_result(data)
-    if resolved.dropped or (resolved.is_empty and not data.plain):
+    if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": "Please check the form before posting.",
                              "dropped": resolved.dropped}, status_code=422)
     name, anonymous = _poster(data)
     anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
     source = data.source if not resolved.is_empty else "manual"
+    extraction_raw = data.extraction_raw
+    # An empty box means nothing was read: the card is the tester's own, and its sentences
+    # become the statement so the post reads like every other one.
+    statement = data.text.strip() or ". ".join(sentences(card, name or "Anonymous")) + "."
+    if not data.text.strip():
+        source, extraction_raw = "manual", None
     edited = False
-    if data.extraction_raw:
+    if extraction_raw:
         try:
-            original = reading.prepared_card(reading.parse_payload(data.extraction_raw), candidates, data.text)
+            original = reading.prepared_card(reading.parse_payload(extraction_raw), candidates, data.text)
             edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
         except ValueError:
             edited = True
     # What the reading service returned is kept whenever it returned something, even when the
     # tester emptied the card, so "it did something weird" can be answered from the one post.
     post_id = graph.merge_post(graph.person_key(name, anonymous, anon_id), name, anonymous, name,
-                               data.text.strip(), resolved, source=source,
-                               extraction_raw=data.extraction_raw, model=data.model,
+                               statement, resolved, source=source,
+                               extraction_raw=extraction_raw, model=data.model,
                                latency_ms=data.latency_ms,
                                request_id=_request_id(request), edited=edited)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)

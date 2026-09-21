@@ -48,7 +48,7 @@ Top to bottom:
 
 **Text box.** Label **client-facing**: "A claim, a piece of evidence, or a proposed solution". Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500. Placeholder **client-facing**: "For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs."
 
-**Buttons.** "Dictate" with a microphone glyph (hidden when the browser has no speech recognition). "Read my statement" as the primary button, disabled until the box has text. A third, quieter link: "Skip the reading and fill in the form myself", which opens an empty card.
+**Buttons.** "Dictate" with a microphone glyph (hidden when the browser has no speech recognition). "Read my statement" as the primary button, disabled until the box has text. A third, quieter link: "Skip the reading and fill in the form myself", which opens an empty card and works with an empty box. Under the buttons, **client-facing**: "You can leave the box empty, fill in the form yourself, and post that."
 
 **Dictation.** Press Dictate, the button turns red and reads "Listening… press to stop". Recognised text is appended to the box as it arrives. Press again to stop. The tester edits the text as normal before pressing Read my statement. Nothing is sent anywhere until they do.
 
@@ -66,7 +66,7 @@ Top to bottom:
   > Drug dealing problem has proposed Decriminalize drug sales
 
   Anonymous posts read "Anonymous claims …". A row is removed by clearing its name or pressing its "remove" link, and the sentence list updates.
-* **Buttons.** "Post" (primary; disabled while any solution lacks an issue, any evidence lacks a target, or the text box is empty) and "Discard".
+* **Buttons.** "Post" (primary; disabled while any solution lacks an issue, any evidence lacks a target, or both the text box and the card are empty) and "Discard". With a filled card and an empty text box the card's own sentences are posted as the statement, and this line appears at the top of the card, **client-facing**: "No statement written. The lines under \"What this will add\" will be posted as your statement." The "post it as a plain statement anyway" link needs text, so it is disabled while the box is empty.
 * **Footnote** **client-facing**: "Posting adds this to the shared record, credited to John Kintree." or "… listed as Anonymous."
 
 **When the model found nothing.** The card opens with all sections empty and this line at the top, **client-facing**: "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again." The Post button is disabled until the tester types into a field or clicks a second link, "post it as a plain statement anyway", which posts the text into the feed with no structure. Greetings and tests then stay out of the feed unless someone means it.

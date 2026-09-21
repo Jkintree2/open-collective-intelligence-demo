@@ -177,6 +177,8 @@
       }
       find(`add-${group === 'issues' ? 'issue' : group === 'solutions' ? 'solution' : 'evidence'}`).disabled = rows.length >= (group === 'issues' ? 3 : 5);
     }
+    // Posting the text with no structure needs text; an empty box has nothing plain to post.
+    find('plain').disabled = !text.value.trim();
   }
   function changed() {
     revision++;
@@ -188,7 +190,12 @@
     find('credit').textContent = poster.anonymous ? 'Posting adds this to the shared record, listed as Anonymous.' : `Posting adds this to the shared record, credited to ${poster.display_name}.`;
     const payload = collect();
     const incomplete = payload.solutions.some(item => !item.for_issue) || payload.evidence.some(item => !item.about);
-    if (card.hidden || !candidatesReady || !text.value.trim() || [...text.value].length > 4000 || incomplete || posting) return;
+    const filled = payload.issues.length || payload.solutions.length || payload.evidence.length;
+    const noStatement = !text.value.trim();
+    // A card filled in by hand is posted on its own: its sentences become the statement.
+    if (!card.hidden && noStatement && filled && !reading) find('card-message').textContent = 'No statement written. The lines under "What this will add" will be posted as your statement.';
+    else if (!card.hidden && find('card-message').textContent.startsWith('No statement written')) find('card-message').textContent = '';
+    if (card.hidden || !candidatesReady || (noStatement && !filled) || [...text.value].length > 4000 || incomplete || posting) return;
     const expected = revision;
     previewTimer = setTimeout(async () => {
       previewController = new AbortController();
@@ -296,7 +303,7 @@
     const size = [...text.value].length;
     dictate.disabled = reading || posting || (!listening && size >= 4000);
     find('read').disabled = !text.value.trim() || size > 4000 || reading || posting;
-    find('skip').disabled = !text.value.trim() || size > 4000 || posting;
+    find('skip').disabled = size > 4000 || posting;
     find('counter').hidden = size < 3500; find('counter').textContent = `${size} / 4000`;
     text.style.height = 'auto'; text.style.height = `${text.scrollHeight}px`;
   }
@@ -327,7 +334,7 @@
   });
   find('anonymous').addEventListener('change', changed);
   find('display_name').addEventListener('input', changed);
-  find('skip').hidden = false; find('skip').addEventListener('click', () => { openCard(); if (!candidatesReady) loadCandidates(); });
+  find('skip').hidden = false; find('skip-help').hidden = false; find('skip').addEventListener('click', () => { openCard(); if (!candidatesReady) loadCandidates(); });
   find('stop').addEventListener('click', () => openCard());
   find('retry').addEventListener('click', read);
   find('add-issue').addEventListener('click', () => addRow('issues'));
