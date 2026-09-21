@@ -36,6 +36,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const win = new Element(); if (speech) win[speech] = Recognition;
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
+    // The feed fragment after a post is read as text, as the page reads it.
+    if (url === '/feed') return Promise.resolve({ok: true, status: 200, redirected: false, text: async () => ''});
     return new Promise(resolve => requests.push({url, options,
       resolve: data => resolve({ok: true, status: 200, json: async () => data}),
       // No body means a reply that is not ours, such as a gateway page during a restart.
@@ -129,12 +131,14 @@ test('speech respects the Unicode character cap and clears listening on errors o
 
 test('read, manual form and post stop recognition before capturing text', async () => {
   for (const action of ['read', 'skip', 'post']) {
-    const {get, type, recognizers, requests} = await setup();
+    const {get, type, recognizers, requests, flush} = await setup();
     await type('Initial statement'); await get('dictate').emit('click');
     recognizers[0].result('spoken');
     if (action === 'read') await get('compose').emit('submit');
     else if (action === 'post') { get('post').disabled = false; get('post').emit('click'); }
     else await get('skip').emit('click');
+    // A tap on Post waits for any preview, so its request lands a microtask later.
+    await flush();
     assert.equal(recognizers[0].aborted, true, action);
     recognizers[0].result('late text');
     assert.equal(get('text').value, 'Initial statement spoken');
@@ -246,4 +250,46 @@ test('a filled card previews and posts with an empty text box', async () => {
   requests.at(-1).resolve({sentences: ['Anonymous claims Downtown'], valid: true, dropped: [], corrected: []});
   await flush();
   assert.equal(get('post').disabled, false);
+});
+
+test('a tap on Post during a pending preview waits for it and posts once', async () => {
+  const {get, type, requests, runTimer, flush} = await setup();
+  await type('Statement'); await get('skip').emit('click');
+  const row = get('issue-rows').children.at(-1);
+  row.children[1].value = 'Downtown'; await row.emit('input'); await runTimer(200);
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
+  assert.equal(get('post').disabled, false);
+  await row.emit('change');                       // the blur a phone fires on the first tap
+  assert.equal(get('post').disabled, false);      // still enabled while the preview re-runs
+  const clicking = get('post').emit('click');
+  await runTimer(200);
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []});
+  await clicking; await flush();
+  assert.equal(requests.filter(r => r.url === '/api/posts').length, 1);
+});
+
+test('a tap while the preview is still running does not post when it comes back invalid', async () => {
+  const {get, requests, runTimer, flush} = await setup();
+  await get('skip').emit('click');
+  const row = get('issue-rows').children.at(-1);
+  row.children[1].value = 'Downtown'; await row.emit('input');
+  await runTimer(200);
+  const clicking = get('post').emit('click');
+  requests.at(-1).resolve({sentences: ['x'], valid: false, dropped: [], corrected: []});
+  await clicking; await flush();
+  assert.equal(get('post').disabled, true);
+  assert.equal(requests.filter(r => r.url === '/api/posts').length, 0);
+});
+
+test('two taps on Post in a row add the record once', async () => {
+  const {get, requests, runTimer, flush} = await setup();
+  await get('skip').emit('click');
+  const row = get('issue-rows').children.at(-1);
+  row.children[1].value = 'Downtown'; await row.emit('input'); await runTimer(200);
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
+  const first = get('post').emit('click'); const second = get('post').emit('click');
+  await flush();
+  requests.at(-1).resolve({id: 'p1'});
+  await Promise.all([first, second]); await flush();
+  assert.equal(requests.filter(r => r.url === '/api/posts').length, 1);
 });

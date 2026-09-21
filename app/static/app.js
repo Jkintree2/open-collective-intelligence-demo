@@ -8,6 +8,8 @@
   let metadata = {source: 'manual'}, plain = false, reading = false, posting = false;
   let prefillConsumed = false;
   let readController, previewController, slowTimer, abandonTimer, previewTimer, revision = 0, serial = 0;
+  // The preview a tap on Post waits for, so a blur that re-runs it does not swallow the tap.
+  let previewPending = null;
   const groups = {issues: [], solutions: [], evidence: []};
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const dictate = find('dictate');
@@ -183,8 +185,7 @@
   function changed() {
     revision++;
     clearTimeout(previewTimer);
-    previewController?.abort();
-    find('post').disabled = true;
+    if (previewController) { previewController.abort(); previewPending = null; }
     refresh();
     const poster = identity();
     find('credit').textContent = poster.anonymous ? 'Posting adds this to the shared record, listed as Anonymous.' : `Posting adds this to the shared record, credited to ${poster.display_name}.`;
@@ -195,19 +196,27 @@
     // A card filled in by hand is posted on its own: its sentences become the statement.
     if (!card.hidden && noStatement && filled && !reading) find('card-message').textContent = 'No statement written. The lines under "What this will add" will be posted as your statement.';
     else if (!card.hidden && find('card-message').textContent.startsWith('No statement written')) find('card-message').textContent = '';
-    if (card.hidden || !candidatesReady || (noStatement && !filled) || [...text.value].length > 4000 || incomplete || posting) return;
+    if (card.hidden || !candidatesReady || (noStatement && !filled) || [...text.value].length > 4000 || incomplete || posting) {
+      find('post').disabled = true; return;
+    }
     const expected = revision;
-    previewTimer = setTimeout(async () => {
+    previewTimer = setTimeout(() => {
       previewController = new AbortController();
-      try {
-        const result = await request('/api/preview', payload, previewController.signal);
-        if (expected !== revision || card.hidden) return;
-        find('sentences').replaceChildren(...result.sentences.map(sentence => node('li', sentence)));
-        find('card-errors').textContent = result.dropped.length ? 'Please check the names and choices in the form.' : '';
-        find('post').disabled = !result.valid;
-      } catch (error) {
-        if (expected === revision && error.name !== 'AbortError') find('card-errors').textContent = error.message;
-      }
+      previewPending = (async () => {
+        try {
+          const result = await request('/api/preview', payload, previewController.signal);
+          if (expected !== revision || card.hidden) return false;
+          find('sentences').replaceChildren(...result.sentences.map(sentence => node('li', sentence)));
+          find('card-errors').textContent = result.dropped.length ? 'Please check the names and choices in the form.' : '';
+          find('post').disabled = !result.valid;
+          return result.valid;
+        } catch (error) {
+          if (expected === revision && error.name !== 'AbortError') {
+            find('card-errors').textContent = error.message; find('post').disabled = true;
+          }
+          return false;
+        }
+      })();
     }, 200);
   }
   function addRow(group, item = {}) {
@@ -343,8 +352,11 @@
   find('plain').addEventListener('click', () => { openCard(); groups.issues.forEach(row => { row.name.value = ''; }); plain = true; changed(); });
   find('discard').addEventListener('click', () => { stopDictation(); stopReading(); card.hidden = true; changed(); text.focus(); });
   find('post').addEventListener('click', async () => {
-    if (find('post').disabled || posting) return;
+    if (posting) return;
     stopDictation();
+    // A tap that arrives while the preview is still running waits for its answer.
+    const ok = await (previewPending || Promise.resolve(!find('post').disabled));
+    if (!ok || find('post').disabled) return;
     const payload = collect(); posting = true; find('post').disabled = true;
     const controls = [...form.querySelectorAll('input, textarea, select, button')];
     const disabled = controls.map(control => control.disabled); controls.forEach(control => { control.disabled = true; });
