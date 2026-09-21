@@ -162,3 +162,12 @@ def test_html_form_still_posts_without_javascript_and_checks_untrimmed_length(ap
     assert writes[0][0][4] == "A plain statement" and writes[0][0][5].is_empty
     assert client.post('/posts', data={"text": ' ' * 4500 + 'short'}).status_code == 413
     assert len(writes) == 1
+
+
+def test_reading_passes_the_issue_key_to_the_reader(api, monkeypatch):
+    client, main, _ = api
+    seen = {}
+    monkeypatch.setattr(main, "settings", replace(main.settings, llm_api_key="offline test key"))
+    monkeypatch.setattr(main.reading, "extract", lambda text, name, candidates, settings, **kw: seen.update(kw) or None)
+    client.post("/api/extract", json={"text": "Hello", "issue": "veto"})
+    assert seen["writing_about"] == "veto"

@@ -317,6 +317,7 @@ class ReadingRequest(BaseModel):
     text: str
     display_name: str = Field(default="", max_length=120)
     anonymous: bool = False
+    issue: str | None = Field(default=None, max_length=200)
 
 
 class PostRequest(CardPayload):
@@ -360,7 +361,8 @@ def read_statement(request: Request, data: ReadingRequest) -> Response:
         return JSONResponse({"message": READING_LIMIT}, status_code=429)
     name, _ = _poster(data)
     candidates = graph.candidates() if settings.llm_api_key else reading.Candidates.empty()
-    result = reading.extract(data.text, name or "Anonymous", candidates, settings, request_id=_request_id(request))
+    result = reading.extract(data.text, name or "Anonymous", candidates, settings,
+                             request_id=_request_id(request), writing_about=data.issue)
     if result is None:
         return JSONResponse({"payload": {"found": False}, "message": NOT_ANSWERING, "source": "manual"})
     message = ENGLISH_ONLY if not result.payload.language_ok else NOT_FOUND if not result.payload.found else ""

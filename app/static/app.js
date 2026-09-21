@@ -249,8 +249,9 @@
     const controller = new AbortController(); readController = controller;
     slowTimer = setTimeout(() => { find('compose-message').textContent = 'Still reading. This can take up to half a minute.'; }, 8000);
     abandonTimer = setTimeout(() => openCard({}, unavailable), 25000);
+    const issue = new URLSearchParams(location.search).get('issue');
     try {
-      const result = await request('/api/extract', {text: text.value, ...identity()}, controller.signal);
+      const result = await request('/api/extract', {text: text.value, ...identity(), issue}, controller.signal);
       if (readController !== controller) return;
       if (result.payload.language_ok === false) {
         stopReading(); find('compose-message').textContent = result.message; return;

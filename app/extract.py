@@ -30,6 +30,9 @@ trailing punctuation. At most 3 issues, 5 solutions and 5 evidence items.
 Prefer existing names exactly when meanings match. A narrower issue can have an
 existing top level issue as parent. An item marked cannot be a parent is already
 a sub-issue: use it directly, or use its top level parent, never add another level.
+When writing_about names an issue, the writer is adding to that issue: attach sub-issues,
+solutions and evidence to it unless the statement clearly names another issue, and do not
+repeat it as a new issue.
 Set approve only for explicit endorsement, plain advocacy (we should, must,
 I support, the best option is) or an imperative (Deal with it as a medical issue,
 Abolish the veto). Set oppose only for explicit objection. Merely describing,
@@ -63,14 +66,19 @@ class Extraction:
     shortened: bool = False
 
 
-def build_messages(text: str, display_name: str, candidates: Candidates) -> list[dict[str, str]]:
+def build_messages(text: str, display_name: str, candidates: Candidates,
+                   writing_about: str | None = None) -> list[dict[str, str]]:
     issues = []
     for item in candidates.issues.values():
         parent = candidates.issues.get(item.get("parent_key"), {})
         relation = f"part of {parent.get('name', '')}; cannot be a parent" if item.get("parent_key") else "top level"
         issues.append({"name": item["name"], "relation": relation})
+    about = candidates.issues.get(writing_about or "")
     context = {
         "display_name": display_name,
+        "writing_about": ({"name": about["name"],
+                           "parent": candidates.issues.get(about.get("parent_key") or "", {}).get("name")}
+                          if about else None),
         "existing_issues": issues,
         "existing_solutions": [{"name": name, "for_issues": candidates.solution_issues.get(key, [])}
                                for key, name in candidates.solutions.items()],
@@ -181,9 +189,10 @@ def call_model(messages: list[dict[str, str]], settings: Settings, *,
     return None
 
 
-def extract(text: str, display_name: str, candidates: Candidates, settings: Settings,
-            **kwargs: Any) -> Extraction | None:
-    result = call_model(build_messages(text, display_name, candidates), settings, chars=len(text), **kwargs)
+def extract(text: str, display_name: str, candidates: Candidates, settings: Settings, *,
+            writing_about: str | None = None, **kwargs: Any) -> Extraction | None:
+    result = call_model(build_messages(text, display_name, candidates, writing_about), settings,
+                        chars=len(text), **kwargs)
     if result is not None:
         raw = result.payload.issues + result.payload.solutions + result.payload.evidence
         result.shortened = any(len(item.name or "") > NAME_MAX for item in raw)

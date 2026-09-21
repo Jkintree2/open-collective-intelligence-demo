@@ -202,3 +202,10 @@ test('overlong paste leaves text unchanged and explains the limit', async () => 
   await get('text').emit('paste', {clipboardData: {getData: () => 'x'.repeat(4000)}, preventDefault: () => { prevented = true; }});
   assert.equal(prevented, true); assert.equal(get('text').value, 'Keep me');
 });
+
+test('reading sends the issue from the address', async () => {
+  const {get, type, requests, location} = await setup();
+  location.search = '?issue=veto';
+  await type('Statement'); await get('compose').emit('submit');
+  assert.equal(JSON.parse(requests[0].options.body).issue, 'veto');
+});
