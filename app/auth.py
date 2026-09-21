@@ -144,6 +144,29 @@ class DailyLimit:
 
 reading_limit = DailyLimit()
 
+
+class PostSpacing:
+    """One post per source per `seconds`, held in this process; old entries are swept."""
+
+    def __init__(self, seconds: float = 20.0) -> None:
+        self.seconds = seconds
+        self.last: dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    def take(self, source_key: str, now: float | None = None) -> bool:
+        now = time.monotonic() if now is None else now
+        with self._lock:
+            for key, then in list(self.last.items()):
+                if now - then >= self.seconds:
+                    del self.last[key]
+            if source_key in self.last:
+                return False
+            self.last[source_key] = now
+            return True
+
+
+post_spacing = PostSpacing()
+
 admin_basic = HTTPBasic()
 
 

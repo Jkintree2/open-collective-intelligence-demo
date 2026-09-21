@@ -103,6 +103,8 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 **After Post.** The card and text box clear, a green line reads "Added to the record" for a few seconds, and the new post appears at the top of the feed without a page reload (the feed section is re-fetched).
 
+**A second post too soon after the first from the same tester.** The post is refused, **client-facing**: "Please wait a moment before posting again." (C12)
+
 **The feed.** Heading "Recent posts". The sixty most recent; paging is on the after list. Each post:
 
 * First line: display name or "Anonymous", a dot, relative time ("2 hours ago"). Seed posts carry a small "seed" tag.

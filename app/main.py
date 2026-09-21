@@ -33,6 +33,7 @@ from app.auth import (
     passphrase_matches,
     require_gate,
     reading_limit,
+    post_spacing,
 )
 from app.config import get_settings
 from app.graph import RecordAsleep
@@ -72,6 +73,7 @@ NOT_ANSWERING = "The reading service is not answering right now. You can fill in
 NOT_FOUND = "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again."
 ENGLISH_ONLY = "This demo reads English only for now."
 READING_LIMIT = "Too many requests. Please wait a minute or fill in the form by hand."
+WAIT_BEFORE_POSTING = "Please wait a moment before posting again."
 
 log = logging.getLogger("oci")
 
@@ -320,10 +322,14 @@ def create_post(
     if post_anonymously:
         anon_id = _valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())
         key = graph.person_key(None, True, anon_id)
+        if not post_spacing.take(key):
+            return _render_index(request, message=WAIT_BEFORE_POSTING, text=text, status_code=429)
         graph.create_raw_post(key, None, True, None, text)
         _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
     else:
         key = graph.person_key(name, False, None)
+        if not post_spacing.take(key):
+            return _render_index(request, message=WAIT_BEFORE_POSTING, text=text, status_code=429)
         graph.create_raw_post(key, name, False, name, text)
         _set_cookie(response, NAME_COOKIE, quote(name), YEAR_SECONDS)
     return response
@@ -424,6 +430,9 @@ def post_card(request: Request, data: PostRequest) -> Response:
                              "dropped": resolved.dropped}, status_code=422)
     name, anonymous = _poster(data)
     anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
+    person_key = graph.person_key(name, anonymous, anon_id)
+    if not post_spacing.take(person_key):
+        return JSONResponse({"message": WAIT_BEFORE_POSTING}, status_code=429)
     source = data.source if not resolved.is_empty else "manual"
     # An empty box means the statement is composed from the form, so the post is the tester's own
     # however the card was first filled in; its sentences become the statement and the source is manual.
@@ -439,11 +448,11 @@ def post_card(request: Request, data: PostRequest) -> Response:
             edited = True
     # What the reading service returned is kept whenever it returned something, even when the tester
     # emptied the card or the box, so "it did something weird" can be answered from the one post.
-    post_id = graph.merge_post(graph.person_key(name, anonymous, anon_id), name, anonymous, name,
-                               statement, resolved, source=source,
-                               extraction_raw=data.extraction_raw, model=data.model,
-                               latency_ms=data.latency_ms,
-                               request_id=_request_id(request), edited=edited)
+    post_id = graph.merge_post(person_key, name, anonymous, name,
+                                statement, resolved, source=source,
+                                extraction_raw=data.extraction_raw, model=data.model,
+                                latency_ms=data.latency_ms,
+                                request_id=_request_id(request), edited=edited)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
     if anonymous:
         _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)

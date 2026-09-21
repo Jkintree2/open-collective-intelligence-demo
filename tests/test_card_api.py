@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth import DailyLimit, MinuteBucket
+from app.auth import DailyLimit, MinuteBucket, PostSpacing
 from app.config import Settings
 from app.extract import Candidates
 
@@ -19,6 +19,9 @@ def api(monkeypatch):
     monkeypatch.setattr(main, "settings", settings)
     monkeypatch.setattr(main, "attempt_bucket", MinuteBucket(period=3600))
     monkeypatch.setattr(main, "reading_limit", DailyLimit())
+    # A fresh spacing bucket per test, since it is module-level state and several tests post
+    # twice from the same source without meaning to test the spacing itself.
+    monkeypatch.setattr(main, "post_spacing", PostSpacing())
     candidates = Candidates(issues={"world": {"name": "World", "parent_key": None},
                                     "veto": {"name": "Veto", "parent_key": "world"}})
     monkeypatch.setattr(main.graph, "candidates", lambda: candidates)
@@ -201,3 +204,14 @@ def test_an_emptied_box_keeps_the_reading_it_came_from_but_posts_as_manual(api):
     args, kwargs = writes[0]
     assert args[4] == "John claims Veto."
     assert kwargs["source"] == "manual" and kwargs["extraction_raw"] == raw
+
+
+def test_a_second_post_from_the_same_source_within_twenty_seconds_is_refused(api, monkeypatch):
+    client, main, writes = api
+    from app.auth import PostSpacing
+    monkeypatch.setattr(main, "post_spacing", PostSpacing(seconds=20))
+    body = {"text": "Veto reform", "display_name": "John", "issues": [{"name": "Veto"}]}
+    assert client.post("/api/posts", json=body).status_code == 201
+    second = client.post("/api/posts", json=body)
+    assert second.status_code == 429 and second.json()["message"] == "Please wait a moment before posting again."
+    assert len(writes) == 1
