@@ -314,3 +314,15 @@ test('a position on an existing solution adds that solution row to the card', as
   win.oci.setPositionOnExisting('Abolish the veto', 'Security Council veto', 'none');
   assert.equal(get('solution-rows').children.length, 0);
 });
+
+test('a position choice when the card is already full does not change another row', async () => {
+  const {get, win, flush} = await setup();
+  await flush();
+  for (const name of ['One', 'Two', 'Three', 'Four', 'Five']) win.oci.setPositionOnExisting(name, 'An issue', 'approve');
+  assert.equal(get('solution-rows').children.length, 5);
+  win.oci.setPositionOnExisting('Sixth', 'An issue', 'oppose');
+  const last = get('solution-rows').children.at(-1);
+  assert.equal(last.children[1].value, 'Five');
+  const radios = last.children.find(c => c.tag === 'fieldset').children.map(l => l.children[0]).filter(c => c && c.type === 'radio');
+  assert.equal(radios.find(r => r.checked).value, 'approve');
+});

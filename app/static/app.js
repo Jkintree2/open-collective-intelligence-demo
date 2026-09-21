@@ -385,7 +385,9 @@
       if (card.hidden) openCard();
       let row = groups.solutions.find(r => key(r.name.value) === key(name));
       if (stance === 'none') { if (row) { groups.solutions = groups.solutions.filter(r => r !== row); row.element.remove(); changed(); } return; }
-      if (!row) { addRow('solutions', {name, for_issue: forIssue, stance}); row = groups.solutions.at(-1); }
+      // A full card takes no more rows, and the last row there belongs to someone else.
+      if (!row) { addRow('solutions', {name, for_issue: forIssue, stance}); row = groups.solutions.find(r => key(r.name.value) === key(name)); }
+      if (!row) return;
       row.radios.forEach(r => { r.checked = r.value === stance; });
       changed();
     }
