@@ -1,0 +1,23 @@
+<section class="about-issue" id="about-issue" data-issue="{{ about.issue.name }}">
+  <h2>Already on record for {{ about.issue.name }}</h2>
+  {% if about.issue.parent_name %}<p class="counts">Part of {{ about.issue.parent_name }}</p>{% endif %}
+  {% if about.issue.children %}
+  <p class="ev-label">Sub-issues</p>
+  <ul class="sub-issues plain">{% for child in about.issue.children %}<li><a href="/issues/{{ child.key|urlencode }}">{{ child.name }}</a></li>{% endfor %}</ul>
+  {% endif %}
+  <p class="ev-label">Proposed solutions</p>
+  {% for solution in about.solutions %}{% set group = "about-%d-%s"|format(loop.index0, solution.key) %}
+  <div class="about-solution">
+    <p class="about-name">{{ solution.name }} <span class="counts">approved by {{ solution.approves }} · opposed by {{ solution.opposes }}</span></p>
+    <fieldset><legend>Your position</legend>
+      {% for value, label in (("none", "no position"), ("approve", "I approve this"), ("oppose", "I oppose this")) %}
+      <label class="check"><input type="radio" name="{{ group }}" value="{{ value }}" data-solution="{{ solution.name }}"{% if value == "none" %} checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </fieldset>
+  </div>
+  {% else %}<p class="empty">No solutions proposed yet.</p>{% endfor %}
+  <p class="ev-label">Evidence</p>
+  {% if about.evidence %}<ul class="evidence">{% for item in about.evidence %}<li>{{ item.name }} ({{ "supports" if item.stance == "SUPPORTS" else "refutes" }})</li>{% endfor %}</ul>{% else %}<p class="empty">No evidence attached to the issue itself yet.</p>{% endif %}
+  <p><a href="{{ about.href }}">Open the full page for this issue</a></p>
+  <p class="counts">To add a sub-issue, write it as an issue below and choose this issue under "Part of".</p>
+</section>

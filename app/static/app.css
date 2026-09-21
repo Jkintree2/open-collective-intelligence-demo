@@ -344,3 +344,6 @@ button:disabled { opacity: .6; cursor: default; }
 .issue-card h2 a, .crumbs a, .evidence a { display: inline-block; min-height: 44px; }
 
 .card textarea.name, .card-row textarea { width: 100%; min-height: 44px; resize: none; font: inherit; background: var(--input); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; overflow: hidden; }
+.about-issue { margin: 12px 0 16px; padding: 12px 16px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; }
+.about-issue h2 { margin: 0 0 6px; }
+.about-name { margin: 8px 0 0; }

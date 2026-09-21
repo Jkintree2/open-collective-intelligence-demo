@@ -46,6 +46,25 @@ Top to bottom:
 
 **Issues people are writing about.** One line of up to five chips, the most discussed issues, each linking to its page (Session 2) and, from Session 3, pre-filling the card's issue row so a tester adds to a conversation instead of starting a new one. Label **client-facing**: "People are writing about:".
 
+**Already on record.** When the page is opened from an issue chip or link (`/?issue=<key>`), a panel appears between the chips row and the text box, showing what the record already holds for that issue, so a tester adds to it instead of repeating it. It is absent when there is no `issue` in the address or the issue is unknown. All **client-facing**:
+
+> Already on record for <issue name>
+> Part of <parent issue name>
+> Sub-issues
+> Proposed solutions
+> approved by <n> · opposed by <n>
+> Your position
+> no position
+> I approve this
+> I oppose this
+> No solutions proposed yet.
+> Evidence
+> No evidence attached to the issue itself yet.
+> Open the full page for this issue
+> To add a sub-issue, write it as an issue below and choose this issue under "Part of".
+
+Each proposed solution carries the same three position choices as a card row. Choosing "I approve this" or "I oppose this" opens the card and adds that solution as a row, already tied to this issue and with the position set, so the tester can post it. Choosing "no position" again removes the row.
+
 **Text box.** Label **client-facing**: "A claim, a piece of evidence, or a proposed solution". Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500. Placeholder **client-facing**: "For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs."
 
 **Buttons.** "Dictate" with a microphone glyph (hidden when the browser has no speech recognition). "Read my statement" as the primary button, disabled until the box has text. A third, quieter link: "Skip the reading and fill in the form myself", which opens an empty card and works with an empty box. Under the buttons, **client-facing**: "You can leave the box empty, fill in the form yourself, and post that."

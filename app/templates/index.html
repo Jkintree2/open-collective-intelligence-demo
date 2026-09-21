@@ -13,6 +13,7 @@
   {% if chips %}
   <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/?issue={{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
   {% endif %}
+  {% if about %}{% include "_about_issue.html" %}{% endif %}
   <label for="text">A claim, a piece of evidence, or a proposed solution</label>
   <textarea id="text" name="text" rows="4" maxlength="4000" required placeholder="For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs.">{{ text }}</textarea>
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
@@ -50,6 +51,7 @@
   anon.addEventListener('change', syncName); syncName();
 </script>
 <script src="/static/app.js" defer></script>
+<script src="/static/about_issue.js" defer></script>
 
 <section class="feed" id="feed">
   {% include "_feed.html" %}

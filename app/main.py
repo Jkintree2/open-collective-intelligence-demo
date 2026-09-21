@@ -188,8 +188,28 @@ def _decorate_posts(posts: list[dict]) -> list[dict]:
     return posts
 
 
+def _about_issue(key: str | None) -> dict | None:
+    """What the record already holds for the issue the writer arrived from (C7)."""
+    if not key:
+        return None
+    header = graph.issue_header(key)
+    if header is None:
+        return None
+    return {
+        "issue": header,
+        "solutions": graph.issue_solutions(key),
+        "evidence": graph.issue_evidence(key),
+        "href": _issue_href(key),
+    }
+
+
 def _render_index(
-    request: Request, *, message: str | None = None, text: str = "", status_code: int = 200
+    request: Request,
+    *,
+    message: str | None = None,
+    text: str = "",
+    status_code: int = 200,
+    about: dict | None = None,
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT))
     chips = graph.top_issues(CHIP_LIMIT)
@@ -204,6 +224,7 @@ def _render_index(
             "name": name,
             "message": message,
             "text": text,
+            "about": about,
         },
         status_code=status_code,
     )
@@ -267,8 +288,8 @@ def enter_submit(
 
 
 @app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
-def write_page(request: Request) -> Response:
-    return _render_index(request)
+def write_page(request: Request, issue: str | None = Query(None, max_length=200)) -> Response:
+    return _render_index(request, about=_about_issue(issue))
 
 
 def _valid_anon_id(value: str | None) -> str | None:

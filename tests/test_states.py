@@ -1,5 +1,6 @@
 """Session 4 state copy and offline client regressions; no database or model calls."""
 import importlib
+import re
 from dataclasses import replace
 from pathlib import Path
 import shutil
@@ -94,3 +95,33 @@ def test_client_recognition_and_request_races_offline():
         pytest.skip("Node is unavailable; run node --test tests/test_dictation.cjs when installed")
     result = subprocess.run([node, "--test", str(Path(__file__).with_name("test_dictation.cjs"))], capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_write_about_shows_the_issue_summary_above_the_form(state_client, monkeypatch):
+    client, main = state_client
+    monkeypatch.setattr(main.graph, "candidates", lambda: Candidates(issues={"veto": {"name": "Security Council veto", "parent_key": "world"}, "world": {"name": "World", "parent_key": None}}))
+    monkeypatch.setattr(main.graph, "issue_header", lambda key: {"key": "veto", "name": "Security Council veto", "parent_key": "world", "parent_name": "World", "children": []})
+    monkeypatch.setattr(main.graph, "issue_solutions", lambda key: [{"key": "abolish", "name": "Abolish the veto", "proposers": 1, "approves": 1, "opposes": 0, "evidence": []}])
+    monkeypatch.setattr(main.graph, "issue_evidence", lambda key: [{"key": "syria", "name": "Syria vetoes", "url": None, "stance": "SUPPORTS", "submitted_by": ["Seed"]}])
+    page = client.get("/?issue=veto")
+    assert page.status_code == 200
+    assert "Already on record for Security Council veto" in page.text
+    assert "Abolish the veto" in page.text and "I approve this" in page.text
+    assert 'href="/issues/veto"' in page.text
+    assert client.get("/?issue=nowhere").status_code == 200
+
+
+def test_position_choices_for_one_solution_share_a_name_so_only_one_is_chosen(state_client, monkeypatch):
+    client, main = state_client
+    monkeypatch.setattr(main.graph, "issue_header", lambda key: {"key": "veto", "name": "Security Council veto", "parent_key": None, "parent_name": None, "children": []})
+    monkeypatch.setattr(main.graph, "issue_solutions", lambda key: [
+        {"key": "abolish", "name": "Abolish the veto", "proposers": 1, "approves": 0, "opposes": 0, "evidence": []},
+        {"key": "widen", "name": "Widen the council", "proposers": 1, "approves": 0, "opposes": 0, "evidence": []},
+    ])
+    monkeypatch.setattr(main.graph, "issue_evidence", lambda key: [])
+    page = client.get("/?issue=veto").text
+    names = re.findall(r'<input type="radio" name="([^"]+)"', page)
+    assert len(names) == 6
+    # The three choices for one solution are one group; two solutions do not share a group.
+    assert names[:3] == [names[0]] * 3 and names[3:] == [names[3]] * 3
+    assert names[0] != names[3]

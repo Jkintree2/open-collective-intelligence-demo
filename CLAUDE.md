@@ -35,8 +35,8 @@ app/backup.py      portable export format, typed values and input validation
 app/admin.py       Basic-auth admin routes and safe reading-error summaries
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
-app/templates/     base, enter, index, issues, issue, admin, error, asleep, _feed (fragment)
-app/static/        app.css, app.js
+app/templates/     base, enter, index, issues, issue, admin, error, asleep, _feed and _about_issue (fragments)
+app/static/        app.css, app.js, about_issue.js (the summary above the write form)
 seed/seed.json     the seed record, same shape as the card payload
 scripts/__init__.py
 scripts/seed.py    python -m scripts.seed [--counts] [--reset --yes [--force]]; reset refuses a database holding non-seed nodes

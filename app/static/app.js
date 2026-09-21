@@ -379,5 +379,16 @@
     } catch (error) { find('card-errors').textContent = error.message; }
     finally { controls.forEach((control, index) => { control.disabled = disabled[index]; }); posting = false; updateText(); changed(); }
   });
+  // The summary above the form (about_issue.js) sets a position on a solution the record already holds.
+  window.oci = {
+    setPositionOnExisting(name, forIssue, stance) {
+      if (card.hidden) openCard();
+      let row = groups.solutions.find(r => key(r.name.value) === key(name));
+      if (stance === 'none') { if (row) { groups.solutions = groups.solutions.filter(r => r !== row); row.element.remove(); changed(); } return; }
+      if (!row) { addRow('solutions', {name, for_issue: forIssue, stance}); row = groups.solutions.at(-1); }
+      row.radios.forEach(r => { r.checked = r.value === stance; });
+      changed();
+    }
+  };
   find('read').textContent = 'Read my statement'; updateText(); loadCandidates();
 })();

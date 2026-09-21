@@ -11,10 +11,10 @@ class Element {
   addEventListener(name, handler) { (this.listeners[name] ||= []).push(handler); }
   emit(name, event = {}) { return Promise.all((this.listeners[name] || []).map(fn => fn({preventDefault() {}, ...event}))); }
   setAttribute(name, value) { this.attributes[name] = value; }
-  append(...children) { this.children.push(...children); }
+  append(...children) { for (const child of children) if (child instanceof Element) child.parent = this; this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
   add(child) { this.children.push(child); }
-  remove() {}
+  remove() { if (this.parent) this.parent.children = this.parent.children.filter(c => c !== this); }
   after() {}
   focus() {}
   querySelectorAll() { return []; }
@@ -302,4 +302,15 @@ test('two taps on Post in a row add the record once', async () => {
   requests.at(-1).resolve({id: 'p1'});
   await Promise.all([first, second]); await flush();
   assert.equal(requests.filter(r => r.url === '/api/posts').length, 1);
+});
+
+test('a position on an existing solution adds that solution row to the card', async () => {
+  const {get, win, flush} = await setup();
+  await flush();
+  win.oci.setPositionOnExisting('Abolish the veto', 'Security Council veto', 'approve');
+  assert.equal(get('card').hidden, false);
+  const row = get('solution-rows').children.at(-1);
+  assert.equal(row.children[1].value, 'Abolish the veto');
+  win.oci.setPositionOnExisting('Abolish the veto', 'Security Council veto', 'none');
+  assert.equal(get('solution-rows').children.length, 0);
 });
