@@ -404,24 +404,23 @@ def post_card(request: Request, data: PostRequest) -> Response:
     name, anonymous = _poster(data)
     anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
     source = data.source if not resolved.is_empty else "manual"
-    extraction_raw = data.extraction_raw
-    # An empty box means nothing was read: the card is the tester's own, and its sentences
-    # become the statement so the post reads like every other one.
+    # An empty box means the statement is composed from the form, so the post is the tester's own
+    # however the card was first filled in; its sentences become the statement and the source is manual.
     statement = data.text.strip() or ". ".join(sentences(card, name or "Anonymous")) + "."
     if not data.text.strip():
-        source, extraction_raw = "manual", None
+        source = "manual"
     edited = False
-    if extraction_raw:
+    if data.extraction_raw:
         try:
-            original = reading.prepared_card(reading.parse_payload(extraction_raw), candidates, data.text)
+            original = reading.prepared_card(reading.parse_payload(data.extraction_raw), candidates, data.text)
             edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
         except ValueError:
             edited = True
-    # What the reading service returned is kept whenever it returned something, even when the
-    # tester emptied the card, so "it did something weird" can be answered from the one post.
+    # What the reading service returned is kept whenever it returned something, even when the tester
+    # emptied the card or the box, so "it did something weird" can be answered from the one post.
     post_id = graph.merge_post(graph.person_key(name, anonymous, anon_id), name, anonymous, name,
                                statement, resolved, source=source,
-                               extraction_raw=extraction_raw, model=data.model,
+                               extraction_raw=data.extraction_raw, model=data.model,
                                latency_ms=data.latency_ms,
                                request_id=_request_id(request), edited=edited)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)

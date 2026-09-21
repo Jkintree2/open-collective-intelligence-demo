@@ -190,3 +190,14 @@ def test_an_empty_card_with_no_statement_is_refused(api):
     assert client.post("/api/posts", json={"text": "", "plain": True}).status_code == 422
     assert client.post("/api/extract", json={"text": ""}).status_code == 422
     assert not writes
+
+
+def test_an_emptied_box_keeps_the_reading_it_came_from_but_posts_as_manual(api):
+    client, _, writes = api
+    raw = '{"found": true, "issues": [{"name": "Veto"}]}'
+    body = {"text": "", "display_name": "John", "source": "model", "extraction_raw": raw,
+            "issues": [{"name": "Veto"}]}
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, kwargs = writes[0]
+    assert args[4] == "John claims Veto."
+    assert kwargs["source"] == "manual" and kwargs["extraction_raw"] == raw
