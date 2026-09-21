@@ -49,8 +49,12 @@ def test_clean_name_turns_newlines_into_spaces():
     assert clean_name("John\nKintree\r\n") == "John Kintree"
 
 
-def test_clean_name_caps_at_120_characters():
-    assert len(clean_name("a" * 200)) == 120
+def test_clean_name_caps_at_300_characters():
+    assert len(clean_name("a" * 400)) == 300
+    missouri = ("Recent amendments to the Missouri Constitution, proposed by the state legislature, "
+                "that would have made it more difficult to approve initiative referendums and would have "
+                "eliminated the state income tax were defeated by more than 80% of the votes cast.")
+    assert clean_name(missouri) == missouri.rstrip(".")
 
 
 def test_clean_name_strips_trailing_punctuation():

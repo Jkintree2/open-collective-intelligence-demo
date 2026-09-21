@@ -46,27 +46,51 @@ Top to bottom:
 
 **Issues people are writing about.** One line of up to five chips, the most discussed issues, each linking to its page (Session 2) and, from Session 3, pre-filling the card's issue row so a tester adds to a conversation instead of starting a new one. Label **client-facing**: "People are writing about:".
 
+**Already on record.** When the page is opened from an issue chip or link (`/?issue=<key>`), a panel appears between the chips row and the text box, showing what the record already holds for that issue, so a tester adds to it instead of repeating it. It is absent when there is no `issue` in the address or the issue is unknown. All **client-facing**:
+
+> Already on record for <issue name>
+> Part of <parent issue name>
+> Sub-issues
+> Proposed solutions
+> approved by <n> · opposed by <n>
+> Your position
+> no position
+> I approve this
+> I oppose this
+> No solutions proposed yet.
+> Evidence
+> No evidence attached to the issue itself yet.
+> Open the full page for this issue
+> To add a sub-issue, write it as an issue below and choose this issue under "Part of".
+
+Each proposed solution carries the same three position choices as a card row. Choosing "I approve this" or "I oppose this" opens the card and adds that solution as a row, already tied to this issue and with the position set, so the tester can post it. Choosing "no position" again removes the row.
+
+When the choice cannot be taken the panel puts the solution back to "no position" and says why, in the card's message line when the card is open and in the line under the buttons otherwise. **Client-facing**:
+
+> The form already holds five solutions. Remove one from the form to add this.
+> Please wait for the reading to finish, then choose a position.
+
 **Text box.** Label **client-facing**: "A claim, a piece of evidence, or a proposed solution". Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500. Placeholder **client-facing**: "For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs."
 
-**Buttons.** "Dictate" with a microphone glyph (hidden when the browser has no speech recognition). "Read my statement" as the primary button, disabled until the box has text. A third, quieter link: "Skip the reading and fill in the form myself", which opens an empty card.
+**Buttons.** "Dictate" with a microphone glyph (hidden when the browser has no speech recognition). "Read my statement" as the primary button, disabled until the box has text. A third, quieter link: "Skip the reading and fill in the form myself", which opens an empty card and works with an empty box. Under the buttons, **client-facing**: "You can leave the box empty, fill in the form yourself, and post that."
 
 **Dictation.** Press Dictate, the button turns red and reads "Listening… press to stop". Recognised text is appended to the box as it arrives. Press again to stop. The tester edits the text as normal before pressing Read my statement. Nothing is sent anywhere until they do.
 
 **Reading state.** The button reads "Reading…" and the box locks, with a link "Stop and fill it in myself" shown from the first second (it abandons the request and opens the empty card). After eight seconds a line appears below: "Still reading. This can take up to half a minute." After twenty-five seconds the request is abandoned and the card opens empty with the message below.
 
-**The card.** Appears under the text box. Heading **client-facing**: "Here is what we found". Then, in this order, each section editable:
+**The card.** Appears under the text box. Heading **client-facing**: "Here is what we found". When a name was too long and was shortened, a note under the heading reads, **client-facing**: "A long name was shortened to 300 characters. You can edit it." Then, in this order, each section editable:
 
-* **Issue.** One text input with autocomplete from existing issue names, and below it a select "Part of" listing top-level issues plus "none, this is a new top-level issue". A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three.
-* **Solutions.** Zero or more rows. Each row: name input with autocomplete, a "for issue" select (defaults to the first issue), and three radio buttons: "no position", "I approve this", "I oppose this". The model pre-selects a position only when the text states one. "+ add a solution" link.
-* **Evidence.** Zero or more rows. Each row: name input with autocomplete, a link input (optional), a select "supports / refutes", and a select "about" listing the issues and solutions in the card plus existing nodes. "+ add evidence" link.
+* **Issue.** One text input with autocomplete from existing issue names, and below it a select "Part of" listing top-level issues, shorter first: names already on this form, then, when the page was opened for an issue, that issue's family, then all issues. The choices are grouped under **client-facing** headings: "On this form", "About <issue name>", "All issues". The empty choice reads, **client-facing**: "none, this is a new top level issue". A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three. When the page was not opened from an issue chip or link (no "Already on record" panel above), a line under the issue rows reads, **client-facing**: "To add a sub-issue, write it here and choose the issue it is part of."
+* **Solutions.** Zero or more rows. Each row: name input with autocomplete, a "for issue" select (defaults to the first issue) grouped the same shorter-first way ("On this form", "About <issue name>", "All issues"; empty choice **client-facing**: "Choose an issue"), and three radio buttons: "no position", "I approve this", "I oppose this". The model pre-selects a position only when the text states one. "+ add a solution" link.
+* **Evidence.** Zero or more rows. Each row: name input with autocomplete, a link input (optional), a select "supports / refutes", and a select "about" listing the issues and solutions in the card plus existing nodes, grouped **client-facing**: "On this form", "About <issue name>", "All issues", "Solutions", "Evidence" (empty choice **client-facing**: "Choose what this is about"). "+ add evidence" link.
 * **What this will add.** A read-only list of sentences generated live from the fields, in John's format, for example:
 
   > John Kintree claims Drug dealing problem
   > John Kintree proposes Decriminalize drug sales
   > Drug dealing problem has proposed Decriminalize drug sales
 
-  Anonymous posts read "Anonymous claims …". A row is removed by clearing its name or pressing its "remove" link, and the sentence list updates.
-* **Buttons.** "Post" (primary; disabled while any solution lacks an issue, any evidence lacks a target, or the text box is empty) and "Discard".
+  Anonymous posts read "Anonymous claims …". A row is removed by clearing its name or pressing its "remove from this form" button, and the sentence list updates.
+* **Buttons.** "Post" (primary; disabled while any solution lacks an issue, any evidence lacks a target, or both the text box and the card are empty) and "Discard". With a filled card and an empty text box the card's own sentences are posted as the statement, and this line appears at the top of the card, **client-facing**: "No statement written. The lines under "What this will add" will be posted as your statement." The "post it as a plain statement anyway" link needs text, so it is disabled while the box is empty.
 * **Footnote** **client-facing**: "Posting adds this to the shared record, credited to John Kintree." or "… listed as Anonymous."
 
 **When the model found nothing.** The card opens with all sections empty and this line at the top, **client-facing**: "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again." The Post button is disabled until the tester types into a field or clicks a second link, "post it as a plain statement anyway", which posts the text into the feed with no structure. Greetings and tests then stay out of the feed unless someone means it.
@@ -79,6 +103,8 @@ Top to bottom:
 
 **After Post.** The card and text box clear, a green line reads "Added to the record" for a few seconds, and the new post appears at the top of the feed without a page reload (the feed section is re-fetched).
 
+**A second post too soon after the first from the same tester.** The post is refused, **client-facing**: "Please wait a moment before posting again." (C12)
+
 **The feed.** Heading "Recent posts". The sixty most recent; paging is on the after list. Each post:
 
 * First line: display name or "Anonymous", a dot, relative time ("2 hours ago"). Seed posts carry a small "seed" tag.
@@ -90,7 +116,7 @@ Empty feed **client-facing**: "Nothing here yet. Be the first to write something
 
 ## Screen 3: Issues (`/issues`)
 
-Heading "Issues". Under it a three-way control: "Most people", "Most recent", "Most evidence". The chosen sort is in the URL (`?sort=people|recent|evidence`) so it can be linked.
+Heading "Issues". Under it a three-way control labelled "Sort" for assistive technology, with a visible **client-facing** label "Sort by" beside the choices: "Most people", "Most recent", "Most evidence". The chosen sort is in the URL (`?sort=people|recent|evidence`) so it can be linked.
 
 Each top-level issue is a card: the name (a link), then one line of counts, then its sub-issues indented, each with its own count line. A top-level issue is ranked on its whole family, so a conversation with five sub-issues sits above a one-line post. Count line for a sub-issue or an issue without children: "3 people · 5 claims · 2 solutions · 4 pieces of evidence". For a top-level issue with sub-issues: "3 people · 13 claims in total · 1 claim on the issue itself · 4 solutions · 14 pieces of evidence". Numbers are plain; no bars, no percentages.
 

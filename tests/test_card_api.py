@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from app.auth import DailyLimit, MinuteBucket
+from app.auth import DailyLimit, MinuteBucket, PostSpacing
 from app.config import Settings
 from app.extract import Candidates
 
@@ -19,6 +19,9 @@ def api(monkeypatch):
     monkeypatch.setattr(main, "settings", settings)
     monkeypatch.setattr(main, "attempt_bucket", MinuteBucket(period=3600))
     monkeypatch.setattr(main, "reading_limit", DailyLimit())
+    # A fresh spacing bucket per test, since it is module-level state and several tests post
+    # twice from the same source without meaning to test the spacing itself.
+    monkeypatch.setattr(main, "post_spacing", PostSpacing())
     candidates = Candidates(issues={"world": {"name": "World", "parent_key": None},
                                     "veto": {"name": "Veto", "parent_key": "world"}})
     monkeypatch.setattr(main.graph, "candidates", lambda: candidates)
@@ -162,3 +165,75 @@ def test_html_form_still_posts_without_javascript_and_checks_untrimmed_length(ap
     assert writes[0][0][4] == "A plain statement" and writes[0][0][5].is_empty
     assert client.post('/posts', data={"text": ' ' * 4500 + 'short'}).status_code == 413
     assert len(writes) == 1
+
+
+def test_reading_passes_the_issue_key_to_the_reader(api, monkeypatch):
+    client, main, _ = api
+    seen = {}
+    monkeypatch.setattr(main, "settings", replace(main.settings, llm_api_key="offline test key"))
+    monkeypatch.setattr(main.reading, "extract", lambda text, name, candidates, settings, **kw: seen.update(kw) or None)
+    client.post("/api/extract", json={"text": "Hello", "issue": "veto"})
+    assert seen["writing_about"] == "veto"
+
+
+def test_a_filled_card_posts_without_a_statement_and_stores_its_sentences(api):
+    client, _, writes = api
+    body = {"text": "", "display_name": "John", "issues": [{"name": "Veto"}],
+            "solutions": [{"name": "Abolish the veto", "for_issue": "Veto", "stance": "approve"}]}
+    preview = client.post("/api/preview", json=body)
+    assert preview.status_code == 200 and preview.json()["valid"]
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, _ = writes[0]
+    assert args[4] == "John claims Veto. John proposes Abolish the veto. Veto has proposed Abolish the veto. John approves Abolish the veto."
+
+
+def test_an_empty_card_with_no_statement_is_refused(api):
+    client, _, writes = api
+    assert client.post("/api/preview", json={"text": ""}).json()["valid"] is False
+    assert client.post("/api/posts", json={"text": "", "plain": True}).status_code == 422
+    assert client.post("/api/extract", json={"text": ""}).status_code == 422
+    assert not writes
+
+
+def test_an_emptied_box_keeps_the_reading_it_came_from_but_posts_as_manual(api):
+    client, _, writes = api
+    raw = '{"found": true, "issues": [{"name": "Veto"}]}'
+    body = {"text": "", "display_name": "John", "source": "model", "extraction_raw": raw,
+            "issues": [{"name": "Veto"}]}
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, kwargs = writes[0]
+    assert args[4] == "John claims Veto."
+    assert kwargs["source"] == "manual" and kwargs["extraction_raw"] == raw
+
+
+def test_a_second_post_from_the_same_source_within_twenty_seconds_is_refused(api, monkeypatch):
+    client, main, writes = api
+    from app.auth import PostSpacing
+    monkeypatch.setattr(main, "post_spacing", PostSpacing(seconds=20))
+    body = {"text": "Veto reform", "display_name": "John", "issues": [{"name": "Veto"}]}
+    assert client.post("/api/posts", json=body).status_code == 201
+    second = client.post("/api/posts", json=body)
+    assert second.status_code == 429 and second.json()["message"] == "Please wait a moment before posting again."
+    assert len(writes) == 1
+
+
+def test_a_composed_statement_from_long_names_is_held_to_the_length_limit(api):
+    client, _, writes = api
+    # The longest a card can be: three issues and five solutions, every name at the 300 the form allows.
+    def name(tail: str) -> str:
+        return ("Veto reform " * 25)[:300 - len(tail)] + tail
+    issue = name("one")
+    body = {"text": "", "display_name": "John",
+            "issues": [{"name": name(tail)} for tail in ("one", "two", "six")],
+            "solutions": [{"name": name(f"s{n}"), "for_issue": issue, "stance": "approve"} for n in "12345"]}
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, _ = writes[0]
+    assert len(args[4]) == 4000
+
+
+def test_a_hand_crafted_form_post_cannot_store_an_overlong_person_name(api):
+    client, _, writes = api
+    response = client.post("/posts", data={"text": "A plain statement", "display_name": "Jo " * 150},
+                           follow_redirects=False)
+    assert response.status_code == 303
+    assert len(writes[0][0][3]) <= 120

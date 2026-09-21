@@ -37,3 +37,13 @@ def test_bucket_refills_with_time():
         bucket.take(now=100.0)
     assert not bucket.take(now=105.0)
     assert bucket.take(now=111.0)
+
+
+def test_post_spacing_holds_one_source_for_twenty_seconds_and_forgets_it_later():
+    from app.auth import PostSpacing
+    spacing = PostSpacing(seconds=20)
+    assert spacing.take("john", now=100.0)
+    assert not spacing.take("john", now=110.0)
+    assert spacing.take("anon:1", now=110.0)
+    assert spacing.take("john", now=120.0)
+    assert len(spacing.last) <= 2

@@ -167,3 +167,12 @@ def test_empty_and_non_english_results_cannot_retain_structure():
 def test_invalid_http_urls_are_removed():
     payload = _payload(evidence=[{"name": "Study", "about": ISSUE, "url": "https://"}])
     assert payload.evidence[0].url is None
+
+
+def test_a_childless_top_level_issue_can_gain_a_parent_new_on_the_same_card():
+    known = Candidates(issues={"short term rental properties": {"name": "Short term rental properties", "parent_key": None}})
+    payload = _payload(issues=[{"name": "Downtown St Louis revitalization", "parent": None},
+                               {"name": "Short term rental properties", "parent": "Downtown St Louis revitalization"}])
+    resolved = resolve_payload(payload, known)
+    assert [item["parent_key"] for item in resolved.issues] == [None, "downtown st louis revitalization"]
+    assert not resolved.corrected

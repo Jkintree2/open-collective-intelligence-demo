@@ -19,3 +19,11 @@ Open `/admin`. Enter any username and your back room password. Keep that passwor
 Deleting a post removes the statement and the claims, citations, proposals and evidence connections it created. An issue, solution or piece of evidence is removed only when it was touched by that post, is not a seed item and has no connections left. People and seed items stay. Links between solutions and issues, approvals, oppositions and the issue hierarchy stay too, even when they began with the deleted post.
 
 A developer can restore a downloaded copy into an empty database. Restoring from this page is on the list for after the demo.
+
+## A few things testers may notice
+
+The site asks a source to wait twenty seconds between posts, so nobody can flood the record by posting again and again. A tester who posts twice quickly will see a short message asking them to wait a moment and try again.
+
+A tester can open the form, leave the text box empty, fill in the issue, claim, evidence or solution by hand, and post that. The lines shown under "What this will add" become the statement.
+
+Names for issues, claims, evidence and solutions can run up to three hundred characters. A long one wraps onto more than one line rather than being cut off; if a tester's own long name was shortened to fit, the form tells them so and they can edit it.

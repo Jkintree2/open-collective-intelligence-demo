@@ -33,6 +33,7 @@ from app.auth import (
     passphrase_matches,
     require_gate,
     reading_limit,
+    post_spacing,
 )
 from app.config import get_settings
 from app.graph import RecordAsleep
@@ -45,6 +46,7 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 templates.env.globals["site_name"] = settings.site_name
 
 TEXT_MAX = 4000
+DISPLAY_NAME_MAX = 120
 FEED_LIMIT = 60
 CHIP_LIMIT = 5
 SORTS = (("people", "Most people"), ("recent", "Most recent"), ("evidence", "Most evidence"))
@@ -72,6 +74,7 @@ NOT_ANSWERING = "The reading service is not answering right now. You can fill in
 NOT_FOUND = "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again."
 ENGLISH_ONLY = "This demo reads English only for now."
 READING_LIMIT = "Too many requests. Please wait a minute or fill in the form by hand."
+WAIT_BEFORE_POSTING = "Please wait a moment before posting again."
 
 log = logging.getLogger("oci")
 
@@ -188,8 +191,28 @@ def _decorate_posts(posts: list[dict]) -> list[dict]:
     return posts
 
 
+def _about_issue(key: str | None) -> dict | None:
+    """What the record already holds for the issue the writer arrived from (C7)."""
+    if not key:
+        return None
+    header = graph.issue_header(key)
+    if header is None:
+        return None
+    return {
+        "issue": header,
+        "solutions": graph.issue_solutions(key),
+        "evidence": graph.issue_evidence(key),
+        "href": _issue_href(key),
+    }
+
+
 def _render_index(
-    request: Request, *, message: str | None = None, text: str = "", status_code: int = 200
+    request: Request,
+    *,
+    message: str | None = None,
+    text: str = "",
+    status_code: int = 200,
+    about: dict | None = None,
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT))
     chips = graph.top_issues(CHIP_LIMIT)
@@ -204,6 +227,7 @@ def _render_index(
             "name": name,
             "message": message,
             "text": text,
+            "about": about,
         },
         status_code=status_code,
     )
@@ -267,8 +291,8 @@ def enter_submit(
 
 
 @app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
-def write_page(request: Request) -> Response:
-    return _render_index(request)
+def write_page(request: Request, issue: str | None = Query(None, max_length=200)) -> Response:
+    return _render_index(request, about=_about_issue(issue))
 
 
 def _valid_anon_id(value: str | None) -> str | None:
@@ -292,17 +316,21 @@ def create_post(
     text = text.strip()
     if not text:
         return RedirectResponse("/", status_code=303)
-    name = clean_name(display_name)
+    name = _display_name(display_name)
     # A ticked box, an empty name or a name with no usable key all post anonymously.
     post_anonymously = bool(anonymous) or make_key(name) is None
     response = RedirectResponse("/", status_code=303)
     if post_anonymously:
         anon_id = _valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())
         key = graph.person_key(None, True, anon_id)
+        if not post_spacing.take(key):
+            return _render_index(request, message=WAIT_BEFORE_POSTING, text=text, status_code=429)
         graph.create_raw_post(key, None, True, None, text)
         _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
     else:
         key = graph.person_key(name, False, None)
+        if not post_spacing.take(key):
+            return _render_index(request, message=WAIT_BEFORE_POSTING, text=text, status_code=429)
         graph.create_raw_post(key, name, False, name, text)
         _set_cookie(response, NAME_COOKIE, quote(name), YEAR_SECONDS)
     return response
@@ -317,6 +345,7 @@ class ReadingRequest(BaseModel):
     text: str
     display_name: str = Field(default="", max_length=120)
     anonymous: bool = False
+    issue: str | None = Field(default=None, max_length=200)
 
 
 class PostRequest(CardPayload):
@@ -330,16 +359,23 @@ class PostRequest(CardPayload):
     plain: bool = False
 
 
-def _text_error(text: str) -> Response | None:
+def _display_name(raw: str) -> str:
+    """The cleaned name a post is credited to. Names on the card go to 300 characters, but a
+    person's name is a 120 character field in the form and in the card request, so a hand made
+    request cannot make it longer here either."""
+    return clean_name(raw)[:DISPLAY_NAME_MAX].strip()
+
+
+def _text_error(text: str, *, allow_empty: bool = False) -> Response | None:
     if len(text) > TEXT_MAX:
         return JSONResponse({"message": TOO_LONG}, status_code=413)
-    if not text.strip():
+    if not text.strip() and not allow_empty:
         return JSONResponse({"message": "Please write a statement first."}, status_code=422)
     return None
 
 
 def _poster(data: ReadingRequest | PostRequest) -> tuple[str | None, bool]:
-    name = clean_name(data.display_name)
+    name = _display_name(data.display_name)
     anonymous = data.anonymous or make_key(name) is None
     return (None if anonymous else name), anonymous
 
@@ -360,13 +396,14 @@ def read_statement(request: Request, data: ReadingRequest) -> Response:
         return JSONResponse({"message": READING_LIMIT}, status_code=429)
     name, _ = _poster(data)
     candidates = graph.candidates() if settings.llm_api_key else reading.Candidates.empty()
-    result = reading.extract(data.text, name or "Anonymous", candidates, settings, request_id=_request_id(request))
+    result = reading.extract(data.text, name or "Anonymous", candidates, settings,
+                             request_id=_request_id(request), writing_about=data.issue)
     if result is None:
         return JSONResponse({"payload": {"found": False}, "message": NOT_ANSWERING, "source": "manual"})
     message = ENGLISH_ONLY if not result.payload.language_ok else NOT_FOUND if not result.payload.found else ""
     return JSONResponse({"payload": result.payload.model_dump(), "message": message,
                          "source": "model" if result.payload.found else "manual", "extraction_raw": result.extraction_raw,
-                         "model": result.model, "latency_ms": result.latency_ms})
+                         "model": result.model, "latency_ms": result.latency_ms, "shortened": result.shortened})
 
 
 def _card_result(data: PostRequest):
@@ -379,12 +416,12 @@ def _card_result(data: PostRequest):
 
 @app.post("/api/preview", dependencies=[Depends(require_gate)])
 def preview_card(data: PostRequest) -> Response:
-    error = _text_error(data.text)
+    error = _text_error(data.text, allow_empty=True)
     if error is not None:
         return error
     _, resolved, card = _card_result(data)
     name, _ = _poster(data)
-    valid = not resolved.dropped and (not resolved.is_empty or data.plain)
+    valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     return JSONResponse({"sentences": sentences(card, name or "Anonymous"), "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
                          "payload": card.model_dump()})
@@ -392,16 +429,24 @@ def preview_card(data: PostRequest) -> Response:
 
 @app.post("/api/posts", dependencies=[Depends(require_gate)])
 def post_card(request: Request, data: PostRequest) -> Response:
-    error = _text_error(data.text)
+    error = _text_error(data.text, allow_empty=True)
     if error is not None:
         return error
     candidates, resolved, card = _card_result(data)
-    if resolved.dropped or (resolved.is_empty and not data.plain):
+    if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": "Please check the form before posting.",
                              "dropped": resolved.dropped}, status_code=422)
     name, anonymous = _poster(data)
     anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
+    person_key = graph.person_key(name, anonymous, anon_id)
+    if not post_spacing.take(person_key):
+        return JSONResponse({"message": WAIT_BEFORE_POSTING}, status_code=429)
     source = data.source if not resolved.is_empty else "manual"
+    # An empty box means the statement is composed from the form, so the post is the tester's own
+    # however the card was first filled in; its sentences become the statement and the source is manual.
+    statement = data.text.strip() or (". ".join(sentences(card, name or "Anonymous")) + ".")[:TEXT_MAX]
+    if not data.text.strip():
+        source = "manual"
     edited = False
     if data.extraction_raw:
         try:
@@ -409,13 +454,13 @@ def post_card(request: Request, data: PostRequest) -> Response:
             edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
         except ValueError:
             edited = True
-    # What the reading service returned is kept whenever it returned something, even when the
-    # tester emptied the card, so "it did something weird" can be answered from the one post.
-    post_id = graph.merge_post(graph.person_key(name, anonymous, anon_id), name, anonymous, name,
-                               data.text.strip(), resolved, source=source,
-                               extraction_raw=data.extraction_raw, model=data.model,
-                               latency_ms=data.latency_ms,
-                               request_id=_request_id(request), edited=edited)
+    # What the reading service returned is kept whenever it returned something, even when the tester
+    # emptied the card or the box, so "it did something weird" can be answered from the one post.
+    post_id = graph.merge_post(person_key, name, anonymous, name,
+                                statement, resolved, source=source,
+                                extraction_raw=data.extraction_raw, model=data.model,
+                                latency_ms=data.latency_ms,
+                                request_id=_request_id(request), edited=edited)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
     if anonymous:
         _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)

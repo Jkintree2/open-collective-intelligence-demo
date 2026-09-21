@@ -1,4 +1,4 @@
-"""Print the eleven acceptance cases for human assessment; never writes to a database."""
+"""Print the acceptance cases for human assessment; never writes to a database."""
 
 import argparse
 import json
@@ -44,6 +44,9 @@ def main() -> int:
             candidates.issues["drug dealing problem"] = {"name": "Drug dealing problem", "parent_key": None}
             candidates.solutions["decriminalize drug sales"] = "Decriminalize drug sales"
             candidates.solutions["treat drug use as medical issue"] = "Treat drug use as medical issue"
+        if case["context"] == "stlouis":
+            for name in ("Data centers", "Downtown St Louis revitalization"):
+                candidates.issues[make_key(name)] = {"name": name, "parent_key": None}
         text = case["text"]
         if case.get("words"):
             words = text.split()
@@ -52,14 +55,15 @@ def main() -> int:
         if len(text) > 4000:
             print(f"Too long ({len(text)} characters); provider not called.")
             continue
-        result = reading.extract(text, case.get("display_name", "Tester"), candidates, settings)
+        result = reading.extract(text, case.get("display_name", "Tester"), candidates, settings,
+                                 writing_about=case.get("writing_about"))
         if result is None:
             print("No result. Review provider status before continuing.")
             return 1
         print(json.dumps({"payload": result.payload.model_dump(), "model": result.model,
                           "latency_ms": result.latency_ms}, ensure_ascii=False, indent=2))
         print("\n".join(sentences(result.payload, case.get("display_name", "Tester"))))
-    print("\nHuman review required: record pass/fail for cases 1 through 11; all three variants must pass case 6.")
+    print("\nHuman review required: record pass/fail for every case run; all three variants must pass case 6.")
     return 0
 
 

@@ -13,6 +13,7 @@
   {% if chips %}
   <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/?issue={{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
   {% endif %}
+  {% if about %}{% include "_about_issue.html" %}{% endif %}
   <label for="text">A claim, a piece of evidence, or a proposed solution</label>
   <textarea id="text" name="text" rows="4" maxlength="4000" required placeholder="For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs.">{{ text }}</textarea>
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
@@ -25,11 +26,13 @@
     <button type="button" id="stop" class="quiet" hidden>Stop and fill it in myself</button>
     <button type="button" id="retry" class="quiet" hidden>Try again</button>
   </div>
+  <p id="skip-help" class="counts" hidden>You can leave the box empty, fill in the form yourself, and post that.</p>
   <section id="card" class="card" hidden aria-labelledby="card-title">
     <h2 id="card-title">Here is what we found</h2>
     <p id="card-message" class="notice" role="status"></p>
     <p id="card-note" class="counts"></p>
     <h3>Issue</h3><div id="issue-rows"></div>
+    {% if not about %}<p class="counts">To add a sub-issue, write it here and choose the issue it is part of.</p>{% endif %}
     <button type="button" class="quiet" id="add-issue">+ another issue</button>
     <h3>Solutions</h3><div id="solution-rows"></div>
     <button type="button" class="quiet" id="add-solution">+ add a solution</button>
@@ -49,6 +52,7 @@
   anon.addEventListener('change', syncName); syncName();
 </script>
 <script src="/static/app.js" defer></script>
+<script src="/static/about_issue.js" defer></script>
 
 <section class="feed" id="feed">
   {% include "_feed.html" %}

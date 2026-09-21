@@ -43,3 +43,23 @@ def test_handwritten_card_fixtures_preserve_only_explicit_stances(case):
 
 def test_anonymous_sentences_contain_no_display_name():
     assert all("John" not in line for line in sentences(CardPayload.model_validate(FIXTURES["1"]), ""))
+
+
+@pytest.mark.parametrize("case, stances", [("12", []), ("13", []), ("14", ["approve"]), ("15", []), ("16", ["approve"]), ("17", [])])
+def test_session_5_fixtures_resolve_without_drops(case, stances):
+    known = Candidates(issues={"global climate coordination": {"name": "Global climate coordination", "parent_key": None},
+                               "data centers": {"name": "Data centers", "parent_key": None},
+                               "democratic legitimacy of global institutions": {"name": "Democratic legitimacy of global institutions", "parent_key": None}},
+                       solutions={"global carbon tax by referendum": "Global carbon tax by referendum",
+                                  "platform for digital democracy": "Platform for digital democracy"},
+                       solution_issues={"global carbon tax by referendum": ["Global climate coordination"],
+                                        "platform for digital democracy": ["Democratic legitimacy of global institutions"]})
+    resolved = resolve_payload(CardPayload.model_validate(FIXTURES[case]), known)
+    assert not resolved.dropped
+    assert [item["stance"] for item in resolved.solutions] == stances
+    if case == "15":
+        assert [item["parent_key"] for item in resolved.issues] == [None, "data centers", "data centers"]
+    if case == "16":
+        assert [(row["target_label"], row["target_key"]) for row in resolved.evidence] == [("Solution", "more processing on personal devices")]
+    if case == "17":
+        assert [(row["target_label"], row["target_key"]) for row in resolved.evidence] == [("Solution", "platform for digital democracy")]

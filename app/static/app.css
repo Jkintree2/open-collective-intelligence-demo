@@ -290,8 +290,8 @@ h3 {
   border-bottom: 1px solid var(--rule);
 }
 .issue-card h2 { margin: 0 0 2px; font-family: var(--serif); font-weight: normal; font-size: 1.25rem; }
-.issue-card h2 a, .sub-issues a, .crumbs a { color: var(--ink); text-decoration: none; }
-.issue-card h2 a:hover, .sub-issues a:hover { color: var(--accent); }
+.issue-card h2 a, .sub-issues a, .crumbs a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.issue-card h2 a:hover, .sub-issues a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
 
 .counts { margin: 0; font-size: 0.9rem; color: var(--ink-soft); }
 
@@ -322,6 +322,8 @@ h3 {
 .card legend { color: var(--ink-soft); font-size: .9rem; }
 .card .check { min-height: 44px; }
 .card select { width: 100%; min-height: 44px; font: inherit; background: var(--input); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; margin-bottom: 8px; }
+.card optgroup { font: inherit; font-weight: 600; font-style: normal; color: var(--ink); }
+.card optgroup option { font-weight: 400; }
 .quiet { color: var(--accent); background: transparent; border: 0; text-align: left; min-height: 44px; cursor: pointer; }
 .badge { display: block; font-size: .8rem; color: var(--ink-soft); margin: 4px 0; }
 .write-issue { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
@@ -340,3 +342,8 @@ button:disabled { opacity: .6; cursor: default; }
 .chip { display: inline-flex; align-items: center; min-height: 44px; max-width: 100%; }
 .added summary, .sub-issues li a { min-height: 44px; }
 .issue-card h2 a, .crumbs a, .evidence a { display: inline-block; min-height: 44px; }
+
+.card textarea.name, .card-row textarea { width: 100%; min-height: 44px; resize: none; font: inherit; background: var(--input); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; overflow: hidden; }
+.about-issue { margin: 12px 0 16px; padding: 12px 16px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; }
+.about-issue h2 { margin: 0 0 6px; }
+.about-name { margin: 8px 0 0; }
