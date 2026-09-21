@@ -262,23 +262,33 @@ test('a tap on Post during a pending preview waits for it and posts once', async
   await row.emit('change');                       // the blur a phone fires on the first tap
   assert.equal(get('post').disabled, false);      // still enabled while the preview re-runs
   const clicking = get('post').emit('click');
+  await flush();
+  assert.equal(requests.filter(r => r.url === '/api/posts').length, 0);   // the tap is waiting
   await runTimer(200);
-  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []});
+  assert.equal(requests.at(-1).url, '/api/preview');
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
+  assert.equal(requests.at(-1).url, '/api/posts');
+  requests.at(-1).resolve({id: 'p1'});
   await clicking; await flush();
   assert.equal(requests.filter(r => r.url === '/api/posts').length, 1);
 });
 
 test('a tap while the preview is still running does not post when it comes back invalid', async () => {
-  const {get, requests, runTimer, flush} = await setup();
-  await get('skip').emit('click');
-  const row = get('issue-rows').children.at(-1);
-  row.children[1].value = 'Downtown'; await row.emit('input');
-  await runTimer(200);
-  const clicking = get('post').emit('click');
-  requests.at(-1).resolve({sentences: ['x'], valid: false, dropped: [], corrected: []});
-  await clicking; await flush();
-  assert.equal(get('post').disabled, true);
-  assert.equal(requests.filter(r => r.url === '/api/posts').length, 0);
+  // Once while the request is in flight, once inside the 200 ms wait before it is sent.
+  for (const duringTheWait of [false, true]) {
+    const {get, requests, runTimer, flush} = await setup();
+    await get('skip').emit('click');
+    const row = get('issue-rows').children.at(-1);
+    row.children[1].value = 'Downtown'; await row.emit('input');
+    let clicking;
+    if (duringTheWait) { clicking = get('post').emit('click'); await runTimer(200); }
+    else { await runTimer(200); clicking = get('post').emit('click'); }
+    assert.equal(requests.at(-1).url, '/api/preview');
+    requests.at(-1).resolve({sentences: ['x'], valid: false, dropped: [], corrected: []});
+    await clicking; await flush();
+    assert.equal(get('post').disabled, true);
+    assert.equal(requests.filter(r => r.url === '/api/posts').length, 0);
+  }
 });
 
 test('two taps on Post in a row add the record once', async () => {

@@ -9,7 +9,7 @@
   let prefillConsumed = false;
   let readController, previewController, slowTimer, abandonTimer, previewTimer, revision = 0, serial = 0;
   // The preview a tap on Post waits for, so a blur that re-runs it does not swallow the tap.
-  let previewPending = null;
+  let previewPending = null, previewSettle = null;
   const groups = {issues: [], solutions: [], evidence: []};
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const dictate = find('dictate');
@@ -185,7 +185,9 @@
   function changed() {
     revision++;
     clearTimeout(previewTimer);
-    if (previewController) { previewController.abort(); previewPending = null; }
+    previewController?.abort();
+    // A superseded preview answers no, so a tap waiting on it is never left hanging.
+    previewSettle?.(false); previewSettle = null; previewPending = null;
     refresh();
     const poster = identity();
     find('credit').textContent = poster.anonymous ? 'Posting adds this to the shared record, listed as Anonymous.' : `Posting adds this to the shared record, credited to ${poster.display_name}.`;
@@ -200,9 +202,12 @@
       find('post').disabled = true; return;
     }
     const expected = revision;
+    // The tap can arrive before the timer fires, so the promise it waits on exists from now on.
+    previewPending = new Promise(resolve => { previewSettle = resolve; });
+    const settle = previewSettle;
     previewTimer = setTimeout(() => {
       previewController = new AbortController();
-      previewPending = (async () => {
+      (async () => {
         try {
           const result = await request('/api/preview', payload, previewController.signal);
           if (expected !== revision || card.hidden) return false;
@@ -216,7 +221,7 @@
           }
           return false;
         }
-      })();
+      })().then(settle);
     }, 200);
   }
   function addRow(group, item = {}) {
