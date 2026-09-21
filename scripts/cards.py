@@ -45,7 +45,7 @@ def main() -> int:
             candidates.solutions["decriminalize drug sales"] = "Decriminalize drug sales"
             candidates.solutions["treat drug use as medical issue"] = "Treat drug use as medical issue"
         if case["context"] == "stlouis":
-            for name in ("Data centers", "Platform for digital democracy", "Downtown St Louis revitalization"):
+            for name in ("Data centers", "Downtown St Louis revitalization"):
                 candidates.issues[make_key(name)] = {"name": name, "parent_key": None}
         text = case["text"]
         if case.get("words"):
