@@ -30,11 +30,12 @@
       if (!listening || recognition !== current) return;
       speechCount = event.results.length;
       speechLast = event.results[speechCount - 1]?.[0].transcript || '';
-      const parts = Array.from(event.results).slice(speechFloor).map(result => result[0].transcript);
+      // A phone repeats the utterance so far in every result; collapse each growing run to its longest.
+      const merge = (kept, t) => { const last = kept.at(-1); return last !== undefined && (t.startsWith(last) || last.startsWith(t)) ? [...kept.slice(0, -1), t.length >= last.length ? t : last] : [...kept, t]; };
       // Keep typed edits, but retain new words extending the interim result they followed.
       const boundary = event.results[speechFloor - 1]?.[0].transcript;
       const base = speechBase + (speechFloor && boundary?.startsWith(speechBoundary) ? boundary.slice(speechBoundary.length) : '');
-      const spoken = parts.join(' ').trim();
+      const spoken = Array.from(event.results).slice(speechFloor).map(r => r[0].transcript.trim()).reduce(merge, []).join(' ').trim();
       const next = base + (spoken && base && !/\s$/.test(base) ? ' ' : '') + spoken;
       text.value = [...next].slice(0, 4000).join('');
       metadata = {source: 'manual'}; updateText(); changed();

@@ -113,6 +113,19 @@ test('typing during an interim result retains its continuing words without dupli
   assert.equal(get('text').value, 'Corrected intro. Coastal flooding threatens our homes We must prepare. Today.');
 });
 
+test('cumulative results on a phone do not repeat words; desktop phrases still join', async () => {
+  const {get, recognizers} = await setup();
+  await get('dictate').emit('click');
+  const r = recognizers[0];
+  // The phone repeats the utterance so far in every result of the same event.
+  r.result('hello'); r.result('hello', 'hello world'); r.result('hello', 'hello world', 'hello world again');
+  assert.equal(get('text').value, 'hello world again');
+  const {get: get2, recognizers: rec2} = await setup();
+  await get2('dictate').emit('click');
+  rec2[0].result('hello'); rec2[0].result('hello', 'world');
+  assert.equal(get2('text').value, 'hello world');
+});
+
 test('speech respects the Unicode character cap and clears listening on errors or navigation', async () => {
   const {get, type, recognizers, win} = await setup();
   await type('😀'.repeat(3998)); await get('dictate').emit('click');
