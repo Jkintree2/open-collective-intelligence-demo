@@ -229,4 +229,6 @@ test('part of offers a new top level issue from this card and lists are grouped'
   assert.deepEqual(labels.slice(0, 3), ['', 'On this form', 'About Downtown']);
   const onForm = parent.children[1];
   assert.deepEqual(onForm.children.map(o => o.value), ['Riverfront']);
+  // One level only: the family group offers the top level issue, never its sub-issues.
+  assert.deepEqual(parent.children[2].children.map(o => o.value), ['Downtown']);
 });

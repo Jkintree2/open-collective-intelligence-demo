@@ -160,7 +160,7 @@
         if (row.parent) {
           const self = key(row.name.value);
           options(row.parent, [['On this form', cardTop.filter(name => key(name) !== self)],
-            [fam.label, fam.names.filter(name => key(name) !== self)],
+            [fam.label, fam.names.filter(name => key(name) !== self && !candidates.issues[key(name)]?.parent_key)],
             ['All issues', top.filter(name => key(name) !== self)]], 'none, this is a new top level issue');
           if (known?.parent_key) row.parent.value = candidates.issues[known.parent_key]?.name || '';
           row.parent.disabled = Boolean(known?.parent_key);
