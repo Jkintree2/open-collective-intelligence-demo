@@ -215,3 +215,25 @@ def test_a_second_post_from_the_same_source_within_twenty_seconds_is_refused(api
     second = client.post("/api/posts", json=body)
     assert second.status_code == 429 and second.json()["message"] == "Please wait a moment before posting again."
     assert len(writes) == 1
+
+
+def test_a_composed_statement_from_long_names_is_held_to_the_length_limit(api):
+    client, _, writes = api
+    # The longest a card can be: three issues and five solutions, every name at the 300 the form allows.
+    def name(tail: str) -> str:
+        return ("Veto reform " * 25)[:300 - len(tail)] + tail
+    issue = name("one")
+    body = {"text": "", "display_name": "John",
+            "issues": [{"name": name(tail)} for tail in ("one", "two", "six")],
+            "solutions": [{"name": name(f"s{n}"), "for_issue": issue, "stance": "approve"} for n in "12345"]}
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, _ = writes[0]
+    assert len(args[4]) == 4000
+
+
+def test_a_hand_crafted_form_post_cannot_store_an_overlong_person_name(api):
+    client, _, writes = api
+    response = client.post("/posts", data={"text": "A plain statement", "display_name": "Jo " * 150},
+                           follow_redirects=False)
+    assert response.status_code == 303
+    assert len(writes[0][0][3]) <= 120

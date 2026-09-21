@@ -46,6 +46,7 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 templates.env.globals["site_name"] = settings.site_name
 
 TEXT_MAX = 4000
+DISPLAY_NAME_MAX = 120
 FEED_LIMIT = 60
 CHIP_LIMIT = 5
 SORTS = (("people", "Most people"), ("recent", "Most recent"), ("evidence", "Most evidence"))
@@ -315,7 +316,7 @@ def create_post(
     text = text.strip()
     if not text:
         return RedirectResponse("/", status_code=303)
-    name = clean_name(display_name)
+    name = _display_name(display_name)
     # A ticked box, an empty name or a name with no usable key all post anonymously.
     post_anonymously = bool(anonymous) or make_key(name) is None
     response = RedirectResponse("/", status_code=303)
@@ -358,6 +359,13 @@ class PostRequest(CardPayload):
     plain: bool = False
 
 
+def _display_name(raw: str) -> str:
+    """The cleaned name a post is credited to. Names on the card go to 300 characters, but a
+    person's name is a 120 character field in the form and in the card request, so a hand made
+    request cannot make it longer here either."""
+    return clean_name(raw)[:DISPLAY_NAME_MAX].strip()
+
+
 def _text_error(text: str, *, allow_empty: bool = False) -> Response | None:
     if len(text) > TEXT_MAX:
         return JSONResponse({"message": TOO_LONG}, status_code=413)
@@ -367,7 +375,7 @@ def _text_error(text: str, *, allow_empty: bool = False) -> Response | None:
 
 
 def _poster(data: ReadingRequest | PostRequest) -> tuple[str | None, bool]:
-    name = clean_name(data.display_name)
+    name = _display_name(data.display_name)
     anonymous = data.anonymous or make_key(name) is None
     return (None if anonymous else name), anonymous
 
@@ -436,7 +444,7 @@ def post_card(request: Request, data: PostRequest) -> Response:
     source = data.source if not resolved.is_empty else "manual"
     # An empty box means the statement is composed from the form, so the post is the tester's own
     # however the card was first filled in; its sentences become the statement and the source is manual.
-    statement = data.text.strip() or ". ".join(sentences(card, name or "Anonymous")) + "."
+    statement = data.text.strip() or (". ".join(sentences(card, name or "Anonymous")) + ".")[:TEXT_MAX]
     if not data.text.strip():
         source = "manual"
     edited = False

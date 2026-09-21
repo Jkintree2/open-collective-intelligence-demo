@@ -356,3 +356,21 @@ test('a position choice reports whether it was taken, so the panel can say why n
   assert.equal(get('card').hidden, true);
   assert.equal(get('text').readOnly, true);
 });
+
+test('emptying the box after a reading still sends the reading it came from', async () => {
+  const {get, type, requests, runTimer, flush} = await setup();
+  await type('Statement'); await get('compose').emit('submit');
+  requests[0].resolve({payload: {found: true, language_ok: true, issues: [{name: 'Veto'}], solutions: [], evidence: []},
+    source: 'model', extraction_raw: '{"found": true, "issues": [{"name": "Veto"}]}', model: 'reader', latency_ms: 12});
+  await flush();
+  // Clearing the box makes the post the tester's own, but what came back is still carried with it.
+  await type('');
+  await runTimer(200);
+  const sent = requests.at(-1);
+  assert.equal(sent.url, '/api/preview');
+  const body = JSON.parse(sent.options.body);
+  assert.equal(body.text, '');
+  assert.equal(body.extraction_raw, '{"found": true, "issues": [{"name": "Veto"}]}');
+  assert.equal(body.model, 'reader');
+  assert.equal(body.source, 'manual');
+});

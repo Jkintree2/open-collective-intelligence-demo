@@ -325,12 +325,6 @@
   async function loadCandidates() {
     try {
       candidates = await request('/api/candidates'); candidatesReady = true;
-      for (const group of Object.keys(groups)) {
-        let list = find(`names-${group}`);
-        if (!list) { list = node('datalist'); list.id = `names-${group}`; form.append(list); }
-        const names = group === 'issues' ? Object.values(candidates.issues).map(item => item.name) : Object.values(candidates[group]);
-        list.replaceChildren(...names.map(name => new Option(name, name)));
-      }
       if (new URLSearchParams(location.search).has('issue') && !prefillConsumed && card.hidden && !reading) {
         prefillConsumed = true; openCard();
       }
@@ -341,7 +335,7 @@
   text.addEventListener('input', () => {
     // Typed edits become the new baseline; do not overwrite them with revised interim speech.
     speechBase = text.value; speechFloor = speechCount; speechBoundary = speechLast;
-    metadata = {source: 'manual'}; updateText(); changed(); });
+    metadata = {...metadata, source: 'manual'}; updateText(); changed(); });
   text.addEventListener('paste', event => {
     const paste = event.clipboardData.getData('text');
     const next = text.value.slice(0, text.selectionStart) + paste + text.value.slice(text.selectionEnd);
