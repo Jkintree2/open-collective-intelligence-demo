@@ -1,4 +1,4 @@
-"""group_issues on a hand made row list (PLAN_v2 Session 2, task 7) and the count line."""
+"""group_issues on a hand made row list (Session 2, task 7) and the count line."""
 
 from datetime import datetime, timezone
 

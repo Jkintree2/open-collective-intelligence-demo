@@ -158,4 +158,4 @@ And a list of the last fifty posts with a "delete" link each (removes the post, 
 
 ## Note on John's artifact
 
-The artifact he likes most ("The Commons") does persist a shared record between viewers through Claude's artifact storage, and it calls a model. What it cannot do is live outside claude.ai, hold a real graph, rank issues, or be owned and moved. The difference to describe to John, if it comes up, is ownership and the Issues view, not "it did not share". (Eston told him it has no shared backend on 2 September; John accepted it and moved on. No need to correct it unless he asks.)
+The artifact he likes most ("The Commons") does persist a shared record between viewers through Claude's artifact storage, and it calls a model. What it cannot do is live outside claude.ai, hold a real graph, rank issues, or be owned and moved. The difference is ownership and the Issues view, not whether it shares.

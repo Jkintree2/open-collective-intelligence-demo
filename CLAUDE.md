@@ -10,10 +10,8 @@ A closed-test website where a small group of people write statements about issue
 * `docs/planning/04_interface.md`: every screen, every piece of copy John reads (marked client-facing).
 * `docs/planning/05_extraction.md`: the model call, the JSON contract, the system prompt, the test cases, the APPROVE rule.
 * `docs/planning/06_seed.md`: the seed record and its expected counts.
-* `docs/planning/07_scope_guard.md`: what is in, what is out, and the sentence for everything else.
-* `docs/planning/PLAN_v2.md`: the sessions, and what "done" means for each.
 
-The session number and its checklist are given in the first message of the session. If they are absent, ask before writing code.
+The scope is the one agreed in the statement of work. If a task is unclear, ask before writing code.
 
 ## Stack
 
@@ -46,7 +44,6 @@ tests/             test_text.py, test_auth.py, test_payload.py, test_grouping.py
 docs/operators-guide.md   client-facing guide for John
 docs/planning/     copies of the planning documents
 render.yaml        Render blueprint; SECRET_KEY and ADMIN_TOKEN are generateValue: true
-.github/workflows/keepalive.yml   every 10 minutes GET /health; build-time only, deleted before the repository is transferred
 ```
 
 ## Run locally
@@ -78,7 +75,7 @@ Display verbs: claims, submits, proposes, has proposed, supports, refutes, appro
 
 ## Rules
 
-1. **No features outside `07_scope_guard.md`.** If a task seems to need one, stop and write it into the after list instead.
+1. **No features outside the agreed scope.** If a task seems to need one, stop and agree it with John first.
 2. **No new dependency without a one-line reason in the commit message.** The allowed set is in `requirements.txt`. A CDN script counts as a dependency.
 3. **Every push deploys, so every push must work.** Tests green, local site opened, then push.
 4. **The model is optional.** Any change to compose must be checked once with `LLM_API_KEY` unset.
@@ -88,9 +85,9 @@ Display verbs: claims, submits, proposes, has proposed, supports, refutes, appro
 8. **Nothing personal to the builder in the repo.** No URLs, emails or account names. LICENSE and README name John.
 9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.**
 10. **Keep files small and boring.** If `app.js` passes 400 lines or `graph.py` passes 500, split by responsibility before adding more.
-11. **Production is never a test target.** Local runs, tests and resets use the local Docker database. During the test week (16 to 20 September) work on a branch and merge to `main` only with the session checklist green.
+11. **Production is never a test target.** Local runs, tests and resets use the local Docker database. Work on a branch and merge to `main` only with the tests green.
 12. **Copy that John may change lives in environment variables.** The site name and the sentence at the top are `SITE_NAME` and `SITE_SENTENCE`; do not hard-code them in a template.
 
 ## Done means
 
-The session's checklist in `docs/planning/PLAN_v2.md` is verified in a browser or terminal, the commit is pushed, the deploy is green on Render, and the live URL was opened after the deploy.
+The change is verified in a browser or terminal, `pytest` is green, the commit is pushed, the deploy is green on Render, and the live URL was opened after the deploy.

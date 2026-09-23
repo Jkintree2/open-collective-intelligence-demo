@@ -1,4 +1,4 @@
-"""The passphrase gate: one signed cookie, no session store (PLAN_v2 decision 6)."""
+"""The passphrase gate: one signed cookie, no session store (project decision 6)."""
 
 from __future__ import annotations
 

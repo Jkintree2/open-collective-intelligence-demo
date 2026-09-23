@@ -1,4 +1,4 @@
-"""Settings read once from the environment (docs/planning/PLAN_v2.md, decision 9)."""
+"""Settings read once from the environment (project decision 9)."""
 
 from __future__ import annotations
 

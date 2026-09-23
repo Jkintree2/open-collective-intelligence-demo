@@ -38,7 +38,7 @@ Defaults: `LLM_BASE_URL=https://api.deepseek.com`, `LLM_MODEL=deepseek-v4-flash`
 
 Timeouts and retries: connect 5 s, read 25 s. One retry, immediately, on: network error, HTTP 5xx, HTTP 429, empty `content`, or content that fails to parse as JSON. No retry on 4xx other than 429. On 401, 402 or 403 (bad key, no balance, forbidden) the status and the provider's message are kept in memory as `last_model_error` with a timestamp and shown on the admin page, because a drained DeepSeek balance otherwise looks exactly like an outage. Total worst case about 55 s, but the browser gives up at 25 s and opens the empty card; a late success is logged and discarded.
 
-Provider swap: any OpenAI-compatible endpoint works by changing the three `LLM_*` variables. The `thinking` field is sent only when `LLM_BASE_URL` contains `deepseek`; OpenAI rejects unknown fields with HTTP 400 and other providers may too. During the build the key is Eston's own DeepSeek key, so the prompt is tuned on the model John will use; John's key replaces it on the handoff call. Groq or Ollama cloud remain the fallback by the same three variables. Session 3 starts with one raw call to whichever provider is configured, printed to the terminal, to confirm the model id, the thinking field, JSON mode, temperature and latency before any other code is written.
+Provider swap: any OpenAI-compatible endpoint works by changing the three `LLM_*` variables. The `thinking` field is sent only when `LLM_BASE_URL` contains `deepseek`; OpenAI rejects unknown fields with HTTP 400 and other providers may too. During the build the key is the builder's own DeepSeek key, so the prompt is tuned on the model John will use; John's key replaces it on the handoff call. Any other OpenAI-compatible provider remains the fallback by the same three variables. Session 3 starts with one raw call to whichever provider is configured, printed to the terminal, to confirm the model id, the thinking field, JSON mode, temperature and latency before any other code is written.
 
 If `LLM_API_KEY` is unset, `extract()` returns `None` immediately and the card opens empty with the "not answering" message. The app starts and runs without it.
 
@@ -158,7 +158,7 @@ The card's fields are posted as JSON to `POST /api/posts`. Same shape as the mod
 
 ## Test set
 
-`tests/extraction_cases.json` holds every case below. Two uses: `scripts/cards.py` sends each case to the live provider and prints the card it would produce, for Eston to read during prompt tuning (no assertions; asserting stances against a nondeterministic model makes flaky tests that eat the tuning budget); and `tests/test_payload.py` validates hand-written fixture responses for cases 1, 4, 5, 6A and 7 with no network, on every push. The expectations below are what Eston reads for, on normalised keys and stance values, not exact wording.
+`tests/extraction_cases.json` holds every case below. Two uses: `scripts/cards.py` sends each case to the live provider and prints the card it would produce, for the builder to read during prompt tuning (no assertions; asserting stances against a nondeterministic model makes flaky tests that eat the tuning budget); and `tests/test_payload.py` validates hand-written fixture responses for cases 1, 4, 5, 6A and 7 with no network, on every push. The expectations below are what the builder reads for, on normalised keys and stance values, not exact wording.
 
 ### Case 1. John's drug policy statement (his acceptance example)
 
