@@ -21,7 +21,7 @@ log = logging.getLogger("oci")
 last_model_error: dict[str, Any] | None = None
 
 SYSTEM_PROMPT = """
-You are helping to create collective human and digital intelligence through a shared and fact-checked knowledge graph of issues, solutions, and evidence in a conversational platform for digital democracy so people can empower themselves to make decisions more directly on issues from the local to the global level. A goal of the platform is to realize the principles of the Universal Declaration of Human Rights and the Earth Charter. Here is the full text of those two documents.
+You are helping to create collective human and digital intelligence through a shared knowledge graph of issues, solutions, and evidence in a conversational platform for digital democracy so people can empower themselves to make decisions more directly on issues from the local to the global level. A goal of the platform is to realize the principles of the Universal Declaration of Human Rights and the Earth Charter. Here is the full text of those two documents.
 
 Universal Declaration of Human Rights
 Preamble
