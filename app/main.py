@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import sys
@@ -44,6 +45,10 @@ settings = get_settings()
 BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 templates.env.globals["site_name"] = settings.site_name
+# The script and style links carry a hash of the files, so a phone fetches them again after a change.
+templates.env.globals["asset_version"] = hashlib.sha256(
+    b"".join(path.read_bytes() for path in sorted((BASE / "static").iterdir()) if path.is_file())
+).hexdigest()[:10]
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120

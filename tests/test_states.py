@@ -127,6 +127,14 @@ def test_position_choices_for_one_solution_share_a_name_so_only_one_is_chosen(st
     assert names[0] != names[3]
 
 
+def test_script_and_style_links_change_when_the_files_change(state_client):
+    client, main = state_client
+    version = main.templates.env.globals["asset_version"]
+    page = client.get("/").text
+    for name in ("app.css", "app.js", "about_issue.js"):
+        assert f"/static/{name}?v={version}" in page
+
+
 def test_issue_links_are_visible_and_sorts_are_labelled(state_client):
     client, _ = state_client
     page = client.get("/issues").text

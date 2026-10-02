@@ -51,8 +51,8 @@
   function syncName() { if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
   anon.addEventListener('change', syncName); syncName();
 </script>
-<script src="/static/app.js" defer></script>
-<script src="/static/about_issue.js" defer></script>
+<script src="/static/app.js?v={{ asset_version }}" defer></script>
+<script src="/static/about_issue.js?v={{ asset_version }}" defer></script>
 
 <section class="feed" id="feed">
   {% include "_feed.html" %}
