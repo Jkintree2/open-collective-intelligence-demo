@@ -126,6 +126,17 @@ test('cumulative results on a phone do not repeat words; desktop phrases still j
   assert.equal(get2('text').value, 'hello world');
 });
 
+test('a phone result that only changes case or punctuation does not repeat the words', async () => {
+  const {get, recognizers} = await setup();
+  await get('dictate').emit('click');
+  const r = recognizers[0];
+  // Interim text arrives lower case; the final one is capitalised and punctuated.
+  r.result('i approve'); r.result('i approve', 'I approve of community owned fleets.');
+  assert.equal(get('text').value, 'I approve of community owned fleets.');
+  r.result('I approve.', 'i approve of community owned fleets', 'I approve of community owned fleets of EVs');
+  assert.equal(get('text').value, 'I approve of community owned fleets of EVs');
+});
+
 test('speech respects the Unicode character cap and clears listening on errors or navigation', async () => {
   const {get, type, recognizers, win} = await setup();
   await type('😀'.repeat(3998)); await get('dictate').emit('click');
@@ -302,6 +313,28 @@ test('a tap while the preview is still running does not post when it comes back 
     assert.equal(get('post').disabled, true);
     assert.equal(requests.filter(r => r.url === '/api/posts').length, 0);
   }
+});
+
+test('a change that lands after the tap hands it to the next preview instead of dropping it', async () => {
+  // On an Android phone the keyboard commits the last word ("I approve") as focus leaves the
+  // box, so its input event can arrive after the tap on Post has started waiting.
+  const {get, type, requests, runTimer, flush} = await setup();
+  await get('skip').emit('click');
+  const row = get('issue-rows').children.at(-1);
+  row.children[1].value = 'Downtown'; await row.emit('input'); await runTimer(200);
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
+  await type('I approv');
+  const clicking = get('post').emit('click');
+  await flush();
+  await type('I approve');                         // the late commit from the keyboard
+  await runTimer(200);
+  assert.equal(JSON.parse(requests.at(-1).options.body).text, 'I approve');
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
+  assert.equal(requests.at(-1).url, '/api/posts');
+  assert.equal(JSON.parse(requests.at(-1).options.body).text, 'I approve');
+  requests.at(-1).resolve({id: 'p1'});
+  await clicking; await flush();
+  assert.equal(requests.filter(r => r.url === '/api/posts').length, 1);
 });
 
 test('two taps on Post in a row add the record once', async () => {

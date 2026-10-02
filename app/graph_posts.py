@@ -66,13 +66,14 @@ def merge_post(
             if issue.get("parent_key"):
                 tx.run(graph.MERGE_PART_OF, issue_key=issue["key"], parent_key=issue["parent_key"], **common)
         for solution in payload.solutions:
-            tx.run(
-                graph.MERGE_SOLUTION_PROPOSE,
-                solution_key=solution["key"],
-                solution_name=solution["name"],
-                for_issue_key=solution["for_issue_key"],
-                **common,
-            )
+            if not solution.get("stance_only"):
+                tx.run(
+                    graph.MERGE_SOLUTION_PROPOSE,
+                    solution_key=solution["key"],
+                    solution_name=solution["name"],
+                    for_issue_key=solution["for_issue_key"],
+                    **common,
+                )
             stance = graph.STANCE_TYPES.get(solution.get("stance", "none"))
             if stance:
                 tx.run(graph.MERGE_STANCE.replace("{stance}", stance), solution_key=solution["key"], **common)

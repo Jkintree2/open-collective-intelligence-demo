@@ -538,7 +538,7 @@ def prepared_card(payload: CardPayload, candidates: Candidates, text: str | None
         "issues": [{"name": row["name"], "parent": names.get(row["parent_key"]),
                     "existing": row["existing"]} for row in resolved.issues],
         "solutions": [{"name": row["name"], "for_issue": names[row["for_issue_key"]],
-                       "stance": row["stance"]} for row in resolved.solutions],
+                       "stance": row["stance"], "stance_only": row["stance_only"]} for row in resolved.solutions],
         "evidence": [{"name": row["name"], "url": row["url"] if text is None or row["url"] in urls else None,
                       "stance": row["stance"], "about": names[row["target_key"]]} for row in resolved.evidence],
     })

@@ -176,7 +176,9 @@ MATCH (i:Issue {key: $key})
 OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
 WITH i, collect(child) AS children
 UNWIND [i] + children AS x
-MATCH (x)-[r]-()
+// A position on one of the issue's solutions touches only the solution (GitHub issue 4).
+WITH x, [(x)-[r]-() | r] + [(x)-[:HAVE_PROPOSED]->(:Solution)<-[r:APPROVE|OPPOSE]-(:Person) | r] AS rels
+UNWIND rels AS r
 UNWIND [r.post_id, r.last_post_id] AS pid
 WITH DISTINCT pid
 WHERE pid IS NOT NULL

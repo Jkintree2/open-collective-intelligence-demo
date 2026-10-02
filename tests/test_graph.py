@@ -53,3 +53,42 @@ def test_merge_is_one_transaction_and_stores_final_payload_without_anonymous_nam
     post = next(params for query, params in calls if query == graph.CREATE_POST)
     assert person["name"] is None and post["display_name"] is None
     assert json.loads(post["payload"])["issues"][0]["key"] == "flooding"
+
+
+def test_a_position_on_an_existing_solution_writes_only_the_stance(monkeypatch):
+    """GitHub issue 4: no CLAIM, no PROPOSE and no HAVE_PROPOSED for a plain approval."""
+    from app import graph
+    from app.extract import CardPayload, Candidates, resolve_payload
+
+    calls = []
+
+    class Transaction:
+        def run(self, query, **parameters):
+            calls.append((query, parameters))
+
+    class Session:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def execute_write(self, work):
+            work(Transaction())
+
+    class Driver:
+        def session(self, **kwargs):
+            return Session()
+
+    monkeypatch.setattr(graph, "driver", lambda: Driver())
+    known = Candidates(issues={"climate": {"name": "Climate", "parent_key": None}},
+                       solutions={"ev fleets": "EV fleets", "carbon tax": "Carbon tax"},
+                       solution_issues={"ev fleets": ["Climate"], "carbon tax": ["Climate"]})
+    payload = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Climate"}],
+        "solutions": [{"name": "EV fleets", "for_issue": "Climate", "stance": "approve"}]}), known)
+    graph.merge_post("anon:test", None, True, None, "I approve EV fleets", payload)
+    queries = [query for query, _ in calls]
+    assert graph.MERGE_ISSUE_CLAIM not in queries and graph.MERGE_SOLUTION_PROPOSE not in queries
+    stances = [params for query, params in calls if query == graph.MERGE_STANCE.replace("{stance}", "APPROVE")]
+    assert [params["solution_key"] for params in stances] == ["ev fleets"]

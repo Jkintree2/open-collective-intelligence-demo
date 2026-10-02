@@ -131,6 +131,7 @@ Rules applied in Python before the transaction:
 * Every evidence item must name a target from the payload or the graph. Default target is the first issue in the payload.
 * A parent that does not exist is dropped (the issue becomes top level) and logged. A parent that is itself a sub-issue is replaced by its own parent and logged. A child that already has a parent keeps it; the request is logged and ignored.
 * Node names go through `clean_name()` and keys through `make_key()` as defined above; a name whose key is rejected is dropped from the payload with a message on the card.
+* A position (approve or oppose) on a solution the record already lists under that issue writes only the `APPROVE` or `OPPOSE` edge: no `PROPOSE`, no `HAVE_PROPOSED`. An existing issue whose only part in the post is to hold such positions is not claimed again; a new solution, evidence or sub-issue for it keeps the claim. The issue page still lists the post through the stance edge (GitHub issue 4, October 2026).
 * When `anonymous` is true, `display_name` is stored as null and the poster's name cookie is left untouched.
 * Empty payload (no issues, no solutions, no evidence) is still stored as a Post with `source = manual` and no edges, so the feed shows what the tester wrote. This is the "post as a raw statement" path of Session 1.
 

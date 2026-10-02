@@ -51,6 +51,14 @@ class SolutionItem(BaseModel):
     name: str = ""
     for_issue: str | None = None
     stance: str = "none"
+    # Recomputed by the server: true when the row only takes a position on a solution the
+    # record already lists under that issue, so nothing is proposed again (GitHub issue 4).
+    stance_only: bool = False
+
+    @field_validator("stance_only", mode="before")
+    @classmethod
+    def _flag(cls, value: Any) -> bool:
+        return value if isinstance(value, bool) else False
 
     @field_validator("name", "for_issue", mode="before")
     @classmethod
@@ -260,10 +268,32 @@ def resolve_payload(payload: CardPayload, candidates: Candidates) -> ResolvedPay
                 "existing": key in candidates.evidence,
             }
         )
+    _positions_only(out, candidates)
     if out.dropped or out.corrected:
         log.info(json.dumps({"event": "payload_dropped", "dropped": out.dropped,
                              "corrected": out.corrected}))
     return out
+
+
+def _positions_only(out: ResolvedPayload, candidates: Candidates) -> None:
+    """A position on a solution the record already lists under that issue is only the stance.
+
+    GitHub issue 4: approving one solution must not claim its issue again or propose the
+    solution again. An existing issue is left out when its only part in the post is to hold
+    such positions; anything else about it (a new solution, evidence, a sub-issue) keeps it.
+    """
+    for row in out.solutions:
+        linked = {make_key(name) for name in candidates.solution_issues.get(row["key"], [])}
+        row["stance_only"] = row["existing"] and row["stance"] != "none" and row["for_issue_key"] in linked
+    used = {row["for_issue_key"] for row in out.solutions if not row["stance_only"]}
+    used |= {row["target_key"] for row in out.evidence if row["target_label"] == "Issue"}
+    used |= {row["parent_key"] for row in out.issues if row["parent_key"]}
+    held = {row["for_issue_key"] for row in out.solutions if row["stance_only"]} - used
+    out.issues = [
+        row for row in out.issues
+        if not (row["key"] in held and row["existing"]
+                and row["parent_key"] == candidates.issues[row["key"]].get("parent_key"))
+    ]
 
 
 def _resolve_parent(

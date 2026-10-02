@@ -1,5 +1,7 @@
 """Field rules from docs/planning/05_extraction.md, applied server side to the card payload."""
 
+from dataclasses import replace
+
 from app.extract import Candidates, CardPayload, resolve_payload
 
 ISSUE = "Rising sea levels threaten coastal housing"
@@ -176,3 +178,54 @@ def test_a_childless_top_level_issue_can_gain_a_parent_new_on_the_same_card():
     resolved = resolve_payload(payload, known)
     assert [item["parent_key"] for item in resolved.issues] == [None, "downtown st louis revitalization"]
     assert not resolved.corrected
+
+
+CLIMATE = Candidates(
+    issues={"global climate coordination": {"name": "Global climate coordination", "parent_key": None}},
+    solutions={"global carbon tax by referendum": "Global carbon tax by referendum",
+               "community owned fleets of evs for ride sharing": "Community owned fleets of EVs for ride sharing"},
+    solution_issues={"global carbon tax by referendum": ["Global climate coordination"],
+                     "community owned fleets of evs for ride sharing": ["Global climate coordination"]},
+)
+FLEETS = "Community owned fleets of EVs for ride sharing"
+
+
+def test_approving_an_existing_solution_records_only_the_approval():
+    """GitHub issue 4: the card carries the issue it came from, but nothing is claimed or proposed again."""
+    resolved = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Global climate coordination"}],
+        "solutions": [{"name": FLEETS, "for_issue": "Global climate coordination", "stance": "approve"}]}), CLIMATE)
+    assert resolved.issues == []
+    assert [(row["name"], row["stance"], row["stance_only"]) for row in resolved.solutions] == [(FLEETS, "approve", True)]
+
+
+def test_a_position_on_a_solution_for_an_issue_it_is_not_yet_under_still_proposes_it():
+    known = replace(CLIMATE, issues={**CLIMATE.issues, "urban congestion": {"name": "Urban congestion", "parent_key": None}})
+    resolved = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Urban congestion"}],
+        "solutions": [{"name": FLEETS, "for_issue": "Urban congestion", "stance": "approve"}]}), known)
+    assert [row["key"] for row in resolved.issues] == ["urban congestion"]
+    assert resolved.solutions[0]["stance_only"] is False
+
+
+def test_an_issue_with_its_own_content_is_still_claimed_beside_a_position():
+    resolved = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Global climate coordination"}],
+        "solutions": [{"name": FLEETS, "for_issue": "Global climate coordination", "stance": "approve"},
+                      {"name": "Plant more trees", "for_issue": "Global climate coordination", "stance": "none"}]}), CLIMATE)
+    assert [row["key"] for row in resolved.issues] == ["global climate coordination"]
+    assert [row["stance_only"] for row in resolved.solutions] == [True, False]
+    with_evidence = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Global climate coordination"}],
+        "solutions": [{"name": FLEETS, "for_issue": "Global climate coordination", "stance": "approve"}],
+        "evidence": [{"name": "UNEP report", "about": "Global climate coordination"}]}), CLIMATE)
+    assert [row["key"] for row in with_evidence.issues] == ["global climate coordination"]
+
+
+def test_an_existing_solution_with_no_position_and_a_new_solution_with_one_are_proposed():
+    resolved = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Global climate coordination"}],
+        "solutions": [{"name": FLEETS, "for_issue": "Global climate coordination", "stance": "none"},
+                      {"name": "Plant more trees", "for_issue": "Global climate coordination", "stance": "approve"}]}), CLIMATE)
+    assert [row["key"] for row in resolved.issues] == ["global climate coordination"]
+    assert [row["stance_only"] for row in resolved.solutions] == [False, False]

@@ -237,3 +237,20 @@ def test_a_hand_crafted_form_post_cannot_store_an_overlong_person_name(api):
                            follow_redirects=False)
     assert response.status_code == 303
     assert len(writes[0][0][3]) <= 120
+
+
+def test_approving_an_existing_solution_previews_and_posts_one_approval(api, monkeypatch):
+    """GitHub issue 4: the card opened from an issue page holds the issue and the approved solution."""
+    client, main, writes = api
+    known = Candidates(issues={"climate": {"name": "Climate", "parent_key": None}},
+                       solutions={"ev fleets": "EV fleets", "carbon tax": "Carbon tax"},
+                       solution_issues={"ev fleets": ["Climate"], "carbon tax": ["Climate"]})
+    monkeypatch.setattr(main.graph, "candidates", lambda: known)
+    body = {"text": "", "anonymous": True, "issues": [{"name": "Climate"}],
+            "solutions": [{"name": "EV fleets", "for_issue": "Climate", "stance": "approve"}]}
+    preview = client.post("/api/preview", json=body).json()
+    assert preview["valid"] and preview["sentences"] == ["Anonymous approves EV fleets"]
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, _ = writes[0]
+    assert args[4] == "Anonymous approves EV fleets."
+    assert args[5].issues == [] and [row["key"] for row in args[5].solutions] == ["ev fleets"]

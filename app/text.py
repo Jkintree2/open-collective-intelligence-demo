@@ -85,8 +85,9 @@ def sentences(payload, display_name: str) -> list[str]:
     """The card's sentences, in the order of the acceptance examples."""
     name = clean_name(display_name) or "Anonymous"
     result = [f"{name} claims {item.name}" for item in payload.issues]
-    result.extend(f"{name} proposes {item.name}" for item in payload.solutions)
-    result.extend(f"{item.for_issue} has proposed {item.name}" for item in payload.solutions)
+    proposed = [item for item in payload.solutions if not item.stance_only]
+    result.extend(f"{name} proposes {item.name}" for item in proposed)
+    result.extend(f"{item.for_issue} has proposed {item.name}" for item in proposed)
     result.extend(f"{name} {item.stance}s {item.name}" for item in payload.solutions if item.stance != "none")
     result.extend(f"{name} submits {item.name}" for item in payload.evidence)
     result.extend(f"{item.name} {item.stance} {item.about}" for item in payload.evidence)

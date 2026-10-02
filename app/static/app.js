@@ -30,8 +30,11 @@
       if (!listening || recognition !== current) return;
       speechCount = event.results.length;
       speechLast = event.results[speechCount - 1]?.[0].transcript || '';
-      // A phone repeats the utterance so far in every result; collapse each growing run to its longest.
-      const merge = (kept, t) => { const last = kept.at(-1); return last !== undefined && (t.startsWith(last) || last.startsWith(t)) ? [...kept.slice(0, -1), t.length >= last.length ? t : last] : [...kept, t]; };
+      // A phone repeats the utterance so far in every result, often changing only case or punctuation
+      // (lower case while interim, capitalised when final); collapse each growing run to its longest.
+      const plainWords = t => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+      const merge = (kept, t) => { const last = kept.at(-1), a = plainWords(t), b = last === undefined ? '' : plainWords(last);
+        return last !== undefined && (a.startsWith(b) || b.startsWith(a)) ? [...kept.slice(0, -1), a.length >= b.length ? t : last] : [...kept, t]; };
       // Keep typed edits, but retain new words extending the interim result they followed.
       const boundary = event.results[speechFloor - 1]?.[0].transcript;
       const base = speechBase + (speechFloor && boundary?.startsWith(speechBoundary) ? boundary.slice(speechBoundary.length) : '');
@@ -187,8 +190,9 @@
     revision++;
     clearTimeout(previewTimer);
     previewController?.abort();
-    // A superseded preview answers no, so a tap waiting on it is never left hanging.
-    previewSettle?.(false); previewSettle = null; previewPending = null;
+    // A tap waiting on a superseded preview waits on the next one instead: on a phone the keyboard
+    // can commit the last word after the tap, and that late change must not swallow it.
+    const waiting = previewSettle; previewSettle = null; previewPending = null;
     refresh();
     const poster = identity();
     find('credit').textContent = poster.anonymous ? 'Posting adds this to the shared record, listed as Anonymous.' : `Posting adds this to the shared record, credited to ${poster.display_name}.`;
@@ -200,12 +204,13 @@
     if (!card.hidden && noStatement && filled && !reading) find('card-message').textContent = 'No statement written. The lines under "What this will add" will be posted as your statement.';
     else if (!card.hidden && find('card-message').textContent.startsWith('No statement written')) find('card-message').textContent = '';
     if (card.hidden || !candidatesReady || (noStatement && !filled) || [...text.value].length > 4000 || incomplete || posting) {
-      find('post').disabled = true; return;
+      waiting?.(false); find('post').disabled = true; return;
     }
     const expected = revision;
     // The tap can arrive before the timer fires, so the promise it waits on exists from now on.
     previewPending = new Promise(resolve => { previewSettle = resolve; });
     const settle = previewSettle;
+    if (waiting) previewPending.then(waiting);
     previewTimer = setTimeout(() => {
       previewController = new AbortController();
       (async () => {
@@ -222,7 +227,7 @@
           }
           return false;
         }
-      })().then(settle);
+      })().then(ok => { if (expected === revision) settle(ok); });
     }, 200);
   }
   function addRow(group, item = {}) {
