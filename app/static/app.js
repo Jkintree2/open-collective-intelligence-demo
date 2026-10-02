@@ -112,6 +112,7 @@
       .filter(([, item]) => item.parent_key === topKey).map(([, item]) => item.name)];
     return {label: `About ${top?.name || about.name}`, names: names.filter(Boolean)};
   }
+  const grow = box => { box.style.height = 'auto'; box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`; };  // Show all of a filled box.
   function field(row, name, labelText, type = 'input') {
     const label = node('label', labelText);
     const control = node(type === 'input' && name === 'name' ? 'textarea' : type);
@@ -120,7 +121,7 @@
     if (type === 'input' && name === 'name') {
       control.className = 'name';
       control.rows = 1; control.maxLength = 300;
-      control.addEventListener('input', () => { control.value = control.value.replace(/[\r\n]+/g, ' '); control.style.height = 'auto'; control.style.height = `${control.scrollHeight}px`; });
+      control.addEventListener('input', () => { control.value = control.value.replace(/[\r\n]+/g, ' '); grow(control); });
     } else if (type === 'input') { control.type = 'text'; control.maxLength = name === 'url' ? 2000 : 120; }
     row.element.append(label, control);
     row[name] = control;
@@ -162,7 +163,7 @@
     for (const [group, rows] of Object.entries(groups)) {
       for (const row of rows) {
         const known = candidates[group][key(row.name.value)];
-        row.badge.textContent = row.name.value.trim() ? known ? 'existing' : 'new' : '';
+        row.badge.textContent = row.name.value.trim() ? known ? 'existing' : 'new' : ''; grow(row.name);
         if (row.parent) {
           const self = key(row.name.value);
           options(row.parent, [['On this form', cardTop.filter(name => key(name) !== self)],
@@ -325,7 +326,7 @@
     find('read').disabled = !text.value.trim() || size > 4000 || reading || posting;
     find('skip').disabled = size > 4000 || posting;
     find('counter').hidden = size < 3500; find('counter').textContent = `${size} / 4000`;
-    text.style.height = 'auto'; text.style.height = `${text.scrollHeight}px`;
+    grow(text);
   }
   async function loadCandidates() {
     try {
