@@ -1,6 +1,6 @@
 # Roadmap
 
-Open Collective Intelligence is a conversational platform for digital democracy: people write statements about issues they care about, the platform sorts each one into issues, solutions and evidence, and everything joins one shared record that everyone can read. This page lists what has been built so far and the phases that come next. Each phase stands on its own and can be funded separately.
+Open Collective Intelligence is a conversational platform for digital democracy: people write statements about issues they care about, the platform sorts each one into issues, solutions and evidence, and everything joins one shared record that everyone can read. This page lists what has been built so far and the phases that come next. Each phase stands on its own.
 
 ## Built so far
 
@@ -22,7 +22,7 @@ At handover on 24 September 2026 the prototype moved to accounts held by John Ki
 
 ## Next phases
 
-### Phase 1: People and positions (funded by John Kintree)
+### Phase 1: People and positions
 
 Every tester gets their own sign-in, so a person is counted once and can stand behind what they post.
 
@@ -32,14 +32,14 @@ Every tester gets their own sign-in, so a person is counted once and can stand b
 * Keyword search on the Issues page
 * Tidying the issue tree: move an issue under another, rename it, or merge two issues that mean the same thing, with a record of every change
 
-### Phase 2: Evidence that checks itself (open for funding)
+### Phase 2: Evidence that checks itself
 
 Evidence stops being just a link. The platform reads the page behind it and tells the person what it found before anything is saved.
 
 * Read the page behind an evidence link and check whether it says what the poster claims (supports, refutes or unclear), and suggest the further issues, solutions and evidence it contains, for the person to accept or correct
 * Source confidence: a simple, published method (type of source, date, primary or secondary, agreement with other sources), shown in words rather than scores
 
-### Phase 3: Talking to the record (open for funding)
+### Phase 3: Talking to the record
 
 The platform starts to talk back: it answers questions from what people have posted and asks the questions a good moderator would.
 
@@ -61,4 +61,4 @@ A connector for AI assistants (MCP), so people can read and post to the record t
 
 ## Taking part
 
-To test the prototype, suggest a change or support a phase, open an issue in this repository or contact John Kintree. All code is released under the [MIT License](LICENSE).
+To test the prototype or suggest a change, open an issue in this repository or contact John Kintree. All code is released under the [MIT License](LICENSE).
