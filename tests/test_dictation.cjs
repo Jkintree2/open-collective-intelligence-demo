@@ -262,6 +262,17 @@ test('part of offers a new top level issue from this card and lists are grouped'
   assert.deepEqual(parent.children[2].children.map(o => o.value), ['Downtown']);
 });
 
+test('part of says an existing top level issue is already one, and a new one is new', async () => {
+  const {get, flush} = await setup({issues: {'climate change': {name: 'Climate change', parent_key: null}}});
+  await get('skip').emit('click'); await flush();
+  const row = get('issue-rows').children.at(-1);
+  const parent = () => row.children.find(c => c.tag === 'select');
+  row.children[1].value = 'Climate change'; await row.emit('input');
+  assert.equal(parent().children[0].text, 'none, this is already a top level issue');
+  row.children[1].value = 'Riverfront'; await row.emit('input');
+  assert.equal(parent().children[0].text, 'none, this is a new top level issue');
+});
+
 test('a filled card previews and posts with an empty text box', async () => {
   const {get, requests, runTimer, flush} = await setup();
   await get('skip').emit('click');
