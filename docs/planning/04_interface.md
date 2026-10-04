@@ -342,14 +342,16 @@ When the link cannot be used, one page with one of these:
 
 > **Forgot your password**
 >
-> Enter the email address you were invited with, and we will send you a link to choose a new password.
+> Enter the email address you were invited with, and we will send you a link to choose a password.
 >
 > Email: [ input ]
 > [ Send the link ]
 
 Afterwards, whatever was typed:
 
-> If that address belongs to someone taking part, a link is on its way. It works once, for one hour.
+> If that address belongs to someone taking part, an email with a link is on its way.
+
+Someone who was entered but has not accepted yet gets the invitation email again, with a fresh link, instead of the password email. Nobody else gets anything.
 
 > Too many tries. Please wait a minute and try again.
 

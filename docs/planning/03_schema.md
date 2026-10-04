@@ -366,7 +366,7 @@ Added 4 October 2026 at Gate 0 of Phase 1. This section is the binding spec for 
 | D1 Email | Sent through the Gmail API with only the `gmail.send` permission on John's account, over HTTPS with `httpx`. Behind one function, `mailer.send(to, subject, text) -> bool`, so a platform address can replace it later. |
 | D2 Anonymous posts | "Post anonymously" changes what is shown, not who the post belongs to. Every post and stance hangs off the signed-in account, so a person is counted once and can edit or delete their anonymous posts. |
 | D3 People from the test weeks | `name:` and `anon:` Persons from 0.1 stay as they are, with their posts and stances. Accounts are new Persons. Nothing is linked or moved automatically. |
-| D4 Passwords | At least 10 characters, no other rules. Invitation links last 14 days, password links 1 hour. One live link per person: a new link replaces the old one, and using a link clears it. A password link is sent only to an accepted, active account. |
+| D4 Passwords | At least 10 characters, no other rules. Invitation links last 14 days, password links 1 hour. One live link per person: a new link replaces the old one, and using a link clears it. A password link is sent only to an accepted, active account. "Forgot your password?" for someone entered but not yet accepted sends a fresh invitation link instead, with the same message and limits, so a lost or expired invitation never leaves anyone stuck. |
 | D5 Tidying | Only accounts with `admin = true` (John's) move, rename and merge issues. Every change writes a `Change` that every member can read. |
 | D6 Entering a person | `ENTERED` from inviter to person, carrying the relationship the inviter declares and `agreed: true` from the form's tick. Any accepted, active member can enter others. |
 | D7 Stances | One stance per person and solution from Phase 1 on: a new stance replaces that person's opposite one, by click or by post, for every Person. Pairs left from 0.1 stay and count both ways (net zero) until that person takes a new stance on that solution. |
@@ -490,14 +490,20 @@ WHERE p.accepted_at IS NULL AND p.active
 SET p.token_hash = $token_hash, p.token_purpose = 'invite', p.token_expires_at = $expires_at
 RETURN p.email AS email, p.name AS name;
 
-// password link: only for an accepted, active account; nothing is sent otherwise
+// "Forgot your password?": an accepted, active account gets a password link; someone entered
+// but not yet accepted gets a fresh invitation link; anyone else gets nothing, and the page
+// says the same thing either way
 MATCH (p:Person {email: $email})
-WHERE p.accepted_at IS NOT NULL AND p.active
-SET p.token_hash = $token_hash, p.token_purpose = 'reset', p.token_expires_at = $expires_at
-RETURN p.email AS email, p.name AS name
+WHERE p.active
+WITH p, CASE WHEN p.accepted_at IS NULL THEN 'invite' ELSE 'reset' END AS purpose
+SET p.token_hash = $token_hash, p.token_purpose = purpose,
+    p.token_expires_at = CASE purpose WHEN 'invite' THEN $invite_expires_at ELSE $reset_expires_at END
+WITH p, purpose
+OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
+RETURN p.email AS email, p.name AS name, purpose, inviter.name AS inviter_name, e.relationship AS relationship
 ```
 
-The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`.
+The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`. The back room's "Send a password link" uses the second with the account's key in place of the email and only for an accepted account. Python sends the invitation email for `invite` (John's own wording when there is no inviter) and the password email for `reset`. Both requests draw on the same limits: per address and per minute.
 
 **Q18. Choose a new password through a link.**
 
