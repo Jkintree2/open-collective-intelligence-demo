@@ -34,7 +34,7 @@ app/admin.py       Basic-auth admin routes and safe reading-error summaries
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
 app/templates/     base, enter, index, issues, issue, admin, error, asleep, _feed and _about_issue (fragments)
-app/static/        app.css, app.js, about_issue.js (the summary above the write form)
+app/static/        app.css; card.js (card, preview, Post), dictation.js (speech input), app.js (page wiring; loads last), about_issue.js (the summary above the write form)
 seed/seed.json     the seed record, same shape as the card payload
 scripts/__init__.py
 scripts/seed.py    python -m scripts.seed [--counts] [--reset --yes [--force]]; reset refuses a database holding non-seed nodes
@@ -84,7 +84,7 @@ Display verbs: claims, submits, proposes, has proposed, supports, refutes, appro
 7. **Secrets never touch the repo, logs or templates.** Log the request id, sizes, latencies and counts; log text only at DEBUG.
 8. **Nothing personal to the builder in the repo.** No URLs, emails or account names. LICENSE and README name John.
 9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.**
-10. **Keep files small and boring.** If `app.js` passes 400 lines or `graph.py` passes 500, split by responsibility before adding more.
+10. **Keep files small and boring.** If a script in `app/static/` passes 400 lines or `graph.py` passes 500, split by responsibility before adding more.
 11. **Production is never a test target.** Local runs, tests and resets use the local Docker database. Work on a branch and merge to `main` only with the tests green.
 12. **Copy that John may change lives in environment variables.** The site name and the sentence at the top are `SITE_NAME` and `SITE_SENTENCE`; do not hard-code them in a template.
 

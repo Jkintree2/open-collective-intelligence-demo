@@ -131,8 +131,11 @@ def test_script_and_style_links_change_when_the_files_change(state_client):
     client, main = state_client
     version = main.templates.env.globals["asset_version"]
     page = client.get("/").text
-    for name in ("app.css", "app.js", "about_issue.js"):
+    for name in ("app.css", "card.js", "dictation.js", "app.js", "about_issue.js"):
         assert f"/static/{name}?v={version}" in page
+    # app.js wires up what card.js and dictation.js define, so it comes after them.
+    order = [page.index(f"/static/{name}?") for name in ("card.js", "dictation.js", "app.js", "about_issue.js")]
+    assert order == sorted(order)
 
 
 def test_issue_links_are_visible_and_sorts_are_labelled(state_client):
