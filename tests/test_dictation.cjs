@@ -52,7 +52,11 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
     AbortController, URLSearchParams, fetch,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
     clearTimeout: id => timers.delete(id)};
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../app/static/app.js'), 'utf8'), context);
+  // The page loads these in this order (index.html); app.js wires up what the first two define.
+  vm.createContext(context);
+  for (const file of ['card.js', 'dictation.js', 'app.js']) {
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
+  }
   const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
   await flush();
   const type = async value => { get('text').value = value; await get('text').emit('input'); };
