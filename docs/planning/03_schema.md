@@ -2,6 +2,8 @@
 
 > **Revised 5 September 2026 after REVIEW.md.** Changed: `display_name` is null on anonymous posts (M7); name cleaning and key rules tightened (m6, m7, m8, M4); `PART_OF` guards for a parent that is a sub-issue and a child that already has a parent (M2, M3); Q1 computes `last_activity` over every edge and returns person keys so top-level rows rank on inclusive counts (C7, m4); Q6 includes children's posts (m5); Q8 is capped and uncached (M4, M20); Q11 keeps MERGEd edges and deletes orphaned non-seed nodes (M4, M9); the worked example follows the corrected case 1 (C6).
 
+> **Extended 4 October 2026 for Phase 1 (People and positions, SOW 0.2).** Added: accounts on `Person`, the `ENTERED`, `MADE` and `CHANGED` relationships, the `Change` label, one stance per person, `Post.edited_at`, full-text indexes, and queries Q12 to Q33; Q1, Q4, Q7, Q10, the write path's stance statement and the export format are revised. See "Phase 1: people and positions" at the end. Everything in that section ships behind the `ACCOUNTS_ENABLED` setting except search.
+
 Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kickoff decisions require: sub-issues, an anonymous flag on relationships, a source link on Evidence, timestamps, and a Post node so every edge traces back to the text that produced it.
 
 ## Node labels
@@ -33,7 +35,7 @@ Names are John's README verbs exactly. Direction is always from the actor or sou
 | `OPPOSE` | Person | Solution | same as APPROVE | MERGE, one per person and solution |
 | `PART_OF` | Issue | Issue | `post_id`, `created_at` | MERGE. One level deep in 0.1: the parent must not itself have a `PART_OF`, and a child that already has a parent keeps it. Both guards are in the write path's WHERE clause; a requested parent that is itself a sub-issue is replaced by that sub-issue's parent in Python before the transaction. |
 
-A person can hold both `APPROVE` and `OPPOSE` on the same solution if they posted both. The counts show both. Reconciling stances is the voting layer, out of scope (addendum 01).
+A person can hold both `APPROVE` and `OPPOSE` on the same solution if they posted both. The counts show both. Reconciling stances is the voting layer, out of scope (addendum 01). **Phase 1 replaces this rule:** one stance per person and solution from then on; pairs left from 0.1 stay until that person takes a new stance (see "Stances" in the Phase 1 section).
 
 ### DECIDE is out
 
@@ -351,3 +353,403 @@ John's drug policy statement, named, with the explicit-stance rule from `05_extr
 ```
 
 No `PART_OF` (drug dealing is a new top-level issue), no `Evidence`. One `APPROVE`, on "Treat drug use as medical issue", because "Deal with it as a medical issue" is an imperative; none on "Decriminalize drug sales" ("could be reduced by") unless John ticks "I approve this" on the card.
+
+## Phase 1: people and positions
+
+Added 4 October 2026 at Gate 0 of Phase 1. This section is the binding spec for the Phase 1 code; nothing in it is built before it is agreed here. New Cypher lives in the `graph*.py` modules (for example `graph_accounts.py`, `graph_tidy.py`), with relationship types and labels substituted only from whitelists, as before.
+
+### Decisions recorded here
+
+| | Decision |
+|---|---|
+| Invitations (John, 2 October 2026) | An accepted member enters a person who has agreed in advance: name, email, country, postal code, and how they know each other. The person accepts through an emailed link that works once and chooses their own password. No password is ever sent by email. Emails go from jkintree@gmail.com. Each new person can then enter others. |
+| D1 Email | Sent through the Gmail API with only the `gmail.send` permission on John's account, over HTTPS with `httpx`. Behind one function, `mailer.send(to, subject, text) -> bool`, so a platform address can replace it later. |
+| D2 Anonymous posts | "Post anonymously" changes what is shown, not who the post belongs to. Every post and stance hangs off the signed-in account, so a person is counted once and can edit or delete their anonymous posts. |
+| D3 People from the test weeks | `name:` and `anon:` Persons from 0.1 stay as they are, with their posts and stances. Accounts are new Persons. Nothing is linked or moved automatically. |
+| D4 Passwords | At least 10 characters, no other rules. Invitation links last 14 days, password links 1 hour. One live link per person: a new link replaces the old one, and using a link clears it. A password link is sent only to an accepted, active account. |
+| D5 Tidying | Only accounts with `admin = true` (John's) move, rename and merge issues. Every change writes a `Change` that every member can read. |
+| D6 Entering a person | `ENTERED` from inviter to person, carrying the relationship the inviter declares and `agreed: true` from the form's tick. Any accepted, active member can enter others. |
+| D7 Stances | One stance per person and solution from Phase 1 on: a new stance replaces that person's opposite one, by click or by post, for every Person. Pairs left from 0.1 stay and count both ways (net zero) until that person takes a new stance on that solution. |
+| D8 Between entry and acceptance | Entry creates the account Person, without a password, and its `ENTERED` in one transaction. Until acceptance the person cannot sign in, post or take a stance, and appears nowhere public. The person may correct their own name, country and postal code when accepting; the relationship stays as declared. The inviter or John may send the invitation again, or withdraw an entry never accepted. |
+
+### Person, extended for accounts
+
+An account is a `Person` with an `email`. Persons from 0.1 have no `email` and none of the properties below, and every constraint below ignores them.
+
+| Property | Value | Notes |
+|---|---|---|
+| `key` | `acct:<uuid4>` | Never derived from the name or the email, so two people with one name stay two people. |
+| `name` | string | Required. Shown on the person's named posts. `clean_name()`, at most 120 characters, and `make_key()` must accept it. |
+| `anonymous` | `false` | Anonymity belongs to a post, never to an account. |
+| `seed` | `false` | |
+| `email` | string | Trimmed and lower-cased before it is stored or looked up; unique. Shown only to the person, the person who entered them, and the back room. |
+| `country`, `postal_code` | string | As entered, at most 80 and 20 characters. Shown only where `email` is. |
+| `password_hash` | string or null | `scrypt$<n>$<r>$<p>$<salt>$<hash>` from `hashlib.scrypt` (n 16384, r 8, p 1, 16 byte random salt, base64), compared in constant time. Null until accepted, and after a restore. |
+| `admin` | bool | `true` only on John's account, set by `scripts/make_admin.py`. |
+| `active` | bool | `false` when switched off in the back room: cannot sign in; posts and stances stay. |
+| `created_at` | datetime | When the person was entered (the plan's `entered_at`). |
+| `accepted_at` | datetime or null | Null until the person accepts. The back room's "invited" means null. |
+| `token_hash` | string or null | SHA-256 hex of the live link's secret (`secrets.token_urlsafe(32)`). The secret exists in plain text only inside the outgoing email; it is never stored, logged or shown. |
+| `token_purpose` | `invite`, `reset` or null | |
+| `token_expires_at` | datetime or null | |
+
+`password_hash` and the three `token_*` properties are read only inside the accounts code: never returned to a template, never logged at any level, never exported.
+
+**Being signed in.** No session store, as with the passphrase. The cookie holds the account key, an expiry thirty days ahead and an HMAC under `SECRET_KEY` over both plus a SHA-256 of the current `password_hash`. A password change or reset therefore signs out every other device. Every request reads the account (Q13) and treats it as signed out when it is missing, not active or not accepted.
+
+### New relationship types and label
+
+| Type | From | To | Properties | Cardinality |
+|---|---|---|---|---|
+| `ENTERED` | Person (account) | Person (account) | `relationship` (one of `family`, `neighbor`, `friend`, `work`, `school`, `health`, `organization`), `agreed` (`true`), `created_at` | Exactly one into every account except the root, John's, made by `make_admin.py`. Created with the Person in one transaction; never moved; removed only with a Person whose entry is withdrawn. |
+| `MADE` | Person (admin) | Change | `created_at` | one per Change |
+| `CHANGED` | Change | Issue | `created_at` | one per Change. On a merge it points at the issue that was kept, and the removed issue's earlier `CHANGED` edges move to the kept one. |
+
+| Label | Properties | Notes |
+|---|---|---|
+| `Change` | `id` (unique uuid), `kind` (`move`, `rename`, `merge`), `created_at`, `details` | `details` is a JSON string, like `Post.payload`. move: `issue_key`, `issue_name`, `from_parent_key`, `from_parent_name`, `to_parent_key`, `to_parent_name` (parents null for top level). rename: `from_key`, `from_name`, `to_key`, `to_name`. merge: `kept_key`, `kept_name`, `merged_key`, `merged_name`, and `moved`, the number of relationships moved per type. |
+
+Changes to existing types:
+
+* `APPROVE` and `OPPOSE` made by a click carry `source: "click"`, `anonymous: false` and `created_at`, and no `post_id`. One per person and solution, as before; now never both (D7).
+* `PART_OF` made by tidying carries `created_at` and no `post_id`.
+* `Post` gains `edited_at` (datetime, null until its author edits it).
+
+### Constraints and indexes
+
+Added to the startup list, idempotent like the others:
+
+```cypher
+CREATE CONSTRAINT person_email IF NOT EXISTS FOR (p:Person) REQUIRE p.email IS UNIQUE;
+CREATE CONSTRAINT person_token IF NOT EXISTS FOR (p:Person) REQUIRE p.token_hash IS UNIQUE;
+CREATE CONSTRAINT change_id    IF NOT EXISTS FOR (c:Change) REQUIRE c.id IS UNIQUE;
+CREATE FULLTEXT INDEX record_names IF NOT EXISTS FOR (n:Issue|Solution|Evidence) ON EACH [n.name];
+CREATE FULLTEXT INDEX post_text    IF NOT EXISTS FOR (p:Post) ON EACH [p.text];
+```
+
+The token constraint doubles as the index for looking a link up.
+
+### Accounts
+
+**Q12. Enter a person.** One write transaction. Python has already cleaned every field, lower-cased the email, checked the relationship against the list and the tick, and made the link (`token`, `token_hash`). An email that is already taken fails on the constraint, and Python answers that it has been entered already; a double-submitted form takes that path too, so it can never make two accounts. The email is sent only after this commits.
+
+```cypher
+MATCH (inviter:Person {key: $inviter_key})
+WHERE inviter.active AND inviter.accepted_at IS NOT NULL
+CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
+                  email: $email, country: $country, postal_code: $postal_code,
+                  admin: false, active: true, created_at: $now,
+                  token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
+CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p)
+RETURN p.key AS key
+```
+
+**Q13. The signed-in account**, on every request:
+
+```cypher
+MATCH (p:Person {key: $key})
+WHERE p.active AND p.accepted_at IS NOT NULL
+RETURN p.key AS key, p.name AS name, p.email AS email, p.admin AS admin, p.password_hash AS password_hash
+```
+
+**Q14. Sign in.** Python checks the password against `password_hash` and gives one answer for a wrong password, an unknown email, an account not yet accepted and one switched off.
+
+```cypher
+MATCH (p:Person {email: $email})
+RETURN p.key AS key, p.password_hash AS password_hash, p.active AS active, p.accepted_at AS accepted_at
+```
+
+**Q15. Open a link.** Python compares `purpose` with the page (accept or reset) and `expires_at` with now. No row means the link was used, replaced, withdrawn or never existed; the page cannot tell which and does not try.
+
+```cypher
+MATCH (p:Person {token_hash: $token_hash})
+OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
+RETURN p.key AS key, p.name AS name, p.email AS email, p.country AS country,
+       p.postal_code AS postal_code, p.active AS active, p.accepted_at AS accepted_at,
+       p.token_purpose AS purpose, p.token_expires_at AS expires_at,
+       inviter.name AS inviter_name, e.relationship AS relationship
+```
+
+**Q16. Accept an invitation.** The link is checked again inside the write, so a form sent twice accepts once and the second sees no row.
+
+```cypher
+MATCH (p:Person {token_hash: $token_hash})
+WHERE p.token_purpose = 'invite' AND p.token_expires_at > $now AND p.active
+SET p.name = $name, p.country = $country, p.postal_code = $postal_code,
+    p.password_hash = $password_hash, p.accepted_at = $now,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
+RETURN p.key AS key
+```
+
+**Q17. A new link.** Sending an invitation again (inviter or back room) and asking for a password link both replace whatever link the person had.
+
+```cypher
+// invitation sent again: only while not accepted
+MATCH (p:Person {key: $key})
+WHERE p.accepted_at IS NULL AND p.active
+SET p.token_hash = $token_hash, p.token_purpose = 'invite', p.token_expires_at = $expires_at
+RETURN p.email AS email, p.name AS name;
+
+// password link: only for an accepted, active account; nothing is sent otherwise
+MATCH (p:Person {email: $email})
+WHERE p.accepted_at IS NOT NULL AND p.active
+SET p.token_hash = $token_hash, p.token_purpose = 'reset', p.token_expires_at = $expires_at
+RETURN p.email AS email, p.name AS name
+```
+
+The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`.
+
+**Q18. Choose a new password through a link.**
+
+```cypher
+MATCH (p:Person {token_hash: $token_hash})
+WHERE p.token_purpose = 'reset' AND p.token_expires_at > $now
+  AND p.active AND p.accepted_at IS NOT NULL
+SET p.password_hash = $password_hash,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
+RETURN p.key AS key
+```
+
+**Q19. Change password while signed in.** Python has checked the current password first. Any pending password link stops working too.
+
+```cypher
+MATCH (p:Person {key: $key})
+SET p.password_hash = $password_hash,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
+```
+
+**Q20. People one has entered**, and, without the first `MATCH`, the back room list of every account:
+
+```cypher
+MATCH (me:Person {key: $key})-[e:ENTERED]->(p:Person)
+RETURN p.key AS key, p.name AS name, p.email AS email, e.relationship AS relationship,
+       e.created_at AS entered_at, p.accepted_at AS accepted_at, p.active AS active,
+       p.token_purpose AS purpose, p.token_expires_at AS expires_at
+ORDER BY e.created_at DESC
+```
+
+The back room version starts `MATCH (p:Person) WHERE p.email IS NOT NULL OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)` and also returns `inviter.name`.
+
+**Q21. Withdraw an entry never accepted.** Only while the person has nothing but the `ENTERED` edge; an accepted account is switched off instead.
+
+```cypher
+MATCH (inviter:Person {key: $inviter_key})-[:ENTERED]->(p:Person {key: $key})
+WHERE p.accepted_at IS NULL AND COUNT { (p)--() } = 1
+DETACH DELETE p
+RETURN count(*) AS withdrawn
+```
+
+The back room version matches `(:Person)-[:ENTERED]->(p:Person {key: $key})` without the inviter's key.
+
+**Q22. Switch an account off or on** (back room): `MATCH (p:Person {key: $key}) WHERE p.email IS NOT NULL AND NOT p.admin SET p.active = $active`. John's own account cannot be switched off from the page.
+
+### Stances
+
+One stance per person and solution (D7). **Q23** takes write locks on the person and the solution before it reads, the same trick as the `PART_OF` statement, so a quick approve, oppose, withdraw from two tabs is applied in order and always leaves one stance or none.
+
+```cypher
+// set: {stance} is APPROVE or OPPOSE and {other} the opposite, both from STANCE_TYPES
+MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
+SET p.key = p.key, s.key = s.key
+WITH p, s
+OPTIONAL MATCH (p)-[old:{other}]->(s)
+DELETE old
+WITH DISTINCT p, s
+MERGE (p)-[r:{stance}]->(s)
+ON CREATE SET r.source = 'click', r.anonymous = false, r.created_at = $now;
+
+// withdraw
+MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
+SET p.key = p.key, s.key = s.key
+WITH p, s
+OPTIONAL MATCH (p)-[r:APPROVE|OPPOSE]->(s)
+DELETE r
+```
+
+The write path's statement 4b (a stance carried by a post) becomes the same set statement with the post's properties: `ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now ON MATCH SET r.last_post_id = $post_id`. It applies to every Person, so the one-stance rule holds however a stance is taken.
+
+A stance that a post made and a click later replaced or withdrew is gone from that post's "show what was added" list; the statement itself is unchanged.
+
+**Q4, revised.** Solutions are ranked by net support. A 0.1 Person who holds both stances counts once each way, so adds nothing net. `$me` is the signed-in account key, or null, which matches nothing.
+
+```cypher
+MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
+OPTIONAL MATCH (pp:Person)-[:PROPOSE]->(s)
+OPTIONAL MATCH (pa:Person)-[:APPROVE]->(s)
+OPTIONAL MATCH (po:Person)-[:OPPOSE]->(s)
+WITH s, count(DISTINCT pp) AS proposers, count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
+OPTIONAL MATCH (:Person {key: $me})-[mine:APPROVE|OPPOSE]->(s)
+WITH s, proposers, approves, opposes, head(collect(type(mine))) AS my_stance
+OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
+WITH s, proposers, approves, opposes, my_stance,
+     [x IN collect(DISTINCT {key: ev.key, name: ev.name, url: ev.url, stance: type(r)})
+        WHERE x.key IS NOT NULL] AS evidence
+RETURN s.key AS key, s.name AS name, proposers, approves, opposes, my_stance, evidence
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
+```
+
+Display stays raw counts ("proposed by 2 · approved by 3 · opposed by 1"); the net figure orders the list and is never shown.
+
+### Own posts
+
+Posts by an account are credited as before: `POSTED` from the account, `display_name` the account's name or null when anonymous, `anonymous` on the post and its edges. The claimant names on an issue page (Q3) list each person once: their name if any of their claims on the issue is named, otherwise "Anonymous".
+
+**Q7, revised.** The feed and the issue page also return `post.edited_at` and `EXISTS { (:Person {key: $me})-[:POSTED]->(post) } AS mine`. The author's key is never returned to a template.
+
+**Q24. Is this my post?** Every edit and delete starts here, on the server; hiding the buttons is not the check.
+
+```cypher
+MATCH (:Person {key: $me})-[:POSTED]->(post:Post {id: $id})
+WHERE coalesce(post.seed, false) = false
+RETURN post.id AS id, post.text AS text, post.anonymous AS anonymous,
+       post.payload AS payload, post.created_at AS created_at
+```
+
+**Delete** is Q11 unchanged, after Q24.
+
+**Q25. Edit.** One write transaction, under the same post id, in this order: (1) Q11 statement 1 without the final `DETACH DELETE post`, so the post's `CLAIM`, `SUBMIT`, `PROPOSE`, `SUPPORTS` and `REFUTES` edges go and their touched element ids are kept; (2) write path statements 3 to 5b from the edited card with the same `post_id`, person and `anonymous`; (3) Q11 statement 2 on the touched ids, so only what the new version no longer uses is removed; (4) the post itself:
+
+```cypher
+MATCH (post:Post {id: $id})
+SET post.text = $text, post.payload = $payload, post.source = $source,
+    post.extraction_raw = $extraction_raw, post.model = $model, post.latency_ms = $latency_ms,
+    post.edited_at = $now
+```
+
+`created_at` stays, so the post keeps its place in the feed. An edited post keeps the name or Anonymous it was first posted with. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
+
+### Search
+
+Search does not need accounts and may go live before them. The query is cut to 200 characters and ten words, lower-cased, and every Lucene special character (`+ - & | ! ( ) { } [ ] ^ " ~ * ? : \ /`) is escaped with a backslash; each word then matches as written or as the start of a word (`housing housing*`). An empty query shows the normal Issues list. Search by meaning (embeddings, GitHub issue 2) and event dates belong to Phase 3.
+
+**Q26. Names.**
+
+```cypher
+CALL db.index.fulltext.queryNodes('record_names', $query) YIELD node, score
+WITH node, score ORDER BY score DESC LIMIT 30
+OPTIONAL MATCH (node)<-[:HAVE_PROPOSED]-(home:Issue)
+OPTIONAL MATCH (node)-[:SUPPORTS|REFUTES]->(target)
+OPTIONAL MATCH (target)<-[:HAVE_PROPOSED]-(target_home:Issue)
+WITH node, score, collect(DISTINCT home.key) AS solution_homes,
+     collect(DISTINCT CASE WHEN target:Issue THEN target.key ELSE target_home.key END) AS evidence_homes
+RETURN labels(node)[0] AS label, node.key AS key, node.name AS name, score,
+       solution_homes, evidence_homes
+ORDER BY score DESC
+```
+
+Python picks each result's link: an issue to itself, a solution to its first issue, evidence to the first issue it is about directly or through a solution. Evidence about other evidence only is listed without a link.
+
+**Q27. Posts.** Rows are decorated like the feed, so their chips link to issue pages.
+
+```cypher
+CALL db.index.fulltext.queryNodes('post_text', $query) YIELD node, score
+WITH node, score ORDER BY score DESC LIMIT 20
+RETURN node.id AS id, node.text AS text, node.display_name AS display_name,
+       node.anonymous AS anonymous, node.created_at AS created_at, node.seed AS seed,
+       node.edited_at AS edited_at
+```
+
+### Tidying the issue tree
+
+Admin accounts only (D5). Each statement below runs in one write transaction with Q31, so a change and its record land together or not at all. Both issues are locked first (`SET i.key = i.key`), as in Q23. The one-level rule of `PART_OF` holds after every change: no sub-issue of a sub-issue, no issue part of itself.
+
+**Q28. Move.** Make an issue part of a top-level issue, or make it top level. Refused when the issue has sub-issues of its own (it stays top level), when the new parent is itself a sub-issue, or when they are the same issue.
+
+```cypher
+// under a parent
+MATCH (child:Issue {key: $key}), (parent:Issue {key: $parent_key})
+SET child.key = child.key, parent.key = parent.key
+WITH child, parent
+WHERE child <> parent
+  AND NOT (parent)-[:PART_OF]->(:Issue)
+  AND NOT (:Issue)-[:PART_OF]->(child)
+OPTIONAL MATCH (child)-[old:PART_OF]->(:Issue)
+DELETE old
+WITH DISTINCT child, parent
+CREATE (child)-[:PART_OF {created_at: $now}]->(parent)
+RETURN child.key AS key;
+
+// top level
+MATCH (child:Issue {key: $key})-[old:PART_OF]->(:Issue)
+DELETE old
+```
+
+**Q29. Rename.** The name goes through `clean_name()` and the key through `make_key()`. When the new key is the issue's own key only the name changes. When another issue has that key the rename is refused and the page suggests a merge; the constraint backs this up. Issue keys only: a solution or evidence may share a name with an issue (GitHub issue 1).
+
+```cypher
+MATCH (i:Issue {key: $key})
+WHERE NOT EXISTS { MATCH (other:Issue {key: $new_key}) WHERE other <> i }
+SET i.name = $new_name, i.key = $new_key
+RETURN i.key AS key
+```
+
+**Q30. Merge issue B into issue A.** Every relationship of B moves to A with its properties, one statement per type, plain Cypher, no APOC. A keeps its own place in the tree.
+
+```cypher
+// 0. lock; refuse when A and B are the same issue
+MATCH (a:Issue {key: $kept}), (b:Issue {key: $merged}) WHERE a <> b
+SET a.key = a.key, b.key = b.key;
+// 1. a PART_OF between the two goes (no self-loop)
+MATCH (a:Issue {key: $kept})-[r:PART_OF]-(b:Issue {key: $merged}) DELETE r;
+// 2. claims
+MATCH (p:Person)-[r:CLAIM]->(b:Issue {key: $merged}), (a:Issue {key: $kept})
+CREATE (p)-[n:CLAIM]->(a) SET n = properties(r) DELETE r;
+// 3. evidence about B; {rel} is SUPPORTS, then REFUTES, from EVIDENCE_TYPES
+MATCH (e:Evidence)-[r:{rel}]->(b:Issue {key: $merged}), (a:Issue {key: $kept})
+CREATE (e)-[n:{rel}]->(a) SET n = properties(r) DELETE r;
+// 4. solutions: A keeps its own link when it already has one, so stances follow the solution
+MATCH (b:Issue {key: $merged})-[r:HAVE_PROPOSED]->(s:Solution), (a:Issue {key: $kept})
+MERGE (a)-[n:HAVE_PROPOSED]->(s) ON CREATE SET n = properties(r)
+DELETE r;
+// 5. B's sub-issues: under A when A is top level, otherwise under A's parent
+MATCH (c:Issue)-[r:PART_OF]->(b:Issue {key: $merged}), (a:Issue {key: $kept})
+OPTIONAL MATCH (a)-[:PART_OF]->(ap:Issue)
+WITH c, r, coalesce(ap, a) AS parent
+MERGE (c)-[n:PART_OF]->(parent) ON CREATE SET n = properties(r)
+DELETE r;
+// 6. B's own parent link goes; A does not move
+MATCH (b:Issue {key: $merged})-[r:PART_OF]->(:Issue) DELETE r;
+// 7. earlier change records about B now point at A
+MATCH (c:Change)-[r:CHANGED]->(b:Issue {key: $merged}), (a:Issue {key: $kept})
+CREATE (c)-[n:CHANGED]->(a) SET n = properties(r) DELETE r;
+// 8. plain DELETE, not DETACH: if any relationship was missed the whole merge fails
+MATCH (b:Issue {key: $merged}) DELETE b
+```
+
+Statement 5 cannot make a sub-issue of a sub-issue: a sub-issue has no children, so A's parent is top level. The counts of each type moved go into the Change's `details`. Posts that claimed B now show A in their chips, because their `CLAIM` edges point at A under the same `post_id`; their saved `payload` text is not rewritten.
+
+**Q31. The change record**, inside the same transaction:
+
+```cypher
+MATCH (p:Person {key: $person_key}), (i:Issue {key: $issue_key})
+CREATE (c:Change {id: $id, kind: $kind, created_at: $now, details: $details})
+CREATE (p)-[:MADE {created_at: $now}]->(c)
+CREATE (c)-[:CHANGED {created_at: $now}]->(i)
+```
+
+**Q32. Changes, newest first**, for the Changes page:
+
+```cypher
+MATCH (p:Person)-[:MADE]->(c:Change)
+OPTIONAL MATCH (c)-[:CHANGED]->(i:Issue)
+RETURN c.id AS id, c.kind AS kind, c.created_at AS created_at, c.details AS details,
+       p.name AS by, i.key AS issue_key, i.name AS issue_name
+ORDER BY c.created_at DESC
+LIMIT 200
+```
+
+**Q1, revised.** `last_activity` ignores `CHANGED` (`OPTIONAL MATCH (i)-[r]-() WHERE type(r) <> 'CHANGED'`), so tidying an issue does not move it up "Most recent".
+
+### Back room, seed, export and restore
+
+**Q10, revised.** "Reset to seed" keeps accounts and who entered whom, so nobody is locked out by a reset; everything else goes, including change records:
+
+```cypher
+MATCH (n) WHERE NOT (n:Person AND n.email IS NOT NULL) DETACH DELETE n
+```
+
+`scripts/seed.py --reset` follows the same rule, and counts accounts as neither seed nor non-seed when it decides whether to refuse.
+
+**Reload seed** adds only seed statements that are missing. When every seed statement is present it writes nothing, so a seed issue that John renamed or merged does not come back under its old name.
+
+**Q33. Export, version 2.** `Change` (identity `id`) joins the labels; `ENTERED` (Person to Person), `MADE` (Person to Change) and `CHANGED` (Change to Issue) join the types. `password_hash`, `token_hash`, `token_purpose` and `token_expires_at` are left out of every node. Restore accepts versions 1 and 2. A restored account keeps `accepted_at` but has no password, and its owner uses "Forgot your password?".
