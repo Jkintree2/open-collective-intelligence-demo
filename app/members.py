@@ -72,8 +72,9 @@ def member_key(request: Request) -> str | None:
 
 def posting_identity(member: Member, anonymous: bool) -> tuple[str, str | None, bool, str | None]:
     """(person_key, name, anonymous, shown) for a post or stance by `member`. D2, the one display
-    rule: the post always belongs to the account, so the person is counted once and can edit or
-    delete it; "Post anonymously" only hides the name. Every caller takes all four from here."""
+    rule: the post always belongs to the account, so the person can edit or delete it; "Post
+    anonymously" only hides the name, and on public counts an account's anonymous posts count
+    apart from its named ones. Every caller takes all four from here."""
     shown = None if anonymous else member.name
     return member.key, shown, anonymous, shown
 
