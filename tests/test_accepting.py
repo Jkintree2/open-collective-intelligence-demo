@@ -11,7 +11,7 @@ NOW = datetime.now(timezone.utc)
 def link_row(**extra):
     return {"key": "acct:bob", "name": "Bob Smith", "email": "bob@example.org", "country": "Germany",
             "postal_code": "10115", "active": True, "accepted_at": None, "purpose": "invite",
-            "expires_at": NOW + timedelta(days=3), "inviter_name": "Ada Lovelace", "relationship": "neighbor", **extra}
+            "expires_at": NOW + timedelta(days=3), "inviter_name": "Ada Tester", "relationship": "neighbor", **extra}
 
 
 @pytest.fixture
@@ -40,8 +40,8 @@ def test_the_acceptance_page_lets_a_phone_suggest_and_save_a_password(invited):
     assert page.status_code == 200
     text = page.text
     assert "Welcome to Open Collective Intelligence" in text
-    assert "Ada Lovelace entered you. Please check your details and choose a password." in text
-    assert "How you know Ada Lovelace: Neighbor" in text
+    assert "Ada Tester entered you. Please check your details and choose a password." in text
+    assert "How you know Ada Tester: Neighbor" in text
     assert re.search(r'name="username" type="email" value="bob@example.org" autocomplete="username" readonly', text)
     assert text.count('autocomplete="new-password"') == 2
     assert 'autocomplete="country-name"' in text and 'autocomplete="postal-code"' in text
@@ -92,7 +92,7 @@ def test_a_link_works_once(invited):
 
 def test_an_expired_invitation_says_who_to_ask(invited):
     text = invited.client.get("/accept/oldlink").text
-    assert "This invitation has expired. Please ask Ada Lovelace to send a new one." in text
+    assert "This invitation has expired. Please ask Ada Tester to send a new one." in text
 
 
 @pytest.mark.parametrize("secret", ["x", "a" * 400, "%00%ff", "..%2F..%2Fadmin"])
@@ -106,14 +106,14 @@ def test_a_mangled_link_gets_the_no_longer_works_page(invited, secret):
 
 
 def test_a_link_opened_while_someone_else_is_signed_in(invited):
-    invited.sign_in(key="acct:ada", name="Ada Lovelace", email="ada@example.org")
+    invited.sign_in(key="acct:ada", name="Ada Tester", email="ada@example.org")
     text = invited.client.get("/accept/goodlink").text
-    assert "You are signed in as Ada Lovelace. This link is for someone else." in text
+    assert "You are signed in as Ada Tester. This link is for someone else." in text
     assert '<form method="post" action="/sign-out">' in text and 'name="next" value="/accept/goodlink"' in text
     assert 'name="password"' not in text
     # Signing out and continuing shows the acceptance page.
     invited.client.post("/sign-out", data={"next": "/accept/goodlink"})
-    assert "Ada Lovelace entered you." in invited.client.get("/accept/goodlink").text
+    assert "Ada Tester entered you." in invited.client.get("/accept/goodlink").text
 
 
 def test_accepting_does_not_exist_without_accounts(member_app, monkeypatch):
@@ -130,7 +130,7 @@ def test_each_acceptance_label_sits_in_its_own_row_above_its_field(invited):
     assert text.count("<input id=") == len(rows)
 
 
-@pytest.mark.parametrize("done, line", [("welcome", "Welcome, Ada Lovelace. You are signed in."),
+@pytest.mark.parametrize("done, line", [("welcome", "Welcome, Ada Tester. You are signed in."),
                                         ("reset", "Your new password is saved. You are signed out everywhere else.")])
 def test_the_done_notice_opens_the_write_page_and_stays_out_of_the_error_slot(member_app, done, line):
     member_app.sign_in()

@@ -14,7 +14,7 @@ def door(member_app, monkeypatch):
             "cy@example.org": {"key": "acct:cy", "password_hash": GOOD, "active": False, "accepted_at": "set"}}
     monkeypatch.setattr("app.graph_accounts.sign_in_row", lambda email: rows.get(email))
     monkeypatch.setattr("app.routes_accounts.time.sleep", lambda seconds: None)
-    member_app.accounts["acct:ada"] = {"key": "acct:ada", "name": "Ada Lovelace", "email": "ada@example.org",
+    member_app.accounts["acct:ada"] = {"key": "acct:ada", "name": "Ada Tester", "email": "ada@example.org",
                                        "admin": False, "password_hash": GOOD}
     return member_app
 

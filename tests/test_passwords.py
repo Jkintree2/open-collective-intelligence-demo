@@ -26,7 +26,7 @@ def signed_in(member_app, monkeypatch):
 def test_account_page_offers_a_new_password(signed_in):
     page = signed_in.client.get("/account")
     assert page.status_code == 200
-    assert "Ada Lovelace · ada@example.org" in page.text
+    assert "Ada Tester · ada@example.org" in page.text
     assert "Entered by John Kintree (friend) on 4 October 2026." in page.text
     assert page.text.count('autocomplete="new-password"') == 2
     assert 'autocomplete="current-password"' in page.text
@@ -95,10 +95,10 @@ def forgot(member_app, monkeypatch):
     from dataclasses import replace
     settings = replace(member_app.settings, site_url="https://record.example")
     monkeypatch.setattr("app.config.get_settings", lambda: settings)
-    rows = {"ada@example.org": {"email": "ada@example.org", "name": "Ada Lovelace", "purpose": "reset",
+    rows = {"ada@example.org": {"email": "ada@example.org", "name": "Ada Tester", "purpose": "reset",
                                 "inviter_name": "John Kintree", "relationship": "friend"},
             "bob@example.org": {"email": "bob@example.org", "name": "Bob", "purpose": "invite",
-                                "inviter_name": "Ada Lovelace", "relationship": "work"},
+                                "inviter_name": "Ada Tester", "relationship": "work"},
             # John's root account from make_admin.py, not yet accepted: nobody entered him (X3).
             "john@example.org": {"email": "john@example.org", "name": "John Kintree", "purpose": "invite",
                                  "inviter_name": None, "relationship": None}}
@@ -131,7 +131,7 @@ def test_forgot_password_sends_an_unaccepted_person_their_invitation_again(forgo
     forgot.client.post("/forgot-password", data={"email": "bob@example.org"})
     to, subject, text = forgot.sent[0]
     assert subject == "Your invitation to Open Collective Intelligence"
-    assert "Entered by: Ada Lovelace" in text and "https://record.example/accept/" in text
+    assert "Entered by: Ada Tester" in text and "https://record.example/accept/" in text
 
 
 def test_johns_first_link_comes_in_his_own_wording(forgot):
@@ -206,7 +206,7 @@ NOW = datetime.now(timezone.utc)
 
 @pytest.fixture
 def reset(member_app, monkeypatch):
-    row = {"key": "acct:ada", "name": "Ada Lovelace", "email": "ada@example.org", "purpose": "reset",
+    row = {"key": "acct:ada", "name": "Ada Tester", "email": "ada@example.org", "purpose": "reset",
            "active": True, "accepted_at": NOW, "inviter_name": None, "relationship": None}
     links = {accounts.link_hash("goodlink"): {**row, "expires_at": NOW + timedelta(hours=1)},
              accounts.link_hash("oldlink"): {**row, "expires_at": NOW - timedelta(minutes=1)}}
@@ -216,7 +216,7 @@ def reset(member_app, monkeypatch):
         found = links.pop(token_hash, None)
         if found is None:
             return None
-        member_app.accounts["acct:ada"] = {"key": "acct:ada", "name": "Ada Lovelace", "email": "ada@example.org",
+        member_app.accounts["acct:ada"] = {"key": "acct:ada", "name": "Ada Tester", "email": "ada@example.org",
                                            "admin": False, "password_hash": password_hash}
         return found["key"]
     monkeypatch.setattr("app.graph_accounts.reset_password", reset_password)

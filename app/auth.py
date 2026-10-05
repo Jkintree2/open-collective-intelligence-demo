@@ -69,7 +69,7 @@ def passphrase_matches(given: str, *, passphrase: str | None = None) -> bool:
 
 
 class GateRequired(Exception):
-    """Raised by `members.require_access`; the app turns it into a redirect to /enter."""
+    """Raised by `members.require_access`; the app redirects to /sign-in when accounts are on, else /enter."""
 
     def __init__(self, next_path: str) -> None:
         super().__init__(next_path)

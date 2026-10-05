@@ -44,7 +44,7 @@ def people(member_app, monkeypatch):
     def resend_invitation(key, token_hash, expires_at, inviter_key=None):
         resent.append((key, token_hash, inviter_key))
         row = next(r for r in entered_by(inviter_key) if r["key"] == key)
-        return {"email": row["email"], "name": row["name"], "inviter_name": "Ada Lovelace",
+        return {"email": row["email"], "name": row["name"], "inviter_name": "Ada Tester",
                 "relationship": row["relationship"]}
 
     monkeypatch.setattr("app.graph_accounts.enter_person", enter_person)
@@ -80,7 +80,7 @@ def test_entering_someone_sends_the_invitation_from_the_site_address(people):
     to, subject, text = people.sent[0]
     secret = re.search(r"https://record\.example/accept/(\S+)", text).group(1)
     assert accounts.link_hash(secret) == entry["token_hash"]
-    assert "Entered by: Ada Lovelace" in text and "evil.example" not in text
+    assert "Entered by: Ada Tester" in text and "evil.example" not in text
     page = people.client.get(result.headers["location"]).text
     assert "Bob Smith is entered. The invitation is on its way to bob@example.org. The link works for 14 days." in page
     assert secret not in page  # the link goes only in the email

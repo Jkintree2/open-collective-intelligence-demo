@@ -14,18 +14,18 @@ def assert_plain(text):
 
 
 def test_invitation_email_word_for_word():
-    subject, text = emails.invitation("Open Collective Intelligence", "Bob Smith", "Ada Lovelace", "neighbor",
+    subject, text = emails.invitation("Open Collective Intelligence", "Bob Smith", "Ada Tester", "neighbor",
                                       "https://record.example/accept/abc")
     assert subject == "Your invitation to Open Collective Intelligence"
     assert text == (
         "Hello Bob Smith,\n\n"
         "Thank you for agreeing to take part in Open Collective Intelligence, a closed test of a shared record "
         "of what people are claiming, proposing and citing.\n\n"
-        "Entered by: Ada Lovelace\n"
+        "Entered by: Ada Tester\n"
         "How you know each other: Neighbor\n\n"
         "To accept and choose your own password, open this link:\n"
         "https://record.example/accept/abc\n\n"
-        "The link works once, for 14 days. If it has expired, ask Ada Lovelace to send a new one. "
+        "The link works once, for 14 days. If it has expired, ask Ada Tester to send a new one. "
         "If you were not expecting this email, you can ignore it.\n\n"
         "If you have a question, reply to this email.\n\n"
         "John Kintree\n")
@@ -48,8 +48,8 @@ def test_an_invitation_for_the_root_has_no_entered_by_lines():
     url = "https://record.example/accept/abc"
     assert emails.invitation_for("Open Collective Intelligence", "John Kintree", None, None, url) == \
         emails.first_account("Open Collective Intelligence", "John Kintree", url)
-    assert emails.invitation_for("Open Collective Intelligence", "Bob Smith", "Ada Lovelace", "neighbor", url) == \
-        emails.invitation("Open Collective Intelligence", "Bob Smith", "Ada Lovelace", "neighbor", url)
+    assert emails.invitation_for("Open Collective Intelligence", "Bob Smith", "Ada Tester", "neighbor", url) == \
+        emails.invitation("Open Collective Intelligence", "Bob Smith", "Ada Tester", "neighbor", url)
 
 
 def test_links_are_built_from_the_site_address():
@@ -60,11 +60,11 @@ def test_links_are_built_from_the_site_address():
 
 
 def test_password_email_word_for_word():
-    subject, text = emails.password_link("Open Collective Intelligence", "Ada Lovelace",
+    subject, text = emails.password_link("Open Collective Intelligence", "Ada Tester",
                                          "https://record.example/reset/abc")
     assert subject == "Choose a new password for Open Collective Intelligence"
     assert text == (
-        "Hello Ada Lovelace,\n\n"
+        "Hello Ada Tester,\n\n"
         "Someone asked for a new password for your account on Open Collective Intelligence. "
         "If it was you, open this link to choose one:\n"
         "https://record.example/reset/abc\n\n"

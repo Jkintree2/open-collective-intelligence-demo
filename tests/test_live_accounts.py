@@ -16,7 +16,7 @@ CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false, email: 
 
 
 def make_account(graph, key="acct:ada", email="ada@example.org", *, accepted=True, active=True):
-    graph.driver().execute_query(ACCOUNT, key=key, name="Ada Lovelace", email=email,
+    graph.driver().execute_query(ACCOUNT, key=key, name="Ada Tester", email=email,
                                  password_hash="scrypt$x" if accepted else None, active=active, now=NOW,
                                  accepted_at=NOW if accepted else None, database_=graph.database())
 
@@ -61,26 +61,26 @@ def test_claimants_count_old_people_and_accounts_by_identity(live_graph):
     run = claim_runner(live_graph)
     run(person="name:grace", name="Grace", anonymous_person=False, post="p1", anonymous=False)
     run(person="anon:1", name=None, anonymous_person=True, post="p2", anonymous=True)
-    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p3", anonymous=False)
-    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p4", anonymous=True)
+    run(person="acct:ada", name="Ada Tester", anonymous_person=False, post="p3", anonymous=False)
+    run(person="acct:ada", name="Ada Tester", anonymous_person=False, post="p4", anonymous=True)
     claimants = live_graph.issue_claimants("flooding")
     assert claimants["people"] == 4 and claimants["claims"] == 4
-    assert sorted(claimants["names"]) == ["Ada Lovelace", "Anonymous", "Grace"]
+    assert sorted(claimants["names"]) == ["Ada Tester", "Anonymous", "Grace"]
 
 
 def test_an_account_with_a_named_and_an_anonymous_claim_reads_as_two_people(live_graph):
     run = claim_runner(live_graph)
-    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p1", anonymous=False)
-    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p2", anonymous=True)
+    run(person="acct:ada", name="Ada Tester", anonymous_person=False, post="p1", anonymous=False)
+    run(person="acct:ada", name="Ada Tester", anonymous_person=False, post="p2", anonymous=True)
     claimants = live_graph.issue_claimants("flooding")
     assert claimants["people"] == 2 and claimants["claims"] == 2
-    assert sorted(claimants["names"]) == ["Ada Lovelace", "Anonymous"]
+    assert sorted(claimants["names"]) == ["Ada Tester", "Anonymous"]
 
 
 def test_two_anonymous_claims_by_one_account_count_once_as_anonymous(live_graph):
     run = claim_runner(live_graph)
-    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p1", anonymous=True)
-    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p2", anonymous=True)
+    run(person="acct:ada", name="Ada Tester", anonymous_person=False, post="p1", anonymous=True)
+    run(person="acct:ada", name="Ada Tester", anonymous_person=False, post="p2", anonymous=True)
     claimants = live_graph.issue_claimants("flooding")
     assert claimants["people"] == 1 and claimants["claims"] == 2
     assert claimants["names"] == ["Anonymous"]
@@ -129,7 +129,7 @@ def test_who_entered_names_the_inviter_and_the_relationship(live_graph):
         "CREATE (a)-[:ENTERED {relationship: 'friend', agreed: true, created_at: $now}]->(b)",
         now=NOW, database_=live_graph.database())
     row = graph_accounts.who_entered("acct:bob")
-    assert row["inviter_name"] == "Ada Lovelace" and row["relationship"] == "friend"
+    assert row["inviter_name"] == "Ada Tester" and row["relationship"] == "friend"
     assert row["entered_at"] == NOW
     assert graph_accounts.who_entered("acct:ada") is None  # the root has no entry
 

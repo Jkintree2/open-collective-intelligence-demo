@@ -93,7 +93,7 @@ def member_app(monkeypatch):
     def set_cookie(value):
         client.cookies.set(accounts.MEMBER_COOKIE, value, domain=COOKIE_DOMAIN)
 
-    def sign_in(key="acct:ada", name="Ada Lovelace", email="ada@example.org", admin=False,
+    def sign_in(key="acct:ada", name="Ada Tester", email="ada@example.org", admin=False,
                 password_hash="scrypt$fixture-hash"):
         record[key] = {"key": key, "name": name, "email": email, "admin": admin, "password_hash": password_hash}
         set_cookie(accounts.make_member_cookie(key, password_hash, settings.secret_key))
