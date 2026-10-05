@@ -302,3 +302,10 @@ def test_an_unusable_edit_is_refused_like_a_post(saving):
     assert saving.client.post("/api/posts/mine-1", json={"issues": "not a list", "text": 5}).status_code == 422
     assert saving.client.post("/posts/mine-1/edit", data={"text": "x" * 4001}).status_code == 413
     assert saving.saved == []
+
+
+def test_write_page_renders_as_before_when_not_editing(member_app, monkeypatch):
+    monkeypatch.setattr(member_app.main.graph, "list_posts", lambda limit: [])
+    member_app.sign_in()
+    page = member_app.client.get("/").text
+    assert re.search(r'about_issue\.js\?v=[^"]*" defer></script>\n\n<section class="feed" id="feed">', page)
