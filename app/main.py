@@ -27,6 +27,7 @@ from app.extract import CardPayload, resolve_payload
 from app.auth import (
     GATE_COOKIE,
     GATE_SECONDS,
+    TOO_MANY_TRIES,
     WRONG_PASSPHRASE_DELAY,
     GateRequired,
     attempt_bucket,
@@ -73,8 +74,6 @@ YEAR_SECONDS = 365 * 86400
 # Client facing copy, word for word from docs/planning/04_interface.md.
 WRONG_PASSPHRASE = "That passphrase did not match. Check the message from John and try again."
 TOO_LONG = "That is longer than this demo can read at once. Please shorten it to a few paragraphs."
-# Not in the interface doc: shown when the passphrase bucket is empty.
-TOO_MANY_TRIES = "Too many tries. Please wait a minute and try again."
 NOT_ANSWERING = "The reading service is not answering right now. You can fill in the form by hand, or try again in a minute."
 NOT_FOUND = "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again."
 ENGLISH_ONLY = "This demo reads English only for now."

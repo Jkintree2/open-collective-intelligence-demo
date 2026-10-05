@@ -167,6 +167,33 @@ class PostSpacing:
 
 post_spacing = PostSpacing()
 
+# Shown when a bucket is empty. Not in the 0.1 interface doc; kept word for word since.
+TOO_MANY_TRIES = "Too many tries. Please wait a minute and try again."
+
+
+class KeyedLimit:
+    """At most `count` uses per key (an email address, an account) in any `period` seconds,
+    held in this process. Keys whose uses have all aged out are forgotten."""
+
+    def __init__(self, count: int, period: float) -> None:
+        self.count = count
+        self.period = period
+        self.uses: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def take(self, key: str, now: float | None = None) -> bool:
+        now = time.monotonic() if now is None else now
+        with self._lock:
+            for other in list(self.uses):
+                self.uses[other] = [then for then in self.uses[other] if now - then < self.period]
+                if not self.uses[other]:
+                    del self.uses[other]
+            recent = self.uses.setdefault(key, [])
+            if len(recent) >= self.count:
+                return False
+            recent.append(now)
+            return True
+
 admin_basic = HTTPBasic()
 
 
