@@ -217,6 +217,11 @@ button.primary:hover { background: var(--accent-hover); }
 
 .gate form input { flex: 1 1 160px; }
 
+/* The acceptance form: each label above its own field, one field per row. */
+.gate form.stacked { display: block; }
+.gate form.stacked .field { margin: 0 0 14px; }
+.gate form.stacked .field label { margin: 0 0 6px; }
+
 /* Session 2: chips, the Issues page and the issue page. */
 h1 {
   font-family: var(--serif);

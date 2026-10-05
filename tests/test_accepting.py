@@ -120,3 +120,11 @@ def test_accepting_does_not_exist_without_accounts(member_app, monkeypatch):
     from dataclasses import replace
     monkeypatch.setattr("app.config.get_settings", lambda: replace(member_app.settings, accounts_enabled=False))
     assert member_app.client.get("/accept/goodlink").status_code == 404
+
+
+def test_each_acceptance_label_sits_in_its_own_row_above_its_field(invited):
+    text = invited.client.get("/accept/goodlink").text
+    rows = re.findall(r'<div class="field">\s*<label for="(\w+)">[^<]*</label>\s*<input id="(\w+)"[^>]*>\s*</div>', text)
+    assert [a for a, _ in rows] == ["name", "username", "country", "postal_code", "password", "again"]
+    assert all(a == b for a, b in rows)
+    assert text.count("<input id=") == len(rows)
