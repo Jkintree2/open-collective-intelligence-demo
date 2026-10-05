@@ -799,7 +799,7 @@ MATCH (b:Issue {key: $merged}) DELETE b
 
 Statement 5 cannot make a sub-issue of a sub-issue: a sub-issue has no children, so A's parent is top level. The counts of each type moved go into the Change's `details`. Posts that claimed B now show A in their chips, because their `CLAIM` edges point at A under the same `post_id`; their saved `payload` text is not rewritten.
 
-The kept issue keeps its own `seed` value: merging a seed issue into an issue made by a post does not make the kept issue a seed issue, so `scripts.seed --reset` without `--force` counts it as non-seed (`non_seed_count()` counts every node whose `seed` is not true, except accounts; as do the change records) and refuses, as it should for a record holding posts.
+The kept issue keeps its own `seed` value: merging a seed issue into an issue made by a post does not make the kept issue a seed issue. `scripts.seed --reset` without `--force` refuses after any merge in any case, because `non_seed_count()` counts every node whose `seed` is not true, except accounts, and the merge's change record is such a node.
 
 **Q31. The change record**, inside the same transaction:
 
