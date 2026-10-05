@@ -1,4 +1,4 @@
-"""Version 1 portable record format and validation, with no database access.
+"""Version 2 portable record format (version 1 still restores), with no database access.
 
 Nodes use (label, identity), where identity is Post.id or the other labels' key.
 Relationships are a list, not a set: identical per-post facts remain distinct.
@@ -14,7 +14,10 @@ from zoneinfo import ZoneInfo
 from neo4j.time import Date, DateTime, Duration, Time
 
 FORMAT = "oci-record"
-VERSION = 1
+VERSION = 2
+VERSIONS = (1, 2)
+# Never in a copy (03_schema.md Q33): a restored account chooses a new password by link.
+SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at"})
 LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id"}
 DIRECTIONS = {
     "POSTED": ("Person", {"Post"}), "CLAIM": ("Person", {"Issue"}),
@@ -116,6 +119,8 @@ def reference(value):
 def properties(value):
     if not isinstance(value, dict) or any(not isinstance(k, str) or not k or "\x00" in k for k in value):
         raise InvalidBackup("Malformed properties.")
+    if SECRET_PROPERTIES & set(value):
+        raise InvalidBackup("A copy must not hold passwords or links.")
     decoded = {k: decode_value(v) for k, v in value.items()}
     for key, item in decoded.items():
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
@@ -133,7 +138,7 @@ def properties(value):
 def validate_record(data):
     """Validate the entire document and return its decoded, database-ready copy."""
     _fields(data, ("format", "version", "nodes", "relationships"))
-    if data["format"] != FORMAT or type(data["version"]) is not int or data["version"] != VERSION:
+    if data["format"] != FORMAT or type(data["version"]) is not int or data["version"] not in VERSIONS:
         raise InvalidBackup("Unsupported export format or version.")
     if not isinstance(data["nodes"], list) or not isinstance(data["relationships"], list):
         raise InvalidBackup("Records must be lists.")

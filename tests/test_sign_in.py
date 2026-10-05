@@ -99,3 +99,16 @@ def test_sign_in_does_not_exist_without_accounts(member_app, monkeypatch):
     off = replace(member_app.settings, accounts_enabled=False)
     monkeypatch.setattr("app.config.get_settings", lambda: off)
     assert member_app.client.get("/sign-in").status_code == 404
+
+
+def test_request_log_cuts_links_out_of_the_path(door, caplog, monkeypatch):
+    import logging
+    # From B5 and A8 on these pages open the link; no link is known here, so each answers its
+    # "no longer works" page (here, a 404 until those pages exist), never a 500.
+    monkeypatch.setattr("app.graph_accounts.open_link", lambda token_hash: None, raising=False)
+    monkeypatch.setattr(logging.getLogger("oci"), "propagate", True)  # the lifespan turns it off
+    caplog.set_level(logging.INFO, logger="oci")
+    for path in ("/accept/SECRETLINK123", "/reset/SECRETLINK456"):
+        assert door.client.get(path).status_code in (200, 404)
+    assert "SECRETLINK" not in caplog.text
+    assert '"path": "/accept/\\u2026"' in caplog.text and '"path": "/reset/\\u2026"' in caplog.text

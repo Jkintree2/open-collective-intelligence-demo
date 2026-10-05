@@ -18,7 +18,7 @@
 <details><summary class="quiet">Reset to seed</summary>
   <form action="/admin/reset" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <p>This deletes every post and restores the seed statements. Download a copy first if you want to keep the current record.</p>
+    <p>This deletes every post and restores the seed statements. Accounts, and who entered whom, stay. Download a copy first if you want to keep the current record.</p>
     <label for="confirmation">Type RESET to confirm</label>
     <input type="text" id="confirmation" name="confirmation" required pattern="RESET" autocomplete="off">
     <button class="primary" type="submit">Reset to seed</button>

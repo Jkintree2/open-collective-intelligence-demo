@@ -164,3 +164,9 @@ def test_reload_uses_existing_seed_loader(monkeypatch):
     monkeypatch.setattr(seed, "load", lambda data: loaded.append(data))
     admin.reload_seed()
     assert len(loaded[0]["posts"]) == 14
+
+
+def test_reset_copy_says_accounts_stay(admin_client):
+    client, _, _ = admin_client
+    assert ("This deletes every post and restores the seed statements. Accounts, and who entered whom, "
+            "stay. Download a copy first if you want to keep the current record.") in client.get("/admin", auth=AUTH).text

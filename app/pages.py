@@ -9,6 +9,17 @@ from fastapi.responses import Response
 PRIVATE_HEADERS = {"Cache-Control": "no-store", "Referrer-Policy": "same-origin"}
 
 
+# Emailed links never reach a log (03_schema.md): the secret part of the path is cut.
+LINK_PATHS = ("/accept/", "/reset/")
+
+
+def loggable_path(path: str) -> str:
+    for prefix in LINK_PATHS:
+        if path.startswith(prefix):
+            return prefix + "\u2026"
+    return path
+
+
 def page(request: Request, name: str, context: dict | None = None, *, status_code: int = 200,
          private: bool = False) -> Response:
     from app.main import templates

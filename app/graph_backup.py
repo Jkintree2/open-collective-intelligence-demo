@@ -3,7 +3,7 @@
 import json
 from neo4j.exceptions import ServiceUnavailable
 from app import graph
-from app.backup import FORMAT, VERSION, LABEL_KEYS, InvalidBackup, encode_value, validate_record
+from app.backup import FORMAT, SECRET_PROPERTIES, VERSION, LABEL_KEYS, InvalidBackup, encode_value, validate_record
 
 
 class NonemptyRecord(ValueError):
@@ -37,7 +37,8 @@ def _reference(labels, props):
 def export_record():
     def work(tx):
         nodes = [{**_reference(row["labels"], row["properties"]),
-                  "properties": {k: encode_value(v) for k, v in row["properties"].items()}}
+                  "properties": {k: encode_value(v) for k, v in row["properties"].items()
+                                 if k not in SECRET_PROPERTIES}}
                  for row in tx.run(graph.EXPORT_NODES)]
         relationships = [{"type": row["type"],
                           "source": _reference(row["source_labels"], row["source_properties"]),

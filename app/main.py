@@ -37,6 +37,7 @@ from app.auth import (
     post_spacing,
 )
 from app.config import get_settings
+from app.pages import loggable_path
 from app.members import (
     RELOAD_AND_RETRY,
     SIGN_IN_AGAIN,
@@ -139,7 +140,7 @@ async def log_request(request: Request, call_next):  # type: ignore[no-untyped-d
             json.dumps(
                 {
                     "method": request.method,
-                    "path": request.url.path,
+                    "path": loggable_path(request.url.path),
                     "status": status,
                     "ms": round((time.perf_counter() - started) * 1000),
                     "request_id": request.state.request_id,

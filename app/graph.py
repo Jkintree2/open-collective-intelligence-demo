@@ -255,9 +255,13 @@ ORDER BY e.created_at DESC LIMIT 200
 COUNT_NODES = "MATCH (n) RETURN count(n) AS n"
 COUNT_BY_LABEL = "MATCH (n) RETURN labels(n)[0] AS label, count(*) AS n ORDER BY label"
 COUNT_BY_TYPE = "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS n ORDER BY type"
-COUNT_NON_SEED = "MATCH (n) WHERE coalesce(n.seed, false) = false RETURN count(n) AS n"
+# Q10, revised for Phase 1: everything except accounts and who entered whom.
+COUNT_NON_SEED = """
+MATCH (n) WHERE coalesce(n.seed, false) = false AND NOT (n:Person AND n.email IS NOT NULL)
+RETURN count(n) AS n
+"""
 EXISTING_POST_IDS = "MATCH (p:Post) WHERE p.id IN $ids RETURN collect(p.id) AS ids"
-DELETE_EVERYTHING = "MATCH (n) DETACH DELETE n"
+DELETE_EVERYTHING = "MATCH (n) WHERE NOT (n:Person AND n.email IS NOT NULL) DETACH DELETE n"
 
 # Q11 uses element ids only inside its transaction so equal keys on different
 # labels cannot cause cleanup of an unrelated orphan.
@@ -419,5 +423,5 @@ def existing_post_ids(ids: list[str]) -> set[str]:
 
 
 def delete_everything() -> None:
-    """Q10. Reset. Always followed by a seed load."""
+    """Q10. Reset: removes everything but accounts. Always followed by a seed load."""
     _write(DELETE_EVERYTHING)

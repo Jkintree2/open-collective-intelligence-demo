@@ -77,3 +77,16 @@ def test_a_claim_with_no_anonymous_property_is_listed_by_name(live_graph):
     claimants = live_graph.issue_claimants("flooding")
     assert claimants["people"] == 2 and claimants["claims"] == 3
     assert sorted(claimants["names"]) == ["Grace", "Hal"]
+
+
+def test_reset_keeps_accounts_and_who_entered_whom(live_graph):
+    make_account(live_graph)
+    make_account(live_graph, "acct:bob", "bob@example.org", accepted=False)
+    live_graph.driver().execute_query(
+        "MATCH (a:Person {key: 'acct:ada'}), (b:Person {key: 'acct:bob'}) "
+        "CREATE (a)-[:ENTERED {relationship: 'friend', agreed: true, created_at: $now}]->(b) "
+        "CREATE (:Issue {key: 'flooding', name: 'Flooding', seed: false})", now=NOW, database_=live_graph.database())
+    assert live_graph.non_seed_count() == 1  # the issue; accounts are neither seed nor non-seed
+    live_graph.delete_everything()
+    labels, types = live_graph.counts()
+    assert labels == {"Person": 2} and types == {"ENTERED": 1}
