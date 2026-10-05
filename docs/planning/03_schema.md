@@ -369,7 +369,7 @@ Added 4 October 2026 at Gate 0 of Phase 1. This section is the binding spec for 
 | D4 Passwords | At least 10 characters, no other rules. Invitation links last 14 days, password links 1 hour. One live link per person: a new link replaces the old one, and using a link clears it. A password link is sent only to an accepted, active account. "Forgot your password?" for someone entered but not yet accepted sends a fresh invitation link instead, with the same message and limits, so a lost or expired invitation never leaves anyone stuck. |
 | D5 Tidying | Only accounts with `admin = true` (John's) move, rename and merge issues. Every change writes a `Change` that every member can read. |
 | D6 Entering a person | `ENTERED` from inviter to person, carrying the relationship the inviter declares and `agreed: true` from the form's tick. Any accepted, active member can enter others. |
-| D7 Stances | One stance per person and solution from Phase 1 on: a new stance replaces that person's opposite one, by click or by post, for every Person. Pairs left from 0.1 stay and count both ways (net zero) until that person takes a new stance on that solution. |
+| D7 Stances | One stance per person and solution from Phase 1 on: a new stance replaces that person's opposite one, by click or by a post made with accounts on, for every Person. Pairs left from 0.1 stay and count both ways (net zero) until that person takes a new stance on that solution. Until `ACCOUNTS_ENABLED` is set, posts and the issue page work exactly as in 0.1 (decision X1, 5 October 2026). |
 | D8 Between entry and acceptance | Entry creates the account Person, without a password, and its `ENTERED` in one transaction. Until acceptance the person cannot sign in, post or take a stance, and appears nowhere public. The person may correct their own name, country and postal code when accepting; the relationship stays as declared. The inviter or John may send the invitation again, or withdraw an entry never accepted. |
 
 ### Person, extended for accounts
@@ -503,7 +503,7 @@ OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
 RETURN p.email AS email, p.name AS name, purpose, inviter.name AS inviter_name, e.relationship AS relationship
 ```
 
-The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`. The back room's "Send a password link" uses the second with the account's key in place of the email and only for an accepted account. Python sends the invitation email for `invite` (John's own wording when there is no inviter) and the password email for `reset`. Both requests draw on the same limits: per address and per minute.
+The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`. John's root account is made by `make_admin.py` with no link and no `ENTERED`, and nothing is sent (decision X3, 5 October 2026); being not yet accepted, it gets its first link from the "Forgot your password?" statement above, sent by the site from its own settings, in John's own wording (no inviter). The back room's "Send a password link" uses the second with the account's key in place of the email and only for an accepted account. Python sends the invitation email for `invite` (John's own wording when there is no inviter) and the password email for `reset`. Both requests draw on the same limits: per address and per minute.
 
 **Q18. Choose a new password through a link.**
 
@@ -572,11 +572,11 @@ OPTIONAL MATCH (p)-[r:APPROVE|OPPOSE]->(s)
 DELETE r
 ```
 
-The write path's statement 4b (a stance carried by a post) becomes the same set statement with the post's properties: `ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now ON MATCH SET r.last_post_id = $post_id`. It applies to every Person, so the one-stance rule holds however a stance is taken.
+For a post made with `ACCOUNTS_ENABLED` set (always an account's), the write path's statement 4b becomes the same set statement with the post's properties: `ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now ON MATCH SET r.last_post_id = $post_id`, so the one-stance rule holds however an account takes a stance. With `ACCOUNTS_ENABLED` unset, 4b stays the 0.1 statement and the issue page uses the 0.1 Q4 (decision X1): the live site does not change until rollout.
 
 A stance that a post made and a click later replaced or withdrew is gone from that post's "show what was added" list; the statement itself is unchanged.
 
-**Q4, revised.** Solutions are ranked by net support. A 0.1 Person who holds both stances counts once each way, so adds nothing net. `$me` is the signed-in account key, or null, which matches nothing.
+**Q4, revised** (with `ACCOUNTS_ENABLED` set; until then Q4 as in 0.1). Solutions are ranked by net support. A 0.1 Person who holds both stances counts once each way, so adds nothing net. `$me` is the signed-in account key, or null, which matches nothing.
 
 ```cypher
 MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
@@ -602,11 +602,12 @@ Posts by an account are credited as before: `POSTED` from the account, `display_
 
 **Q7, revised.** The feed and the issue page also return `post.edited_at` and `EXISTS { (:Person {key: $me})-[:POSTED]->(post) } AS mine`. The author's key is never returned to a template.
 
-**Q24. Is this my post?** Every edit and delete starts here, on the server; hiding the buttons is not the check.
+**Q24. Is this my post?** Every edit and delete starts here, on the server, inside the write transaction; hiding the buttons is not the check. It locks the post, so a second delete or edit from another tab waits, then finds the post gone and says so.
 
 ```cypher
 MATCH (:Person {key: $me})-[:POSTED]->(post:Post {id: $id})
 WHERE coalesce(post.seed, false) = false
+SET post.id = post.id
 RETURN post.id AS id, post.text AS text, post.anonymous AS anonymous,
        post.payload AS payload, post.created_at AS created_at
 ```
@@ -622,11 +623,13 @@ SET post.text = $text, post.payload = $payload, post.source = $source,
     post.edited_at = $now
 ```
 
-`created_at` stays, so the post keeps its place in the feed. An edited post keeps the name or Anonymous it was first posted with. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
+`created_at` stays, so the post keeps its place in the feed. An edited post keeps the name or Anonymous it was first posted with.
+
+The edit card is built from the post's current edges (Q7's structure query for this one post, with issue names and parents from Q2), not from its stored `payload`, so an issue renamed or merged since shows as it is now and is never made again; the stored payload gives only evidence links. A solution's position on the card is the stance edge this post still holds, so a stance a click has since replaced shows as no position. When the card is resolved for saving, a solution this post itself proposes is proposed again (its own `HAVE_PROPOSED` link is left out of the candidates), never read as a position on a solution already listed (GitHub issue 4's rule); so an unchanged edit leaves the post's edges as they were. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
 
 ### Search
 
-Search does not need accounts and may go live before them. The query is cut to 200 characters and ten words, lower-cased, and every Lucene special character (`+ - & | ! ( ) { } [ ] ^ " ~ * ? : \ /`) is escaped with a backslash; each word then matches as written or as the start of a word (`housing housing*`). An empty query shows the normal Issues list. Search by meaning (embeddings, GitHub issue 2) and event dates belong to Phase 3.
+Search does not need accounts: it works behind the passphrase too. It ships with the rest of Phase 1, since its pages build on the Phase 1 access code. The query is cut to 200 characters and ten words, lower-cased, and every Lucene special character (`+ - & | ! ( ) { } [ ] ^ " ~ * ? : \ /`) is escaped with a backslash; every word must then match, as written or as the start of a word (`+(housing housing*) +(costs costs*)`), so a second word narrows the results, as the page's "Try another word, or fewer words" says. An empty query shows the normal Issues list. Search by meaning (embeddings, GitHub issue 2) and event dates belong to Phase 3.
 
 **Q26. Names.**
 
@@ -740,11 +743,11 @@ MATCH (p:Person)-[:MADE]->(c:Change)
 OPTIONAL MATCH (c)-[:CHANGED]->(i:Issue)
 RETURN c.id AS id, c.kind AS kind, c.created_at AS created_at, c.details AS details,
        p.name AS by, i.key AS issue_key, i.name AS issue_name
-ORDER BY c.created_at DESC
+ORDER BY c.created_at DESC, c.id DESC
 LIMIT 200
 ```
 
-**Q1, revised.** `last_activity` ignores `CHANGED` (`OPTIONAL MATCH (i)-[r]-() WHERE type(r) <> 'CHANGED'`), so tidying an issue does not move it up "Most recent".
+**Q1, revised.** `last_activity` ignores `CHANGED` and a `PART_OF` with no `post_id` (made by a move, Q28, or by the seed's issues block): `OPTIONAL MATCH (i)-[r]-() WHERE type(r) <> 'CHANGED' AND NOT (type(r) = 'PART_OF' AND r.post_id IS NULL)`. So tidying an issue, a move included, does not move it or its parent up "Most recent". (The seed's `PART_OF` edges carry the seed's first date, the same as its issues' `created_at`, so the seed's order does not change.)
 
 ### Back room, seed, export and restore
 
@@ -756,6 +759,6 @@ MATCH (n) WHERE NOT (n:Person AND n.email IS NOT NULL) DETACH DELETE n
 
 `scripts/seed.py --reset` follows the same rule, and counts accounts as neither seed nor non-seed when it decides whether to refuse.
 
-**Reload seed** adds only seed statements that are missing. When every seed statement is present it writes nothing, so a seed issue that John renamed or merged does not come back under its old name.
+**Reload seed** adds only seed statements that are missing. When every seed statement is present it writes nothing, so a seed issue that John renamed or merged does not come back under its old name. When some are missing (deleted in the back room), each seed issue name in the issues block and in the seed posts loaded again is first read as the issue it became, following every rename and merge in the change records (Q32), so the old name does not come back that way either.
 
 **Q33. Export, version 2.** `Change` (identity `id`) joins the labels; `ENTERED` (Person to Person), `MADE` (Person to Change) and `CHANGED` (Change to Issue) join the types. `password_hash`, `token_hash`, `token_purpose` and `token_expires_at` are left out of every node. Restore accepts versions 1 and 2. A restored account keeps `accepted_at` but has no password, and its owner uses "Forgot your password?".

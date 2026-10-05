@@ -2,7 +2,7 @@
 
 > **Revised 5 September 2026 after REVIEW.md.** Changed: the gate names DeepSeek (M16); the sentence and site name come from environment variables (M15); anonymous clears the name and stores none (M7); a row of the most discussed issue chips sits above the text box (C7); the limit is 4,000 characters (m11); a cancel link during reading (m10); Post is gated on an empty card (M17); the feed shows sixty posts, no paging (table); the sort is labelled "Most people" and top-level rows show inclusive counts (m9, C7); evidence links carry `noopener` (M17); admin uses basic auth and shows the last reading-service error (table, M5); the "posting as" header line is cut (table); error and asleep page copy added (m2, C4).
 
-> **Extended 4 October 2026 for Phase 1 (People and positions, SOW 0.2).** Added: sign in, entering a person, the invitation and password emails, accepting, password pages, your account, approve and oppose buttons, editing and deleting your own posts, search, tidying and the list of changes, and back room additions. See "Phase 1: people and positions" at the end. With `ACCOUNTS_ENABLED` unset the screens above are unchanged, except search, which may go live first.
+> **Extended 4 October 2026 for Phase 1 (People and positions, SOW 0.2).** Added: sign in, entering a person, the invitation and password emails, accepting, password pages, your account, approve and oppose buttons, editing and deleting your own posts, search, tidying and the list of changes, and back room additions. See "Phase 1: people and positions" at the end. With `ACCOUNTS_ENABLED` unset the screens above are unchanged, except search on the Issues page, which works behind the passphrase too.
 
 Five screens, one CSS file, one JavaScript file. Look taken from John's two Claude prototypes: the paper palette and serif statements of the second ("The Commons"), the sidebar-free single column and the plain-sentence relationships of both. Anything marked **client-facing** is copy John will read; it avoids dashes and machine phrasing, and John may replace any of it.
 
@@ -196,6 +196,14 @@ Messages:
 
 > You are signed out.
 
+When a page finds the member signed out (the card, a preview, Post, an Approve or Oppose button):
+
+> Please sign in again.
+
+Any form posted from another site is refused with:
+
+> Please reload the page and try again.
+
 The same "did not match" line answers a wrong password, an unknown email, an invitation not yet accepted and an account that is switched off, so the page never says who is taking part.
 
 ### Writing with an account
@@ -235,7 +243,15 @@ Messages:
 > {name} is entered, but the invitation email did not go. Please try again in a minute.
 > [ Send the invitation again ]
 
+When the form is sent twice in a row (a double tap), the second answer promises nothing, since the first email may not have gone; the list below shows the truth:
+
+> {name} is entered. If the invitation does not arrive, use Send the invitation again in the list below.
+
 > Too many tries. Please wait a minute and try again.
+
+When "Send the invitation again" has reached the same address too often in the last hour (the same limit as "Forgot your password?"):
+
+> Too many emails to that address in the last hour. Please try again later.
 
 Below the form, the people this member has entered, newest first:
 
@@ -282,7 +298,7 @@ After either button:
 >
 > John Kintree
 
-John's own first email, from `make_admin.py`, has no "Entered by" lines:
+John's own first email has no "Entered by" lines. `make_admin.py` makes his account and sends nothing; the email goes when he first uses "Forgot your password?" on the site, since his account is not yet accepted (the same goes for any invitation sent again to his account before he accepts):
 
 > **Subject:** Choose your password for {SITE_NAME}
 >
@@ -328,6 +344,9 @@ After accepting, the write page opens with:
 When the link cannot be used, one page with one of these:
 
 > This invitation has expired. Please ask {inviter} to send a new one.
+> [ Ask for a new link ]
+
+The button opens "Forgot your password?", which sends a person not yet accepted their invitation again (D4). John's own first link has no inviter; when it expires it shows "This link has expired. You can ask for a new one." with "Forgot your password?".
 
 > This link has expired. You can ask for a new one.
 > [ Forgot your password? ]
@@ -418,9 +437,11 @@ Each solution keeps its counts line ("proposed by 2 · approved by 3 · opposed 
 
 > You oppose this. Press Oppose again to withdraw.
 
-Pressing the other button switches. The counts update in place; without JavaScript the buttons are forms and the page reloads at the same solution. On failure:
+Pressing the other button switches. The counts update in place; without JavaScript the buttons are forms and the page reloads at the same solution. On failure, under the buttons (without JavaScript too, after the page reloads at the solution):
 
 > Your position was not saved. Please try again.
+
+With `ACCOUNTS_ENABLED` unset there are no buttons and no "Listed by" line, and the solutions keep today's order, so the issue page reads exactly as before.
 
 The "Already on record" panel above the write box keeps its three choices, which add a row to the card as before; a choice made there survives "Read my statement" (GitHub issue 8).
 
@@ -430,12 +451,12 @@ On a member's own posts, after the byline: "Edit" and "Delete". An edited post's
 
 Delete asks first:
 
-> Delete this post? It goes, with anything only it added to the record. Approvals and oppositions stay; you can change them on the issue page.
+> Delete this post? What it claimed, proposed and cited goes, unless something else still uses it. Approvals and oppositions stay; you can change them on the issue page.
 > [ Delete ] [ Keep it ]
 
 > Your post is deleted.
 
-Edit opens the write page with the statement and the card filled from the post. The card's heading reads "Edit your post", its buttons "Save changes" and "Cancel", and a line at the top says:
+Edit opens the write page with the statement and the card filled from the post as the record holds it now (an issue renamed or merged since shows under its new name). "Read my statement" and "Skip the reading" are hidden while editing. Without JavaScript the page shows the statement and a "Save changes" button, which saves the new words with the post's card as it is. The card's heading reads "Edit your post", its buttons "Save changes" and "Cancel", and a line at the top says:
 
 > Saving replaces what this post added. It keeps the name or Anonymous it was first posted with. Removing a position here does not withdraw it; use the buttons on the issue page.
 
@@ -457,6 +478,8 @@ Results replace the list, in groups that have results, each item linking to its 
 > Issues · Solutions · Evidence · Posts
 > Show all issues
 
+Every word must match, as written or as the start of a word, so a second word narrows the results.
+
 > Nothing matches {words}. Try another word, or fewer words.
 
 ### Tidying an issue (John only)
@@ -470,7 +493,7 @@ At the foot of an issue page, seen only by an admin account:
 > Make it part of: [ none, make it a top level issue / top level issues ] [ Move ]
 > *or, when other issues are part of it:* Other issues are part of this one, so it stays at the top level.
 >
-> Merge another issue into this one: [ issue ] [ Merge ]
+> Merge another issue into this one: [ Choose an issue / every other issue ] [ Merge ]
 
 Merge asks first:
 
