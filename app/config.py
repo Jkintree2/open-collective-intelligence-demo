@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -56,6 +57,14 @@ class Settings:
         return self.app_env == "local"
 
 
+def _site_url_ok(url: str, local: bool) -> bool:
+    """https always; plain http only for this machine (parsed hostname, not a prefix) when APP_ENV=local."""
+    if url.startswith("https://"):
+        return True
+    parts = urlsplit(url)
+    return local and parts.scheme == "http" and parts.hostname in ("localhost", "127.0.0.1")
+
+
 def load_settings(env: dict[str, str] | None = None) -> Settings:
     """Build Settings from `env`, or from the process environment plus `.env` when it exists.
 
@@ -72,6 +81,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
     site_url = (env.get("SITE_URL") or "").strip().rstrip("/") or None
     if accounts_enabled and not site_url:
         raise SystemExit("SITE_URL is not set")
+    if accounts_enabled and not _site_url_ok(site_url, (env.get("APP_ENV") or "production") == "local"):
+        raise SystemExit("SITE_URL must start with https://")
     return Settings(
         demo_passphrase=env["DEMO_PASSPHRASE"],
         secret_key=env["SECRET_KEY"],

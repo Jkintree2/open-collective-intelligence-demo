@@ -21,7 +21,7 @@ Python 3.12, FastAPI, Jinja2, uvicorn. `neo4j` driver 6.x against Neo4j Aura Fre
 
 ```
 app/main.py        FastAPI app, page routes, lifespan (driver open/close, non-fatal connectivity check), request-id middleware (emailed links cut from the log through pages.loggable_path), the CrossSite handler, error and asleep pages; include_routers() adds every app/routes_*.py router
-app/config.py      settings from environment variables; refuses to start without DEMO_PASSPHRASE, SECRET_KEY, ADMIN_TOKEN, NEO4J_*, and SITE_URL when ACCOUNTS_ENABLED is true; SITE_NAME and SITE_SENTENCE have defaults; MAIL_FROM, GMAIL_* and MAIL_CONSOLE for email
+app/config.py      settings from environment variables; refuses to start without DEMO_PASSPHRASE, SECRET_KEY, ADMIN_TOKEN, NEO4J_*, and SITE_URL (https, or http on this machine with APP_ENV=local) when ACCOUNTS_ENABLED is true; SITE_NAME and SITE_SENTENCE have defaults; MAIL_FROM, GMAIL_* and MAIL_CONSOLE for email
 app/auth.py        passphrase cookie (signed, 30 days, embeds a hash of the passphrase), admin HTTP basic auth and form tokens, in-process limits (MinuteBucket, KeyedLimit, DailyLimit, PostSpacing)
 app/accounts.py    emails, scrypt passwords (two at a time), link secrets and lifetimes, the member cookie, person_name(), entry_state(), every account limiter (sign in, entering, forgot per minute, the per address link limit); no I/O
 app/members.py     who is reading: Member, current_member, member_key, require_access, require_member, require_same_origin and CrossSite, wants_json, member cookies, safe_next, posting_identity
