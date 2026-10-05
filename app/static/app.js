@@ -22,7 +22,8 @@
   const card = window.ociCard({find, request, unavailable, stopDictation: () => dictation.stop(), stopReading, updateText});
   const {state} = card;
   const dictation = window.ociDictation({find, tooLong, updateText, busy: () => state.reading || state.posting,
-    heard: () => { state.metadata = {source: 'manual'}; updateText(); card.changed(); }});
+    // Spoken words are the writer's own, as typed ones are; the reading they follow still goes with them.
+    heard: () => { state.metadata = {...state.metadata, source: 'manual'}; updateText(); card.changed(); }});
   function stopReading() {
     readController?.abort(); readController = null;
     clearTimeout(slowTimer); clearTimeout(abandonTimer);

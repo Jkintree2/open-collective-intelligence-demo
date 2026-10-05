@@ -68,6 +68,7 @@ templates.env.globals["site_name"] = settings.site_name
 templates.env.globals["asset_version"] = hashlib.sha256(
     b"".join(path.read_bytes() for path in sorted((BASE / "static").iterdir()) if path.is_file())
 ).hexdigest()[:10]
+templates.env.filters["anchor"] = lambda key: "solution-" + key.replace(" ", "-")
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
@@ -286,7 +287,7 @@ def issue_page(request: Request, key: str) -> Response:
         {
             "issue": header,
             "claimants": graph.issue_claimants(key),
-            "solutions": graph.issue_solutions(key),
+            "solutions": graph.issue_solutions(key, me=member_key(request), ranked=settings.accounts_enabled),
             "evidence": graph.issue_evidence(key),
             "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
         },
@@ -509,7 +510,8 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 statement, resolved, source=source,
                                 extraction_raw=data.extraction_raw, model=data.model,
                                 latency_ms=data.latency_ms,
-                                request_id=_request_id(request), edited=edited)
+                                request_id=_request_id(request), edited=edited,
+                                one_stance=settings.accounts_enabled)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
     if member is None:
         if anonymous:

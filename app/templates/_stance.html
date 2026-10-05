@@ -1,0 +1,7 @@
+<p class="counts">proposed by {{ solution.proposers }} · approved by <span data-approves>{{ solution.approves }}</span> · opposed by <span data-opposes>{{ solution.opposes }}</span></p>
+  <form class="stance" method="post" action="/solutions/{{ solution.key|urlencode }}/stance">
+    <input type="hidden" name="issue" value="{{ issue.key }}">
+    <button type="submit" name="choice" value="{{ 'withdraw' if solution.my_stance == 'APPROVE' else 'approve' }}" aria-pressed="{{ 'true' if solution.my_stance == 'APPROVE' else 'false' }}">Approve</button>
+    <button type="submit" name="choice" value="{{ 'withdraw' if solution.my_stance == 'OPPOSE' else 'oppose' }}" aria-pressed="{{ 'true' if solution.my_stance == 'OPPOSE' else 'false' }}">Oppose</button>
+    <p class="counts" role="status" data-stance-line>{% if request.query_params.get("not_saved") == solution.key %}Your position was not saved. Please try again.{% elif solution.my_stance == 'APPROVE' %}You approve this. Press Approve again to withdraw.{% elif solution.my_stance == 'OPPOSE' %}You oppose this. Press Oppose again to withdraw.{% endif %}</p>
+  </form>

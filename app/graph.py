@@ -19,6 +19,7 @@ from app.graph_runtime import (RecordAsleep, _read, _write, close_driver, databa
 log = logging.getLogger("oci")
 
 STANCE_TYPES = {"approve": "APPROVE", "oppose": "OPPOSE"}
+OPPOSITE_STANCE = {"APPROVE": "OPPOSE", "OPPOSE": "APPROVE"}
 EVIDENCE_TYPES = {"supports": "SUPPORTS", "refutes": "REFUTES"}
 TARGET_LABELS = ("Issue", "Solution", "Evidence")
 
@@ -92,6 +93,21 @@ ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $no
 ON MATCH  SET r.last_post_id = $post_id
 """
 
+# 4b for a post by an account (D7, Q23): {stance} is APPROVE or OPPOSE, {other} the opposite, from
+# STANCE_TYPES and OPPOSITE_STANCE, never from input. The opposite stance goes first, under the same
+# locks as a click. MERGE_STANCE above stays the 0.1 statement, used while ACCOUNTS_ENABLED is unset.
+MERGE_ONE_STANCE = """
+MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
+SET p.key = p.key, s.key = s.key
+WITH p, s
+OPTIONAL MATCH (p)-[old:{other}]->(s)
+DELETE old
+WITH DISTINCT p, s
+MERGE (p)-[r:{stance}]->(s)
+ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now
+ON MATCH  SET r.last_post_id = $post_id
+"""
+
 MERGE_EVIDENCE_SUBMIT = """
 MERGE (e:Evidence {key: $evidence_key})
 ON CREATE SET e.name = $evidence_name, e.url = $url, e.created_at = $now, e.seed = $seed
@@ -156,16 +172,37 @@ RETURN sum(claims) AS claims, count(who) AS people,
 
 ISSUE_SOLUTIONS = """
 MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
-OPTIONAL MATCH (pp:Person)-[:PROPOSE]->(s)
+OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
 OPTIONAL MATCH (pa:Person)-[:APPROVE]->(s)
 OPTIONAL MATCH (po:Person)-[:OPPOSE]->(s)
-WITH s, count(DISTINCT pp) AS proposers, count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
+WITH s, count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+     count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
 OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
 WITH s, proposers, approves, opposes,
      [x IN collect(DISTINCT {key: ev.key, name: ev.name, url: ev.url, stance: type(r)})
         WHERE x.key IS NOT NULL] AS evidence
 RETURN s.key AS key, s.name AS name, proposers, approves, opposes, evidence
 ORDER BY proposers DESC, approves DESC, s.created_at ASC
+"""
+
+# Q4, revised for Phase 1 (with ACCOUNTS_ENABLED): ranked by net support; the member's own stance
+# comes with each row. $me null matches nothing. Until rollout the page uses ISSUE_SOLUTIONS (X1).
+# Proposers are counted by account and anonymity, as in ISSUE_SOLUTIONS (D2, option a).
+ISSUE_SOLUTIONS_RANKED = """
+MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
+OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
+OPTIONAL MATCH (pa:Person)-[:APPROVE]->(s)
+OPTIONAL MATCH (po:Person)-[:OPPOSE]->(s)
+WITH s, count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+     count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
+OPTIONAL MATCH (:Person {key: $me})-[mine:APPROVE|OPPOSE]->(s)
+WITH s, proposers, approves, opposes, head(collect(type(mine))) AS my_stance
+OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
+WITH s, proposers, approves, opposes, my_stance,
+     [x IN collect(DISTINCT {key: ev.key, name: ev.name, url: ev.url, stance: type(r)})
+        WHERE x.key IS NOT NULL] AS evidence
+RETURN s.key AS key, s.name AS name, proposers, approves, opposes, my_stance, evidence
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 """
 
 ISSUE_EVIDENCE = """
@@ -382,7 +419,10 @@ def issue_claimants(key: str) -> dict[str, Any]:
     return rows[0] if rows else {"claims": 0, "people": 0, "names": []}
 
 
-def issue_solutions(key: str) -> list[dict[str, Any]]:
+def issue_solutions(key: str, me: str | None = None, ranked: bool = False) -> list[dict[str, Any]]:
+    """Q4. `ranked` is ACCOUNTS_ENABLED on the issue page: net support and the member's own stance."""
+    if ranked:
+        return _read(ISSUE_SOLUTIONS_RANKED, key=key, me=me)
     return _read(ISSUE_SOLUTIONS, key=key)
 
 
