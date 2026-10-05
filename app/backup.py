@@ -18,7 +18,7 @@ VERSION = 2
 VERSIONS = (1, 2)
 # Never in a copy (03_schema.md Q33): a restored account chooses a new password by link.
 SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at"})
-LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id"}
+LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id", "Change": "id"}
 DIRECTIONS = {
     "POSTED": ("Person", {"Post"}), "CLAIM": ("Person", {"Issue"}),
     "SUBMIT": ("Person", {"Evidence"}), "PROPOSE": ("Person", {"Solution"}),
@@ -27,6 +27,7 @@ DIRECTIONS = {
     "SUPPORTS": ("Evidence", {"Issue", "Solution", "Evidence"}),
     "REFUTES": ("Evidence", {"Issue", "Solution", "Evidence"}),
     "ENTERED": ("Person", {"Person"}),
+    "MADE": ("Person", {"Change"}), "CHANGED": ("Change", {"Issue"}),
 }
 TEMPORALS = {"DateTime": DateTime, "Date": Date, "Time": Time, "Duration": Duration}
 
@@ -126,7 +127,7 @@ def properties(value):
     for key, item in decoded.items():
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
                    "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
-                   "relationship"} and not isinstance(item, str):
+                   "relationship", "kind", "details"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
         if key in {"seed", "anonymous", "admin", "active", "agreed"} and type(item) is not bool:
             raise InvalidBackup("A boolean property has the wrong type.")

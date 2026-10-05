@@ -88,6 +88,8 @@ def sample():
             "created_at": timestamp, "payload": '{"issues": [{"key": "same"}]}',
             "extraction_raw": ' { "found" : true } ', "model": "reading-version", "latency_ms": 123,
             "source": "model", "anonymous": True, "seed": False}},
+        {"label": "Change", "identity": "change", "properties": {"id": "change", "kind": "rename",
+            "created_at": timestamp, "details": "{}"}},
     ]
     refs = {n["label"]: {k: n[k] for k in ("label", "identity")} for n in nodes}
     from app.backup import DIRECTIONS
@@ -111,11 +113,17 @@ def test_full_round_trip_preserves_every_property_and_relationship_duplicate(mon
     memory = Memory()
     monkeypatch.setattr(graph, "driver", lambda: memory)
     original = sample()
-    assert graph.restore_record(original) == (5, len(original["relationships"]))
+    assert graph.restore_record(original) == (len(original["nodes"]), len(original["relationships"]))
     assert memory.queries[0][0] == graph.COUNT_NODES and memory.transactions == 1
     exported = json.loads(json.dumps(graph.export_record()))
     assert exported == canonical(original)
     assert len([r for r in exported["relationships"] if r["type"] == "CLAIM"]) == 2
+
+
+def test_change_records_round_trip():
+    data = sample()
+    assert {r["type"] for r in data["relationships"]} >= {"MADE", "CHANGED"}
+    validate_record(data)
 
 
 def test_nonempty_guard_precedes_first_write_and_failure_rolls_back(monkeypatch):
