@@ -33,7 +33,8 @@ from app.config import Settings
 from app.graph_accounts import EmailTaken
 from app.graph_runtime import RecordAsleep
 
-LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1")
+LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1", "0.0.0.0")
+SCHEMES = ("neo4j", "neo4j+s", "neo4j+ssc", "bolt", "bolt+s", "bolt+ssc")
 
 
 def _settings(parser: argparse.ArgumentParser) -> Settings:
@@ -61,7 +62,11 @@ def main(argv: list[str] | None = None) -> int:
     if not accounts.looks_like_email(email) or not name:
         parser.error("give a whole email address and a name")
     settings = _settings(parser)
-    host = urlsplit(settings.neo4j_uri).hostname or ""
+    parts = urlsplit(settings.neo4j_uri)
+    if parts.scheme not in SCHEMES:
+        parser.error(f"NEO4J_URI starts with '{parts.scheme}', which is not an address scheme the driver knows; "
+                     f"use one of {', '.join(SCHEMES)}")
+    host = parts.hostname or ""
     if host in LOCAL_HOSTS and not args.local:
         parser.error(f"{host} is a database on this machine; add --local if that is what you mean")
     print(f"Database: {host}, {settings.neo4j_database}")

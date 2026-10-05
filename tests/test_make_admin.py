@@ -108,3 +108,22 @@ def test_a_database_that_cannot_be_reached_is_said_plainly(script, monkeypatch, 
     assert err == (f"Could not reach the database ({type(failure).__name__}). Check the address, user and "
                    "password, and that the instance is running.\n")
     assert str(failure) not in err and "10.1.2.3" not in err and made == []
+
+
+def test_make_admin_refuses_0_0_0_0_unless_told(script):
+    opened, made, env = script
+    env(**{**LIVE, "NEO4J_URI": "neo4j://0.0.0.0:7687", "NEO4J_DATABASE": "neo4j"})
+    with pytest.raises(SystemExit) as exit_info:
+        make_admin.main([*ARGS, "--yes"])
+    assert exit_info.value.code == 2 and opened == [] and made == []
+
+
+def test_make_admin_refuses_an_unknown_address_scheme(script, capsys):
+    opened, made, env = script
+    env(**{**LIVE, "NEO4J_URI": "neo4+s://user:secretpw@abc123.databases.neo4j.io"})
+    with pytest.raises(SystemExit) as exit_info:
+        make_admin.main([*ARGS, "--yes"])
+    captured = capsys.readouterr()
+    assert exit_info.value.code == 2 and opened == [] and made == []
+    assert "neo4+s" in captured.err and "secretpw" not in captured.err + captured.out
+    assert "Database:" not in captured.out
