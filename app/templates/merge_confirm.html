@@ -2,9 +2,11 @@
 {% block title %}Merge · {{ site_name }}{% endblock %}
 {% block content %}
 <p>Merge {{ merged.name }} into {{ kept.name }}? Its claims, solutions, evidence and the issues that are part of it move here, and {{ merged.name }} is removed. This cannot be undone. It is recorded in the list of changes.</p>
-<form method="post" action="/issues/{{ kept.key|urlencode }}/merge">
-  <input type="hidden" name="other" value="{{ merged.key }}">
-  <button type="submit" class="primary">Merge</button>
-</form>
-<p class="search-links"><a href="/issues/{{ kept.key|urlencode }}">Cancel</a></p>
+<div class="row-actions">
+  <form method="post" action="/issues/{{ kept.key|urlencode }}/merge">
+    <input type="hidden" name="other" value="{{ merged.key }}">
+    <button type="submit" class="primary">Merge</button>
+  </form>
+  <a class="quiet" href="/issues/{{ kept.key|urlencode }}">Cancel</a>
+</div>
 {% endblock %}

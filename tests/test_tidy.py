@@ -115,6 +115,8 @@ def test_merge_asks_first_then_says_what_happened(tidying):
     assert ("Merge Online platform into Platform for digital democracy? Its claims, solutions, evidence and the issues "
             "that are part of it move here, and Online platform is removed. This cannot be undone. It is recorded in "
             "the list of changes.") in question.replace("\n", " ")
+    assert '<div class="row-actions">' in question
+    assert '<a class="quiet" href="/issues/platform">Cancel</a>' in question
     result = tidying.client.post("/issues/platform/merge", data={"other": "online platform"}, follow_redirects=False)
     assert result.headers["location"] == "/issues/platform?done=merged&change=c1#tidy"
     assert "Merged. Everything about Online platform is now here." in tidying.client.get(result.headers["location"]).text
