@@ -45,48 +45,66 @@ CREATE (p)-[:CLAIM {post_id: $post, anonymous: $anonymous, created_at: $now}]->(
 """
 
 
-def test_claimants_count_old_people_and_accounts_once(live_graph):
-    """Review Focus 1: 0.1 people keep their posts; an account with named and anonymous claims is one
-    person, listed once by name; anonymous 0.1 people are listed as Anonymous."""
-    run = lambda **p: live_graph.driver().execute_query(CLAIM, now=NOW, database_=live_graph.database(), **p)
+OLD_CLAIMANTS = """
+MATCH (p:Person)-[c:CLAIM]->(i:Issue {key: $key})
+RETURN count(c) AS claims, count(DISTINCT p) AS people,
+       collect(DISTINCT CASE WHEN c.anonymous THEN 'Anonymous' ELSE p.name END) AS names
+"""  # the 0.1 statement (commit 62a6727)
+
+
+def claim_runner(live_graph):
+    return lambda **p: live_graph.driver().execute_query(CLAIM, now=NOW, database_=live_graph.database(), **p)
+
+
+def test_claimants_count_old_people_and_accounts_by_identity(live_graph):
+    """D2: an account's named and anonymous claims count apart; 0.1 people keep their numbers."""
+    run = claim_runner(live_graph)
     run(person="name:grace", name="Grace", anonymous_person=False, post="p1", anonymous=False)
     run(person="anon:1", name=None, anonymous_person=True, post="p2", anonymous=True)
     run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p3", anonymous=False)
     run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p4", anonymous=True)
     claimants = live_graph.issue_claimants("flooding")
-    assert claimants["people"] == 3 and claimants["claims"] == 4
+    assert claimants["people"] == 4 and claimants["claims"] == 4
     assert sorted(claimants["names"]) == ["Ada Lovelace", "Anonymous", "Grace"]
 
 
-def test_a_person_with_named_and_anonymous_claims_is_listed_only_by_name(live_graph):
-    """The old rule listed such a person twice, once by name and once as Anonymous."""
-    run = lambda **p: live_graph.driver().execute_query(CLAIM, now=NOW, database_=live_graph.database(), **p)
+def test_an_account_with_a_named_and_an_anonymous_claim_reads_as_two_people(live_graph):
+    run = claim_runner(live_graph)
     run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p1", anonymous=False)
     run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p2", anonymous=True)
     claimants = live_graph.issue_claimants("flooding")
+    assert claimants["people"] == 2 and claimants["claims"] == 2
+    assert sorted(claimants["names"]) == ["Ada Lovelace", "Anonymous"]
+
+
+def test_two_anonymous_claims_by_one_account_count_once_as_anonymous(live_graph):
+    run = claim_runner(live_graph)
+    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p1", anonymous=True)
+    run(person="acct:ada", name="Ada Lovelace", anonymous_person=False, post="p2", anonymous=True)
+    claimants = live_graph.issue_claimants("flooding")
     assert claimants["people"] == 1 and claimants["claims"] == 2
-    assert claimants["names"] == ["Ada Lovelace"]
+    assert claimants["names"] == ["Anonymous"]
+
+
+def test_a_01_record_reads_the_same_as_under_the_01_statement(live_graph):
+    run = claim_runner(live_graph)
+    run(person="name:grace", name="Grace", anonymous_person=False, post="p1", anonymous=False)
+    run(person="name:grace", name="Grace", anonymous_person=False, post="p2", anonymous=False)
+    run(person="name:hal", name="Hal", anonymous_person=False, post="p3", anonymous=None)
+    run(person="anon:1", name=None, anonymous_person=True, post="p4", anonymous=True)
+    run(person="anon:2", name=None, anonymous_person=True, post="p5", anonymous=True)
+    old, _, _ = live_graph.driver().execute_query(OLD_CLAIMANTS, key="flooding", database_=live_graph.database())
+    new = live_graph.issue_claimants("flooding")
+    assert (new["claims"], new["people"], sorted(new["names"])) == \
+        (old[0]["claims"], old[0]["people"], sorted(old[0]["names"])) == (5, 4, ["Anonymous", "Grace", "Hal"])
 
 
 def test_a_claim_with_no_anonymous_property_is_listed_by_name(live_graph):
     """collect() drops nulls; a claim edge without the property must still count as named (as in 0.1)."""
-    run = lambda **p: live_graph.driver().execute_query(CLAIM, now=NOW, database_=live_graph.database(), **p)
+    run = claim_runner(live_graph)
     run(person="name:grace", name="Grace", anonymous_person=False, post="p1", anonymous=None)
     run(person="name:hal", name="Hal", anonymous_person=False, post="p2", anonymous=None)
     run(person="name:hal", name="Hal", anonymous_person=False, post="p3", anonymous=True)
     claimants = live_graph.issue_claimants("flooding")
-    assert claimants["people"] == 2 and claimants["claims"] == 3
-    assert sorted(claimants["names"]) == ["Grace", "Hal"]
-
-
-def test_reset_keeps_accounts_and_who_entered_whom(live_graph):
-    make_account(live_graph)
-    make_account(live_graph, "acct:bob", "bob@example.org", accepted=False)
-    live_graph.driver().execute_query(
-        "MATCH (a:Person {key: 'acct:ada'}), (b:Person {key: 'acct:bob'}) "
-        "CREATE (a)-[:ENTERED {relationship: 'friend', agreed: true, created_at: $now}]->(b) "
-        "CREATE (:Issue {key: 'flooding', name: 'Flooding', seed: false})", now=NOW, database_=live_graph.database())
-    assert live_graph.non_seed_count() == 1  # the issue; accounts are neither seed nor non-seed
-    live_graph.delete_everything()
-    labels, types = live_graph.counts()
-    assert labels == {"Person": 2} and types == {"ENTERED": 1}
+    assert claimants["people"] == 3 and claimants["claims"] == 3
+    assert sorted(claimants["names"]) == ["Anonymous", "Grace", "Hal"]

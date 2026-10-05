@@ -210,7 +210,7 @@ The same "did not match" line answers a wrong password, an unknown email, an inv
 
 The "Your name" field goes; posts are credited to the account's name. The "Post anonymously" box stays, with a line under it:
 
-> Your name is not shown to others. The record still knows the post is yours, so you count once and can edit or delete it later.
+> Your name is not shown to others. The record still knows the post is yours, so you can edit or delete it later.
 
 The card's footnote is unchanged ("credited to {name}" or "listed as Anonymous").
 

@@ -39,4 +39,4 @@ def test_the_write_page_has_no_name_field_and_explains_anonymous(member_app):
     assert 'id="display_name"' not in page
     assert 'data-member="Ada Lovelace"' in page
     assert ("Your name is not shown to others. The record still knows the post is yours, "
-            "so you count once and can edit or delete it later.") in page
+            "so you can edit or delete it later.") in page

@@ -144,12 +144,14 @@ RETURN i.key AS key, i.name AS name, i.created_at AS created_at, i.seed AS seed,
        [c IN collect(DISTINCT child) | {key: c.key, name: c.name}] AS children
 """
 
-# Q3, revised for Phase 1: each person once, by name if any of their claims here is named.
+# Q3, revised for Phase 1 (D2): an account's anonymous claims count apart from its named ones,
+# so no page can link an anonymous post to a name. A missing flag counts as named, as in 0.1.
 ISSUE_CLAIMANTS = """
 MATCH (p:Person)-[c:CLAIM]->(i:Issue {key: $key})
-WITH p, count(c) AS claims, any(x IN collect(coalesce(c.anonymous, false)) WHERE NOT x) AS named
-RETURN sum(claims) AS claims, count(p) AS people,
-       collect(DISTINCT CASE WHEN named THEN p.name ELSE 'Anonymous' END) AS names
+WITH p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who,
+     coalesce(c.anonymous, false) AS hidden, p.name AS name, count(c) AS claims
+RETURN sum(claims) AS claims, count(who) AS people,
+       collect(DISTINCT CASE WHEN hidden THEN 'Anonymous' ELSE name END) AS names
 """
 
 ISSUE_SOLUTIONS = """

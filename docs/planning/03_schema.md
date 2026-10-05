@@ -188,13 +188,14 @@ RETURN i.key AS key, i.name AS name, i.created_at AS created_at,
 
 ### Q3. Issue detail: who claims it
 
-Revised for Phase 1: each person is counted and listed once, by name if any of their claims on the issue is named, otherwise "Anonymous".
+Revised for Phase 1 (D2): a person is counted once for their named claims and once, apart, for their anonymous claims, so no page can link an anonymous post to a name. A missing flag counts as named. For 0.1 records the numbers are unchanged.
 
 ```cypher
 MATCH (p:Person)-[c:CLAIM]->(i:Issue {key: $key})
-WITH p, count(c) AS claims, any(x IN collect(coalesce(c.anonymous, false)) WHERE NOT x) AS named
-RETURN sum(claims) AS claims, count(p) AS people,
-       collect(DISTINCT CASE WHEN named THEN p.name ELSE 'Anonymous' END) AS names
+WITH p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who,
+     coalesce(c.anonymous, false) AS hidden, p.name AS name, count(c) AS claims
+RETURN sum(claims) AS claims, count(who) AS people,
+       collect(DISTINCT CASE WHEN hidden THEN 'Anonymous' ELSE name END) AS names
 ```
 
 ### Q4. Issue detail: solutions with stance counts and evidence
@@ -613,7 +614,7 @@ Display stays raw counts ("proposed by 2 · approved by 3 · opposed by 1"); the
 
 ### Own posts
 
-Posts by an account are credited as before: `POSTED` from the account, `display_name` the account's name or null when anonymous, `anonymous` on the post and its edges. The claimant names on an issue page (Q3) list each person once: their name if any of their claims on the issue is named, otherwise "Anonymous".
+Posts by an account are credited as before: `POSTED` from the account, `display_name` the account's name or null when anonymous, `anonymous` on the post and its edges. On public counts of people made from posts, an account's anonymous posts count apart from its named ones, so no page can link an anonymous post to a name: the identity counted is the `Person` key plus whether the edge is anonymous. In Q3 an account with one named and one anonymous claim on an issue reads 2 people, 2 claims, listed as its name and "Anonymous"; two anonymous claims by one account count once, as "Anonymous".
 
 **Q7, revised.** The feed and the issue page also return `post.edited_at` and `EXISTS { (:Person {key: $me})-[:POSTED]->(post) } AS mine`. The author's key is never returned to a template.
 
