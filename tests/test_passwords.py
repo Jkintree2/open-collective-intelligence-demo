@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timezone
 
 import pytest
 
@@ -15,7 +16,8 @@ def signed_in(member_app, monkeypatch):
                         lambda key, password_hash: saved.append((key, password_hash))
                         or member_app.accounts[key].update(password_hash=password_hash))
     monkeypatch.setattr("app.graph_accounts.who_entered", lambda key: {
-        "inviter_name": "John Kintree", "relationship": "friend", "entered_at": None})
+        "inviter_name": "John Kintree", "relationship": "friend",
+        "entered_at": datetime(2026, 10, 4, 9, 30, tzinfo=timezone.utc)})
     monkeypatch.setattr("app.routes_accounts.time.sleep", lambda seconds: None)
     member_app.saved = saved
     return member_app
@@ -25,7 +27,7 @@ def test_account_page_offers_a_new_password(signed_in):
     page = signed_in.client.get("/account")
     assert page.status_code == 200
     assert "Ada Lovelace · ada@example.org" in page.text
-    assert "Entered by John Kintree (Friend)" in page.text
+    assert "Entered by John Kintree (Friend) on 4 October 2026." in page.text
     assert page.text.count('autocomplete="new-password"') == 2
     assert 'autocomplete="current-password"' in page.text
     # The email is a visible read-only username field, so a phone saves the new password under it.
