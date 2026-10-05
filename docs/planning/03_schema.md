@@ -569,6 +569,13 @@ SET p.password_hash = $password_hash,
     p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
 ```
 
+**Q19a. Who entered an account** (`WHO_ENTERED`), for the account page's "Entered by" line. John's root has no `ENTERED` edge, so no row comes back and the line is left out.
+
+```cypher
+MATCH (inviter:Person)-[e:ENTERED]->(:Person {key: $key})
+RETURN inviter.name AS inviter_name, e.relationship AS relationship, e.created_at AS entered_at
+```
+
 **Q20. People one has entered**, and, without the first `MATCH`, the back room list of every account:
 
 ```cypher

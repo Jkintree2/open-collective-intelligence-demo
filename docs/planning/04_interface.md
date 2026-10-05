@@ -414,6 +414,7 @@ The same length and "not the same" messages as accepting, and the same page when
 > Entered by {inviter} ({relationship}) on {4 October 2026}.
 >
 > **Change your password**
+> Email: {email} [ read only, so a phone saves the new password under it ]
 > Current password: [ input ]
 > New password: [ input ]
 > Type it again: [ input ]

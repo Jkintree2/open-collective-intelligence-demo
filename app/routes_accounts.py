@@ -1,4 +1,4 @@
-"""Sign in and sign out (sub-plan A). The password pages join in Task A8."""
+"""Sign in, sign out, your account and changing the password (sub-plan A). The reset pages join in Task A8."""
 
 import time
 
@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse, Response
 
 from app import accounts, config, graph_accounts
 from app.auth import TOO_MANY_TRIES, WRONG_PASSPHRASE_DELAY
-from app.members import clear_member_cookie, require_same_origin, safe_next, set_member_cookie
+from app.members import Member, clear_member_cookie, require_member, require_same_origin, safe_next, set_member_cookie
 from app.pages import page
 
 router = APIRouter()
@@ -15,6 +15,8 @@ router = APIRouter()
 # Client facing copy, word for word from docs/planning/04_interface.md.
 NOT_MATCHED = "That email and password did not match. Check them and try again."
 SIGNED_OUT = "You are signed out."
+NOT_CURRENT = "That is not your current password."
+PASSWORD_CHANGED = "Your password is changed. You are signed out everywhere else."
 
 # Checked when the address is unknown, so a stranger's address takes as long as a wrong password.
 _NOBODY = accounts.hash_password("no account has this password")
@@ -67,4 +69,36 @@ def sign_out(next: str = Form("")) -> Response:
     accounts_on()
     response = RedirectResponse(safe_next(next) if next else "/sign-in?out=1", status_code=303)
     clear_member_cookie(response)
+    return response
+
+
+def _account_page(request: Request, member: Member, *, message: str | None = None,
+                  notice: str | None = None, status_code: int = 200) -> Response:
+    return page(request, "account.html", {"entered": graph_accounts.who_entered(member.key),
+                                          "message": message, "notice": notice},
+                status_code=status_code, private=True)
+
+
+@router.get("/account")
+def account(request: Request, done: str | None = None, member: Member = Depends(require_member)) -> Response:
+    return _account_page(request, member, notice=PASSWORD_CHANGED if done == "password" else None)
+
+
+@router.post("/account/password", dependencies=[Depends(require_same_origin)])
+def change_password(request: Request, current: str = Form(""), password: str = Form(""),
+                    again: str = Form(""), member: Member = Depends(require_member)) -> Response:
+    # The same limits and order as sign in: no scrypt once a bucket is empty.
+    if too_many_tries(member.email):
+        return _account_page(request, member, message=TOO_MANY_TRIES, status_code=429)
+    row = graph_accounts.member(member.key)
+    if not row or not accounts.check_password(current, row["password_hash"]):
+        time.sleep(WRONG_PASSPHRASE_DELAY)
+        return _account_page(request, member, message=NOT_CURRENT)
+    problem = accounts.password_problem(password, again)
+    if problem:
+        return _account_page(request, member, message=problem)
+    new_hash = accounts.hash_password(password)
+    graph_accounts.set_password(member.key, new_hash)
+    response = RedirectResponse("/account?done=password", status_code=303)
+    set_member_cookie(response, member.key, new_hash)  # this browser stays in; every other one is out
     return response

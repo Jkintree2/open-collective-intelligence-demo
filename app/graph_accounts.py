@@ -130,6 +130,19 @@ OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
 RETURN p.email AS email, p.name AS name, inviter.name AS inviter_name, e.relationship AS relationship
 """
 
+# Q19. Change password while signed in; a pending password link stops working too.
+SET_PASSWORD = """
+MATCH (p:Person {key: $key})
+SET p.password_hash = $password_hash,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
+"""
+
+# Q19a. Who entered this account (the account page); John's root has no entry and no row.
+WHO_ENTERED = """
+MATCH (inviter:Person)-[e:ENTERED]->(:Person {key: $key})
+RETURN inviter.name AS inviter_name, e.relationship AS relationship, e.created_at AS entered_at
+"""
+
 # Q20. People one has entered.
 ENTERED_BY = """
 MATCH (me:Person {key: $key})-[e:ENTERED]->(p:Person)
@@ -200,3 +213,12 @@ def withdraw(key: str, inviter_key: str | None = None) -> bool:
     query = WITHDRAW_ANY if inviter_key is None else WITHDRAW_BY_INVITER
     rows = _write_rows(query, key=key, inviter_key=inviter_key)
     return bool(rows and rows[0]["withdrawn"])
+
+
+def set_password(key: str, password_hash: str) -> None:
+    _write_rows(SET_PASSWORD, key=key, password_hash=password_hash)
+
+
+def who_entered(key: str) -> dict[str, Any] | None:
+    rows = _read(WHO_ENTERED, key=key)
+    return rows[0] if rows else None

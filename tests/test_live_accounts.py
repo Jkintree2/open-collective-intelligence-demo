@@ -108,3 +108,27 @@ def test_a_claim_with_no_anonymous_property_is_listed_by_name(live_graph):
     claimants = live_graph.issue_claimants("flooding")
     assert claimants["people"] == 3 and claimants["claims"] == 3
     assert sorted(claimants["names"]) == ["Anonymous", "Grace", "Hal"]
+
+
+def test_setting_a_password_clears_a_pending_link(live_graph):
+    make_account(live_graph)
+    live_graph.driver().execute_query(
+        "MATCH (p:Person {key: 'acct:ada'}) SET p.token_hash = 'h', p.token_purpose = 'reset', p.token_expires_at = $now",
+        now=NOW, database_=live_graph.database())
+    graph_accounts.set_password("acct:ada", "scrypt$new")
+    row = live_graph.driver().execute_query("MATCH (p:Person {key: 'acct:ada'}) RETURN p.token_hash AS t, p.password_hash AS h",
+                                            database_=live_graph.database()).records[0]
+    assert row["t"] is None and row["h"] == "scrypt$new"
+
+
+def test_who_entered_names_the_inviter_and_the_relationship(live_graph):
+    make_account(live_graph)
+    make_account(live_graph, "acct:bob", "bob@example.org")
+    live_graph.driver().execute_query(
+        "MATCH (a:Person {key: 'acct:ada'}), (b:Person {key: 'acct:bob'}) "
+        "CREATE (a)-[:ENTERED {relationship: 'friend', agreed: true, created_at: $now}]->(b)",
+        now=NOW, database_=live_graph.database())
+    row = graph_accounts.who_entered("acct:bob")
+    assert row["inviter_name"] == "Ada Lovelace" and row["relationship"] == "friend"
+    assert row["entered_at"] == NOW
+    assert graph_accounts.who_entered("acct:ada") is None  # the root has no entry
