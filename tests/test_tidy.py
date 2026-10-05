@@ -152,7 +152,7 @@ def test_reload_seed_writes_nothing_when_complete(monkeypatch):
 
 
 def test_tidied_names_follow_every_rename_and_merge_to_its_end():
-    changes = [  # oldest first, as renames_and_merges() returns them
+    changes = [  # oldest first, as tidy_history() returns them
         row("rename", from_key="veto", from_name="veto", to_key="veto", to_name="Veto"),
         row("rename", from_key="parking", from_name="Parking", to_key="car parking", to_name="Car parking"),
         row("merge", merged_key="car parking", merged_name="Car parking", kept_key="transport", kept_name="Transport")]
@@ -174,7 +174,7 @@ def test_reload_seed_reads_a_renamed_seed_issue_as_it_is_now(monkeypatch):
                       {"id": "seed-02", "author": "John Kintree", "created_at": "2026-09-01T11:00:00Z", "text": "y",
                        "issues": [{"name": old}], "solutions": [], "evidence": []}]}
     monkeypatch.setattr(seed.graph, "existing_post_ids", lambda ids: {"seed-01"})
-    monkeypatch.setattr(seed.graph_tidy, "renames_and_merges", lambda: [row(
+    monkeypatch.setattr(seed.graph_tidy, "tidy_history", lambda: [row(
         "rename", from_key="platform for digital democracy", from_name=old,
         to_key="building a platform for digital democracy", to_name=new)])
     written, posted = [], []
@@ -196,3 +196,38 @@ def test_tidied_names_ignore_a_step_made_stale_when_a_key_is_used_again():
         row("rename", from_key="a", from_name="A", to_key="b", to_name="B"),
         row("rename", from_key="b", from_name="B", to_key="a", to_name="A")]
     assert tidy.tidied_names(back_again) == {"b": "A"}
+
+
+def test_moved_keys_follow_renames_and_merges():
+    changes = [  # oldest first, as tidy_history() returns them
+        row("move", issue_key="veto", issue_name="Veto", to_parent_key=None, to_parent_name=None),
+        row("rename", from_key="veto", from_name="Veto", to_key="the veto", to_name="The veto"),
+        row("move", issue_key="parking", issue_name="Parking", to_parent_key=None, to_parent_name=None),
+        row("merge", merged_key="parking", merged_name="Parking", kept_key="transport", kept_name="Transport")]
+    assert tidy.moved_keys(changes) == {"the veto"}
+    kept = [row("move", issue_key="law", issue_name="Law", to_parent_key=None, to_parent_name=None),
+            row("merge", merged_key="world", merged_name="World", kept_key="law", kept_name="Law")]
+    assert tidy.moved_keys(kept) == {"law"}
+
+
+def test_reload_seed_keeps_a_moved_seed_issue_where_john_put_it(monkeypatch):
+    """A move is tidying too: reload must not put a moved seed sub-issue back under its seed parent."""
+    from scripts import seed
+    from app.extract import Candidates
+    top, sub = "Platform for digital democracy", "Voting online"
+    data = {"issues": [{"name": top}, {"name": sub, "parent": top}],
+            "posts": [{"id": "seed-01", "author": "John Kintree", "created_at": "2026-09-01T10:00:00Z", "text": "x",
+                       "issues": [], "solutions": [], "evidence": []},
+                      {"id": "seed-02", "author": "John Kintree", "created_at": "2026-09-01T11:00:00Z", "text": "y",
+                       "issues": [{"name": sub, "parent": top}], "solutions": [], "evidence": []}]}
+    monkeypatch.setattr(seed.graph, "existing_post_ids", lambda ids: {"seed-01"})
+    monkeypatch.setattr(seed.graph_tidy, "tidy_history", lambda: [row(
+        "move", issue_key="voting online", issue_name=sub, from_parent_key="platform for digital democracy",
+        from_parent_name=top, to_parent_key=None, to_parent_name=None)])
+    written, posted = [], []
+    monkeypatch.setattr(seed.graph, "seed_issues", lambda issues, created_at: written.extend(issues))
+    monkeypatch.setattr(seed.graph, "candidates", lambda: Candidates(issues={}))
+    monkeypatch.setattr(seed.graph, "merge_post", lambda *args, **kwargs: posted.append(args))
+    assert seed.load(data) == (1, 1)
+    assert [(item["name"], item.get("parent")) for item in written] == [(top, None), (sub, None)]
+    assert [(i["key"], i.get("parent_key")) for i in posted[0][5].issues] == [("voting online", None)]

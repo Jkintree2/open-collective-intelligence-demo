@@ -832,10 +832,10 @@ MATCH (n) WHERE coalesce(n.seed, false) = false AND NOT (n:Person AND n.email IS
 RETURN count(n) AS n
 ```
 
-**Reload seed** adds only seed statements that are missing. When every seed statement is present it writes nothing, so a seed issue that John renamed or merged does not come back under its old name. When some are missing (deleted in the back room), each seed issue name in the issues block and in the seed posts loaded again is first read as the issue it became, following every rename and merge in the change records, so the old name does not come back that way either. It reads all of them, oldest first, not Q32's newest 200:
+**Reload seed** adds only seed statements that are missing. When every seed statement is present it writes nothing, so a seed issue that John renamed or merged does not come back under its old name. When some are missing (deleted in the back room), each seed issue name in the issues block and in the seed posts loaded again is first read as the issue it became, following every rename and merge in the change records, so the old name does not come back that way either. A seed issue that John moved keeps the place he gave it: its seed parent is not applied again, in the issues block or in the posts loaded again, so a reload never undoes a move either. The history it reads includes moves, all of them, oldest first, not Q32's newest 200:
 
 ```cypher
-MATCH (c:Change) WHERE c.kind IN ['rename', 'merge']
+MATCH (c:Change) WHERE c.kind IN ['rename', 'merge', 'move']
 RETURN c.kind AS kind, c.details AS details, c.created_at AS created_at
 ORDER BY c.created_at, c.id
 ```

@@ -39,8 +39,8 @@ def sentence(row: dict) -> str:
 
 
 def tidied_names(changes: list[dict]) -> dict[str, str]:
-    """Old issue key -> the issue's name now, from graph_tidy.renames_and_merges() (oldest first):
-    every rename and every merge, followed to its end. A seed reload reads an old seed name through this."""
+    """Old issue key -> the issue's name now, from graph_tidy.tidy_history() (oldest first):
+    every rename and every merge (moves are ignored here), followed to its end. A seed reload reads an old seed name through this."""
     step: dict[str, tuple[str, str]] = {}
     for change in changes:  # oldest first, so a later change of the same key wins
         details = json.loads(change["details"] or "{}")
@@ -58,6 +58,23 @@ def tidied_names(changes: list[dict]) -> dict[str, str]:
             key, name = step[key]
         names[old] = name
     return names
+
+
+def moved_keys(changes: list[dict]) -> set[str]:
+    """Current keys of the issues John moved, from graph_tidy.tidy_history() (oldest first). A rename carries
+    the mark to the new key; a merge drops it from the issue that was merged away (the kept issue keeps
+    its own place, and whether it was moved is recorded under its own key)."""
+    moved: set[str] = set()
+    for change in changes:
+        details = json.loads(change["details"] or "{}")
+        if change["kind"] == "move":
+            moved.add(details["issue_key"])
+        elif change["kind"] == "rename" and details["from_key"] in moved:
+            moved.discard(details["from_key"])
+            moved.add(details["to_key"])
+        elif change["kind"] == "merge":
+            moved.discard(details["merged_key"])
+    return moved
 
 
 def retidy(name: str | None, names: dict[str, str]) -> str | None:

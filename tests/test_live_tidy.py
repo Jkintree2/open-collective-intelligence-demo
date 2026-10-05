@@ -286,3 +286,24 @@ def test_tidying_does_not_count_as_activity(live_graph):
     after = {row["key"]: row["last_activity"] for row in live_graph.list_issues()}
     assert after["car parking"] == before["parking"]
     assert after["world"] == before["world"]
+
+
+def test_reload_seed_after_a_move_keeps_the_issue_top_level(live_graph):
+    """A seed post was deleted in the back room after John moved a seed sub-issue to the top level:
+    reload puts the post back and leaves the issue where John put it."""
+    from app import graph_backup
+    from scripts import seed
+    data = {"issues": [{"name": "Platform", "parent": None}, {"name": "Voting online", "parent": "Platform"}],
+            "posts": [{"id": "seed-01", "author": "John Kintree", "created_at": "2026-09-01T10:00:00Z", "text": "x",
+                       "issues": [{"name": "Platform", "parent": None}], "solutions": [], "evidence": []},
+                      {"id": "seed-02", "author": "John Kintree", "created_at": "2026-09-01T11:00:00Z", "text": "y",
+                       "issues": [{"name": "Voting online", "parent": "Platform"}], "solutions": [], "evidence": []}]}
+    run(live_graph, "CREATE (:Person {key: 'acct:john', name: 'John Kintree', admin: true})")
+    assert seed.load(data) == (2, 0)
+    assert parent(live_graph, "voting online") == "platform"
+    assert graph_tidy.move_issue("acct:john", "voting online", None, NOW) == "moved"
+    assert graph_backup.delete_post("seed-02")
+    assert seed.load(data) == (1, 1)
+    assert run(live_graph, "MATCH (p:Post {id: 'seed-02'}) RETURN p.id AS id")
+    assert parent(live_graph, "voting online") is None
+    assert_one_level(live_graph)

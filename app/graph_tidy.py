@@ -224,16 +224,16 @@ def rename_issue(me: str, key: str, new_name: str, now: datetime) -> tuple[str, 
         return "taken", key
 
 
-# Every rename and merge, oldest first, with no limit (Q32 stops at 200): a seed reload follows them all.
-RENAMES_AND_MERGES = """
-MATCH (c:Change) WHERE c.kind IN ['rename', 'merge']
+# Every rename, merge and move, oldest first, with no limit (Q32 stops at 200): a seed reload follows them all.
+TIDY_HISTORY = """
+MATCH (c:Change) WHERE c.kind IN ['rename', 'merge', 'move']
 RETURN c.kind AS kind, c.details AS details, c.created_at AS created_at
 ORDER BY c.created_at, c.id
 """
 
 
-def renames_and_merges() -> list[dict[str, Any]]:
-    return _read(RENAMES_AND_MERGES)
+def tidy_history() -> list[dict[str, Any]]:
+    return _read(TIDY_HISTORY)
 
 
 def list_changes() -> list[dict[str, Any]]:
