@@ -342,6 +342,8 @@ DELETE n
 
 Removes the post, the claim, submit, propose, supports and refutes edges it created, and any node that this post alone created (so an offensive or injected issue name leaves the Issues page and the candidate list with the post, review M4). MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) are kept even when their `post_id` is this post, because later posts may rely on them (review M9); a dangling `post_id` on such an edge is harmless. A seed node is never deleted this way. The operator's guide describes exactly this.
 
+An issue that has been tidied keeps its change record (`CHANGED`), so `NOT (n)--()` is false for it: deleting its last post leaves it on the Issues page with its history. John can merge it away if it is no longer wanted (Q30 deletes the merged issue).
+
 ## Worked example
 
 John's drug policy statement, named, with the explicit-stance rule from `05_extraction.md`:
@@ -796,6 +798,8 @@ MATCH (b:Issue {key: $merged}) DELETE b
 ```
 
 Statement 5 cannot make a sub-issue of a sub-issue: a sub-issue has no children, so A's parent is top level. The counts of each type moved go into the Change's `details`. Posts that claimed B now show A in their chips, because their `CLAIM` edges point at A under the same `post_id`; their saved `payload` text is not rewritten.
+
+The kept issue keeps its own `seed` value: merging a seed issue into an issue made by a post does not make the kept issue a seed issue, so `scripts.seed --reset` without `--force` counts it as non-seed (`non_seed_count()` counts every node whose `seed` is not true, except accounts) and refuses, as it should for a record holding posts.
 
 **Q31. The change record**, inside the same transaction:
 
