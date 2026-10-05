@@ -110,8 +110,9 @@ def enter(request: Request, name: str = Form(""), email: str = Form(""), country
     except EmailTaken:
         # The same member, the same address, a moment ago: the first tap did it. Its email may have
         # failed, so this answer promises nothing; the list's state and button tell the truth.
-        if graph_accounts.recent_entry(member.key, form["email"], now - timedelta(seconds=DOUBLE_TAP_SECONDS)):
-            return _people_page(request, member, notice=ENTERED_ALREADY.format(name=form["name"]))
+        recent = graph_accounts.recent_entry(member.key, form["email"], now - timedelta(seconds=DOUBLE_TAP_SECONDS))
+        if recent:
+            return _people_page(request, member, notice=ENTERED_ALREADY.format(name=recent["name"]))
         return _people_page(request, member, message=ALREADY_ENTERED, form=form)
     if not allowed:  # switched off a moment ago: the next page sends the member to sign in
         return RedirectResponse("/people", status_code=303)

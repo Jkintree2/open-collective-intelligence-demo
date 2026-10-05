@@ -124,10 +124,19 @@ def test_entering_an_address_twice_is_refused_without_an_email(people):
 
 def test_a_double_tap_sends_once_and_promises_nothing(people):
     people.client.post("/people", data=FORM)
-    people.state["recent"] = "acct:bob"
+    people.state["recent"] = {"key": "acct:bob", "name": "Bob Smith"}
     second = people.client.post("/people", data=FORM)
     assert "Bob Smith is entered. If the invitation does not arrive, use Send the invitation again in the list below." in second.text
     assert "on its way" not in second.text
+    assert len(people.sent) == 1
+
+
+def test_a_second_entry_names_the_person_as_recorded(people):
+    people.client.post("/people", data=FORM)
+    people.state["recent"] = {"key": "acct:bob", "name": "Bob Smith"}
+    second = people.client.post("/people", data={**FORM, "name": "Robert Other"})
+    assert "Bob Smith is entered. If the invitation does not arrive" in second.text
+    assert "Robert Other is entered" not in second.text
     assert len(people.sent) == 1
 
 
@@ -135,7 +144,7 @@ def test_a_double_tap_after_a_failed_send_does_not_say_on_its_way(people):
     people.state["send"] = False
     first = people.client.post("/people", data=FORM)
     assert "Bob Smith is entered, but the invitation email did not go. Please try again in a minute." in first.text
-    people.state["recent"] = people.entries[0]["key"]
+    people.state["recent"] = {"key": people.entries[0]["key"], "name": "Bob Smith"}
     second = people.client.post("/people", data=FORM)
     assert "on its way" not in second.text
     # The list carries the truth: Bob is invited, with the button to send again.

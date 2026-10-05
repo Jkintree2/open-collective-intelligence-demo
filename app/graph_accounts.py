@@ -70,7 +70,7 @@ RETURN p.key AS key
 RECENT_ENTRY = """
 MATCH (:Person {key: $inviter_key})-[e:ENTERED]->(p:Person {email: $email})
 WHERE e.created_at >= $since AND p.accepted_at IS NULL
-RETURN p.key AS key
+RETURN p.key AS key, p.name AS name
 """
 
 # John's own account, the root: admin, no ENTERED, and no link (X3: make_admin.py sends nothing;
@@ -208,9 +208,9 @@ def enter_person(*, inviter_key: str, key: str, name: str, email: str, country: 
                             token_hash=token_hash, expires_at=expires_at, now=now))
 
 
-def recent_entry(inviter_key: str, email: str, since) -> str | None:
+def recent_entry(inviter_key: str, email: str, since) -> dict | None:
     rows = _read(RECENT_ENTRY, inviter_key=inviter_key, email=email, since=since)
-    return rows[0]["key"] if rows else None
+    return {"key": rows[0]["key"], "name": rows[0]["name"]} if rows else None
 
 
 def create_root(*, key: str, name: str, email: str, country: str, postal_code: str, now) -> None:

@@ -76,7 +76,7 @@ def test_one_account_per_email_even_when_entered_twice(live_graph):
     enter()
     with pytest.raises(EmailTaken):
         enter(token="second-link", key="acct:bob2")
-    assert graph_accounts.recent_entry("acct:john", "bob@example.org", NOW - timedelta(seconds=60)) == "acct:bob"
+    assert graph_accounts.recent_entry("acct:john", "bob@example.org", NOW - timedelta(seconds=60)) == {"key": "acct:bob", "name": "Bob Smith"}
     assert graph_accounts.recent_entry("acct:john", "bob@example.org", NOW + timedelta(seconds=1)) is None
     labels, _ = live_graph.counts()
     assert labels["Person"] == 2
