@@ -81,3 +81,26 @@ test('a page without a post to edit is left alone', async () => {
   await p.runTimer(200);
   assert.equal(p.requests.at(-1).url, '/api/preview');
 });
+
+test('a failed save keeps its message on screen and the button usable', async () => {
+  const p = await setup(undefined, {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}},
+                        {member: 'Ada Lovelace'});
+  p.get('edit-post').textContent = JSON.stringify(POST);
+  p.load('edit_post.js'); await p.flush(); await p.runTimer(200);
+  p.requests.at(-1).resolve({sentences: ['Anonymous claims Flooding'], valid: true, dropped: [], corrected: []}); await p.flush();
+  p.get('post').emit('click'); await p.flush();
+  const save = p.requests.at(-1);
+  assert.equal(save.url, '/api/posts/post-1');
+  save.fail(429, {detail: 'Please wait a little before posting again.'}); await p.flush();
+  const message = p.get('card-errors').textContent;
+  assert.notEqual(message, '');
+  const before = p.requests.length;
+  await p.runTimer(200);
+  assert.equal(p.requests.length, before);
+  assert.equal(p.get('card-errors').textContent, message);
+  assert.equal(p.get('post').disabled, false);
+  // The writer can tap again after waiting.
+  p.get('post').emit('click'); await p.flush();
+  assert.equal(p.requests.at(-1).url, '/api/posts/post-1');
+  assert.equal(p.requests.length, before + 1);
+});
