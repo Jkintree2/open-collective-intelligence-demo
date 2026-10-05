@@ -375,11 +375,12 @@ form.stance p { flex-basis: 100%; margin: 0; }
 form.search { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.5rem 0 1rem; }
 form.search input { flex: 1 1 12rem; min-height: 40px; }
 form.search button { min-height: 44px; }
-.results li { margin: 0.25rem 0; }
+.results li { margin: 0; padding: 10px 0; }
 .tidy { border-top: 1px solid var(--rule, #D8CFB8); margin-top: 2rem; padding-top: 1rem; }
 .tidy form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.75rem 0; }
 .tidy label { flex-basis: 100%; }
 .tidy select, .tidy input { flex: 1 1 12rem; min-height: 40px; }
 .tidy button { min-height: 44px; }
-.results a, .search-links a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; display: inline-block; min-height: 44px; }
+.results a, .search-links a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.search-links a { display: inline-block; min-height: 44px; }
 .results a:hover, .search-links a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
