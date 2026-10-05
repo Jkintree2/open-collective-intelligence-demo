@@ -13,6 +13,49 @@ from app.text import make_key
 
 log = logging.getLogger("oci")
 
+
+def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, one_stance: bool = False) -> None:
+    """Write path statements 3 to 5b for one post (03_schema.md). Posting and editing a post
+    (sub-plan D) both write a post's edges through here, so the rules live in one place.
+    `one_stance` is the D7 switch: ignored here, sub-plan C2 makes it pick the statement that
+    replaces the person's opposite stance; callers that post as an account pass True."""
+    for issue in payload.issues:
+        tx.run(graph.MERGE_ISSUE_CLAIM, issue_key=issue["key"], issue_name=issue["name"], **common)
+    for issue in payload.issues:
+        if issue.get("parent_key"):
+            tx.run(graph.MERGE_PART_OF, issue_key=issue["key"], parent_key=issue["parent_key"], **common)
+    for solution in payload.solutions:
+        if not solution.get("stance_only"):
+            tx.run(
+                graph.MERGE_SOLUTION_PROPOSE,
+                solution_key=solution["key"],
+                solution_name=solution["name"],
+                for_issue_key=solution["for_issue_key"],
+                **common,
+            )
+        stance = graph.STANCE_TYPES.get(solution.get("stance", "none"))
+        if stance:
+            tx.run(graph.MERGE_STANCE.replace("{stance}", stance), solution_key=solution["key"], **common)
+    for item in payload.evidence:
+        tx.run(
+            graph.MERGE_EVIDENCE_SUBMIT,
+            evidence_key=item["key"],
+            evidence_name=item["name"],
+            url=item.get("url"),
+            **common,
+        )
+        rel = graph.EVIDENCE_TYPES[item["stance"]]
+        label = item["target_label"]
+        if label not in graph.TARGET_LABELS:
+            raise ValueError(f"unknown target label {label!r}")
+        tx.run(
+            graph.CREATE_EVIDENCE_STANCE.replace("{label}", label).replace("{rel}", rel),
+            evidence_key=item["key"],
+            target_key=item["target_key"],
+            **common,
+        )
+
+
 def merge_post(
     person_key: str,
     name: str | None,
@@ -30,10 +73,13 @@ def merge_post(
     latency_ms: int | None = None,
     request_id: str | None = None,
     edited: bool = False,
+    one_stance: bool = False,
 ) -> str:
     """Merge one post and everything it adds, in one write transaction. Returns the post id.
 
     `created_at` and `post_id` are for the seed only; the app never passes them.
+    `one_stance` is True for a post by an account, so its stance replaces the person's opposite
+    one (D7, from sub-plan C2 on).
     """
     post_id = post_id or str(uuid.uuid4())
     now = created_at or datetime.now(timezone.utc)
@@ -60,41 +106,7 @@ def merge_post(
             payload=payload.as_json(),
             **common,
         )
-        for issue in payload.issues:
-            tx.run(graph.MERGE_ISSUE_CLAIM, issue_key=issue["key"], issue_name=issue["name"], **common)
-        for issue in payload.issues:
-            if issue.get("parent_key"):
-                tx.run(graph.MERGE_PART_OF, issue_key=issue["key"], parent_key=issue["parent_key"], **common)
-        for solution in payload.solutions:
-            if not solution.get("stance_only"):
-                tx.run(
-                    graph.MERGE_SOLUTION_PROPOSE,
-                    solution_key=solution["key"],
-                    solution_name=solution["name"],
-                    for_issue_key=solution["for_issue_key"],
-                    **common,
-                )
-            stance = graph.STANCE_TYPES.get(solution.get("stance", "none"))
-            if stance:
-                tx.run(graph.MERGE_STANCE.replace("{stance}", stance), solution_key=solution["key"], **common)
-        for item in payload.evidence:
-            tx.run(
-                graph.MERGE_EVIDENCE_SUBMIT,
-                evidence_key=item["key"],
-                evidence_name=item["name"],
-                url=item.get("url"),
-                **common,
-            )
-            rel = graph.EVIDENCE_TYPES[item["stance"]]
-            label = item["target_label"]
-            if label not in graph.TARGET_LABELS:
-                raise ValueError(f"unknown target label {label!r}")
-            tx.run(
-                graph.CREATE_EVIDENCE_STANCE.replace("{label}", label).replace("{rel}", rel),
-                evidence_key=item["key"],
-                target_key=item["target_key"],
-                **common,
-            )
+        write_payload(tx, payload, common, one_stance=one_stance)
 
     try:
         with graph.driver().session(database=graph.database()) as session:

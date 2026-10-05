@@ -82,6 +82,6 @@
   find('discard').addEventListener('click', () => { dictation.stop(); stopReading(); find('card').hidden = true; card.changed(); text.focus(); });
   find('post').addEventListener('click', card.post);
   // The summary above the form (about_issue.js) chooses positions through this.
-  window.oci = {setPositionOnExisting: card.setPositionOnExisting};
+  window.oci = {setPositionOnExisting: card.setPositionOnExisting, card};
   find('read').textContent = 'Read my statement'; updateText(); card.loadCandidates();
 })();

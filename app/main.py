@@ -513,6 +513,16 @@ async def unhandled_error(request: Request, exc: Exception) -> Response:
         return JSONResponse({"message": "Something went wrong. Please try again in a minute."}, status_code=500)
     return templates.TemplateResponse(request, "error.html", {}, status_code=500)
 
-# Imported after app/templates exist; admin imports templates only when rendering.
+# Imported after app/templates exist; routers import templates only when rendering.
 from app.admin import router as admin_router
 app.include_router(admin_router)
+
+
+def include_routers(target: FastAPI, folder: Path = BASE, package: str = "app") -> None:
+    """Each <package>/routes_*.py brings its own router, so a new page adds a file, not a line here."""
+    import importlib
+    for module in sorted(folder.glob("routes_*.py")):
+        target.include_router(importlib.import_module(f"{package}.{module.stem}").router)
+
+
+include_routers(app)

@@ -92,8 +92,9 @@ def test_overlong_and_rate_limit_copy(state_client, monkeypatch):
 def test_client_recognition_and_request_races_offline():
     node = shutil.which("node")
     if node is None:
-        pytest.skip("Node is unavailable; run node --test tests/test_dictation.cjs when installed")
-    result = subprocess.run([node, "--test", str(Path(__file__).with_name("test_dictation.cjs"))], capture_output=True, text=True, timeout=20)
+        pytest.skip("Node is unavailable; run node --test tests/*.cjs when installed")
+    files = sorted(str(path) for path in Path(__file__).parent.glob("*.cjs"))
+    result = subprocess.run([node, "--test", *files], capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
 
 
