@@ -19,7 +19,7 @@ def _write_rows(query: str, **params: Any) -> list[dict[str, Any]]:
     except ServiceUnavailable as exc:
         raise RecordAsleep(str(exc)) from exc
     except ConstraintError as exc:
-        raise EmailTaken() from exc
+        raise EmailTaken() from None  # the driver's message names the clashing value
     except ClientError as exc:
         # The person was deleted (an entry withdrawn) by another transaction while this one waited
         # for the lock it takes first: nothing to do, the same as no row. Neo4j 5 reports it as
@@ -187,7 +187,7 @@ def accept(token_hash: str, *, name: str, country: str, postal_code: str, passwo
 
 
 def resend_invitation(key: str, token_hash: str, expires_at, inviter_key: str | None = None) -> dict[str, Any] | None:
-    query = RESEND_BY_INVITER if inviter_key else RESEND_ANY
+    query = RESEND_ANY if inviter_key is None else RESEND_BY_INVITER
     rows = _write_rows(query, key=key, token_hash=token_hash, expires_at=expires_at, inviter_key=inviter_key)
     return rows[0] if rows else None
 
@@ -197,6 +197,6 @@ def entered_by(inviter_key: str) -> list[dict[str, Any]]:
 
 
 def withdraw(key: str, inviter_key: str | None = None) -> bool:
-    query = WITHDRAW_BY_INVITER if inviter_key else WITHDRAW_ANY
+    query = WITHDRAW_ANY if inviter_key is None else WITHDRAW_BY_INVITER
     rows = _write_rows(query, key=key, inviter_key=inviter_key)
     return bool(rows and rows[0]["withdrawn"])

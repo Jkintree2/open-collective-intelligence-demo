@@ -178,3 +178,27 @@ def test_withdrawing_removes_only_a_never_accepted_entry_by_its_inviter(live_gra
     assert graph_accounts.withdraw("acct:bob", inviter_key="acct:john") is True
     assert graph_accounts.open_link("bob-link") is None
     assert [row["key"] for row in graph_accounts.entered_by("acct:john")] == ["acct:cy"]
+
+
+def test_an_empty_inviter_key_is_not_the_back_room(live_graph):
+    """Only None reaches the unscoped forms; "" is a person nobody is, so it acts on nothing."""
+    root(live_graph)
+    enter()
+    assert graph_accounts.withdraw("acct:bob", inviter_key="") is False
+    assert graph_accounts.resend_invitation("acct:bob", "x", LATER, inviter_key="") is None
+    assert graph_accounts.open_link("bob-link") and graph_accounts.open_link("x") is None
+
+
+def test_the_back_room_forms_act_on_any_never_accepted_entry(live_graph):
+    """No inviter given (sub-plan F): re-send and withdraw work on anyone entered and not accepted,
+    refuse an accepted account, and withdraw cannot remove a root, which nobody entered."""
+    root(live_graph)
+    enter()
+    enter(email="cy@example.org", token="cy-link", key="acct:cy")
+    graph_accounts.accept("cy-link", name="Cy", country="G", postal_code="1", password_hash="scrypt$c", now=NOW)
+    assert graph_accounts.resend_invitation("acct:cy", "again", LATER) is None
+    assert graph_accounts.withdraw("acct:cy") is False
+    assert graph_accounts.withdraw("acct:john") is False
+    assert graph_accounts.resend_invitation("acct:bob", "fresh-link", LATER)["inviter_name"] == "John Kintree"
+    assert graph_accounts.withdraw("acct:bob") is True
+    assert graph_accounts.open_link("fresh-link") is None

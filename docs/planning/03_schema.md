@@ -533,7 +533,20 @@ OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
 RETURN p.email AS email, p.name AS name, purpose, inviter.name AS inviter_name, e.relationship AS relationship
 ```
 
-The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`. John's root account is made by `make_admin.py` with no link and no `ENTERED`, and nothing is sent (decision X3, 5 October 2026); being not yet accepted, it gets its first link from the "Forgot your password?" statement above, sent by the site from its own settings, in John's own wording (no inviter). The back room's "Send a password link" uses the second with the account's key in place of the email and only for an accepted account. Python sends the invitation email for `invite` (John's own wording when there is no inviter) and the password email for `reset`. Every new link draws on one limit per address (three an hour), shared by "Forgot your password?", a member's "Send the invitation again" and the back room. Only the anonymous "Forgot your password?" form also has a limit per minute for the whole site; no member's or back room button takes from it, so whoever drains it blocks nothing else (second review, 5 October 2026).
+The inviter's version (`RESEND_BY_INVITER`) starts from the entry instead, so only the person who entered them can send again; the rest is the same.
+
+```cypher
+MATCH (:Person {key: $inviter_key})-[:ENTERED]->(p:Person {key: $key})
+SET p.key = p.key
+WITH p
+WHERE p.accepted_at IS NULL AND p.active
+SET p.token_hash = $token_hash, p.token_purpose = 'invite', p.token_expires_at = $expires_at
+WITH p
+OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
+RETURN p.email AS email, p.name AS name, inviter.name AS inviter_name, e.relationship AS relationship
+```
+
+Code takes the inviter's form whenever an inviter key is given, even an empty one, and the unscoped form only for `None`. John's root account is made by `make_admin.py` with no link and no `ENTERED`, and nothing is sent (decision X3, 5 October 2026); being not yet accepted, it gets its first link from the "Forgot your password?" statement above, sent by the site from its own settings, in John's own wording (no inviter). The back room's "Send a password link" uses the second with the account's key in place of the email and only for an accepted account. Python sends the invitation email for `invite` (John's own wording when there is no inviter) and the password email for `reset`. Every new link draws on one limit per address (three an hour), shared by "Forgot your password?", a member's "Send the invitation again" and the back room. Only the anonymous "Forgot your password?" form also has a limit per minute for the whole site; no member's or back room button takes from it, so whoever drains it blocks nothing else (second review, 5 October 2026).
 
 **Q18. Choose a new password through a link.**
 
@@ -571,7 +584,7 @@ The back room version starts `MATCH (p:Person) WHERE p.email IS NOT NULL OPTIONA
 **Q21. Withdraw an entry never accepted.** Only while the person has nothing but the `ENTERED` edge; an accepted account is switched off instead.
 
 ```cypher
-MATCH (inviter:Person {key: $inviter_key})-[:ENTERED]->(p:Person {key: $key})
+MATCH (:Person {key: $inviter_key})-[:ENTERED]->(p:Person {key: $key})
 SET p.key = p.key
 WITH p
 WHERE p.accepted_at IS NULL AND COUNT { (p)--() } = 1
@@ -579,7 +592,16 @@ DETACH DELETE p
 RETURN count(*) AS withdrawn
 ```
 
-The back room version matches `(:Person)-[:ENTERED]->(p:Person {key: $key})` without the inviter's key.
+The back room version (`WITHDRAW_ANY`) matches any inviter. A person nobody entered, John's root, has no `ENTERED` edge and so cannot be withdrawn.
+
+```cypher
+MATCH (:Person)-[:ENTERED]->(p:Person {key: $key})
+SET p.key = p.key
+WITH p
+WHERE p.accepted_at IS NULL AND COUNT { (p)--() } = 1
+DETACH DELETE p
+RETURN count(*) AS withdrawn
+```
 
 **Q22. Switch an account off or on** (back room): `MATCH (p:Person {key: $key}) WHERE p.email IS NOT NULL AND NOT p.admin SET p.active = $active`. John's own account cannot be switched off from the page.
 
