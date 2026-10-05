@@ -15,6 +15,7 @@ import time
 from datetime import datetime, timedelta
 
 from app.auth import KeyedLimit, MinuteBucket
+from app.text import clean_name
 
 MIN_PASSWORD = 10
 INVITE_DAYS = 14
@@ -156,3 +157,33 @@ def link_url(site_url: str, kind: str, secret: str) -> str:
     if kind not in LINK_KINDS:
         raise ValueError(f"unknown link kind {kind!r}")
     return f"{site_url.rstrip('/')}/{kind}/{secret}"
+
+
+NAME_MAX = 120
+
+# Q17: every new link to one address, from "Send the invitation again", "Forgot your password?" (A8)
+# or the back room (F), draws on this. Its window is an hour, so its refusal says so
+# (routes_people.TOO_MANY_TO_ADDRESS); A8 skips a busy address quietly instead, since that page says
+# the same thing to everyone. There is no site-wide bucket for these buttons: only the anonymous
+# forgot form has one (A8's forgot_per_minute), so a stranger cannot drain the members' buttons.
+link_per_address = KeyedLimit(3, 3600)
+# Entries and re-sends by one member: a stop for a runaway script, not for people.
+entering_limit = KeyedLimit(20, 3600)
+
+
+def person_name(value: str) -> str:
+    """A person's name as the record keeps it (03_schema.md, Person.name): spaces collapsed,
+    clean_name(), at most 120 characters. Entering, accepting and make_admin.py all use it."""
+    return clean_name(" ".join(value.split()))[:NAME_MAX].strip()
+
+
+def entry_state(row: dict, now: datetime) -> str:
+    """How an entry reads in a list (04_interface.md): a switched off account says so even after it
+    joined; then joined; then whether the invitation link is still live. The back room uses it too."""
+    if not row.get("active"):
+        return "switched off"
+    if row.get("accepted_at") is not None:
+        return "joined"
+    if row.get("purpose") == "invite" and row.get("expires_at") and row["expires_at"] > now:
+        return "invited"
+    return "expired"
