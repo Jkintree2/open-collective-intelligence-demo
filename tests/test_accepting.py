@@ -128,3 +128,20 @@ def test_each_acceptance_label_sits_in_its_own_row_above_its_field(invited):
     assert [a for a, _ in rows] == ["name", "username", "country", "postal_code", "password", "again"]
     assert all(a == b for a, b in rows)
     assert text.count("<input id=") == len(rows)
+
+
+@pytest.mark.parametrize("done, line", [("welcome", "Welcome, Ada Lovelace. You are signed in."),
+                                        ("reset", "Your new password is saved. You are signed out everywhere else.")])
+def test_the_done_notice_opens_the_write_page_and_stays_out_of_the_error_slot(member_app, done, line):
+    member_app.sign_in()
+    text = member_app.client.get(f"/?done={done}").text
+    assert f'<p class="notice" role="status">{line}</p>' in text
+    assert text.index(line) < text.index("<textarea")
+    assert 'role="alert"' not in text
+    assert line not in text.split("<textarea")[1]
+
+
+def test_the_write_page_without_a_done_notice_has_none(member_app):
+    member_app.sign_in()
+    text = member_app.client.get("/").text
+    assert 'class="notice" role="status">Welcome' not in text and "Your new password" not in text

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 <p class="sentence">{{ site_sentence }}</p>
 
 <form method="post" action="/posts" class="write" id="compose"{% if member %} data-member="{{ member.name }}"{% endif %}>

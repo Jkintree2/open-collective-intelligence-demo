@@ -232,6 +232,7 @@ def _render_index(
     text: str = "",
     status_code: int = 200,
     about: dict | None = None,
+    notice: str | None = None,
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
     chips = graph.top_issues(CHIP_LIMIT)
@@ -245,6 +246,7 @@ def _render_index(
             "chips": chips,
             "name": name,
             "message": message,
+            "notice": notice,
             "text": text,
             "about": about,
         },
@@ -316,7 +318,7 @@ def enter_submit(
 @app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_access)])
 def write_page(request: Request, issue: str | None = Query(None, max_length=200),
                done: str | None = Query(None, max_length=20)) -> Response:
-    return _render_index(request, about=_about_issue(issue), message=write_notice(done, current_member(request)))
+    return _render_index(request, about=_about_issue(issue), notice=write_notice(done, current_member(request)))
 
 
 def _valid_anon_id(value: str | None) -> str | None:
