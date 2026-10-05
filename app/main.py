@@ -51,6 +51,7 @@ from app.members import (
     wants_json,
 )
 from app.graph import RecordAsleep
+from app import graph_own_posts
 from app.text import clean_name, count_line, make_key, relative_time, sentences
 from app import search, tidy
 
@@ -178,11 +179,16 @@ def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
     """Relative times, chips and the sentence list for a page of posts."""
     now = datetime.now(timezone.utc)
     structure = graph.post_structure([post["id"] for post in posts])
+    # Only a member has own posts (with accounts off `me` is None and the record is asked nothing more).
+    flags = graph_own_posts.post_flags(me, [post["id"] for post in posts]) if me else {}
     for post in posts:
         created = post.get("created_at")
         post["when"] = relative_time(created, now) if created else ""
         post["absolute"] = created.strftime("%Y-%m-%d %H:%M UTC") if created else ""
         post["iso"] = created.isoformat() if created else ""
+        flag = flags.get(post["id"], {})
+        post["mine"] = bool(flag.get("mine")) and not post.get("seed")
+        post["edited"] = flag.get("edited_at") is not None
         rows = structure.get(post["id"], [])
         issue_keys = [r["to_key"] for r in rows if r["rel"] == "CLAIM"]
         first_issue = issue_keys[0] if issue_keys else None
@@ -235,6 +241,7 @@ def _render_index(
     status_code: int = 200,
     about: dict | None = None,
     notice: str | None = None,
+    editing: dict | None = None,
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
     chips = graph.top_issues(CHIP_LIMIT)
@@ -251,6 +258,7 @@ def _render_index(
             "notice": notice,
             "text": text,
             "about": about,
+            "editing": editing,
         },
         status_code=status_code,
     )

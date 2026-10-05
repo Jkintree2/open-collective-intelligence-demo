@@ -164,7 +164,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       state.previewController = new AbortController();
       (async () => {
         try {
-          const result = await request('/api/preview', payload, state.previewController.signal);
+          const result = await request(state.editing ? `/api/posts/${encodeURIComponent(state.editing)}/preview` : '/api/preview', payload, state.previewController.signal);
           if (expected !== state.revision || card.hidden) return false;
           find('sentences').replaceChildren(...result.sentences.map(sentence => node('li', sentence)));
           find('card-errors').textContent = result.dropped.length ? 'Please check the names and choices in the form.' : '';
@@ -267,11 +267,14 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     // A tap that arrives while the preview is still running waits for its answer.
     const ok = await (state.previewPending || Promise.resolve(!find('post').disabled));
     if (!ok || find('post').disabled) return;
+    let failed = false;
     const payload = collect(); state.posting = true; find('post').disabled = true;
     const controls = [...form.querySelectorAll('input, textarea, select, button')];
     const disabled = controls.map(control => control.disabled); controls.forEach(control => { control.disabled = true; });
     try {
-      await request('/api/posts', payload);
+      await request(state.editing ? `/api/posts/${encodeURIComponent(state.editing)}` : '/api/posts', payload);
+      // An edit goes back to the write page, which says the post is updated.
+      if (state.editing) { location.href = '/?done=edited'; return; }
       card.hidden = true; text.value = ''; state.metadata = {source: 'manual'};
       find('compose-message').textContent = 'Added to the record';
       setTimeout(() => { if (find('compose-message').textContent === 'Added to the record') find('compose-message').textContent = ''; }, 6000);
@@ -281,8 +284,12 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         find('feed').innerHTML = await response.text();
       } catch { find('compose-message').textContent = 'Added to the record. Reload the page to see the updated record.'; }
       loadCandidates();
-    } catch (error) { find('card-errors').textContent = error.message; }
-    finally { controls.forEach((control, index) => { control.disabled = disabled[index]; }); state.posting = false; updateText(); changed(); }
+    } catch (error) { find('card-errors').textContent = error.message; failed = true; }
+    finally {
+      controls.forEach((control, index) => { control.disabled = disabled[index]; }); state.posting = false; updateText();
+      // A failed save keeps its message until the writer changes something; a preview now would clear it.
+      if (failed) find('post').disabled = false; else changed();
+    }
   }
   // The summary above the form (about_issue.js) sets a position on a solution the record already holds.
   // The answer lets the panel undo the choice and say why: 'reading', 'full' or true.
