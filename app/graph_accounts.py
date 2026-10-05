@@ -253,7 +253,7 @@ RETURN p.key AS key, p.name AS name, p.email AS email, e.relationship AS relatio
        e.created_at AS entered_at, p.accepted_at AS accepted_at, p.active AS active,
        p.token_purpose AS purpose, p.token_expires_at AS expires_at,
        inviter.name AS inviter_name, p.admin AS admin
-ORDER BY e.created_at DESC
+ORDER BY e.created_at DESC, p.created_at DESC
 """
 
 # Q17, the back room's "Send a password link": the forgotten password statement by key, for an

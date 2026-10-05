@@ -391,3 +391,4 @@ form.search button { min-height: 44px; }
 .account-row form, .account-row details { display: inline-block; margin: 0 16px 0 0; }
 .account-row details[open] { display: block; }
 .account-row summary { color: var(--accent); cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.account-row button.quiet { font: inherit; }

@@ -1,5 +1,6 @@
 <h2>Sending email</h2><p>{{ mail_error }}</p>
 <h2 id="people">People</h2>
+{% if people_notice %}<p class="notice" role="status">{{ people_notice }}</p>{% endif %}
 {% for person in people %}
 <section class="account-row">
   <p>{{ person.name }} · {{ person.email }} · {% if person.first %}first account{% else %}entered by {{ person.inviter_name }} ({{ person.relationship }}) on {{ person.entered_at.strftime("%-d %B %Y") }}{% endif %} · {% if person.state == "joined" %}joined {{ person.accepted_at.strftime("%-d %B %Y") }}{% elif person.state == "invited" %}invited, not accepted yet{% elif person.state == "expired" %}invitation expired{% else %}switched off{% endif %}</p>

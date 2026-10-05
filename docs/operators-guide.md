@@ -80,7 +80,7 @@ A developer can put a downloaded copy back into an empty record. There is no but
 
 ### People
 
-Every account is listed with its email address, who entered it and how they know each other, the date it was entered, and where it stands: joined, invited but not accepted yet, invitation expired, or switched off. Your own account says **first account**, because nobody entered you.
+Every account is listed with its email address, who entered it and how they know each other, the date it was entered, and where it stands: joined, invited but not accepted yet, invitation expired, or switched off. Your own account says **first account** in their place, because nobody entered you.
 
 Next to each person are the buttons that fit:
 

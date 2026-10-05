@@ -187,7 +187,9 @@ def test_send_the_invitation_again_issues_a_fresh_link_from_the_site_address(bac
     assert to == "waiting@example.org" and subject == "Your invitation to Open Collective Intelligence"
     assert accounts.link_hash(link_in(text, "accept")) == token_hash
     assert "Entered by: Ada Lovelace" in text and "evil.example" not in text
-    assert "Invitation sent again." in back_room.page("/admin?done=resent")
+    page = back_room.page("/admin?done=resent")
+    assert page.count("Invitation sent again.") == 1
+    assert page.index('id="people"') < page.index("Invitation sent again.")
 
 
 def test_johns_own_row_before_his_first_password(back_room):
@@ -229,6 +231,16 @@ def test_withdraw_switch_off_and_switch_on(back_room):
     assert "Switched off." in page and "Joined Person · joined@example.org" in page and "Waiting Person" not in page
     assert "Entry withdrawn." in back_room.page("/admin?done=withdrawn")
     assert "Switched on." in back_room.page("/admin?done=switched_on")
+
+
+def test_back_room_notices_stay_at_the_top_and_people_notices_need_accounts(back_room, monkeypatch):
+    page = back_room.page("/admin?done=reload")
+    assert page.count("Seed reloaded.") == 1 and page.index("Seed reloaded.") < page.index('id="people"')
+    off = replace(back_room.settings, accounts_enabled=False)
+    monkeypatch.setattr("app.config.get_settings", lambda: off)
+    page = back_room.page("/admin?done=switched_off")
+    assert "Switched off." not in page and 'id="people"' not in page
+    assert "Seed reloaded." in back_room.page("/admin?done=reload")
 
 
 def test_john_cannot_switch_himself_off(back_room):

@@ -79,7 +79,8 @@ def page(request: Request):
         "mail_error": mail_error() if with_accounts else None,
         "people": people.page_rows() if with_accounts else None,
         "buttons": people.BUTTONS,
-        "notice": NOTICES.get(done) or people.NOTICES.get(done),
+        "notice": NOTICES.get(done),
+        "people_notice": people.NOTICES.get(done) if with_accounts else None,
     }, headers={"Cache-Control": "no-store"})
 
 
