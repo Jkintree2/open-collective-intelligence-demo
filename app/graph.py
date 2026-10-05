@@ -19,6 +19,7 @@ from app.graph_runtime import (RecordAsleep, _read, _write, close_driver, databa
 log = logging.getLogger("oci")
 
 STANCE_TYPES = {"approve": "APPROVE", "oppose": "OPPOSE"}
+OPPOSITE_STANCE = {"APPROVE": "OPPOSE", "OPPOSE": "APPROVE"}
 EVIDENCE_TYPES = {"supports": "SUPPORTS", "refutes": "REFUTES"}
 TARGET_LABELS = ("Issue", "Solution", "Evidence")
 
