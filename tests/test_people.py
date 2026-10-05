@@ -194,6 +194,7 @@ def test_the_list_shows_who_joined_who_is_waiting_and_whose_link_expired(people)
     assert "Late Person · school" in page and "invitation expired" in page
     assert "Gone Person · health" in page and "switched off" in page  # switched off wins over joined
     assert page.count("Send the invitation again") == 2
+    assert page.count('<div class="row-actions">') == 2
     assert "If an email address was mistyped, withdraw the entry and enter the person again." in page
 
 
@@ -223,6 +224,7 @@ def test_withdrawing_asks_first_then_removes(people):
     confirm = people.client.get("/people/acct:waiting/withdraw").text
     assert "Withdraw the entry for Waiting Person? Their link stops working and the details you entered are removed." in confirm
     assert "Keep it" in confirm
+    assert '<div class="row-actions">' in confirm and '<a class="quiet" href="/people">Keep it</a>' in confirm
     done = people.client.post("/people/acct:waiting/withdraw")
     assert "The entry for Waiting Person is withdrawn." in done.text
     assert people.withdrawn == [("acct:waiting", "acct:ada")]

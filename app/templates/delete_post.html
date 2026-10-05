@@ -3,6 +3,8 @@
 {% block content %}
 <p>Delete this post? What it claimed, proposed and cited goes, unless something else still uses it. Approvals and oppositions stay; you can change them on the issue page.</p>
 <blockquote class="statement">{{ post.text }}</blockquote>
-<form method="post" action="/posts/{{ post.id|urlencode }}/delete"><button type="submit" class="primary">Delete</button></form>
-<p><a href="/">Keep it</a></p>
+<div class="row-actions">
+  <form method="post" action="/posts/{{ post.id|urlencode }}/delete"><button type="submit" class="primary">Delete</button></form>
+  <a class="quiet" href="/">Keep it</a>
+</div>
 {% endblock %}

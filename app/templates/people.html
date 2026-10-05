@@ -34,8 +34,10 @@
   {% elif entry.state == "switched off" %}<p class="counts">switched off</p>
   {% else %}
   <p class="counts">{{ "invited, not accepted yet" if entry.state == "invited" else "invitation expired" }}</p>
-  <form method="post" action="/people/{{ entry.key }}/resend" data-once><button type="submit" class="quiet">Send the invitation again</button></form>
-  <a class="quiet" href="/people/{{ entry.key }}/withdraw">Withdraw</a>
+  <div class="row-actions">
+    <form method="post" action="/people/{{ entry.key }}/resend" data-once><button type="submit" class="quiet">Send the invitation again</button></form>
+    <a class="quiet" href="/people/{{ entry.key }}/withdraw">Withdraw</a>
+  </div>
   {% endif %}
 </section>
 {% else %}

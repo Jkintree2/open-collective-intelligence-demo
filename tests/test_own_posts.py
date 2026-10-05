@@ -171,6 +171,7 @@ def test_delete_asks_first_then_removes_and_says_so(owned):
     assert ("Delete this post? What it claimed, proposed and cited goes, unless something else still uses it. "
             "Approvals and oppositions stay; you can change them on the issue page.") in question
     assert "My statement" in question and "Keep it" in question
+    assert '<div class="row-actions">' in question and '<a class="quiet" href="/">Keep it</a>' in question
     result = owned.client.post("/posts/mine-1/delete", follow_redirects=False)
     assert result.status_code == 303 and result.headers["location"] == "/?done=deleted"
     assert owned.deleted == ["mine-1"]
