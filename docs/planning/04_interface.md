@@ -533,7 +533,7 @@ Linked at the foot of the Issues page as "Changes to the issues"; every member c
 >
 > Every move, rename and merge, newest first.
 >
-> {4 October 2026, 14:02} · {name} renamed {old name} to {new name}
+> {4 October 2026, 14:02 UTC} · {name} renamed {old name} to {new name}
 > {date} · {name} moved {issue} under {parent}
 > {date} · {name} made {issue} a top level issue
 > {date} · {name} merged {other} into {issue}

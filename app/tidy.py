@@ -1,6 +1,7 @@
 """Tidying the issue tree: who may, what the pages say, and how a change reads (sub-plan E, D5)."""
 
 import json
+from datetime import timezone
 
 from fastapi import Request
 
@@ -26,7 +27,9 @@ def can_tidy(member) -> bool:
 
 def sentence(row: dict) -> str:
     details = json.loads(row["details"] or "{}")
-    when = row["created_at"].strftime("%-d %B %Y, %H:%M")
+    moment = row["created_at"]
+    moment = moment.to_native() if hasattr(moment, "to_native") else moment
+    when = moment.astimezone(timezone.utc).strftime("%-d %B %Y, %H:%M UTC")
     if row["kind"] == "rename":
         what = f"renamed {details['from_name']} to {details['to_name']}"
     elif row["kind"] == "merge":

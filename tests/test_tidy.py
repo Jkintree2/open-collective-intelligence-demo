@@ -22,13 +22,13 @@ def test_only_an_admin_account_tidies():
 def test_change_sentences_word_for_word():
     assert tidy.sentence(row("rename", from_name="Platform for digital democracy",
                              to_name="Building a platform for digital democracy")) == \
-        "4 October 2026, 14:02 · John Kintree renamed Platform for digital democracy to Building a platform for digital democracy"
+        "4 October 2026, 14:02 UTC · John Kintree renamed Platform for digital democracy to Building a platform for digital democracy"
     assert tidy.sentence(row("move", issue_name="Veto", to_parent_name="World")) == \
-        "4 October 2026, 14:02 · John Kintree moved Veto under World"
+        "4 October 2026, 14:02 UTC · John Kintree moved Veto under World"
     assert tidy.sentence(row("move", issue_name="Veto", to_parent_name=None)) == \
-        "4 October 2026, 14:02 · John Kintree made Veto a top level issue"
+        "4 October 2026, 14:02 UTC · John Kintree made Veto a top level issue"
     assert tidy.sentence(row("merge", merged_name="Parking", kept_name="Car parking")) == \
-        "4 October 2026, 14:02 · John Kintree merged Parking into Car parking"
+        "4 October 2026, 14:02 UTC · John Kintree merged Parking into Car parking"
 
 
 def test_a_move_refused_after_the_lock_says_why(monkeypatch):
@@ -129,9 +129,18 @@ def test_the_list_of_changes(tidying, monkeypatch):
     monkeypatch.setattr("app.graph_tidy.list_changes", lambda: [
         {"kind": "rename", "created_at": datetime(2026, 10, 4, 14, 2, tzinfo=timezone.utc), "by": "John Kintree",
          "details": '{"from_name": "Platform for digital democracy", "to_name": "Building a platform for digital democracy"}'}])
-    assert ("4 October 2026, 14:02 · John Kintree renamed Platform for digital democracy to Building a platform for "
+    assert ("4 October 2026, 14:02 UTC · John Kintree renamed Platform for digital democracy to Building a platform for "
             "digital democracy") in tidying.client.get("/changes").text
     assert '<a href="/changes">Changes to the issues</a>' in tidying.client.get("/issues").text
+
+
+def test_a_change_made_in_another_zone_is_shown_in_utc(tidying, monkeypatch):
+    from datetime import timedelta
+    tidying.sign_in()
+    monkeypatch.setattr("app.graph_tidy.list_changes", lambda: [
+        {"kind": "merge", "created_at": datetime(2026, 10, 4, 12, 55, tzinfo=timezone(timedelta(hours=2))),
+         "by": "John Kintree", "details": '{"merged_name": "Parking", "kept_name": "Car parking"}'}])
+    assert "4 October 2026, 10:55 UTC · John Kintree merged Parking into Car parking" in tidying.client.get("/changes").text
 
 
 def test_a_repeated_rename_goes_back_to_the_key_it_answered(tidying, monkeypatch):
