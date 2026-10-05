@@ -4,7 +4,7 @@
 {% block content %}
 <section class="card gate">
   <h1>Forgot your password</h1>
-  {% if message %}<p class="notice" role="status">{{ message }}</p>{% endif %}
+  {% if message %}<p class="notice" role="{{ 'status' if sent else 'alert' }}">{{ message }}</p>{% endif %}
   {% if not sent %}
   <p>Enter the email address you were invited with, and we will send you a link to choose a password.</p>
   <form method="post" action="/forgot-password" data-once>

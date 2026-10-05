@@ -173,9 +173,14 @@ def test_a_known_address_does_its_work_after_the_answer(forgot, monkeypatch):
 def test_the_forgot_form_has_its_own_minute(forgot, monkeypatch):
     from app.auth import MinuteBucket
     monkeypatch.setattr("app.accounts.forgot_per_minute", MinuteBucket(capacity=1, period=3600))
-    forgot.client.post("/forgot-password", data={"email": "ada@example.org"})
+    sent = forgot.client.post("/forgot-password", data={"email": "ada@example.org"})
+    assert 'role="status"' in sent.text and 'role="alert"' not in sent.text
+    assert len(forgot.sent) == 1 and len(forgot.links) == 1
     refused = forgot.client.post("/forgot-password", data={"email": "bob@example.org"})
     assert refused.status_code == 429 and "Too many tries. Please wait a minute and try again." in refused.text
+    assert 'role="alert"' in refused.text and 'role="status"' not in refused.text
+    # The refused request did no work: no further email and no further link.
+    assert len(forgot.sent) == 1 and len(forgot.links) == 1
 
 
 def test_the_page_offers_a_link_from_sign_in(forgot):
