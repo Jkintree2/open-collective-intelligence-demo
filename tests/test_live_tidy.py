@@ -194,3 +194,43 @@ def test_merging_an_issue_into_itself_or_a_missing_one(live_graph):
     assert graph_tidy.merge_issues("acct:john", "world", "world", NOW) == ("self", None)
     assert graph_tidy.merge_issues("acct:john", "world", "nowhere", NOW) == ("gone", None)
     assert changes(live_graph) == []
+
+
+def test_a_double_submitted_merge_records_one_change(live_graph, monkeypatch):
+    run(live_graph, MERGE_SETUP, earlier=NOW - timedelta(days=1))
+    inner, outer = double_submit(monkeypatch, lambda: graph_tidy.merge_issues("acct:john", "platform", "online platform", NOW))
+    assert inner[0] == "merged" and outer == ("gone", None)
+    assert [k for k, _ in changes(live_graph)].count("merge") == 1
+
+
+def test_a_rename_committed_while_a_move_waits_is_not_undone(live_graph):
+    import threading
+    run(live_graph, "CREATE (:Person {key: 'acct:john', name: 'John Kintree', admin: true}), "
+                    "(:Issue {key: 'a', name: 'A'}), (:Issue {key: 'p', name: 'P'})")
+    holding, release = threading.Event(), threading.Event()
+    result = {}
+
+    def renamer():
+        def work(tx):
+            tx.run(graph_tidy.LOCK_ISSUES, keys=["a"]).consume()
+            tx.run(graph_tidy.RENAME, key="a", new_key="a two", new_name="A two").consume()
+            holding.set()
+            release.wait(5)
+        graph_tidy._write(work)
+
+    def mover():
+        result["move"] = graph_tidy.move_issue("acct:john", "a", "p", NOW)
+
+    t1 = threading.Thread(target=renamer)
+    t1.start()
+    assert holding.wait(5)
+    t2 = threading.Thread(target=mover)
+    t2.start()
+    t2.join(0.5)  # the move is now waiting on the lock of A
+    release.set()
+    t1.join(5)
+    t2.join(5)
+    assert result["move"] == "gone"  # the key it was asked about no longer exists
+    rows = run(live_graph, "MATCH (i:Issue) WHERE i.name STARTS WITH 'A' RETURN i.key AS k, i.name AS n")
+    assert [(r["k"], r["n"]) for r in rows] == [("a two", "A two")]
+    assert changes(live_graph) == []

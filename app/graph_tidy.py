@@ -28,14 +28,13 @@ RETURN has_children, collect({key: other.key, name: other.name, top: up IS NULL}
 """
 
 # Locks first, reads after (as Q23): a repeated submit waits here and then sees the finished change.
-# A key that does not exist is simply not matched.
-LOCK_ISSUES = "MATCH (i:Issue) WHERE i.key IN $keys SET i.key = i.key"
+# A key that does not exist is simply not matched. Not `SET i.key = i.key`: a rename that commits while
+# this waits would be undone by writing the old key back. The transient property is never committed.
+LOCK_ISSUES = "MATCH (i:Issue) WHERE i.key IN $keys SET i.tidy_lock = true REMOVE i.tidy_lock"
 
 # Q28. Under a top-level parent: the guards repeat the one-level rule after the locks.
 MOVE_UNDER = """
 MATCH (child:Issue {key: $key}), (parent:Issue {key: $parent_key})
-SET child.key = child.key, parent.key = parent.key
-WITH child, parent
 WHERE child <> parent
   AND NOT (parent)-[:PART_OF]->(:Issue)
   AND NOT (:Issue)-[:PART_OF]->(child)
@@ -81,9 +80,9 @@ LIMIT 200
 
 # Q30. Merge issue B ($merged) into issue A ($kept): every relationship of B moves to A with its
 # properties, one statement per type, plain Cypher. A keeps its own place in the tree.
+# Both issues are locked by LOCK_ISSUES first; this only reads their names afterwards.
 MERGE_LOCK = """
 MATCH (a:Issue {key: $kept}), (b:Issue {key: $merged}) WHERE a <> b
-SET a.key = a.key, b.key = b.key
 RETURN a.name AS kept_name, b.name AS merged_name
 """
 MERGE_DROP_LINK = "MATCH (:Issue {key: $kept})-[r:PART_OF]-(:Issue {key: $merged}) DELETE r"
@@ -240,6 +239,7 @@ def merge_issues(me: str, kept: str, merged: str, now: datetime) -> tuple[str, s
 
     def work(tx: Any) -> tuple[str, str | None]:
         keys = {"kept": kept, "merged": merged}
+        tx.run(LOCK_ISSUES, keys=[kept, merged]).consume()
         names = tx.run(MERGE_LOCK, **keys).single()
         if names is None:
             return "gone", None
