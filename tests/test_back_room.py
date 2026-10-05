@@ -172,3 +172,140 @@ def test_without_accounts_the_back_room_is_as_before(back_room, monkeypatch):
     monkeypatch.setattr("app.graph_accounts.all_accounts", lambda: pytest.fail("no accounts are read with accounts off"))
     page = back_room.page()
     assert 'id="people"' not in page and "Sending email" not in page and "<h2>Reading service</h2>" in page
+
+
+def link_in(text, kind):
+    return re.search(rf"https://record\.example/{kind}/(\S+)", text).group(1)
+
+
+def test_send_the_invitation_again_issues_a_fresh_link_from_the_site_address(back_room):
+    result = back_room.post("/admin/people/acct:waiting/resend", headers={"Host": "evil.example"})
+    assert result.status_code == 303 and result.headers["location"] == "/admin?done=resent#people"
+    _, key, token_hash, inviter_key = back_room.calls[0]
+    assert key == "acct:waiting" and inviter_key is None     # the back room version of Q17
+    to, subject, text = back_room.sent[0]
+    assert to == "waiting@example.org" and subject == "Your invitation to Open Collective Intelligence"
+    assert accounts.link_hash(link_in(text, "accept")) == token_hash
+    assert "Entered by: Ada Lovelace" in text and "evil.example" not in text
+    assert "Invitation sent again." in back_room.page("/admin?done=resent")
+
+
+def test_johns_own_row_before_his_first_password(back_room):
+    back_room.people[0].update(accepted_at=None, purpose="invite", expires_at=NOW + timedelta(days=14))
+    page = back_room.page()
+    assert "John Kintree · john@example.org · first account · invited, not accepted yet" in page
+    from app import routes_admin_people
+    john = next(r for r in routes_admin_people.page_rows() if r["key"] == "acct:john")
+    assert john["actions"] == ["resend"]                    # never Withdraw
+    back_room.post("/admin/people/acct:john/resend")
+    to, subject, text = back_room.sent[0]
+    assert to == "john@example.org" and subject == "Choose your password for Open Collective Intelligence"
+    assert "Entered by" not in text and "https://record.example/accept/" in text
+
+
+def test_send_a_password_link_to_someone_who_has_joined(back_room):
+    result = back_room.post("/admin/people/acct:joined/password-link")
+    assert result.headers["location"] == "/admin?done=password_link#people"
+    to, subject, text = back_room.sent[0]
+    assert to == "joined@example.org" and subject == "Choose a new password for Open Collective Intelligence"
+    assert accounts.link_hash(link_in(text, "reset")) == back_room.calls[0][2]
+    assert "Password link sent." in back_room.page("/admin?done=password_link")
+
+
+def test_a_failed_email_says_it_did_not_go(back_room):
+    back_room.state["send"] = False
+    for path in ("/admin/people/acct:waiting/resend", "/admin/people/acct:joined/password-link"):
+        assert back_room.post(path).headers["location"] == "/admin?done=mail_failed#people"
+    assert "The email did not go. Please try again in a minute." in back_room.page("/admin?done=mail_failed")
+
+
+def test_withdraw_switch_off_and_switch_on(back_room):
+    assert back_room.post("/admin/people/acct:waiting/withdraw").headers["location"] == "/admin?done=withdrawn#people"
+    assert back_room.post("/admin/people/acct:joined/switch-off").headers["location"] == "/admin?done=switched_off#people"
+    assert back_room.post("/admin/people/acct:off/switch-on").headers["location"] == "/admin?done=switched_on#people"
+    assert back_room.calls == [("withdraw", "acct:waiting", None), ("active", "acct:joined", False),
+                               ("active", "acct:off", True)]
+    page = back_room.page("/admin?done=switched_off")
+    assert "Switched off." in page and "Joined Person · joined@example.org" in page and "Waiting Person" not in page
+    assert "Entry withdrawn." in back_room.page("/admin?done=withdrawn")
+    assert "Switched on." in back_room.page("/admin?done=switched_on")
+
+
+def test_john_cannot_switch_himself_off(back_room):
+    result = back_room.post("/admin/people/acct:john/switch-off")
+    assert result.status_code == 303 and result.headers["location"] == "/admin#people"
+    assert back_room.calls == []
+
+
+@pytest.mark.parametrize("path", [
+    "/admin/people/acct:joined/resend",          # accepted: a password link instead
+    "/admin/people/acct:waiting/password-link",  # not accepted: the invitation again instead
+    "/admin/people/acct:joined/withdraw",        # accepted: switch off instead
+    "/admin/people/acct:john/withdraw",          # nobody entered John
+    "/admin/people/acct:off/switch-off",         # already off
+    "/admin/people/acct:joined/switch-on",       # already on
+    "/admin/people/acct:gone/resend",            # withdrawn in another tab
+])
+def test_a_button_on_a_row_that_changed_meanwhile_changes_nothing(back_room, path):
+    result = back_room.post(path)
+    assert result.status_code == 303 and result.headers["location"] == "/admin#people"
+    assert back_room.calls == [] and back_room.sent == []
+
+
+def test_a_row_that_changes_between_the_list_and_the_write_sends_nothing(back_room, monkeypatch):
+    monkeypatch.setattr("app.graph_accounts.resend_invitation", lambda *args, **kwargs: None)  # accepted just now
+    monkeypatch.setattr("app.graph_accounts.password_link", lambda *args, **kwargs: None)      # switched off just now
+    assert back_room.post("/admin/people/acct:waiting/resend").headers["location"] == "/admin#people"
+    assert back_room.post("/admin/people/acct:joined/password-link").headers["location"] == "/admin#people"
+    assert back_room.sent == []
+
+
+@pytest.mark.parametrize("path", ["/admin/people/acct:waiting/resend", "/admin/people/acct:joined/password-link",
+                                  "/admin/people/acct:waiting/withdraw", "/admin/people/acct:joined/switch-off",
+                                  "/admin/people/acct:off/switch-on"])
+def test_every_people_button_needs_the_back_room_password_and_a_signed_form(back_room, path):
+    client = back_room.client
+    assert client.post(path).status_code == 401
+    assert client.post(path, auth=AUTH, data={"csrf_token": "invalid"}).status_code == 403
+    assert client.post(path, auth=AUTH, data={"csrf_token": token(client)},
+                       headers={"Origin": "https://other.example"}).status_code == 403
+    assert back_room.calls == [] and back_room.sent == []
+
+
+def test_people_buttons_do_not_exist_without_accounts(back_room, monkeypatch):
+    csrf = token(back_room.client)
+    off = replace(back_room.settings, accounts_enabled=False)
+    monkeypatch.setattr("app.config.get_settings", lambda: off)
+    monkeypatch.setattr("app.auth.get_settings", lambda: off)
+    result = back_room.client.post("/admin/people/acct:joined/switch-off", auth=AUTH, data={"csrf_token": csrf})
+    assert result.status_code == 404 and back_room.calls == []
+
+
+def test_one_address_gets_only_so_many_links(back_room, monkeypatch):
+    monkeypatch.setattr("app.accounts.link_per_address", KeyedLimit(1, 3600))
+    assert back_room.post("/admin/people/acct:joined/password-link").headers["location"] == "/admin?done=password_link#people"
+    assert back_room.post("/admin/people/acct:joined/password-link").headers["location"] == "/admin?done=address_busy#people"
+    assert len(back_room.sent) == 1
+    assert ("Too many emails to that address in the last hour. Please try again later."
+            in back_room.page("/admin?done=address_busy"))
+
+
+def test_the_back_room_and_forgot_your_password_share_one_limit(back_room, monkeypatch):
+    from app.auth import MinuteBucket
+    monkeypatch.setattr("app.accounts.forgot_per_minute", MinuteBucket(capacity=20, period=60))
+    monkeypatch.setattr("app.accounts.link_per_address", KeyedLimit(1, 3600))
+    back_room.post("/admin/people/acct:joined/password-link")
+    asked = []
+    monkeypatch.setattr("app.graph_accounts.forgot", lambda *args, **kwargs: asked.append(args) or None)
+    back_room.client.post("/forgot-password", data={"email": "joined@example.org"})
+    assert asked == []    # this address already had its link from the back room this hour
+
+
+def test_back_room_sends_log_no_address_name_or_link(back_room, caplog, monkeypatch):
+    monkeypatch.setattr(logging.getLogger("oci"), "propagate", True)   # the lifespan turns it off
+    caplog.set_level(logging.DEBUG, logger="oci")
+    back_room.post("/admin/people/acct:joined/password-link")
+    secret = link_in(back_room.sent[0][2], "reset")
+    for private in (secret, "joined@example.org", "Joined Person"):
+        assert private not in caplog.text
+    assert '"event": "back_room_people"' in caplog.text and '"action": "password_link"' in caplog.text

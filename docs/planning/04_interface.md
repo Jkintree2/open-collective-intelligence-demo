@@ -571,6 +571,10 @@ Notices:
 
 > The email did not go. Please try again in a minute.
 
+> Too many emails to that address in the last hour. Please try again later.
+
+The line above appears when a back room email would pass the per address limit that "Forgot your password?" and "Send the invitation again" also use; the back room has no per minute limit, since only John can reach it. John's own row reads "{name} · {email} · first account" followed by its state, because nobody entered him; it offers neither Withdraw nor Switch off. Switch off is offered only to accounts that have joined; someone not yet accepted is withdrawn instead.
+
 A "Sending email" line, like the reading service line:
 
 > No problems recorded.
