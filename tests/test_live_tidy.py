@@ -203,7 +203,8 @@ def test_a_double_submitted_merge_records_one_change(live_graph, monkeypatch):
     assert [k for k, _ in changes(live_graph)].count("merge") == 1
 
 
-def test_a_rename_committed_while_a_move_waits_is_not_undone(live_graph):
+def race_a_rename(live_graph, waiter):
+    """A rename of issue 'a' commits while `waiter` (run in a second transaction) waits on its lock."""
     import threading
     run(live_graph, "CREATE (:Person {key: 'acct:john', name: 'John Kintree', admin: true}), "
                     "(:Issue {key: 'a', name: 'A'}), (:Issue {key: 'p', name: 'P'})")
@@ -218,19 +219,42 @@ def test_a_rename_committed_while_a_move_waits_is_not_undone(live_graph):
             release.wait(5)
         graph_tidy._write(work)
 
-    def mover():
-        result["move"] = graph_tidy.move_issue("acct:john", "a", "p", NOW)
+    def waiting():
+        result["value"] = waiter()
 
     t1 = threading.Thread(target=renamer)
-    t1.start()
-    assert holding.wait(5)
-    t2 = threading.Thread(target=mover)
-    t2.start()
-    t2.join(0.5)  # the move is now waiting on the lock of A
-    release.set()
-    t1.join(5)
-    t2.join(5)
-    assert result["move"] == "gone"  # the key it was asked about no longer exists
+    t2 = threading.Thread(target=waiting)
+    try:
+        t1.start()
+        assert holding.wait(5)
+        t2.start()
+        t2.join(0.5)
+        assert t2.is_alive()  # it is waiting on the lock of A: the two transactions overlap
+    finally:
+        release.set()
+        t1.join(5)
+        t2.join(5)
+    assert not t1.is_alive() and not t2.is_alive()
+    return result["value"]
+
+
+def test_a_rename_committed_while_a_move_waits_is_not_undone(live_graph):
+    move = race_a_rename(live_graph, lambda: graph_tidy.move_issue("acct:john", "a", "p", NOW))
+    assert move == "gone"  # the key it was asked about no longer exists
     rows = run(live_graph, "MATCH (i:Issue) WHERE i.name STARTS WITH 'A' RETURN i.key AS k, i.name AS n")
     assert [(r["k"], r["n"]) for r in rows] == [("a two", "A two")]
     assert changes(live_graph) == []
+
+
+def test_a_rename_committed_while_a_post_write_waits_is_not_undone(live_graph):
+    from app import graph
+
+    def post_write():
+        def work(tx):
+            tx.run(graph.MERGE_PART_OF, issue_key="a", parent_key="p", post_id="p9", now=NOW).consume()
+        graph_tidy._write(work)
+
+    race_a_rename(live_graph, post_write)
+    rows = run(live_graph, "MATCH (i:Issue) WHERE i.name STARTS WITH 'A' RETURN i.key AS k, i.name AS n")
+    assert [(r["k"], r["n"]) for r in rows] == [("a two", "A two")]
+    assert run(live_graph, "MATCH (i:Issue {key: 'a'}) RETURN i") == []

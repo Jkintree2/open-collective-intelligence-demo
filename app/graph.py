@@ -66,7 +66,7 @@ CREATE (p)-[:CLAIM {post_id: $post_id, anonymous: $anonymous, created_at: $now}]
 
 MERGE_PART_OF = """
 MATCH (child:Issue {key: $issue_key}), (parent:Issue {key: $parent_key})
-SET child.key = child.key, parent.key = parent.key
+SET child.tidy_lock = true, parent.tidy_lock = true REMOVE child.tidy_lock, parent.tidy_lock
 WITH child, parent
 WHERE child <> parent
   AND NOT (parent)-[:PART_OF]->(:Issue)

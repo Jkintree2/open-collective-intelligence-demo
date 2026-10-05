@@ -490,7 +490,7 @@ RETURN p.key AS key, p.name AS name, p.email AS email, p.country AS country,
        inviter.name AS inviter_name, e.relationship AS relationship
 ```
 
-**Lock first, then check** (Q16, Q17, Q18, Q21, as Q23, Q24 and Q28 do): each statement matches the person, takes the write lock with the no-op `SET p.key = p.key`, and only then checks its conditions. A transaction that matched before another one committed waits for it and then sees what it left: two accepts on one link succeed once, a withdrawal racing an accept leaves the accepted account, and a new link never lands on an account accepted meanwhile. The no-op is on `key`, which never changes; a no-op on `token_hash` could write a stale value back.
+**Lock first, then check** (Q16, Q17, Q18, Q21, as Q23, Q24 and Q28 do): each statement matches the person, takes the write lock with the no-op `SET p.key = p.key`, and only then checks its conditions. A transaction that matched before another one committed waits for it and then sees what it left: two accepts on one link succeed once, a withdrawal racing an accept leaves the accepted account, and a new link never lands on an account accepted meanwhile. The no-op `SET x.key = x.key` (or `x.id = x.id`) is safe only where that value never changes (Person keys, Post ids, Solution keys); a no-op on `token_hash` could write a stale value back. An Issue, whose key a rename changes, is locked with a transient property instead (`SET i.tidy_lock = true REMOVE i.tidy_lock`, never committed), because the no-op reads its value before the lock is granted and would write a stale key back.
 
 **Q16. Accept an invitation.** The link is checked again after the lock, so a form sent twice accepts once and the second sees no row.
 
@@ -723,15 +723,16 @@ RETURN node.id AS id, node.text AS text, node.display_name AS display_name,
 
 ### Tidying the issue tree
 
-Admin accounts only (D5). Each statement below runs in one write transaction with Q31, so a change and its record land together or not at all. Both issues are locked first (`SET i.key = i.key`), as in Q23. The one-level rule of `PART_OF` holds after every change: no sub-issue of a sub-issue, no issue part of itself.
+Admin accounts only (D5). Each statement below runs in one write transaction with Q31, so a change and its record land together or not at all. Both issues are locked first with the transient property (`SET i.tidy_lock = true REMOVE i.tidy_lock`), and read only after the lock, in a later statement. The one-level rule of `PART_OF` holds after every change: no sub-issue of a sub-issue, no issue part of itself.
 
 **Q28. Move.** Make an issue part of a top-level issue, or make it top level. Refused when the issue has sub-issues of its own (it stays top level), when the new parent is itself a sub-issue, or when they are the same issue.
 
 ```cypher
+// 0. lock both issues first, as one statement: keys is [key, parent_key]
+MATCH (i:Issue) WHERE i.key IN $keys SET i.tidy_lock = true REMOVE i.tidy_lock;
+
 // under a parent
 MATCH (child:Issue {key: $key}), (parent:Issue {key: $parent_key})
-SET child.key = child.key, parent.key = parent.key
-WITH child, parent
 WHERE child <> parent
   AND NOT (parent)-[:PART_OF]->(:Issue)
   AND NOT (:Issue)-[:PART_OF]->(child)
@@ -758,9 +759,11 @@ RETURN i.key AS key
 **Q30. Merge issue B into issue A.** Every relationship of B moves to A with its properties, one statement per type, plain Cypher, no APOC. A keeps its own place in the tree.
 
 ```cypher
-// 0. lock; refuse when A and B are the same issue
+// 0. lock both issues (keys is [kept, merged]), then read their names; refuse when A and B
+//    are the same issue or one is gone
+MATCH (i:Issue) WHERE i.key IN $keys SET i.tidy_lock = true REMOVE i.tidy_lock;
 MATCH (a:Issue {key: $kept}), (b:Issue {key: $merged}) WHERE a <> b
-SET a.key = a.key, b.key = b.key;
+RETURN a.name AS kept_name, b.name AS merged_name;
 // 1. a PART_OF between the two goes (no self-loop)
 MATCH (a:Issue {key: $kept})-[r:PART_OF]-(b:Issue {key: $merged}) DELETE r;
 // 2. claims
