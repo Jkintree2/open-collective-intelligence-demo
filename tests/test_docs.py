@@ -37,7 +37,7 @@ TECHNICAL = re.compile(r"\b(node|edge|graph|cypher|model|extraction|entity)s?\b"
 
 def test_the_operators_guide_is_plain_and_covers_phase_1():
     guide = (ROOT / "docs/operators-guide.md").read_text(encoding="utf-8")
-    assert "–" not in guide and "—" not in guide and " - " not in guide
+    assert "\u2013" not in guide and "\u2014" not in guide and " - " not in guide
     assert TECHNICAL.search(guide) is None, TECHNICAL.search(guide)
     assert "Eston" not in guide and "passphrase is the only lock" not in guide
     for phrase in ("Enter a person", "This person has agreed to be entered", "Send the invitation again",

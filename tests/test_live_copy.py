@@ -31,15 +31,15 @@ CREATE (i:Issue {key: 'building a platform for digital democracy',
 CREATE (sub:Issue {key: 'open meetings online', name: 'Open meetings online', seed: false, created_at: $now})
 CREATE (sub)-[:PART_OF {created_at: $now}]->(i)
 CREATE (s:Solution {key: 'public minutes', name: 'Public minutes', seed: false, created_at: $now})
-CREATE (i)-[:HAVE_PROPOSED {post_id: 'p1', created_at: $now}]->(s)
-CREATE (post:Post {id: 'p1', text: 'Meetings should publish their minutes', created_at: $now,
+CREATE (i)-[:HAVE_PROPOSED {post_id: '6f1c2d3e-8a47-4b5e-9c10-2d7e4f9a1b30', created_at: $now}]->(s)
+CREATE (post:Post {id: '6f1c2d3e-8a47-4b5e-9c10-2d7e4f9a1b30', text: 'Meetings should publish their minutes', created_at: $now,
                    edited_at: $later, anonymous: false, display_name: 'Ada Lovelace', source: 'manual',
                    seed: false, payload: '{}'})
-CREATE (ada)-[:POSTED {post_id: 'p1', created_at: $now, anonymous: false}]->(post)
-CREATE (ada)-[:CLAIM {post_id: 'p1', created_at: $now, anonymous: false}]->(i)
-CREATE (ada)-[:PROPOSE {post_id: 'p1', created_at: $now, anonymous: false}]->(s)
+CREATE (ada)-[:POSTED {post_id: '6f1c2d3e-8a47-4b5e-9c10-2d7e4f9a1b30', created_at: $now, anonymous: false}]->(post)
+CREATE (ada)-[:CLAIM {post_id: '6f1c2d3e-8a47-4b5e-9c10-2d7e4f9a1b30', created_at: $now, anonymous: false}]->(i)
+CREATE (ada)-[:PROPOSE {post_id: '6f1c2d3e-8a47-4b5e-9c10-2d7e4f9a1b30', created_at: $now, anonymous: false}]->(s)
 CREATE (john)-[:APPROVE {source: 'click', anonymous: false, created_at: $now}]->(s)
-CREATE (grace)-[:OPPOSE {post_id: 'p0', anonymous: false, created_at: $now}]->(s)
+CREATE (grace)-[:OPPOSE {post_id: '0b9e5a72-3c1d-4e68-a4f7-81d6c2e95b14', anonymous: false, created_at: $now}]->(s)
 CREATE (c:Change {id: 'change-1', kind: 'rename', created_at: $now, details: $details})
 CREATE (john)-[:MADE {created_at: $now}]->(c)
 CREATE (c)-[:CHANGED {created_at: $now}]->(i)

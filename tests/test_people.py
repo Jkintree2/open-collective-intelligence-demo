@@ -267,6 +267,11 @@ def main_version():
     return main.templates.env.globals["asset_version"]
 
 
-def test_both_people_pages_use_one_state_rule():
-    from app import routes_people
-    assert not hasattr(routes_people, "_state")
+def test_both_people_pages_take_an_entrys_state_from_the_shared_rule(people, monkeypatch):
+    from app import accounts, routes_admin_people
+    monkeypatch.setattr(accounts, "entry_state", lambda row, now: "marker-state")
+    back_room = [{**row, "inviter_name": "Ada Tester", "admin": False} for row in LISTED]
+    monkeypatch.setattr("app.graph_accounts.all_accounts", lambda: back_room)
+    assert {row["state"] for row in routes_admin_people.page_rows()} == {"marker-state"}
+    page = people.client.get("/people").text
+    assert page.count("invitation expired") == len(LISTED)   # the list's fallback for a state it does not know
