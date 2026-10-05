@@ -22,6 +22,12 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     return element;
   }
   function identity() {
+    // Signed in, the name is the account's and the page has no name field (members.posting_identity).
+    const member = form.dataset?.member;
+    if (member !== undefined) {
+      const anonymous = find('anonymous').checked;
+      return {anonymous, display_name: anonymous ? '' : member};
+    }
     const anonymous = find('anonymous').checked || !key(find('display_name').value);
     return {anonymous, display_name: anonymous ? '' : find('display_name').value};
   }

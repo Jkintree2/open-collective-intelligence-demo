@@ -2,7 +2,13 @@
 {% block content %}
 <p class="sentence">{{ site_sentence }}</p>
 
-<form method="post" action="/posts" class="write" id="compose">
+<form method="post" action="/posts" class="write" id="compose"{% if member %} data-member="{{ member.name }}"{% endif %}>
+  {% if member %}
+  <div class="name-row">
+    <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
+    <p class="counts">Your name is not shown to others. The record still knows the post is yours, so you count once and can edit or delete it later.</p>
+  </div>
+  {% else %}
   <div class="name-row">
     <div class="field">
       <label for="display_name">Your name</label>
@@ -10,6 +16,7 @@
     </div>
     <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
   </div>
+  {% endif %}
   {% if chips %}
   <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/?issue={{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
   {% endif %}
@@ -48,7 +55,7 @@
 </form>
 <script>
   var anon = document.getElementById('anonymous'), nameField = document.getElementById('display_name');
-  function syncName() { if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
+  function syncName() { if (!nameField) return; if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
   anon.addEventListener('change', syncName); syncName();
 </script>
 <script src="/static/card.js?v={{ asset_version }}" defer></script>

@@ -71,7 +71,7 @@
     if ([...next].length > 4000) { event.preventDefault(); find('compose-message').textContent = tooLong; }
   });
   find('anonymous').addEventListener('change', card.changed);
-  find('display_name').addEventListener('input', card.changed);
+  find('display_name')?.addEventListener('input', card.changed);
   find('skip').hidden = false; find('skip-help').hidden = false; find('skip').addEventListener('click', () => { card.openCard(); if (!state.candidatesReady) card.loadCandidates(); });
   find('stop').addEventListener('click', () => card.openCard());
   find('retry').addEventListener('click', read);

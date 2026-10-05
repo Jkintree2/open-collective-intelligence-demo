@@ -70,6 +70,14 @@ def member_key(request: Request) -> str | None:
     return member.key if member else None
 
 
+def posting_identity(member: Member, anonymous: bool) -> tuple[str, str | None, bool, str | None]:
+    """(person_key, name, anonymous, shown) for a post or stance by `member`. D2, the one display
+    rule: the post always belongs to the account, so the person is counted once and can edit or
+    delete it; "Post anonymously" only hides the name. Every caller takes all four from here."""
+    shown = None if anonymous else member.name
+    return member.key, shown, anonymous, shown
+
+
 def require_access(request: Request) -> None:
     """The door of every reading page: an account when accounts are on, the passphrase otherwise."""
     if config.get_settings().accounts_enabled:

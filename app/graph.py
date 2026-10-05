@@ -144,10 +144,12 @@ RETURN i.key AS key, i.name AS name, i.created_at AS created_at, i.seed AS seed,
        [c IN collect(DISTINCT child) | {key: c.key, name: c.name}] AS children
 """
 
+# Q3, revised for Phase 1: each person once, by name if any of their claims here is named.
 ISSUE_CLAIMANTS = """
 MATCH (p:Person)-[c:CLAIM]->(i:Issue {key: $key})
-RETURN count(c) AS claims, count(DISTINCT p) AS people,
-       collect(DISTINCT CASE WHEN c.anonymous THEN 'Anonymous' ELSE p.name END) AS names
+WITH p, count(c) AS claims, any(x IN collect(c.anonymous) WHERE NOT coalesce(x, false)) AS named
+RETURN sum(claims) AS claims, count(p) AS people,
+       collect(DISTINCT CASE WHEN named THEN p.name ELSE 'Anonymous' END) AS names
 """
 
 ISSUE_SOLUTIONS = """

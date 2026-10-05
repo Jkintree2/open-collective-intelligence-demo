@@ -188,10 +188,13 @@ RETURN i.key AS key, i.name AS name, i.created_at AS created_at,
 
 ### Q3. Issue detail: who claims it
 
+Revised for Phase 1: each person is counted and listed once, by name if any of their claims on the issue is named, otherwise "Anonymous".
+
 ```cypher
 MATCH (p:Person)-[c:CLAIM]->(i:Issue {key: $key})
-RETURN count(c) AS claims, count(DISTINCT p) AS people,
-       collect(DISTINCT CASE WHEN c.anonymous THEN 'Anonymous' ELSE p.name END) AS names
+WITH p, count(c) AS claims, any(x IN collect(c.anonymous) WHERE NOT coalesce(x, false)) AS named
+RETURN sum(claims) AS claims, count(p) AS people,
+       collect(DISTINCT CASE WHEN named THEN p.name ELSE 'Anonymous' END) AS names
 ```
 
 ### Q4. Issue detail: solutions with stance counts and evidence

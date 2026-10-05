@@ -41,6 +41,9 @@ from app.members import (
     RELOAD_AND_RETRY,
     SIGN_IN_AGAIN,
     CrossSite,
+    current_member,
+    member_key,
+    posting_identity,
     require_access,
     require_same_origin,
     safe_next,
@@ -168,7 +171,7 @@ def _issue_href(key: str | None) -> str:
     return f"/issues/{quote(key, safe='')}" if key else "/issues"
 
 
-def _decorate_posts(posts: list[dict]) -> list[dict]:
+def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
     """Relative times, chips and the sentence list for a page of posts."""
     now = datetime.now(timezone.utc)
     structure = graph.post_structure([post["id"] for post in posts])
@@ -229,7 +232,7 @@ def _render_index(
     status_code: int = 200,
     about: dict | None = None,
 ) -> Response:
-    posts = _decorate_posts(graph.list_posts(FEED_LIMIT))
+    posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
     chips = graph.top_issues(CHIP_LIMIT)
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
     return templates.TemplateResponse(
@@ -274,7 +277,7 @@ def issue_page(request: Request, key: str) -> Response:
             "claimants": graph.issue_claimants(key),
             "solutions": graph.issue_solutions(key),
             "evidence": graph.issue_evidence(key),
-            "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT)),
+            "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
         },
     )
 
@@ -335,6 +338,13 @@ def create_post(
     text = text.strip()
     if not text:
         return RedirectResponse("/", status_code=303)
+    member = current_member(request)
+    if member is not None:
+        identity = posting_identity(member, bool(anonymous))
+        if not post_spacing.take(identity[0]):
+            return _render_index(request, message=WAIT_BEFORE_POSTING, text=text, status_code=429)
+        graph.create_raw_post(*identity, text)
+        return RedirectResponse("/", status_code=303)
     name = _display_name(display_name)
     # A ticked box, an empty name or a name with no usable key all post anonymously.
     post_anonymously = bool(anonymous) or make_key(name) is None
@@ -393,7 +403,10 @@ def _text_error(text: str, *, allow_empty: bool = False) -> Response | None:
     return None
 
 
-def _poster(data: ReadingRequest | PostRequest) -> tuple[str | None, bool]:
+def _poster(data: ReadingRequest | PostRequest, member=None) -> tuple[str | None, bool]:
+    if member is not None:
+        _, name, anonymous, _ = posting_identity(member, data.anonymous)
+        return name, anonymous
     name = _display_name(data.display_name)
     anonymous = data.anonymous or make_key(name) is None
     return (None if anonymous else name), anonymous
@@ -413,7 +426,7 @@ def read_statement(request: Request, data: ReadingRequest) -> Response:
     # request is made, so that path must not spend anyone's allowance.
     if settings.llm_api_key and not reading_limit.take(attempt_bucket):
         return JSONResponse({"message": READING_LIMIT}, status_code=429)
-    name, _ = _poster(data)
+    name, _ = _poster(data, current_member(request))
     candidates = graph.candidates() if settings.llm_api_key else reading.Candidates.empty()
     result = reading.extract(data.text, name or "Anonymous", candidates, settings,
                              request_id=_request_id(request), writing_about=data.issue)
@@ -434,12 +447,12 @@ def _card_result(data: PostRequest):
 
 
 @app.post("/api/preview", dependencies=[Depends(require_access), Depends(require_same_origin)])
-def preview_card(data: PostRequest) -> Response:
+def preview_card(request: Request, data: PostRequest) -> Response:
     error = _text_error(data.text, allow_empty=True)
     if error is not None:
         return error
     _, resolved, card = _card_result(data)
-    name, _ = _poster(data)
+    name, _ = _poster(data, current_member(request))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     return JSONResponse({"sentences": sentences(card, name or "Anonymous"), "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
@@ -455,9 +468,14 @@ def post_card(request: Request, data: PostRequest) -> Response:
     if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": "Please check the form before posting.",
                              "dropped": resolved.dropped}, status_code=422)
-    name, anonymous = _poster(data)
-    anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
-    person_key = graph.person_key(name, anonymous, anon_id)
+    member = current_member(request)
+    if member is not None:
+        person_key, name, anonymous, _ = posting_identity(member, data.anonymous)
+        anon_id = None
+    else:
+        name, anonymous = _poster(data)
+        anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
+        person_key = graph.person_key(name, anonymous, anon_id)
     if not post_spacing.take(person_key):
         return JSONResponse({"message": WAIT_BEFORE_POSTING}, status_code=429)
     source = data.source if not resolved.is_empty else "manual"
@@ -481,16 +499,17 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 latency_ms=data.latency_ms,
                                 request_id=_request_id(request), edited=edited)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
-    if anonymous:
-        _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
-    else:
-        _set_cookie(response, NAME_COOKIE, quote(name), YEAR_SECONDS)
+    if member is None:
+        if anonymous:
+            _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
+        else:
+            _set_cookie(response, NAME_COOKIE, quote(name), YEAR_SECONDS)
     return response
 
 
 @app.get("/feed", dependencies=[Depends(require_access)])
 def feed(request: Request) -> Response:
-    return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT))})
+    return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))})
 
 
 @app.exception_handler(GateRequired)
