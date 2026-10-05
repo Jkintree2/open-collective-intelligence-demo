@@ -67,6 +67,7 @@ templates.env.globals["site_name"] = settings.site_name
 templates.env.globals["asset_version"] = hashlib.sha256(
     b"".join(path.read_bytes() for path in sorted((BASE / "static").iterdir()) if path.is_file())
 ).hexdigest()[:10]
+templates.env.filters["anchor"] = lambda key: "solution-" + key.replace(" ", "-")
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
