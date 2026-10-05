@@ -123,7 +123,7 @@ def member_cookie_key(cookie: str | None, now: float | None = None) -> str | Non
     if len(parts) != 3:
         return None
     key, expiry, signature = parts
-    if not key.startswith("acct:") or not expiry.isdigit() or len(signature) != 64:
+    if not key.startswith("acct:") or not (expiry.isascii() and expiry.isdigit()) or len(signature) != 64:
         return None
     if int(expiry) <= (time.time() if now is None else now):
         return None
@@ -134,4 +134,6 @@ def member_cookie_valid(cookie: str, password_hash: str | None, secret_key: str)
     if not password_hash or member_cookie_key(cookie) is None:
         return False
     key, expiry, signature = cookie.split(".")
+    if not signature.isascii():  # compare_digest raises on non-ASCII text; a forged cookie must just fail
+        return False
     return hmac.compare_digest(signature, _member_signature(key, int(expiry), password_hash, secret_key))

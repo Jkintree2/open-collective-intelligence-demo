@@ -167,7 +167,7 @@ class PostSpacing:
 
 post_spacing = PostSpacing()
 
-# Shown when a bucket is empty. Not in the 0.1 interface doc; kept word for word since.
+# Shown when a bucket is empty (the passphrase's, and the account limits').
 TOO_MANY_TRIES = "Too many tries. Please wait a minute and try again."
 
 
@@ -193,6 +193,7 @@ class KeyedLimit:
                 return False
             recent.append(now)
             return True
+
 
 admin_basic = HTTPBasic()
 

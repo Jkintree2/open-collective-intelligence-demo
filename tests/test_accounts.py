@@ -115,3 +115,25 @@ def test_keyed_limit_counts_each_key_in_its_own_window():
     assert limit.take("bob@example.org", now=200.0)
     assert limit.take("ada@example.org", now=3701.0)
     assert set(limit.uses) <= {"ada@example.org", "bob@example.org"}
+
+
+@pytest.mark.parametrize("cookie", [
+    "acct:1.²999999999." + "0" * 64,   # superscript two passes str.isdigit but not int()
+    "acct:1.9999999999." + "é" * 64,   # a non-ASCII signature of the right length
+])
+def test_forged_member_cookies_fail_instead_of_raising(cookie):
+    assert accounts.member_cookie_valid(cookie, "scrypt$hash-one", "secret") is False
+
+
+def test_a_superscript_expiry_names_nobody():
+    assert accounts.member_cookie_key("acct:1.²999999999." + "0" * 64, now=T) is None
+
+
+def test_an_expired_member_cookie_is_not_valid():
+    cookie = accounts.make_member_cookie("acct:1234", "scrypt$hash-one", "secret", now=T - 31 * 86400)
+    assert not accounts.member_cookie_valid(cookie, "scrypt$hash-one", "secret")
+
+
+def test_a_password_that_cannot_be_encoded_never_matches():
+    stored = accounts.hash_password("correct horse battery")
+    assert accounts.check_password("lone surrogate \ud800", stored) is False
