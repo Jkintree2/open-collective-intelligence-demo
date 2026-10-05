@@ -338,9 +338,10 @@ h3 {
 /* Phase 1 forms at 360 px: a select outside the card, and a link styled as a quiet button. */
 main select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--input); border: 1px solid var(--rule); border-radius: 6px; }
 a.quiet { display: inline-flex; align-items: center; min-height: 44px; }
-/* A quiet button and a quiet link look alike, and sit side by side in a row. */
-a.quiet, button.quiet { font: inherit; padding: 0; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
-a.quiet:hover, button.quiet:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+/* A quiet button and a quiet link look alike, only inside a row of actions. */
+.row-actions .quiet { font: inherit; padding: 0; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.row-actions .quiet:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+.row-actions form { display: inline; margin: 0; }
 .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 1rem; }
 .badge { display: block; font-size: .8rem; color: var(--ink-soft); margin: 4px 0; }
 .write-issue { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
@@ -396,3 +397,4 @@ form.search button { min-height: 44px; }
 .account-row form, .account-row details { display: inline-block; margin: 0 16px 0 0; }
 .account-row details[open] { display: block; }
 .account-row summary { color: var(--accent); cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.account-row button.quiet { font: inherit; }
