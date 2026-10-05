@@ -7,7 +7,7 @@
   {% if message %}<p class="notice" role="status">{{ message }}</p>{% endif %}
   {% if not sent %}
   <p>Enter the email address you were invited with, and we will send you a link to choose a password.</p>
-  <form method="post" action="/forgot-password">
+  <form method="post" action="/forgot-password" data-once>
     <label for="email">Email:</label>
     <input id="email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
     <button type="submit" class="primary">Send the link</button>

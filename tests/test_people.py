@@ -240,3 +240,17 @@ def test_strangers_and_accounts_off(member_app, monkeypatch):
     from dataclasses import replace
     monkeypatch.setattr("app.config.get_settings", lambda: replace(member_app.settings, accounts_enabled=False))
     assert member_app.client.get("/people").status_code == 404
+
+
+def test_forms_that_send_an_email_are_sent_once_per_tap(people):
+    import re
+    page = people.client.get("/people").text
+    assert re.search(r'<form method="post" action="/people" class="enter-person"[^>]*data-once', page)
+    resends = re.findall(r'<form[^>]*action="/people/[^"]+/resend"[^>]*>', page)
+    assert len(resends) == 2 and all("data-once" in form for form in resends)
+    assert f'/static/once.js?v={main_version()}' in page
+
+
+def main_version():
+    from app import main
+    return main.templates.env.globals["asset_version"]

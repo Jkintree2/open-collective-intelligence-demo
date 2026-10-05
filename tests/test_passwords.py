@@ -277,3 +277,10 @@ def test_an_invitation_link_does_not_open_the_reset_page(reset, monkeypatch):
               "accepted_at": None, "expires_at": NOW + timedelta(days=1), "inviter_name": "Ada", "relationship": "work"}
     monkeypatch.setattr("app.graph_accounts.open_link", lambda token_hash: invite)
     assert "This link no longer works." in reset.client.get("/reset/goodlink").text
+
+
+def test_the_forgot_form_is_sent_once_per_tap(forgot):
+    page = forgot.client.get("/forgot-password").text
+    assert re.search(r'<form method="post" action="/forgot-password"[^>]*data-once', page)
+    from app import main
+    assert f'/static/once.js?v={main.templates.env.globals["asset_version"]}' in page

@@ -6,9 +6,9 @@
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
 {% if failed_key %}
-<form method="post" action="/people/{{ failed_key }}/resend"><button type="submit" class="primary">Send the invitation again</button></form>
+<form method="post" action="/people/{{ failed_key }}/resend" data-once><button type="submit" class="primary">Send the invitation again</button></form>
 {% endif %}
-<form method="post" action="/people" class="enter-person">
+<form method="post" action="/people" class="enter-person" data-once>
   <label for="name">Name:</label>
   <input id="name" name="name" type="text" maxlength="120" autocomplete="off" required value="{{ form.name }}">
   <label for="email">Email:</label>
@@ -34,7 +34,7 @@
   {% elif entry.state == "switched off" %}<p class="counts">switched off</p>
   {% else %}
   <p class="counts">{{ "invited, not accepted yet" if entry.state == "invited" else "invitation expired" }}</p>
-  <form method="post" action="/people/{{ entry.key }}/resend"><button type="submit" class="quiet">Send the invitation again</button></form>
+  <form method="post" action="/people/{{ entry.key }}/resend" data-once><button type="submit" class="quiet">Send the invitation again</button></form>
   <a class="quiet" href="/people/{{ entry.key }}/withdraw">Withdraw</a>
   {% endif %}
 </section>
