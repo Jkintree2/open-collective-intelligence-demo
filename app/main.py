@@ -51,6 +51,7 @@ from app.members import (
     wants_json,
 )
 from app.graph import RecordAsleep
+from app.routes_stances import solution_anchor
 from app import graph_own_posts
 from app.text import clean_name, count_line, make_key, relative_time, sentences
 from app import search, tidy
@@ -69,7 +70,7 @@ templates.env.globals["site_name"] = settings.site_name
 templates.env.globals["asset_version"] = hashlib.sha256(
     b"".join(path.read_bytes() for path in sorted((BASE / "static").iterdir()) if path.is_file())
 ).hexdigest()[:10]
-templates.env.filters["anchor"] = lambda key: "solution-" + key.replace(" ", "-")
+templates.env.filters["anchor"] = solution_anchor
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120

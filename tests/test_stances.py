@@ -141,3 +141,9 @@ def test_a_post_by_an_account_takes_the_one_stance_rule_and_a_passphrase_post_do
     member_app.client.post("/enter", data={"passphrase": "gate words"})
     assert member_app.client.post("/api/posts", json=card).status_code == 201
     assert member_app.writes[-1][1]["one_stance"] is False
+
+
+def test_template_anchor_filter_is_the_route_anchor_rule(member_app):
+    from app.routes_stances import solution_anchor
+    assert member_app.main.templates.env.filters["anchor"] is solution_anchor
+    assert member_app.main.templates.env.filters["anchor"]("more bike lanes") == "solution-more-bike-lanes"
