@@ -129,3 +129,22 @@ def test_the_console_switch_prints_locally_and_never_in_production(monkeypatch, 
     monkeypatch.setattr("app.config.get_settings", lambda: replace(unconfigured, app_env="local"))
     assert mailer.send("bob@example.org", "S", "local body", transport=google()[0]) is True
     assert "local body" in capsys.readouterr().out
+
+
+def test_locally_the_console_wins_even_when_gmail_is_configured(monkeypatch, capsys):
+    monkeypatch.setattr("app.config.get_settings", lambda: replace(BASE, app_env="local", mail_console=True))
+    transport, seen = google()
+    assert mailer.send("bob@example.org", "S", "local body", transport=transport) is True
+    assert "local body" in capsys.readouterr().out
+    assert seen == []  # nothing went to Google
+    # Outside local the switch does nothing: a configured server sends for real.
+    monkeypatch.setattr("app.config.get_settings", lambda: replace(BASE, mail_console=True))
+    assert mailer.send("bob@example.org", "S", "live body", transport=transport) is True
+    assert "live body" not in capsys.readouterr().out and len(seen) == 2
+
+
+def test_a_successful_send_clears_the_last_mail_error():
+    assert mailer.send("bob@example.org", "S", "x", transport=google(send_status=500)[0]) is False
+    assert mailer.last_mail_error["http"] == 500
+    assert mailer.send("bob@example.org", "S", "x", transport=google()[0]) is True
+    assert mailer.last_mail_error is None

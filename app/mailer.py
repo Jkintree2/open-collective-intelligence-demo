@@ -58,9 +58,9 @@ def _access_token(client: httpx.Client, settings: config.Settings) -> str:
     return body["access_token"]
 
 
-def _remember(http: int | None) -> None:
+def _remember(http: int | None, *, failed: bool = True) -> None:
     global last_mail_error
-    last_mail_error = {"time": datetime.now(timezone.utc).isoformat(), "http": http}
+    last_mail_error = {"time": datetime.now(timezone.utc).isoformat(), "http": http} if failed else None
 
 
 def send(to: str, subject: str, text: str, *, request_id: str | None = None,
@@ -68,11 +68,12 @@ def send(to: str, subject: str, text: str, *, request_id: str | None = None,
     """True when Gmail accepted the message. Any failure is False, logged without content; this
     function never raises, because callers send after the record has changed."""
     settings = config.get_settings()
+    if settings.is_local and settings.mail_console:
+        # Local checks only: shows the link on the developer's terminal and sends nothing, even
+        # when the Gmail variables are set. Outside local this switch does nothing.
+        print(f"--- email to {to} ---\nSubject: {subject}\n\n{text}", flush=True)
+        return True
     if not _configured(settings):
-        if settings.is_local and settings.mail_console:
-            # Local checks only: shows the link on the developer's terminal. Never in production.
-            print(f"--- email to {to} ---\nSubject: {subject}\n\n{text}", flush=True)
-            return True
         # On the live site with accounts on this is a mistake in Render's variables (MAIL_FROM or a
         # GMAIL_* missing): say so loudly. Locally and in tests it is the normal quiet case.
         loud = settings.accounts_enabled and not settings.is_local
@@ -98,6 +99,8 @@ def send(to: str, subject: str, text: str, *, request_id: str | None = None,
         status = "error"
     if status != "ok":
         _remember(http)
+    else:
+        _remember(None, failed=False)  # the back room line describes the most recent email
     log.info(json.dumps({"event": "mail", "request_id": request_id, "status": status, "http": http,
                          "ms": round((time.perf_counter() - started) * 1000)}))
     return status == "ok"
