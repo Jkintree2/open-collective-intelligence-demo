@@ -30,3 +30,18 @@ def test_layout_names_every_module_script_template_and_page_script():
 def test_schema_in_brief_names_every_label_and_relationship_type():
     brief = section("CLAUDE.md", "Schema in brief")
     assert [name for name in [*LABEL_KEYS, *DIRECTIONS] if f"`{name}" not in brief] == []
+
+
+TECHNICAL = re.compile(r"\b(node|edge|graph|cypher|model|extraction|entity)s?\b", re.I)
+
+
+def test_the_operators_guide_is_plain_and_covers_phase_1():
+    guide = (ROOT / "docs/operators-guide.md").read_text(encoding="utf-8")
+    assert "–" not in guide and "—" not in guide and " - " not in guide
+    assert TECHNICAL.search(guide) is None, TECHNICAL.search(guide)
+    assert "Eston" not in guide and "passphrase is the only lock" not in guide
+    for phrase in ("Enter a person", "This person has agreed to be entered", "Send the invitation again",
+                   "Send a password link", "Withdraw", "Switch off", "Switch on", "first account",
+                   "Forgot your password?", "Your account", "Sending email", "Tidy this issue",
+                   "Changes to the issues", "Sending email from your Gmail"):
+        assert phrase in guide, phrase
