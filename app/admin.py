@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from app import config, extract, graph, mailer
+from app import routes_admin_people as people
 from app.auth import make_admin_csrf, require_admin, require_admin_mutation
 from scripts import seed
 
@@ -67,11 +68,18 @@ def mail_error() -> str:
 def page(request: Request):
     from app.main import templates
     labels, relations = graph.counts()
+    with_accounts = config.get_settings().accounts_enabled
+    done = request.query_params.get("done")
     return templates.TemplateResponse(request=request, name="admin.html", context={
         "counts": [(name, labels.get(label, 0)) for label, name in LABEL_NAMES.items()],
         "relations": [(name, relations.get(rel, 0)) for rel, name in REL_NAMES.items()],
         "posts": graph.list_posts(limit=50), "csrf_token": make_admin_csrf(),
-        "reading_error": reading_error(), "notice": NOTICES.get(request.query_params.get("done")),
+        "reading_error": reading_error(),
+        # Phase 1, only with accounts: the Sending email line and the People section.
+        "mail_error": mail_error() if with_accounts else None,
+        "people": people.page_rows() if with_accounts else None,
+        "buttons": people.BUTTONS,
+        "notice": NOTICES.get(done) or people.NOTICES.get(done),
     }, headers={"Cache-Control": "no-store"})
 
 

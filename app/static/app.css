@@ -384,3 +384,10 @@ form.search button { min-height: 44px; }
 .results a, .search-links a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
 .search-links a { display: inline-block; min-height: 44px; }
 .results a:hover, .search-links a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+
+/* Phase 1: back room (sub-plan F) */
+.account-row { border-top: 1px solid var(--rule); padding: 8px 0; }
+.account-row p { margin: 0 0 4px; overflow-wrap: anywhere; }
+.account-row form, .account-row details { display: inline-block; margin: 0 16px 0 0; }
+.account-row details[open] { display: block; }
+.account-row summary { color: var(--accent); cursor: pointer; min-height: 44px; display: flex; align-items: center; }

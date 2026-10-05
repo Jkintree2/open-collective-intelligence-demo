@@ -552,6 +552,11 @@ Buttons, as they apply: "Send the invitation again", "Send a password link", "Wi
 
 > Switch off {name}? They can no longer sign in. Their posts stay.
 
+Withdraw asks first too, because in the back room John withdraws entries that other members made:
+
+> Withdraw the entry for {name}? Their link stops working and the details entered for them are removed.
+> [ Withdraw ]
+
 Notices:
 
 > Invitation sent again.
