@@ -124,3 +124,50 @@ def test_a_post_by_an_account_replaces_an_earlier_approval_and_a_passphrase_post
                     "CREATE (p)-[:APPROVE {post_id: 'old-1', anonymous: false, created_at: $now}]->(s)")
     live_graph.merge_post("name:grace", "Grace", False, "Grace", "I oppose it now", payload)
     assert sorted(t for t, _, _ in stances(live_graph, "name:grace")) == ["APPROVE", "OPPOSE"]
+
+
+def test_solutions_rank_by_net_support_with_accounts_and_keep_todays_order_without(live_graph):
+    """Net support orders the list; ties go to more approvals, then the name. Without accounts (X1)
+    the 0.1 order stays: proposers, then approvals, then the oldest first."""
+    run(live_graph, """
+    CREATE (i:Issue {key: 'veto', name: 'Veto', seed: false})
+    WITH i
+    UNWIND range(0, 3) AS n
+    WITH i, n, [['b', 'Bravo'], ['a', 'Alpha'], ['c', 'Charlie'], ['d', 'Delta']][n] AS pair
+    CREATE (s:Solution {key: pair[0], name: pair[1], seed: false, created_at: $now + duration({minutes: n})})
+    CREATE (i)-[:HAVE_PROPOSED {created_at: $now}]->(s)
+    """)
+    people = [f"acct:{n}" for n in range(5)]
+    run(live_graph, "UNWIND $keys AS k CREATE (:Person {key: k, name: k, anonymous: false})", keys=people)
+    for person in people[:3]:
+        graph_stances.set_stance(person, "b", "approve", NOW)      # Bravo +3 -2 = +1, 3 approvals
+    for person in people[3:]:
+        graph_stances.set_stance(person, "b", "oppose", NOW)
+    graph_stances.set_stance(people[0], "a", "approve", NOW)        # Alpha +2
+    graph_stances.set_stance(people[1], "a", "approve", NOW)
+    graph_stances.set_stance(people[0], "c", "approve", NOW)        # Charlie +1, 1 approval
+    run(live_graph, "CREATE (p:Person {key: 'name:old', name: 'Old', anonymous: false}) WITH p "
+                    "MATCH (s:Solution {key: 'd'}) CREATE (p)-[:APPROVE {created_at: $now}]->(s) "
+                    "CREATE (p)-[:OPPOSE {created_at: $now}]->(s)")   # Delta 0, the 0.1 double stance
+    rows = live_graph.issue_solutions("veto", me=people[0], ranked=True)
+    assert [row["name"] for row in rows] == ["Alpha", "Bravo", "Charlie", "Delta"]
+    assert [row["my_stance"] for row in rows] == ["APPROVE", "APPROVE", "APPROVE", None]
+    assert (rows[3]["approves"], rows[3]["opposes"]) == (1, 1)
+    assert all(row["my_stance"] is None for row in live_graph.issue_solutions("veto", ranked=True))
+    assert [row["name"] for row in live_graph.issue_solutions("veto")] == ["Bravo", "Alpha", "Charlie", "Delta"]
+
+
+def test_proposers_count_an_accounts_anonymous_proposals_apart(live_graph):
+    """D2 (option a): an account proposing the same solution once by name and once anonymously
+    counts twice; 0.1 people count as today (two named proposals, one with no flag, count once)."""
+    run(live_graph, SETUP)
+    run(live_graph, "MATCH (ada:Person {key: 'acct:ada'}), (grace:Person {key: 'name:grace'}), "
+                    "(s:Solution {key: 'abolish'}) "
+                    "CREATE (ada)-[:PROPOSE {post_id: 'a1', anonymous: false, created_at: $now}]->(s) "
+                    "CREATE (ada)-[:PROPOSE {post_id: 'a2', anonymous: true, created_at: $now}]->(s) "
+                    "CREATE (grace)-[:PROPOSE {post_id: 'g1', anonymous: false, created_at: $now}]->(s) "
+                    "CREATE (grace)-[:PROPOSE {post_id: 'g2', created_at: $now}]->(s) "
+                    "CREATE (:Person {key: 'anon:1', anonymous: true})-[:PROPOSE {post_id: 'n1', anonymous: true, "
+                    "created_at: $now}]->(s)")
+    for ranked in (False, True):
+        assert live_graph.issue_solutions("veto", ranked=ranked)[0]["proposers"] == 4  # Ada twice, Grace, anon:1

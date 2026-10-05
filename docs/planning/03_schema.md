@@ -202,10 +202,11 @@ RETURN sum(claims) AS claims, count(who) AS people,
 
 ```cypher
 MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
-OPTIONAL MATCH (pp:Person)-[:PROPOSE]->(s)
+OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
 OPTIONAL MATCH (pa:Person)-[:APPROVE]->(s)
 OPTIONAL MATCH (po:Person)-[:OPPOSE]->(s)
-WITH s, count(DISTINCT pp) AS proposers, count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
+WITH s, count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+     count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
 OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
 WITH s, proposers, approves, opposes,
      [x IN collect(DISTINCT {key: ev.key, name: ev.name, url: ev.url, stance: type(r)})
@@ -643,10 +644,11 @@ A stance that a post made and a click later replaced or withdrew is gone from th
 
 ```cypher
 MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
-OPTIONAL MATCH (pp:Person)-[:PROPOSE]->(s)
+OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
 OPTIONAL MATCH (pa:Person)-[:APPROVE]->(s)
 OPTIONAL MATCH (po:Person)-[:OPPOSE]->(s)
-WITH s, count(DISTINCT pp) AS proposers, count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
+WITH s, count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+     count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
 OPTIONAL MATCH (:Person {key: $me})-[mine:APPROVE|OPPOSE]->(s)
 WITH s, proposers, approves, opposes, head(collect(type(mine))) AS my_stance
 OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
@@ -656,6 +658,8 @@ WITH s, proposers, approves, opposes, my_stance,
 RETURN s.key AS key, s.name AS name, proposers, approves, opposes, my_stance, evidence
 ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 ```
+
+Proposers are counted by account and anonymity (D2): an account's anonymous proposal counts apart from its named one; a missing flag is named, so records from the test weeks count as before.
 
 Display stays raw counts ("proposed by 2 · approved by 3 · opposed by 1"); the net figure orders the list and is never shown.
 

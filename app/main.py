@@ -278,7 +278,7 @@ def issue_page(request: Request, key: str) -> Response:
         {
             "issue": header,
             "claimants": graph.issue_claimants(key),
-            "solutions": graph.issue_solutions(key),
+            "solutions": graph.issue_solutions(key, me=member_key(request), ranked=settings.accounts_enabled),
             "evidence": graph.issue_evidence(key),
             "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
         },
