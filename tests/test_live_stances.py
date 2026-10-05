@@ -109,3 +109,18 @@ def test_old_double_stances_count_both_ways_until_a_new_stance(live_graph):
     assert len(stances(live_graph, "name:grace")) == 2
     graph_stances.set_stance("name:grace", "abolish", "approve", NOW)
     assert [t for t, _, _ in stances(live_graph, "name:grace")] == ["APPROVE"]
+
+
+def test_a_post_by_an_account_replaces_an_earlier_approval_and_a_passphrase_post_keeps_both(live_graph):
+    from app.extract import ResolvedPayload
+    run(live_graph, SETUP)
+    graph_stances.set_stance("acct:ada", "abolish", "approve", NOW)
+    payload = ResolvedPayload(solutions=[{"key": "abolish", "name": "Abolish the veto", "for_issue_key": "veto",
+                                          "stance": "oppose", "stance_only": True}])
+    live_graph.merge_post("acct:ada", "Ada", False, "Ada", "I now oppose abolishing the veto", payload, one_stance=True)
+    assert [t for t, _, _ in stances(live_graph)] == ["OPPOSE"]
+    # With accounts off a 0.1 person may still hold both, as today (X1).
+    run(live_graph, "MATCH (p:Person {key: 'name:grace'}), (s:Solution {key: 'abolish'}) "
+                    "CREATE (p)-[:APPROVE {post_id: 'old-1', anonymous: false, created_at: $now}]->(s)")
+    live_graph.merge_post("name:grace", "Grace", False, "Grace", "I oppose it now", payload)
+    assert sorted(t for t, _, _ in stances(live_graph, "name:grace")) == ["APPROVE", "OPPOSE"]

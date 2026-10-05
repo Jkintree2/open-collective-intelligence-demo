@@ -17,8 +17,8 @@ log = logging.getLogger("oci")
 def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, one_stance: bool = False) -> None:
     """Write path statements 3 to 5b for one post (03_schema.md). Posting and editing a post
     (sub-plan D) both write a post's edges through here, so the rules live in one place.
-    `one_stance` is the D7 switch: ignored here, sub-plan C2 makes it pick the statement that
-    replaces the person's opposite stance; callers that post as an account pass True."""
+    `one_stance` is the D7 switch: it picks the statement that replaces the person's
+    opposite stance; callers that post as an account pass True."""
     for issue in payload.issues:
         tx.run(graph.MERGE_ISSUE_CLAIM, issue_key=issue["key"], issue_name=issue["name"], **common)
     for issue in payload.issues:
@@ -35,7 +35,9 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
             )
         stance = graph.STANCE_TYPES.get(solution.get("stance", "none"))
         if stance:
-            tx.run(graph.MERGE_STANCE.replace("{stance}", stance), solution_key=solution["key"], **common)
+            statement = (graph.MERGE_ONE_STANCE.replace("{other}", graph.OPPOSITE_STANCE[stance])
+                         if one_stance else graph.MERGE_STANCE)
+            tx.run(statement.replace("{stance}", stance), solution_key=solution["key"], **common)
     for item in payload.evidence:
         tx.run(
             graph.MERGE_EVIDENCE_SUBMIT,

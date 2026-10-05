@@ -501,7 +501,8 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 statement, resolved, source=source,
                                 extraction_raw=data.extraction_raw, model=data.model,
                                 latency_ms=data.latency_ms,
-                                request_id=_request_id(request), edited=edited)
+                                request_id=_request_id(request), edited=edited,
+                                one_stance=settings.accounts_enabled)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
     if member is None:
         if anonymous:

@@ -93,6 +93,21 @@ ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $no
 ON MATCH  SET r.last_post_id = $post_id
 """
 
+# 4b for a post by an account (D7, Q23): {stance} is APPROVE or OPPOSE, {other} the opposite, from
+# STANCE_TYPES and OPPOSITE_STANCE, never from input. The opposite stance goes first, under the same
+# locks as a click. MERGE_STANCE above stays the 0.1 statement, used while ACCOUNTS_ENABLED is unset.
+MERGE_ONE_STANCE = """
+MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
+SET p.key = p.key, s.key = s.key
+WITH p, s
+OPTIONAL MATCH (p)-[old:{other}]->(s)
+DELETE old
+WITH DISTINCT p, s
+MERGE (p)-[r:{stance}]->(s)
+ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now
+ON MATCH  SET r.last_post_id = $post_id
+"""
+
 MERGE_EVIDENCE_SUBMIT = """
 MERGE (e:Evidence {key: $evidence_key})
 ON CREATE SET e.name = $evidence_name, e.url = $url, e.created_at = $now, e.seed = $seed
