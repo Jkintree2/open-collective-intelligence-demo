@@ -52,6 +52,7 @@ from app.members import (
 )
 from app.graph import RecordAsleep
 from app.text import clean_name, count_line, make_key, relative_time, sentences
+from app import search
 
 settings = get_settings()
 
@@ -255,16 +256,20 @@ def _render_index(
 
 
 @app.get("/issues", response_class=HTMLResponse, dependencies=[Depends(require_access)])
-def issues_page(request: Request, sort: str = Query("people")) -> Response:
+def issues_page(request: Request, sort: str = Query("people"), q: str = Query("")) -> Response:
     sort = sort if sort in graph.SORTS else "people"
+    words = " ".join(q.split())[:search.MAX_CHARS]
+    if words:
+        results = search.run(words, lambda posts: _decorate_posts(posts, me=member_key(request)))
+        return templates.TemplateResponse(
+            request, "issues.html", {"issues": [], "sort": sort, "sorts": SORTS, "q": words, "results": results})
     grouped = graph.group_issues(graph.list_issues(), sort)
     for issue in grouped:
         issue["line"] = count_line(issue)
         for child in issue["children"]:
             child["line"] = count_line(child)
     return templates.TemplateResponse(
-        request, "issues.html", {"issues": grouped, "sort": sort, "sorts": SORTS}
-    )
+        request, "issues.html", {"issues": grouped, "sort": sort, "sorts": SORTS, "q": "", "results": None})
 
 
 @app.get("/issues/{key}", response_class=HTMLResponse, dependencies=[Depends(require_access)])

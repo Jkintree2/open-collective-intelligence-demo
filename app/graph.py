@@ -32,6 +32,9 @@ CONSTRAINTS = (
     "CREATE INDEX post_created      IF NOT EXISTS FOR (p:Post)     ON (p.created_at)",
     "CREATE CONSTRAINT person_email IF NOT EXISTS FOR (p:Person) REQUIRE p.email IS UNIQUE",
     "CREATE CONSTRAINT person_token IF NOT EXISTS FOR (p:Person) REQUIRE p.token_hash IS UNIQUE",
+    "CREATE CONSTRAINT change_id    IF NOT EXISTS FOR (c:Change)   REQUIRE c.id IS UNIQUE",
+    "CREATE FULLTEXT INDEX record_names IF NOT EXISTS FOR (n:Issue|Solution|Evidence) ON EACH [n.name]",
+    "CREATE FULLTEXT INDEX post_text    IF NOT EXISTS FOR (p:Post) ON EACH [p.text]",
 )
 
 # The write path, statement by statement, from docs/planning/03_schema.md.

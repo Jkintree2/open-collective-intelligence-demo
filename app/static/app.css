@@ -366,3 +366,7 @@ button:disabled { opacity: .6; cursor: default; }
 /* Phase 1: own posts (sub-plan D) */
 
 /* Phase 1: search and tidying (sub-plan E) */
+form.search { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.5rem 0 1rem; }
+form.search input { flex: 1 1 12rem; min-height: 40px; }
+form.search button { min-height: 44px; }
+.results li { margin: 0.25rem 0; }
