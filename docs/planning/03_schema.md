@@ -448,6 +448,22 @@ CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_a
 RETURN p.key AS key
 ```
 
+**Entered moments ago (the double tap check).** Read after Q12 fails on the email constraint: the same inviter entering the same address that has not accepted, since a given time, is a form sent twice, not a duplicate. It answers the key of the person already entered.
+
+```cypher
+MATCH (:Person {key: $inviter_key})-[e:ENTERED]->(p:Person {email: $email})
+WHERE e.created_at >= $since AND p.accepted_at IS NULL
+RETURN p.key AS key
+```
+
+**John's root account.** Made once by `make_admin.py`: admin, active, no `ENTERED`, no link and no password, so nothing is sent and it cannot sign in until "Forgot your password?" gives it a link (Q17). An email already taken fails on the same constraint as Q12.
+
+```cypher
+CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
+                  email: $email, country: $country, postal_code: $postal_code,
+                  admin: true, active: true, created_at: $now})
+```
+
 **Q13. The signed-in account**, on every request:
 
 ```cypher
@@ -498,7 +514,9 @@ SET p.key = p.key
 WITH p
 WHERE p.accepted_at IS NULL AND p.active
 SET p.token_hash = $token_hash, p.token_purpose = 'invite', p.token_expires_at = $expires_at
-RETURN p.email AS email, p.name AS name;
+WITH p
+OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
+RETURN p.email AS email, p.name AS name, inviter.name AS inviter_name, e.relationship AS relationship;
 
 // "Forgot your password?": an accepted, active account gets a password link; someone entered
 // but not yet accepted gets a fresh invitation link; anyone else gets nothing, and the page

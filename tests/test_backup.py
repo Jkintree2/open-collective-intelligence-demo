@@ -207,3 +207,20 @@ def test_restore_still_takes_a_version_one_copy():
     data = sample()
     data["version"] = 1
     validate_record(data)
+
+
+def test_account_properties_round_trip():
+    data = sample()
+    data["nodes"][0]["properties"].update(email="ada@example.org", country="UK", postal_code="N1",
+                                           admin=False, active=True)
+    validate_record(data)
+    data["nodes"][0]["properties"]["admin"] = "no"
+    with pytest.raises(InvalidBackup):
+        validate_record(data)
+
+
+def test_a_bad_latency_is_refused():
+    data = sample()
+    data["nodes"][4]["properties"]["latency_ms"] = "fast"
+    with pytest.raises(InvalidBackup):
+        validate_record(data)

@@ -26,6 +26,7 @@ DIRECTIONS = {
     "OPPOSE": ("Person", {"Solution"}), "PART_OF": ("Issue", {"Issue"}),
     "SUPPORTS": ("Evidence", {"Issue", "Solution", "Evidence"}),
     "REFUTES": ("Evidence", {"Issue", "Solution", "Evidence"}),
+    "ENTERED": ("Person", {"Person"}),
 }
 TEMPORALS = {"DateTime": DateTime, "Date": Date, "Time": Time, "Duration": Duration}
 
@@ -124,13 +125,14 @@ def properties(value):
     decoded = {k: decode_value(v) for k, v in value.items()}
     for key, item in decoded.items():
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
-                   "model", "payload", "post_id", "last_post_id"} and not isinstance(item, str):
+                   "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
+                   "relationship"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
-        if key in {"seed", "anonymous"} and type(item) is not bool:
+        if key in {"seed", "anonymous", "admin", "active", "agreed"} and type(item) is not bool:
             raise InvalidBackup("A boolean property has the wrong type.")
         if key == "latency_ms" and (type(item) is not int or item < 0):
             raise InvalidBackup("A latency property has the wrong type.")
-        if key == "created_at" and not isinstance(item, DateTime):
+        if key in {"created_at", "accepted_at"} and not isinstance(item, DateTime):
             raise InvalidBackup("A timestamp property has the wrong type.")
     return decoded
 
