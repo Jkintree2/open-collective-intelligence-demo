@@ -19,6 +19,11 @@
   find('compose').addEventListener('submit', event => { event.preventDefault(); event.stopImmediatePropagation(); }, true);
   function open() {
     card.openCard(post.card, '', {source: 'manual'});
+    // A post with nothing on its card (a plain statement, or tidied down to none) saves as one, with the
+    // plain statement button hidden. A post with a card stays structured: emptying it is not saved.
+    if (!['issues', 'solutions', 'evidence'].some(group => (post.card[group] || []).length)) {
+      card.state.plain = true; card.changed();
+    }
     find('card-title').textContent = 'Edit your post';
     find('card-note').textContent = intro;
     find('post').textContent = 'Save changes';

@@ -44,6 +44,29 @@ test('the edit page opens the card from the post and saves under its id', async 
   assert.equal(p.location.href, '/?done=edited');
 });
 
+test('a post with an empty card saves as a plain statement, and a full card stays structured', async () => {
+  const p = await setup(undefined, {issues: {}, solutions: {}, evidence: {}}, {member: 'Ada Lovelace'});
+  p.get('edit-post').textContent = JSON.stringify({id: 'post-2', text: 'Just some words', anonymous: false,
+    card: {issues: [], solutions: [], evidence: []}});
+  p.load('edit_post.js'); await p.flush();
+  await p.runTimer(200);
+  const preview = p.requests.at(-1);
+  assert.equal(preview.url, '/api/posts/post-2/preview');
+  assert.equal(JSON.parse(preview.options.body).plain, true);
+  preview.resolve({sentences: [], valid: true, dropped: [], corrected: []}); await p.flush();
+  assert.equal(p.get('post').disabled, false);
+  p.get('post').emit('click'); await p.flush();
+  const save = p.requests.at(-1);
+  assert.equal(save.url, '/api/posts/post-2');
+  assert.equal(JSON.parse(save.options.body).plain, true);
+  // A post with a card is not made plain: emptying its card does not quietly drop what it made.
+  const q = await setup(undefined, {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}},
+                        {member: 'Ada Lovelace'});
+  q.get('edit-post').textContent = JSON.stringify(POST);
+  q.load('edit_post.js'); await q.flush(); await q.runTimer(200);
+  assert.equal(JSON.parse(q.requests.at(-1).options.body).plain, false);
+});
+
 test('a page without a post to edit is left alone', async () => {
   const p = await setup();
   p.load('edit_post.js'); await p.flush();

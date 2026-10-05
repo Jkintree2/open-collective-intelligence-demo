@@ -320,6 +320,11 @@ def test_the_edit_preview_answers_like_the_preview_under_the_posts_own_name(savi
     saving.record["mine-1"]["anonymous"] = True
     assert saving.client.post("/api/posts/mine-1/preview", json=body).json()["sentences"] == [
         "Anonymous claims Coastal flooding"]
+    # An empty card is valid only as a plain statement with words, as on the save.
+    empty = {"text": "Just some words", "issues": []}
+    assert saving.client.post("/api/posts/mine-1/preview", json=empty).json()["valid"] is False
+    assert saving.client.post("/api/posts/mine-1/preview", json={**empty, "plain": True}).json()["valid"] is True
+    assert saving.client.post("/api/posts/mine-1/preview", json={"text": " ", "plain": True}).json()["valid"] is False
     assert saving.saved == []
 
 
