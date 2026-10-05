@@ -130,6 +130,35 @@ OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
 RETURN p.email AS email, p.name AS name, inviter.name AS inviter_name, e.relationship AS relationship
 """
 
+# Q17, the "Forgot your password?" form: an accepted, active account gets a password link; someone
+# entered but not yet accepted gets a fresh invitation link; anyone else gets nothing. Locked first,
+# so an accept committing meanwhile is seen and no invitation link lands on an account.
+FORGOT = """
+MATCH (p:Person {email: $email})
+SET p.key = p.key
+WITH p
+WHERE p.active
+WITH p, CASE WHEN p.accepted_at IS NULL THEN 'invite' ELSE 'reset' END AS purpose
+SET p.token_hash = $token_hash, p.token_purpose = purpose,
+    p.token_expires_at = CASE purpose WHEN 'invite' THEN $invite_expires_at ELSE $reset_expires_at END
+WITH p, purpose
+OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
+RETURN p.email AS email, p.name AS name, purpose, inviter.name AS inviter_name, e.relationship AS relationship
+"""
+
+# Q18. Choose a new password through a link. Locked first, then the link checked again, so the
+# same link sent from two tabs sets one password.
+RESET_PASSWORD = """
+MATCH (p:Person {token_hash: $token_hash})
+SET p.key = p.key
+WITH p
+WHERE p.token_hash = $token_hash AND p.token_purpose = 'reset' AND p.token_expires_at > $now
+  AND p.active AND p.accepted_at IS NOT NULL
+SET p.password_hash = $password_hash,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
+RETURN p.key AS key
+"""
+
 # Q19. Change password while signed in; a pending password link stops working too.
 SET_PASSWORD = """
 MATCH (p:Person {key: $key})
@@ -213,6 +242,17 @@ def withdraw(key: str, inviter_key: str | None = None) -> bool:
     query = WITHDRAW_ANY if inviter_key is None else WITHDRAW_BY_INVITER
     rows = _write_rows(query, key=key, inviter_key=inviter_key)
     return bool(rows and rows[0]["withdrawn"])
+
+
+def forgot(email: str, token_hash: str, invite_expires_at, reset_expires_at) -> dict[str, Any] | None:
+    rows = _write_rows(FORGOT, email=email, token_hash=token_hash,
+                       invite_expires_at=invite_expires_at, reset_expires_at=reset_expires_at)
+    return rows[0] if rows else None
+
+
+def reset_password(token_hash: str, password_hash: str, now) -> str | None:
+    rows = _write_rows(RESET_PASSWORD, token_hash=token_hash, password_hash=password_hash, now=now)
+    return rows[0]["key"] if rows else None
 
 
 def set_password(key: str, password_hash: str) -> None:

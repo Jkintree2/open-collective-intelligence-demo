@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from neo4j.exceptions import ConstraintError
@@ -132,3 +132,38 @@ def test_who_entered_names_the_inviter_and_the_relationship(live_graph):
     assert row["inviter_name"] == "Ada Lovelace" and row["relationship"] == "friend"
     assert row["entered_at"] == NOW
     assert graph_accounts.who_entered("acct:ada") is None  # the root has no entry
+
+
+def test_forgot_gives_an_account_a_reset_link_and_an_invited_person_an_invitation(live_graph):
+    make_account(live_graph)
+    make_account(live_graph, "acct:bob", "bob@example.org", accepted=False)
+    make_account(live_graph, "acct:cy", "cy@example.org", active=False)
+    later, soon = NOW + timedelta(days=14), NOW + timedelta(hours=1)
+    assert graph_accounts.forgot("ada@example.org", "h1", later, soon)["purpose"] == "reset"
+    assert graph_accounts.forgot("bob@example.org", "h2", later, soon)["purpose"] == "invite"
+    assert graph_accounts.forgot("cy@example.org", "h3", later, soon) is None
+    assert graph_accounts.forgot("nobody@example.org", "h4", later, soon) is None
+    assert graph_accounts.reset_password("h2", "scrypt$x", NOW) is None   # an invitation is not a reset
+    assert graph_accounts.reset_password("h1", "scrypt$new", NOW) == "acct:ada"
+    assert graph_accounts.reset_password("h1", "scrypt$again", NOW) is None  # used once
+
+
+def test_the_root_account_gets_its_first_link_through_forgot(live_graph):
+    """X3: make_admin.py made the root with no link and no ENTERED; Forgot gives it an invitation."""
+    graph_accounts.create_root(key="acct:john", name="John Kintree", email="john@example.org",
+                               country="", postal_code="", now=NOW)
+    later, soon = NOW + timedelta(days=14), NOW + timedelta(hours=1)
+    row = graph_accounts.forgot("john@example.org", "root-link", later, soon)
+    assert row == {"email": "john@example.org", "name": "John Kintree", "purpose": "invite",
+                   "inviter_name": None, "relationship": None}
+    assert graph_accounts.accept("root-link", name="John Kintree", country="USA", postal_code="98101",
+                                 password_hash="scrypt$john", now=NOW) == "acct:john"
+    assert graph_accounts.member("acct:john")["admin"] is True
+
+
+def test_an_expired_or_unaccepted_link_does_not_reset(live_graph):
+    """Q18 checks the purpose, the hour and that the account is accepted."""
+    make_account(live_graph)
+    graph_accounts.forgot("ada@example.org", "h1", NOW + timedelta(days=14), NOW + timedelta(hours=1))
+    assert graph_accounts.reset_password("h1", "scrypt$late", NOW + timedelta(hours=2)) is None
+    assert graph_accounts.reset_password("h1", "scrypt$ok", NOW + timedelta(minutes=30)) == "acct:ada"

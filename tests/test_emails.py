@@ -57,3 +57,19 @@ def test_links_are_built_from_the_site_address():
     assert accounts.link_url("https://record.example/", "reset", "s3cret") == "https://record.example/reset/s3cret"
     with pytest.raises(ValueError):
         accounts.link_url("https://record.example", "admin", "s3cret")
+
+
+def test_password_email_word_for_word():
+    subject, text = emails.password_link("Open Collective Intelligence", "Ada Lovelace",
+                                         "https://record.example/reset/abc")
+    assert subject == "Choose a new password for Open Collective Intelligence"
+    assert text == (
+        "Hello Ada Lovelace,\n\n"
+        "Someone asked for a new password for your account on Open Collective Intelligence. "
+        "If it was you, open this link to choose one:\n"
+        "https://record.example/reset/abc\n\n"
+        "The link works once, for one hour. Your current password keeps working until you choose a new one.\n\n"
+        "If it was not you, you can ignore this email.\n\n"
+        "John Kintree\n")
+    assert_plain(subject + text)
+    assert "password:" not in text.lower()  # never a password, only the link

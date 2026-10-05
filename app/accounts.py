@@ -167,6 +167,10 @@ NAME_MAX = 120
 # the same thing to everyone. There is no site-wide bucket for these buttons: only the anonymous
 # forgot form has one (A8's forgot_per_minute), so a stranger cannot drain the members' buttons.
 link_per_address = KeyedLimit(3, 3600)
+# The anonymous "Forgot your password?" form's own bucket for the whole site. Only that form takes
+# from it, so whoever drains it blocks no member's or back room button (they have per member and
+# per address limits only).
+forgot_per_minute = MinuteBucket(capacity=6, period=60)
 # Entries and re-sends by one member: a stop for a runaway script, not for people.
 entering_limit = KeyedLimit(20, 3600)
 

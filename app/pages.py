@@ -27,9 +27,10 @@ def page(request: Request, name: str, context: dict | None = None, *, status_cod
                                       headers=PRIVATE_HEADERS if private else None)
 
 
-# Notices on the write page after a redirect (/?done=<name>), from 04_interface.md. A8 adds
-# "reset"; sub-plan D adds "deleted" and "edited".
-WRITE_NOTICES = {"welcome": "Welcome, {name}. You are signed in."}
+# Notices on the write page after a redirect (/?done=<name>), from 04_interface.md. Sub-plan D
+# adds "deleted" and "edited".
+WRITE_NOTICES = {"welcome": "Welcome, {name}. You are signed in.",
+                 "reset": "Your new password is saved. You are signed out everywhere else."}
 
 
 def write_notice(done: str | None, member) -> str | None:

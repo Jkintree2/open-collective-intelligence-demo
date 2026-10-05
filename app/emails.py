@@ -39,3 +39,17 @@ def invitation_for(site_name: str, name: str, inviter_name: str | None, relation
     if not inviter_name:
         return first_account(site_name, name, url)
     return invitation(site_name, name, inviter_name, relationship or "", url)
+
+
+def password_link(site_name: str, name: str, url: str) -> tuple[str, str]:
+    subject = f"Choose a new password for {site_name}"
+    text = (
+        f"Hello {name},\n\n"
+        f"Someone asked for a new password for your account on {site_name}. "
+        "If it was you, open this link to choose one:\n"
+        f"{url}\n\n"
+        "The link works once, for one hour. Your current password keeps working until you choose a new one.\n\n"
+        "If it was not you, you can ignore this email.\n\n"
+        "John Kintree\n"
+    )
+    return subject, text

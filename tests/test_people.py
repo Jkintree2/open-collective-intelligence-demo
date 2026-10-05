@@ -173,7 +173,7 @@ def test_a_drained_forgot_form_does_not_block_sending_again(people, monkeypatch)
     """Second review, item 2: strangers can empty the anonymous forgot form's bucket; a member's
     button does not take from it."""
     from app.auth import MinuteBucket
-    monkeypatch.setattr("app.accounts.forgot_per_minute", MinuteBucket(capacity=0, period=60), raising=False)
+    monkeypatch.setattr("app.accounts.forgot_per_minute", MinuteBucket(capacity=0, period=60))
     assert people.client.post("/people/acct:waiting/resend", follow_redirects=False).status_code == 303
     assert len(people.sent) == 1
 
