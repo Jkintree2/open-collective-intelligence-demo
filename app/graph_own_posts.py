@@ -42,7 +42,7 @@ MATCH (post:Post {id: $id})
 OPTIONAL MATCH (a)-[r]->(b)
 WHERE r.post_id = $id
   AND type(r) IN ['CLAIM', 'SUBMIT', 'PROPOSE', 'SUPPORTS', 'REFUTES']
-WITH collect(DISTINCT elementId(a)) + collect(DISTINCT elementId(b)) AS touched, collect(r) AS rels
+WITH post, collect(DISTINCT elementId(a)) + collect(DISTINCT elementId(b)) AS touched, collect(r) AS rels
 FOREACH (x IN rels | DELETE x)
 RETURN touched
 """
@@ -73,10 +73,10 @@ def _write(me: str, post_id: str, work: Any) -> Any:
             return session.execute_write(work)
     except ServiceUnavailable as exc:
         raise RecordAsleep(str(exc)) from exc
-    except ClientError:
-        # Another tab deleted the post while this transaction waited for Q24's lock; Neo4j then
-        # refuses to touch the node (EntityNotFound). The post is gone: say so, never a 500.
-        if post_owner(me, post_id) is None:
+    except ClientError as exc:
+        # A belt for Neo4j versions that refuse to touch a node deleted while this transaction
+        # waited for Q24's lock (EntityNotFound). The common case is handled by the row checks.
+        if exc.code == "Neo.ClientError.Statement.EntityNotFound" and post_owner(me, post_id) is None:
             return False
         raise
 
@@ -103,7 +103,10 @@ def edit_own_post(me: str, post_id: str, payload: ResolvedPayload, *, text: str,
         row = tx.run(OWN_POST, me=me, id=post_id).single()
         if row is None:
             return False
-        touched = tx.run(DELETE_POST_EDGES, id=post_id).single()["touched"]
+        edges = tx.run(DELETE_POST_EDGES, id=post_id).single()
+        if edges is None:  # deleted while this transaction waited for Q24's lock
+            return False
+        touched = edges["touched"]
         common = {"person_key": me, "post_id": post_id, "anonymous": bool(row["anonymous"]),
                   "now": now, "seed": False}
         graph_posts.write_payload(tx, payload, common, one_stance=True)

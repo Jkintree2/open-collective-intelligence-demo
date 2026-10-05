@@ -30,7 +30,7 @@ def fake_driver(monkeypatch, *, owned, gone=False):
             if query == graph.DELETE_POST:
                 return Result(None if gone else {"touched": ["4:x:1"]})
             if query == graph_own_posts.DELETE_POST_EDGES:
-                return Result({"touched": ["4:x:1"]})
+                return Result(None if gone else {"touched": ["4:x:1"]})
             return Result(None)
 
     class Session:
@@ -90,3 +90,12 @@ def test_a_post_gone_by_the_time_q11_runs_is_not_deleted_twice(monkeypatch):
 def test_flags_for_no_posts_ask_nothing(monkeypatch):
     monkeypatch.setattr(graph_own_posts, "_read", lambda *a, **kw: pytest.fail("no query for an empty page"))
     assert graph_own_posts.post_flags("acct:ada", []) == {}
+
+
+def test_an_edit_on_a_post_gone_at_step_one_writes_nothing(monkeypatch):
+    calls, _, switches = fake_driver(monkeypatch, owned=True, gone=True)
+    payload = resolve_payload(CardPayload.model_validate({"issues": [{"name": "Flooding"}]}), Candidates.empty())
+    assert graph_own_posts.edit_own_post("acct:ada", "p1", payload, text="New", source="manual",
+                                         extraction_raw=None, model=None, latency_ms=None, now=NOW) is False
+    assert calls == [graph_own_posts.OWN_POST, graph_own_posts.DELETE_POST_EDGES]
+    assert switches == [] and graph_own_posts.UPDATE_POST not in calls

@@ -115,3 +115,34 @@ def test_flags_say_mine_and_edited_without_naming_anyone(live_graph):
     assert flags[b]["mine"] is False and flags[b]["edited_at"] is not None
     assert set(flags[a]) == {"id", "edited_at", "mine"}
     assert all(not row["mine"] for row in graph_own_posts.post_flags(None, [a, b]).values())
+
+
+def test_an_edit_waiting_on_a_deleting_tab_finds_the_post_gone(live_graph):
+    """The post is deleted (and the delete held open) while the edit waits for Q24's lock."""
+    import time
+    from app import graph
+    pid = post(live_graph, "acct:ada", "Mine", issues=[{"name": "Flooding"}])
+    result, errors = [], []
+
+    def edit():
+        try:
+            result.append(graph_own_posts.edit_own_post(
+                "acct:ada", pid, card(live_graph, issues=[{"name": "Heat"}]), text="x", source="manual",
+                extraction_raw=None, model=None, latency_ms=None, now=NOW))
+        except Exception as exc:  # noqa: BLE001  report any failure from the thread
+            errors.append(exc)
+    with live_graph.driver().session(database=live_graph.database()) as session:
+        holder = session.begin_transaction()
+        holder.run(graph_own_posts.OWN_POST, me="acct:ada", id=pid).single()
+        row = holder.run(graph.DELETE_POST, id=pid).single()
+        holder.run(graph.DELETE_POST_ORPHANS, touched=row["touched"]).consume()
+        thread = threading.Thread(target=edit)
+        thread.start()
+        time.sleep(1)
+        holder.commit()
+        thread.join()
+    assert errors == [] and result == [False]
+    assert rels(live_graph, pid) == []
+    names = [r["n"] for r in live_graph.driver().execute_query(
+        "MATCH (i:Issue) RETURN i.name AS n", database_=live_graph.database()).records]
+    assert names == []
