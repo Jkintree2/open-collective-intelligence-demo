@@ -23,9 +23,9 @@ Python 3.12, FastAPI, Jinja2, uvicorn. `neo4j` driver 6.x against Neo4j Aura Fre
 app/main.py        FastAPI app, page routes, lifespan (driver open/close, non-fatal connectivity check), request-id middleware (emailed links cut from the log through pages.loggable_path), the CrossSite handler, error and asleep pages; include_routers() adds every app/routes_*.py router
 app/config.py      settings from environment variables; refuses to start without DEMO_PASSPHRASE, SECRET_KEY, ADMIN_TOKEN, NEO4J_*, and SITE_URL when ACCOUNTS_ENABLED is true; SITE_NAME and SITE_SENTENCE have defaults; MAIL_FROM, GMAIL_* and MAIL_CONSOLE for email
 app/auth.py        passphrase cookie (signed, 30 days, embeds a hash of the passphrase), admin HTTP basic auth and form tokens, in-process limits (MinuteBucket, KeyedLimit, DailyLimit, PostSpacing)
-app/accounts.py    emails, scrypt passwords, link secrets and lifetimes, the member cookie, person_name(), entry_state(), every account limiter (sign in, entering, forgot per minute, the per address link limit); no I/O
+app/accounts.py    emails, scrypt passwords (two at a time), link secrets and lifetimes, the member cookie, person_name(), entry_state(), every account limiter (sign in, entering, forgot per minute, the per address link limit); no I/O
 app/members.py     who is reading: Member, current_member, member_key, require_access, require_member, require_same_origin and CrossSite, wants_json, member cookies, safe_next, posting_identity
-app/pages.py       page() and link_problem() for router modules; loggable_path() for the request log; write_notice() for the write page
+app/pages.py       page() and link_problem() for router modules; loggable_path() for the request log; WRITE_NOTICES and write_notice() for the write page
 app/mailer.py      send(): Gmail API with the send permission only, over httpx (MAIL_CONSOLE prints instead, locally); last_mail_error for the back room
 app/emails.py      the invitation, first account and password emails, word for word from 04_interface.md
 app/graph.py       constraints and full-text indexes, the 0.1 Cypher as constants (Q1, Q3 and Q10 revised for Phase 1; the one-stance statement and ranked Q4 beside the 0.1 ones, chosen by ACCOUNTS_ENABLED), merge_post(), group_issues(), read queries
@@ -109,7 +109,7 @@ Display verbs: claims, submits, proposes, has proposed, supports, refutes, appro
 6. **Cypher lives in the `graph*.py` modules only** (`graph.py`, and since Phase 1 `graph_accounts.py`, `graph_stances.py`, `graph_own_posts.py`, `graph_search.py`, `graph_tidy.py`). Relationship types and labels are substituted from whitelists, never from user input.
 7. **Secrets never touch the repo, logs or templates.** Log the request id, sizes, latencies and counts; log text only at DEBUG.
 8. **Nothing personal to the builder in the repo.** No URLs, emails or account names. LICENSE and README name John.
-9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.**
+9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.** The first account is made once, by `scripts/make_admin.py`, never at startup.
 10. **Keep files small and boring.** If a script in `app/static/` passes 400 lines or `graph.py` passes 500, split by responsibility before adding more.
 11. **Production is never a test target.** Local runs, tests and resets use the local Docker database. Work on a branch and merge to `main` only with the tests green.
 12. **Copy that John may change lives in environment variables.** The site name and the sentence at the top are `SITE_NAME` and `SITE_SENTENCE`; do not hard-code them in a template.
