@@ -13,7 +13,8 @@ live site: his account is not yet accepted, so the site emails him a fresh link 
 password, from its own settings.
 
 Exit codes: 0 made; 2 bad arguments, a missing NEO4J_* variable, a local database without --local,
-or no --yes; 3 the address already has an account.
+or no --yes; 3 the address already has an account; 4 the database could not be reached or written
+(the address, user or password is wrong, or the instance is not running).
 """
 
 from __future__ import annotations
@@ -25,9 +26,12 @@ import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
+from neo4j.exceptions import DriverError, Neo4jError
+
 from app import accounts, graph, graph_accounts
 from app.config import Settings
 from app.graph_accounts import EmailTaken
+from app.graph_runtime import RecordAsleep
 
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "::1")
 
@@ -64,6 +68,16 @@ def main(argv: list[str] | None = None) -> int:
     if not args.yes:
         print("Nothing written. Add --yes to make the account.", file=sys.stderr)
         return 2
+    try:
+        return _make(settings, args, name, email)
+    except (DriverError, Neo4jError, RecordAsleep) as exc:
+        # The kind of failure only: the message can carry the address or the user.
+        print(f"Could not reach the database ({type(exc).__name__}). Check the address, user and "
+              "password, and that the instance is running.", file=sys.stderr)
+        return 4
+
+
+def _make(settings: Settings, args: argparse.Namespace, name: str, email: str) -> int:
     graph.open_driver(settings)
     try:
         graph.ensure_constraints()

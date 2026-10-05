@@ -85,3 +85,26 @@ def test_a_bad_address_is_refused_before_connecting(script):
     with pytest.raises(SystemExit) as exit_info:
         make_admin.main(["--email", "not-an-address", "--name", "John Kintree", "--yes"])
     assert exit_info.value.code == 2 and opened == []
+
+
+def _failures():
+    from neo4j.exceptions import AuthError, ClientError, ServiceUnavailable
+    from app.graph_runtime import RecordAsleep
+    return [ServiceUnavailable("bolt://10.1.2.3:7687 refused"), AuthError("bad password for neo4j-user"),
+            ClientError("Neo.ClientError.Database.DatabaseNotFound abc123"), RecordAsleep("asleep at 10.1.2.3")]
+
+
+@pytest.mark.parametrize("where", ["open", "write"])
+@pytest.mark.parametrize("failure", _failures(), ids=lambda exc: type(exc).__name__)
+def test_a_database_that_cannot_be_reached_is_said_plainly(script, monkeypatch, capsys, where, failure):
+    _, made, env = script
+    env(**LIVE)
+
+    def fail(*args, **kwargs):
+        raise failure
+    monkeypatch.setattr(make_admin.graph, "open_driver" if where == "open" else "ensure_constraints", fail)
+    assert make_admin.main([*ARGS, "--yes"]) == 4
+    err = capsys.readouterr().err
+    assert err == (f"Could not reach the database ({type(failure).__name__}). Check the address, user and "
+                   "password, and that the instance is running.\n")
+    assert str(failure) not in err and "10.1.2.3" not in err and made == []
