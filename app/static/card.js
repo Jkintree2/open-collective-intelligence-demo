@@ -257,7 +257,9 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     const controls = [...form.querySelectorAll('input, textarea, select, button')];
     const disabled = controls.map(control => control.disabled); controls.forEach(control => { control.disabled = true; });
     try {
-      await request('/api/posts', payload);
+      await request(state.editing ? `/api/posts/${encodeURIComponent(state.editing)}` : '/api/posts', payload);
+      // An edit goes back to the write page, which says the post is updated.
+      if (state.editing) { location.href = '/?done=edited'; return; }
       card.hidden = true; text.value = ''; state.metadata = {source: 'manual'};
       find('compose-message').textContent = 'Added to the record';
       setTimeout(() => { if (find('compose-message').textContent === 'Added to the record') find('compose-message').textContent = ''; }, 6000);

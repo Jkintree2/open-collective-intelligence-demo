@@ -239,6 +239,7 @@ def _render_index(
     status_code: int = 200,
     about: dict | None = None,
     notice: str | None = None,
+    editing: dict | None = None,
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
     chips = graph.top_issues(CHIP_LIMIT)
@@ -255,6 +256,7 @@ def _render_index(
             "notice": notice,
             "text": text,
             "about": about,
+            "editing": editing,
         },
         status_code=status_code,
     )

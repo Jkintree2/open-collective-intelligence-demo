@@ -3,7 +3,7 @@
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 <p class="sentence">{{ site_sentence }}</p>
 
-<form method="post" action="/posts" class="write" id="compose"{% if member %} data-member="{{ member.name }}"{% endif %}>
+<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% else %}/posts{% endif %}" class="write" id="compose"{% if member %} data-member="{{ member.name }}"{% endif %}>
   {% if member %}
   <div class="name-row">
     <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
@@ -29,7 +29,7 @@
   <p id="compose-message" class="notice" role="status" aria-live="polite"></p>
   <div class="compose-actions">
     <button type="button" id="dictate" class="quiet" aria-pressed="false" hidden>🎙 Dictate</button>
-    <button type="submit" class="primary" id="read">Post</button>
+    <button type="submit" class="primary" id="read">{% if editing %}Save changes{% else %}Post{% endif %}</button>
     <button type="button" id="skip" class="quiet" hidden>Skip the reading and fill in the form myself</button>
     <button type="button" id="stop" class="quiet" hidden>Stop and fill it in myself</button>
     <button type="button" id="retry" class="quiet" hidden>Try again</button>
@@ -63,6 +63,8 @@
 <script src="/static/dictation.js?v={{ asset_version }}" defer></script>
 <script src="/static/app.js?v={{ asset_version }}" defer></script>
 <script src="/static/about_issue.js?v={{ asset_version }}" defer></script>
+{% if editing %}<script id="edit-post" type="application/json">{{ editing|tojson }}</script>
+<script src="/static/edit_post.js?v={{ asset_version }}" defer></script>{% endif %}
 
 <section class="feed" id="feed">
   {% include "_feed.html" %}

@@ -1,9 +1,12 @@
+import json as jsonlib
+import re
 from datetime import datetime, timezone
 
 import pytest
 
 from app import graph, graph_own_posts
 from app.extract import CardPayload, Candidates, resolve_payload
+from app.routes_own_posts import edit_card
 
 NOW = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
 
@@ -194,3 +197,108 @@ def test_delete_needs_an_account_and_this_site(owned, monkeypatch):
     monkeypatch.setattr("app.config.get_settings", lambda: replace(owned.settings, accounts_enabled=False))
     assert owned.client.get("/posts/mine-1/delete").status_code == 404
     assert owned.deleted == []
+
+def edge(rel, from_label, from_key, from_name, to_label, to_key, to_name, home_key=None):
+    return {"post_id": "p1", "rel": rel, "from_label": from_label, "from_key": from_key, "from_name": from_name,
+            "to_label": to_label, "to_key": to_key, "to_name": to_name, "anonymous": False, "home_key": home_key}
+
+
+def test_the_edit_card_comes_from_the_posts_edges_as_they_are_now():
+    """The issue was renamed since the post (its stored payload still says Flooding)."""
+    rows = [
+        edge("CLAIM", "Person", "acct:ada", "Ada", "Issue", "coastal flooding", "Coastal flooding"),
+        edge("PROPOSE", "Person", "acct:ada", "Ada", "Solution", "seawalls", "Seawalls", "coastal flooding"),
+        edge("HAVE_PROPOSED", "Issue", "coastal flooding", "Coastal flooding", "Solution", "seawalls", "Seawalls",
+             "coastal flooding"),
+        edge("APPROVE", "Person", "acct:ada", "Ada", "Solution", "seawalls", "Seawalls", "coastal flooding"),
+        edge("SUBMIT", "Person", "acct:ada", "Ada", "Evidence", "report", "Report"),
+        edge("REFUTES", "Evidence", "report", "Report", "Solution", "seawalls", "Seawalls", "coastal flooding"),
+    ]
+    stored = jsonlib.dumps({
+        "issues": [{"key": "flooding", "name": "Flooding", "parent_key": None}],
+        "solutions": [{"key": "seawalls", "name": "Seawalls", "for_issue_key": "flooding", "stance": "approve"}],
+        "evidence": [{"key": "report", "name": "Report", "url": "https://example.org", "stance": "refutes",
+                      "target_key": "seawalls", "target_label": "Solution"}]})
+    issues = {"coastal flooding": {"name": "Coastal flooding", "parent_name": "World"}}
+    assert edit_card(rows, stored, issues) == {
+        "issues": [{"name": "Coastal flooding", "parent": "World"}],
+        "solutions": [{"name": "Seawalls", "for_issue": "Coastal flooding", "stance": "approve"}],
+        "evidence": [{"name": "Report", "url": "https://example.org", "stance": "refutes", "about": "Seawalls"}]}
+    # A stance a click has since replaced is no longer this post's: no position, so saving changes nothing.
+    clicked = [row for row in rows if row["rel"] != "APPROVE"]
+    assert edit_card(clicked, stored, issues)["solutions"][0]["stance"] == "none"
+    assert edit_card([], None, {}) == {"issues": [], "solutions": [], "evidence": []}
+
+
+def test_the_edit_page_carries_the_post_and_its_card(owned, monkeypatch):
+    monkeypatch.setattr(owned.main.graph, "candidates", Candidates.empty)
+    page = owned.client.get("/posts/mine-1/edit")
+    assert page.status_code == 200
+    embedded = re.search(r'<script id="edit-post" type="application/json">(.*?)</script>', page.text, re.S).group(1)
+    post = jsonlib.loads(embedded)
+    assert post == {"id": "mine-1", "text": "My statement", "anonymous": False,
+                    "card": {"issues": [{"name": "Flooding", "parent": None}], "solutions": [], "evidence": []}}
+    assert "/static/edit_post.js?v=" in page.text
+    # Without JavaScript the same form saves the edit; it never posts to /posts.
+    assert 'action="/posts/mine-1/edit"' in page.text and 'action="/posts"' not in page.text
+    assert ">Save changes</button>" in page.text
+    home = owned.client.get("/").text
+    assert home.count("edit_post.js") == 0 and 'action="/posts"' in home
+
+
+def test_editing_someone_elses_post_is_refused_on_the_page(owned):
+    result = owned.client.get("/posts/theirs-1/edit")
+    assert result.status_code == 403 and "You can change only your own posts." in result.text
+
+
+@pytest.fixture
+def saving(owned, monkeypatch):
+    monkeypatch.setattr(owned.main.graph, "candidates", Candidates.empty)
+    saved = []
+    monkeypatch.setattr("app.graph_own_posts.edit_own_post", lambda me, pid, payload, **kw:
+                        pid in owned.record and not saved.append((me, pid, payload, kw)))
+    owned.saved = saved
+    return owned
+
+
+def test_saving_an_edit_keeps_the_name_and_replaces_the_card(saving):
+    result = saving.client.post("/api/posts/mine-1", json={"text": "Coastal flooding matters", "anonymous": True,
+                                                          "issues": [{"name": "Coastal flooding"}]})
+    assert result.status_code == 200 and result.json() == {"id": "mine-1", "message": "Your post is updated."}
+    me, pid, payload, kw = saving.saved[0]
+    assert (me, pid) == ("acct:ada", "mine-1")
+    assert [issue["name"] for issue in payload.issues] == ["Coastal flooding"]
+    assert kw["text"] == "Coastal flooding matters" and kw["source"] == "manual"
+    assert "Your post is updated." in saving.client.get("/?done=edited").text
+
+
+def test_saving_without_javascript_keeps_the_card_and_never_posts_anew(saving):
+    """Item 7: the write form, pointed at this post, saves the new text with the post's current card."""
+    result = saving.client.post("/posts/mine-1/edit", data={"text": "My statement, typo fixed"}, follow_redirects=False)
+    assert result.status_code == 303 and result.headers["location"] == "/?done=edited"
+    me, pid, payload, kw = saving.saved[0]
+    assert (me, pid) == ("acct:ada", "mine-1") and [issue["name"] for issue in payload.issues] == ["Flooding"]
+    assert kw["text"] == "My statement, typo fixed" and kw["source"] == "manual"
+    assert saving.writes == []  # merge_post never ran: no new post
+    refused = saving.client.post("/posts/theirs-1/edit", data={"text": "Hijack"})
+    assert refused.status_code == 403 and len(saving.saved) == 1
+
+
+def test_saving_someone_elses_post_is_refused(saving):
+    result = saving.client.post("/api/posts/theirs-1", json={"text": "Hijack", "issues": [{"name": "X marks"}]})
+    assert result.status_code == 403 and result.json() == {"message": "You can change only your own posts."}
+    assert saving.saved == []
+
+
+def test_saving_a_post_gone_meanwhile_says_so(saving):
+    result = saving.client.post("/api/posts/nowhere", json={"text": "Hello", "issues": [{"name": "Flooding"}]})
+    assert result.status_code == 404 and result.json() == {"message": "That post is no longer here."}
+    assert saving.client.post("/posts/nowhere/edit", data={"text": "Hello"}).status_code == 404
+
+
+def test_an_unusable_edit_is_refused_like_a_post(saving):
+    assert saving.client.post("/api/posts/mine-1", json={"text": "x" * 4001}).status_code == 413
+    assert saving.client.post("/api/posts/mine-1", json={"text": "Hello"}).status_code == 422
+    assert saving.client.post("/api/posts/mine-1", json={"issues": "not a list", "text": 5}).status_code == 422
+    assert saving.client.post("/posts/mine-1/edit", data={"text": "x" * 4001}).status_code == 413
+    assert saving.saved == []

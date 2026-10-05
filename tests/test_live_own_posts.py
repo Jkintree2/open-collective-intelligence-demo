@@ -146,3 +146,47 @@ def test_an_edit_waiting_on_a_deleting_tab_finds_the_post_gone(live_graph):
     names = [r["n"] for r in live_graph.driver().execute_query(
         "MATCH (i:Issue) RETURN i.name AS n", database_=live_graph.database()).records]
     assert names == []
+
+
+def edges(graph, post_id):
+    return sorted((r["t"], r["a"], r["b"]) for r in graph.driver().execute_query(
+        "MATCH (a)-[r]->(b) WHERE r.post_id = $id "
+        "RETURN type(r) AS t, coalesce(a.key, a.id) AS a, coalesce(b.key, b.id) AS b",
+        id=post_id, database_=graph.database()).records)
+
+
+def edit_unchanged(graph, post_id):
+    """Save the edit card exactly as the edit page opens it, through the code the routes use."""
+    from app.routes_own_posts import current_card, resolve_edit
+    stored = graph.driver().execute_query("MATCH (p:Post {id: $id}) RETURN p.payload AS payload", id=post_id,
+                                          database_=graph.database()).records[0]["payload"]
+    card_now, own = current_card(post_id, stored)
+    resolved, _ = resolve_edit(CardPayload.model_validate(card_now), own)
+    assert resolved.dropped == []
+    return graph_own_posts.edit_own_post("acct:ada", post_id, resolved, text="Same words", source="manual",
+                                         extraction_raw=None, model=None, latency_ms=None, now=NOW + timedelta(hours=1))
+
+
+def test_an_unchanged_edit_leaves_the_posts_edges_as_they_were(live_graph):
+    """Item 5: a post that proposed and approved its own solution (the seed's usual shape) keeps its
+    own claim and proposal through an unchanged edit."""
+    pid = post(live_graph, "acct:ada", "Flooding needs seawalls", issues=[{"name": "Flooding"}],
+               solutions=[{"name": "Seawalls", "for_issue": "Flooding", "stance": "approve"}])
+    before = edges(live_graph, pid)
+    assert [t for t, _, _ in before] == ["APPROVE", "CLAIM", "HAVE_PROPOSED", "PROPOSE"]
+    assert edit_unchanged(live_graph, pid)
+    assert edges(live_graph, pid) == before
+
+
+def test_an_edit_after_a_rename_keeps_the_claim_on_the_renamed_issue(live_graph):
+    """Item 6: tidying renamed the issue since (here by hand: sub-plan E runs in parallel); the edit card
+    shows the new name, and saving it brings nothing back under the old one."""
+    pid = post(live_graph, "acct:ada", "Flooding matters", issues=[{"name": "Flooding"}])
+    live_graph.driver().execute_query(
+        "MATCH (i:Issue {key: 'flooding'}) SET i.name = 'Coastal flooding', i.key = 'coastal flooding'",
+        database_=live_graph.database())
+    issues = lambda: sorted(r["n"] for r in live_graph.driver().execute_query(
+        "MATCH (i:Issue) RETURN i.name AS n", database_=live_graph.database()).records)
+    assert edit_unchanged(live_graph, pid)
+    assert issues() == ["Coastal flooding"]
+    assert edges(live_graph, pid) == [("CLAIM", "acct:ada", "coastal flooding")]
