@@ -298,6 +298,8 @@ After either button:
 >
 > John Kintree
 
+Note for the builder: `{relationship}` starts with a capital letter when it stands alone after a label.
+
 John's own first email has no "Entered by" lines. `make_admin.py` makes his account and sends nothing; the email goes when he first uses "Forgot your password?" on the site, since his account is not yet accepted (the same goes for any invitation sent again to his account before he accepts):
 
 > **Subject:** Choose your password for {SITE_NAME}

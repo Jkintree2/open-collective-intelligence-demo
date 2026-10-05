@@ -29,7 +29,7 @@
 <h2>People you have entered</h2>
 {% for entry in entries %}
 <section class="entered">
-  <p>{{ entry.name }} · {{ entry.relationship|capitalize }} · entered {{ entry.entered_at.strftime("%-d %B") }}</p>
+  <p>{{ entry.name }} · {{ entry.relationship }} · entered {{ entry.entered_at.strftime("%-d %B") }}</p>
   {% if entry.state == "joined" %}<p class="counts">joined {{ entry.accepted_at.strftime("%-d %B") }}</p>
   {% elif entry.state == "switched off" %}<p class="counts">switched off</p>
   {% else %}

@@ -4,7 +4,7 @@
 <h1>Your account</h1>
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 <p>{{ member.name }} · {{ member.email }}</p>
-{% if entered %}<p class="counts">Entered by {{ entered.inviter_name }} ({{ entered.relationship|capitalize }}){% if entered.entered_at %} on {{ entered.entered_at.strftime("%-d %B %Y") }}{% endif %}.</p>{% endif %}
+{% if entered %}<p class="counts">Entered by {{ entered.inviter_name }} ({{ entered.relationship }}){% if entered.entered_at %} on {{ entered.entered_at.strftime("%-d %B %Y") }}{% endif %}.</p>{% endif %}
 <h2>Change your password</h2>
 {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
 <form method="post" action="/account/password">

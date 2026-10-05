@@ -139,7 +139,7 @@ def test_a_double_tap_after_a_failed_send_does_not_say_on_its_way(people):
     second = people.client.post("/people", data=FORM)
     assert "on its way" not in second.text
     # The list carries the truth: Bob is invited, with the button to send again.
-    assert "Bob Smith · Neighbor" in second.text
+    assert "Bob Smith · neighbor" in second.text
     assert f'action="/people/{people.entries[0]["key"]}/resend"' in second.text
 
 
@@ -180,10 +180,10 @@ def test_a_drained_forgot_form_does_not_block_sending_again(people, monkeypatch)
 
 def test_the_list_shows_who_joined_who_is_waiting_and_whose_link_expired(people):
     page = people.client.get("/people").text
-    assert "Joined Person · Friend · entered" in page and "joined" in page
-    assert "Waiting Person · Work" in page and "invited, not accepted yet" in page
-    assert "Late Person · School" in page and "invitation expired" in page
-    assert "Gone Person · Health" in page and "switched off" in page  # switched off wins over joined
+    assert "Joined Person · friend · entered" in page and "joined" in page
+    assert "Waiting Person · work" in page and "invited, not accepted yet" in page
+    assert "Late Person · school" in page and "invitation expired" in page
+    assert "Gone Person · health" in page and "switched off" in page  # switched off wins over joined
     assert page.count("Send the invitation again") == 2
     assert "If an email address was mistyped, withdraw the entry and enter the person again." in page
 

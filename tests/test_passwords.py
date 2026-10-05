@@ -27,7 +27,7 @@ def test_account_page_offers_a_new_password(signed_in):
     page = signed_in.client.get("/account")
     assert page.status_code == 200
     assert "Ada Lovelace · ada@example.org" in page.text
-    assert "Entered by John Kintree (Friend) on 4 October 2026." in page.text
+    assert "Entered by John Kintree (friend) on 4 October 2026." in page.text
     assert page.text.count('autocomplete="new-password"') == 2
     assert 'autocomplete="current-password"' in page.text
     # The email is a visible read-only username field, so a phone saves the new password under it.
