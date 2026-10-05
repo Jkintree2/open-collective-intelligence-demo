@@ -47,12 +47,23 @@ CROSS_SITE = ({"Origin": "https://other.example"}, {"Origin": "null"}, {"Sec-Fet
               {"Referer": "https://other.example/page"})
 
 
+@pytest.mark.parametrize("path, send", [
+    ("/api/posts", {"json": {"text": "Hello", "plain": True}}),
+    ("/api/extract", {"json": {"text": "Hello"}}),
+    ("/api/preview", {"json": {"text": "Hello"}}),
+])
+def test_a_write_from_another_site_is_refused(member_app, path, send):
+    member_app.sign_in()
+    for headers in CROSS_SITE:
+        result = member_app.client.post(path, headers=headers, **send)
+        assert result.status_code == 403
+        assert result.json() == {"message": "Please reload the page and try again."}
+    assert member_app.writes == []
+
+
 def test_a_post_from_another_site_is_refused(member_app):
     member_app.sign_in()
     for headers in CROSS_SITE:
-        result = member_app.client.post("/api/posts", json={"text": "Hello", "plain": True}, headers=headers)
-        assert result.status_code == 403
-        assert result.json() == {"message": "Please reload the page and try again."}
         page = member_app.client.post("/posts", data={"text": "Hello"}, headers=headers)
         assert page.status_code == 403 and "Please reload the page and try again." in page.text
         assert "detail" not in page.text

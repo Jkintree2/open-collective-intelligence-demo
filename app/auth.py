@@ -69,24 +69,11 @@ def passphrase_matches(given: str, *, passphrase: str | None = None) -> bool:
 
 
 class GateRequired(Exception):
-    """Raised by `require_gate`; the app turns it into a redirect to /enter."""
+    """Raised by `members.require_access`; the app turns it into a redirect to /enter."""
 
     def __init__(self, next_path: str) -> None:
         super().__init__(next_path)
         self.next_path = next_path
-
-
-def require_gate(request: Request) -> None:
-    """FastAPI dependency: the gate cookie must be present and valid."""
-    if check_gate_token(request.cookies.get(GATE_COOKIE)):
-        return
-    if request.method == "GET":
-        next_path = request.url.path
-        if request.url.query:
-            next_path += "?" + request.url.query
-    else:
-        next_path = "/"
-    raise GateRequired(next_path)
 
 
 class MinuteBucket:

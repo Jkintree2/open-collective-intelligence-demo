@@ -2,9 +2,10 @@
 
     python -m scripts.seed                  reload: idempotent, adds what is missing
     python -m scripts.seed --counts         print node and relationship counts and exit
-    python -m scripts.seed --reset --yes    delete everything, then load; refuses when the
-                                            database holds any node without seed = true
-                                            unless --force is also given
+    python -m scripts.seed --reset --yes    clear everything except the accounts and who entered
+                                            whom, then load; refuses when the database holds
+                                            anything else that is not seed, unless --force
+                                            is also given
 
 The connection comes from the environment (and `.env` when it exists). Production is seeded
 from a shell with the variables typed inline, never from a saved file.
@@ -91,7 +92,7 @@ def load(data: dict) -> tuple[int, int]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--counts", action="store_true", help="print counts and exit")
-    parser.add_argument("--reset", action="store_true", help="delete everything before loading")
+    parser.add_argument("--reset", action="store_true", help="clear everything except accounts before loading")
     parser.add_argument("--yes", action="store_true", help="confirm --reset")
     parser.add_argument("--force", action="store_true", help="reset even when non-seed nodes exist")
     parser.add_argument("--file", default=str(SEED_FILE))
@@ -117,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 3
             graph.delete_everything()
-            print("deleted everything")
+            print("cleared everything except the accounts and who entered whom")
         data = json.loads(Path(args.file).read_text(encoding="utf-8"))
         try:
             loaded, skipped = load(data)
