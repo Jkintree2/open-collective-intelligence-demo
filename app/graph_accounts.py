@@ -244,6 +244,57 @@ def withdraw(key: str, inviter_key: str | None = None) -> bool:
     return bool(rows and rows[0]["withdrawn"])
 
 
+# Q20, the back room version: every account, with who entered it. John's own account has nobody,
+# so its entered_at is null and leads the descending sort.
+ALL_ACCOUNTS = """
+MATCH (p:Person) WHERE p.email IS NOT NULL
+OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
+RETURN p.key AS key, p.name AS name, p.email AS email, e.relationship AS relationship,
+       e.created_at AS entered_at, p.accepted_at AS accepted_at, p.active AS active,
+       p.token_purpose AS purpose, p.token_expires_at AS expires_at,
+       inviter.name AS inviter_name, p.admin AS admin
+ORDER BY e.created_at DESC
+"""
+
+# Q17, the back room's "Send a password link": the forgotten password statement by key, for an
+# accepted, active account only, so the link is always a password link. Lock first, then check,
+# like B3's Q16, Q17 and Q21 and A8's Q18: a switch off from another tab is applied before or
+# after, never in between.
+PASSWORD_LINK = """
+MATCH (p:Person {key: $key})
+SET p.key = p.key
+WITH p
+WHERE p.email IS NOT NULL AND p.active AND p.accepted_at IS NOT NULL
+SET p.token_hash = $token_hash, p.token_purpose = 'reset', p.token_expires_at = $expires_at
+RETURN p.email AS email, p.name AS name
+"""
+
+# Q22. Switch an account off or on. John's own account is never switched off from the page.
+# Lock first, then check, as above.
+SET_ACTIVE = """
+MATCH (p:Person {key: $key})
+SET p.key = p.key
+WITH p
+WHERE p.email IS NOT NULL AND NOT p.admin
+SET p.active = $active
+RETURN count(p) AS changed
+"""
+
+
+def all_accounts() -> list[dict[str, Any]]:
+    return _read(ALL_ACCOUNTS)
+
+
+def password_link(key: str, token_hash: str, expires_at) -> dict[str, Any] | None:
+    rows = _write_rows(PASSWORD_LINK, key=key, token_hash=token_hash, expires_at=expires_at)
+    return rows[0] if rows else None
+
+
+def set_active(key: str, active: bool) -> bool:
+    rows = _write_rows(SET_ACTIVE, key=key, active=active)
+    return bool(rows and rows[0]["changed"])
+
+
 def forgot(email: str, token_hash: str, invite_expires_at, reset_expires_at) -> dict[str, Any] | None:
     rows = _write_rows(FORGOT, email=email, token_hash=token_hash,
                        invite_expires_at=invite_expires_at, reset_expires_at=reset_expires_at)
