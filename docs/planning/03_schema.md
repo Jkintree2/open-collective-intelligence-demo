@@ -470,11 +470,15 @@ RETURN p.key AS key, p.name AS name, p.email AS email, p.country AS country,
        inviter.name AS inviter_name, e.relationship AS relationship
 ```
 
-**Q16. Accept an invitation.** The link is checked again inside the write, so a form sent twice accepts once and the second sees no row.
+**Lock first, then check** (Q16, Q17, Q18, Q21, as Q23, Q24 and Q28 do): each statement matches the person, takes the write lock with the no-op `SET p.key = p.key`, and only then checks its conditions. A transaction that matched before another one committed waits for it and then sees what it left: two accepts on one link succeed once, a withdrawal racing an accept leaves the accepted account, and a new link never lands on an account accepted meanwhile. The no-op is on `key`, which never changes; a no-op on `token_hash` could write a stale value back.
+
+**Q16. Accept an invitation.** The link is checked again after the lock, so a form sent twice accepts once and the second sees no row.
 
 ```cypher
 MATCH (p:Person {token_hash: $token_hash})
-WHERE p.token_purpose = 'invite' AND p.token_expires_at > $now AND p.active
+SET p.key = p.key
+WITH p
+WHERE p.token_hash = $token_hash AND p.token_purpose = 'invite' AND p.token_expires_at > $now AND p.active
 SET p.name = $name, p.country = $country, p.postal_code = $postal_code,
     p.password_hash = $password_hash, p.accepted_at = $now,
     p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
@@ -486,6 +490,8 @@ RETURN p.key AS key
 ```cypher
 // invitation sent again: only while not accepted
 MATCH (p:Person {key: $key})
+SET p.key = p.key
+WITH p
 WHERE p.accepted_at IS NULL AND p.active
 SET p.token_hash = $token_hash, p.token_purpose = 'invite', p.token_expires_at = $expires_at
 RETURN p.email AS email, p.name AS name;
@@ -494,6 +500,8 @@ RETURN p.email AS email, p.name AS name;
 // but not yet accepted gets a fresh invitation link; anyone else gets nothing, and the page
 // says the same thing either way
 MATCH (p:Person {email: $email})
+SET p.key = p.key
+WITH p
 WHERE p.active
 WITH p, CASE WHEN p.accepted_at IS NULL THEN 'invite' ELSE 'reset' END AS purpose
 SET p.token_hash = $token_hash, p.token_purpose = purpose,
@@ -503,13 +511,15 @@ OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
 RETURN p.email AS email, p.name AS name, purpose, inviter.name AS inviter_name, e.relationship AS relationship
 ```
 
-The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`. John's root account is made by `make_admin.py` with no link and no `ENTERED`, and nothing is sent (decision X3, 5 October 2026); being not yet accepted, it gets its first link from the "Forgot your password?" statement above, sent by the site from its own settings, in John's own wording (no inviter). The back room's "Send a password link" uses the second with the account's key in place of the email and only for an accepted account. Python sends the invitation email for `invite` (John's own wording when there is no inviter) and the password email for `reset`. Both requests draw on the same limits: per address and per minute.
+The inviter's version of the first statement also matches `(:Person {key: $inviter_key})-[:ENTERED]->(p)`. John's root account is made by `make_admin.py` with no link and no `ENTERED`, and nothing is sent (decision X3, 5 October 2026); being not yet accepted, it gets its first link from the "Forgot your password?" statement above, sent by the site from its own settings, in John's own wording (no inviter). The back room's "Send a password link" uses the second with the account's key in place of the email and only for an accepted account. Python sends the invitation email for `invite` (John's own wording when there is no inviter) and the password email for `reset`. Every new link draws on one limit per address (three an hour), shared by "Forgot your password?", a member's "Send the invitation again" and the back room. Only the anonymous "Forgot your password?" form also has a limit per minute for the whole site; no member's or back room button takes from it, so whoever drains it blocks nothing else (second review, 5 October 2026).
 
 **Q18. Choose a new password through a link.**
 
 ```cypher
 MATCH (p:Person {token_hash: $token_hash})
-WHERE p.token_purpose = 'reset' AND p.token_expires_at > $now
+SET p.key = p.key
+WITH p
+WHERE p.token_hash = $token_hash AND p.token_purpose = 'reset' AND p.token_expires_at > $now
   AND p.active AND p.accepted_at IS NOT NULL
 SET p.password_hash = $password_hash,
     p.token_hash = null, p.token_purpose = null, p.token_expires_at = null
@@ -540,6 +550,8 @@ The back room version starts `MATCH (p:Person) WHERE p.email IS NOT NULL OPTIONA
 
 ```cypher
 MATCH (inviter:Person {key: $inviter_key})-[:ENTERED]->(p:Person {key: $key})
+SET p.key = p.key
+WITH p
 WHERE p.accepted_at IS NULL AND COUNT { (p)--() } = 1
 DETACH DELETE p
 RETURN count(*) AS withdrawn
@@ -759,6 +771,12 @@ MATCH (n) WHERE NOT (n:Person AND n.email IS NOT NULL) DETACH DELETE n
 
 `scripts/seed.py --reset` follows the same rule, and counts accounts as neither seed nor non-seed when it decides whether to refuse.
 
-**Reload seed** adds only seed statements that are missing. When every seed statement is present it writes nothing, so a seed issue that John renamed or merged does not come back under its old name. When some are missing (deleted in the back room), each seed issue name in the issues block and in the seed posts loaded again is first read as the issue it became, following every rename and merge in the change records (Q32), so the old name does not come back that way either.
+**Reload seed** adds only seed statements that are missing. When every seed statement is present it writes nothing, so a seed issue that John renamed or merged does not come back under its old name. When some are missing (deleted in the back room), each seed issue name in the issues block and in the seed posts loaded again is first read as the issue it became, following every rename and merge in the change records, so the old name does not come back that way either. It reads all of them, oldest first, not Q32's newest 200:
+
+```cypher
+MATCH (c:Change) WHERE c.kind IN ['rename', 'merge']
+RETURN c.kind AS kind, c.details AS details, c.created_at AS created_at
+ORDER BY c.created_at, c.id
+```
 
 **Q33. Export, version 2.** `Change` (identity `id`) joins the labels; `ENTERED` (Person to Person), `MADE` (Person to Change) and `CHANGED` (Change to Issue) join the types. `password_hash`, `token_hash`, `token_purpose` and `token_expires_at` are left out of every node. Restore accepts versions 1 and 2. A restored account keeps `accepted_at` but has no password, and its owner uses "Forgot your password?".
