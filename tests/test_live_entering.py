@@ -202,3 +202,10 @@ def test_the_back_room_forms_act_on_any_never_accepted_entry(live_graph):
     assert graph_accounts.resend_invitation("acct:bob", "fresh-link", LATER)["inviter_name"] == "John Kintree"
     assert graph_accounts.withdraw("acct:bob") is True
     assert graph_accounts.open_link("fresh-link") is None
+
+
+def test_the_root_account_is_admin_and_has_no_inviter(live_graph):
+    root(live_graph)
+    assert graph_accounts.member("acct:john")["admin"] is True
+    assert live_graph.driver().execute_query("MATCH (:Person)-[e:ENTERED]->(:Person {key: 'acct:john'}) RETURN e",
+                                             database_=live_graph.database()).records == []
