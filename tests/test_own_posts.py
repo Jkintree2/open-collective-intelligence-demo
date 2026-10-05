@@ -310,6 +310,35 @@ def test_an_unusable_edit_is_refused_like_a_post(saving):
     assert saving.saved == []
 
 
+def test_the_edit_preview_answers_like_the_preview_under_the_posts_own_name(saving):
+    body = {"text": "Coastal flooding matters", "anonymous": False, "issues": [{"name": "Coastal flooding"}]}
+    edit = saving.client.post("/api/posts/mine-1/preview", json=body)
+    assert edit.status_code == 200
+    assert edit.json() == saving.client.post("/api/preview", json=body).json()
+    assert edit.json()["sentences"] == ["Ada Tester claims Coastal flooding"] and edit.json()["valid"] is True
+    # The post keeps the name or Anonymous it was first posted with, whatever the request says.
+    saving.record["mine-1"]["anonymous"] = True
+    assert saving.client.post("/api/posts/mine-1/preview", json=body).json()["sentences"] == [
+        "Anonymous claims Coastal flooding"]
+    assert saving.saved == []
+
+
+def test_the_edit_preview_is_only_for_ones_own_post(saving, monkeypatch):
+    body = {"text": "Hijack", "issues": [{"name": "X marks"}]}
+    result = saving.client.post("/api/posts/theirs-1/preview", json=body)
+    assert result.status_code == 403 and result.json() == {"message": "You can change only your own posts."}
+    result = saving.client.post("/api/posts/nowhere/preview", json=body)
+    assert result.status_code == 404 and result.json() == {"message": "That post is no longer here."}
+    assert saving.client.post("/api/posts/mine-1/preview", json={"text": "x" * 4001}).status_code == 413
+    assert saving.client.post("/api/posts/mine-1/preview", json={"issues": "not a list"}).status_code == 422
+    refused = saving.client.post("/api/posts/mine-1/preview", json=body, headers={"Origin": "https://other.example"})
+    assert refused.status_code == 403
+    from dataclasses import replace
+    monkeypatch.setattr("app.config.get_settings", lambda: replace(saving.settings, accounts_enabled=False))
+    assert saving.client.post("/api/posts/mine-1/preview", json=body).status_code == 404
+    assert saving.saved == []
+
+
 def test_write_page_renders_as_before_when_not_editing(member_app, monkeypatch):
     monkeypatch.setattr(member_app.main.graph, "list_posts", lambda limit: [])
     member_app.sign_in()

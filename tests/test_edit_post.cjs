@@ -32,6 +32,8 @@ test('the edit page opens the card from the post and saves under its id', async 
   p.get('compose').listeners.submit.at(-1)({preventDefault() { prevented = true; }, stopImmediatePropagation() { stopped = true; }});
   assert.equal(stopped && prevented, true);
   await p.runTimer(200);
+  // The preview resolves as the save does, keeping the post's own claim and proposal.
+  assert.equal(p.requests.at(-1).url, '/api/posts/post-1/preview');
   p.requests.at(-1).resolve({sentences: ['Anonymous claims Flooding'], valid: true, dropped: [], corrected: []});
   await p.flush();
   // Not awaited: the click's handler waits on the save request, which the test answers below.
@@ -48,8 +50,11 @@ test('a page without a post to edit is left alone', async () => {
   assert.equal(p.get('card').hidden, true);
   assert.equal(p.get('read').hidden, false);
   assert.equal(p.get('post').textContent || '', '');
-  // On a normal write page the plain statement button stays visible once the card is open.
+  // On a normal write page the plain statement button stays visible once the card is open, and the
+  // preview goes to the usual place.
   await p.type('Flooding matters'); await p.get('skip').emit('click');
   assert.equal(p.get('card').hidden, false);
   assert.equal(p.get('plain').hidden, false);
+  await p.runTimer(200);
+  assert.equal(p.requests.at(-1).url, '/api/preview');
 });

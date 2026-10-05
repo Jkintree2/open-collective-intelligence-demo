@@ -162,7 +162,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       state.previewController = new AbortController();
       (async () => {
         try {
-          const result = await request('/api/preview', payload, state.previewController.signal);
+          const result = await request(state.editing ? `/api/posts/${encodeURIComponent(state.editing)}/preview` : '/api/preview', payload, state.previewController.signal);
           if (expected !== state.revision || card.hidden) return false;
           find('sentences').replaceChildren(...result.sentences.map(sentence => node('li', sentence)));
           find('card-errors').textContent = result.dropped.length ? 'Please check the names and choices in the form.' : '';

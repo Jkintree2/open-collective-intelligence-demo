@@ -163,9 +163,10 @@ def save_plain_edit(request: Request, post_id: str, text: str = Form(""),
     return RedirectResponse("/?done=edited", status_code=303)
 
 
-@router.post("/api/posts/{post_id}", dependencies=[Depends(require_same_origin)])
-def save_edit(request: Request, post_id: str, body: dict = Body(...),
-              member: Member = Depends(require_member)) -> Response:
+def _checked_edit(post_id: str, body: dict, member: Member):
+    """The card request for an edit, checked as /api/preview and /api/posts check theirs, on the
+    member's own post, resolved as the save resolves it. Returns (row, data, resolved, card) or the
+    answer that refuses it."""
     from app import main as site
     try:
         data = site.PostRequest.model_validate(body)
@@ -181,6 +182,34 @@ def save_edit(request: Request, post_id: str, body: dict = Body(...),
         return JSONResponse({"message": NOT_YOURS}, status_code=403)
     _, own = current_card(post_id, row["payload"])
     resolved, card = resolve_edit(data, own)
+    return row, data, resolved, card
+
+
+def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, card: CardPayload) -> dict:
+    """What main.preview_card answers, for the edit card: resolved as the save is (resolve_edit), so the
+    preview and the save always agree, and under the name or Anonymous the post keeps."""
+    _, _, _, shown = posting_identity(member, bool(row["anonymous"]))
+    valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
+    return {"sentences": sentences(card, shown or "Anonymous"), "valid": valid, "dropped": resolved.dropped,
+            "corrected": resolved.corrected, "payload": card.model_dump()}
+
+
+@router.post("/api/posts/{post_id}/preview", dependencies=[Depends(require_same_origin)])
+def preview_edit(request: Request, post_id: str, body: dict = Body(...),
+                 member: Member = Depends(require_member)) -> Response:
+    checked = _checked_edit(post_id, body, member)
+    if isinstance(checked, Response):
+        return checked
+    return JSONResponse(edit_preview(member, *checked))
+
+
+@router.post("/api/posts/{post_id}", dependencies=[Depends(require_same_origin)])
+def save_edit(request: Request, post_id: str, body: dict = Body(...),
+              member: Member = Depends(require_member)) -> Response:
+    checked = _checked_edit(post_id, body, member)
+    if isinstance(checked, Response):
+        return checked
+    row, data, resolved, card = checked
     if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": CHECK_THE_FORM, "dropped": resolved.dropped}, status_code=422)
     source = data.source if data.text.strip() and not resolved.is_empty else "manual"

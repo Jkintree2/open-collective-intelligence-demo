@@ -190,3 +190,26 @@ def test_an_edit_after_a_rename_keeps_the_claim_on_the_renamed_issue(live_graph)
     assert edit_unchanged(live_graph, pid)
     assert issues() == ["Coastal flooding"]
     assert edges(live_graph, pid) == [("CLAIM", "acct:ada", "coastal flooding")]
+
+
+def test_the_edit_preview_shows_what_an_unchanged_save_keeps(live_graph):
+    """D6: a post that proposed and approved its own solution previews all four lines on its edit card,
+    through the code the preview route uses, the same four an unchanged save keeps."""
+    from app.members import Member
+    from app.routes_own_posts import current_card, edit_preview, resolve_edit
+    pid = post(live_graph, "acct:ada", "Flooding needs seawalls", issues=[{"name": "Flooding"}],
+               solutions=[{"name": "Seawalls", "for_issue": "Flooding", "stance": "approve"}])
+    stored = live_graph.driver().execute_query("MATCH (p:Post {id: $id}) RETURN p.payload AS payload", id=pid,
+                                               database_=live_graph.database()).records[0]["payload"]
+    card_now, own = current_card(pid, stored)
+    data = CardPayload.model_validate(card_now)
+    resolved, prepared = resolve_edit(data, own)
+    ada = Member(key="acct:ada", name="Ada", email="ada@example.org", admin=False)
+    shown = edit_preview(ada, {"anonymous": False}, data, resolved, prepared)
+    assert shown["valid"] is True and shown["dropped"] == []
+    assert shown["sentences"] == ["Ada claims Flooding", "Ada proposes Seawalls", "Flooding has proposed Seawalls",
+                                  "Ada approves Seawalls"]
+    before = edges(live_graph, pid)
+    assert edit_unchanged(live_graph, pid)
+    assert [t for t, _, _ in edges(live_graph, pid)] == ["APPROVE", "CLAIM", "HAVE_PROPOSED", "PROPOSE"]
+    assert edges(live_graph, pid) == before
