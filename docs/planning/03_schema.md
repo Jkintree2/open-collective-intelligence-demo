@@ -145,8 +145,8 @@ Rules applied in Python before the transaction:
 MATCH (i:Issue)
 OPTIONAL MATCH (i)-[:PART_OF]->(parent:Issue)
 OPTIONAL MATCH (p:Person)-[c:CLAIM]->(i)
-WITH i, parent, count(c) AS claims, count(DISTINCT p) AS people,
-     collect(DISTINCT p.key) AS person_keys
+WITH i, parent, c, p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who
+WITH i, parent, count(c) AS claims, count(DISTINCT who) AS people, collect(DISTINCT who) AS person_keys
 OPTIONAL MATCH (i)-[:HAVE_PROPOSED]->(s:Solution)
 WITH i, parent, claims, people, person_keys, count(DISTINCT s) AS solutions
 // evidence attached to the issue itself (0 hops) or to any of its solutions (1 hop)
@@ -155,7 +155,7 @@ WITH i, parent, claims, people, person_keys, solutions,
      collect(DISTINCT ev.key) AS evidence_keys
 // last activity: the newest edge of any type that touches the issue, so a post that only
 // adds evidence or a solution still bumps "Most recent"
-OPTIONAL MATCH (i)-[any]-()
+OPTIONAL MATCH (i)-[any]-() WHERE type(any) <> 'CHANGED' AND NOT (type(any) = 'PART_OF' AND any.post_id IS NULL)
 WITH i, parent, claims, people, person_keys, solutions, evidence_keys,
      coalesce(max(any.created_at), i.created_at) AS last_activity
 RETURN i.key AS key, i.name AS name, i.seed AS seed,
@@ -813,7 +813,7 @@ ORDER BY c.created_at DESC, c.id DESC
 LIMIT 200
 ```
 
-**Q1, revised.** `last_activity` ignores `CHANGED` and a `PART_OF` with no `post_id` (made by a move, Q28, or by the seed's issues block): `OPTIONAL MATCH (i)-[r]-() WHERE type(r) <> 'CHANGED' AND NOT (type(r) = 'PART_OF' AND r.post_id IS NULL)`. So tidying an issue, a move included, does not move it or its parent up "Most recent". (The seed's `PART_OF` edges carry the seed's first date, the same as its issues' `created_at`, so the seed's order does not change.)
+**Q1, revised.** `last_activity` ignores `CHANGED` and a `PART_OF` with no `post_id` (made by a move, Q28, or by the seed's issues block): `OPTIONAL MATCH (i)-[r]-() WHERE type(r) <> 'CHANGED' AND NOT (type(r) = 'PART_OF' AND r.post_id IS NULL)`. So tidying an issue, a move included, does not move it or its parent up "Most recent". (The seed's `PART_OF` edges carry the seed's first date, the same as its issues' `created_at`, so the seed's order does not change.) People are counted by account and anonymity (D2): an account's anonymous claims count apart from its named ones, as on the issue page (Q3); records from the test weeks count as before.
 
 ### Back room, seed, export and restore
 

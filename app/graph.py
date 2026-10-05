@@ -122,14 +122,14 @@ LIST_ISSUES = """
 MATCH (i:Issue)
 OPTIONAL MATCH (i)-[:PART_OF]->(parent:Issue)
 OPTIONAL MATCH (p:Person)-[c:CLAIM]->(i)
-WITH i, parent, count(c) AS claims, count(DISTINCT p) AS people,
-     collect(DISTINCT p.key) AS person_keys
+WITH i, parent, c, p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who
+WITH i, parent, count(c) AS claims, count(DISTINCT who) AS people, collect(DISTINCT who) AS person_keys
 OPTIONAL MATCH (i)-[:HAVE_PROPOSED]->(s:Solution)
 WITH i, parent, claims, people, person_keys, count(DISTINCT s) AS solutions
 OPTIONAL MATCH (ev:Evidence)-[:SUPPORTS|REFUTES]->(t)<-[:HAVE_PROPOSED*0..1]-(i)
 WITH i, parent, claims, people, person_keys, solutions,
      collect(DISTINCT ev.key) AS evidence_keys
-OPTIONAL MATCH (i)-[r]-()
+OPTIONAL MATCH (i)-[r]-() WHERE type(r) <> 'CHANGED' AND NOT (type(r) = 'PART_OF' AND r.post_id IS NULL)
 WITH i, parent, claims, people, person_keys, solutions, evidence_keys,
      coalesce(max(r.created_at), i.created_at) AS last_activity
 RETURN i.key AS key, i.name AS name, i.seed AS seed,
@@ -221,7 +221,8 @@ ORDER BY r.created_at
 TOP_ISSUES = """
 MATCH (i:Issue)
 OPTIONAL MATCH (p:Person)-[c:CLAIM]->(i)
-WITH i, count(DISTINCT p) AS people, count(c) AS claims
+WITH i, c, p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who
+WITH i, count(DISTINCT who) AS people, count(c) AS claims
 ORDER BY people DESC, claims DESC, i.created_at DESC
 LIMIT $limit
 RETURN i.key AS key, i.name AS name

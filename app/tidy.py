@@ -4,6 +4,8 @@ import json
 
 from fastapi import Request
 
+from app.text import make_key
+
 # Client facing copy, word for word from docs/planning/04_interface.md.
 DONE = {"renamed": "Renamed.", "moved": "Moved.", "merged": "Merged. Everything about {other} is now here."}
 PROBLEMS = {
@@ -34,6 +36,32 @@ def sentence(row: dict) -> str:
     else:
         what = f"made {details['issue_name']} a top level issue"
     return f"{when} · {row['by']} {what}"
+
+
+def tidied_names(changes: list[dict]) -> dict[str, str]:
+    """Old issue key -> the issue's name now, from graph_tidy.renames_and_merges() (oldest first):
+    every rename and every merge, followed to its end. A seed reload reads an old seed name through this."""
+    step: dict[str, tuple[str, str]] = {}
+    for change in changes:  # oldest first, so a later change of the same key wins
+        details = json.loads(change["details"] or "{}")
+        if change["kind"] == "rename":
+            step[details["from_key"]] = (details["to_key"], details["to_name"])
+        elif change["kind"] == "merge":
+            step[details["merged_key"]] = (details["kept_key"], details["kept_name"])
+    names = {}
+    for old in step:
+        key, seen = old, set()
+        while key in step and key not in seen:
+            seen.add(key)
+            key, name = step[key]
+        names[old] = name
+    return names
+
+
+def retidy(name: str | None, names: dict[str, str]) -> str | None:
+    """A seed name as the issue it is now, after any rename or merge."""
+    key = make_key(name or "")
+    return names.get(key, name) if key else name
 
 
 def page_context(request: Request, issue: dict) -> dict | None:

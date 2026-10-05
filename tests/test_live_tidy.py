@@ -258,3 +258,31 @@ def test_a_rename_committed_while_a_post_write_waits_is_not_undone(live_graph):
     rows = run(live_graph, "MATCH (i:Issue) WHERE i.name STARTS WITH 'A' RETURN i.key AS k, i.name AS n")
     assert [(r["k"], r["n"]) for r in rows] == [("a two", "A two")]
     assert run(live_graph, "MATCH (i:Issue {key: 'a'}) RETURN i") == []
+
+
+def test_the_issues_list_counts_people_as_the_issue_page_does(live_graph):
+    """D2 (option a): an account's anonymous claim counts apart from its named one, on the Issues list
+    as on the issue page (Q3); 0.1 people count as today (a claim with no flag is named)."""
+    run(live_graph, TREE)  # Ada's named claim on Parking (p1)
+    run(live_graph, "MATCH (ada:Person {key: 'acct:ada'}), (i:Issue {key: 'parking'}) "
+                    "CREATE (ada)-[:CLAIM {post_id: 'p2', anonymous: true, created_at: $now}]->(i) "
+                    "CREATE (g:Person {key: 'name:grace', name: 'Grace'}) "
+                    "CREATE (g)-[:CLAIM {post_id: 'p3', anonymous: false, created_at: $now}]->(i) "
+                    "CREATE (g)-[:CLAIM {post_id: 'p4', created_at: $now}]->(i)")
+    row = next(r for r in live_graph.list_issues() if r["key"] == "parking")
+    assert (row["claims"], row["people"], len(row["person_keys"])) == (4, 3, 3)  # Ada, Ada anonymously, Grace
+    assert live_graph.issue_claimants("parking")["people"] == row["people"]
+    assert "Parking" in [item["name"] for item in live_graph.top_issues(5)]
+
+
+def test_tidying_does_not_count_as_activity(live_graph):
+    """A rename, and a move (item 18: Q28's PART_OF has a created_at), leave "Most recent" alone, for
+    the issue and for its new parent."""
+    run(live_graph, TREE)
+    before = {row["key"]: row["last_activity"] for row in live_graph.list_issues()}
+    later = datetime(2026, 12, 1, tzinfo=timezone.utc)
+    graph_tidy.rename_issue("acct:john", "parking", "Car parking", later)
+    assert graph_tidy.move_issue("acct:john", "car parking", "world", later) == "moved"
+    after = {row["key"]: row["last_activity"] for row in live_graph.list_issues()}
+    assert after["car parking"] == before["parking"]
+    assert after["world"] == before["world"]

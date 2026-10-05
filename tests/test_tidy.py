@@ -122,7 +122,6 @@ def test_merge_asks_first_then_says_what_happened(tidying):
 
 
 def test_the_list_of_changes(tidying, monkeypatch):
-    from datetime import datetime, timezone
     tidying.sign_in()
     page = tidying.client.get("/changes").text
     assert "Every move, rename and merge, newest first." in page and "No changes yet." in page
@@ -139,3 +138,50 @@ def test_a_repeated_rename_goes_back_to_the_key_it_answered(tidying, monkeypatch
     tidying.sign_in(admin=True)
     result = tidying.client.post("/issues/platform/rename", data={"new_name": "New key"}, follow_redirects=False)
     assert result.headers["location"] == "/issues/new%20key"
+
+
+def test_reload_seed_writes_nothing_when_complete(monkeypatch):
+    from scripts import seed
+    data = {"issues": [{"name": "Platform for digital democracy"}],
+            "posts": [{"id": "seed-01", "author": "John Kintree", "created_at": "2026-09-01T10:00:00Z", "text": "x",
+                       "issues": [], "solutions": [], "evidence": []}]}
+    monkeypatch.setattr(seed.graph, "existing_post_ids", lambda ids: set(ids))
+    monkeypatch.setattr(seed.graph, "seed_issues", lambda *a, **kw: pytest.fail("no write when the seed is complete"))
+    monkeypatch.setattr(seed.graph, "merge_post", lambda *a, **kw: pytest.fail("no write when the seed is complete"))
+    assert seed.load(data) == (0, 1)
+
+
+def test_tidied_names_follow_every_rename_and_merge_to_its_end():
+    changes = [  # oldest first, as renames_and_merges() returns them
+        row("rename", from_key="veto", from_name="veto", to_key="veto", to_name="Veto"),
+        row("rename", from_key="parking", from_name="Parking", to_key="car parking", to_name="Car parking"),
+        row("merge", merged_key="car parking", merged_name="Car parking", kept_key="transport", kept_name="Transport")]
+    names = tidy.tidied_names(changes)
+    assert names == {"parking": "Transport", "car parking": "Transport", "veto": "Veto"}
+    assert tidy.retidy("Parking", names) == "Transport" and tidy.retidy("Housing", names) == "Housing"
+    assert tidy.retidy(None, names) is None
+
+
+def test_reload_seed_reads_a_renamed_seed_issue_as_it_is_now(monkeypatch):
+    """Item 40: a seed post was deleted, and John had renamed a seed issue. Reload puts the post back
+    on the issue under its new name; the old name does not come back, in the issues block or the post."""
+    from scripts import seed
+    from app.extract import Candidates
+    old, new = "Platform for digital democracy", "Building a platform for digital democracy"
+    data = {"issues": [{"name": old}, {"name": "Voting online", "parent": old}],
+            "posts": [{"id": "seed-01", "author": "John Kintree", "created_at": "2026-09-01T10:00:00Z", "text": "x",
+                       "issues": [], "solutions": [], "evidence": []},
+                      {"id": "seed-02", "author": "John Kintree", "created_at": "2026-09-01T11:00:00Z", "text": "y",
+                       "issues": [{"name": old}], "solutions": [], "evidence": []}]}
+    monkeypatch.setattr(seed.graph, "existing_post_ids", lambda ids: {"seed-01"})
+    monkeypatch.setattr(seed.graph_tidy, "renames_and_merges", lambda: [row(
+        "rename", from_key="platform for digital democracy", from_name=old,
+        to_key="building a platform for digital democracy", to_name=new)])
+    written, posted = [], []
+    monkeypatch.setattr(seed.graph, "seed_issues", lambda issues, created_at: written.extend(issues))
+    monkeypatch.setattr(seed.graph, "candidates", lambda: Candidates(issues={
+        "building a platform for digital democracy": {"name": new, "parent_key": None}}))
+    monkeypatch.setattr(seed.graph, "merge_post", lambda *args, **kwargs: posted.append(args))
+    assert seed.load(data) == (1, 1)
+    assert [(item["name"], item.get("parent")) for item in written] == [(new, None), ("Voting online", new)]
+    assert [issue["key"] for issue in posted[0][5].issues] == ["building a platform for digital democracy"]

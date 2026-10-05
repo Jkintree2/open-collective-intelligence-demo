@@ -22,7 +22,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app import graph
+from app import graph, graph_tidy, tidy
 from app.config import load_settings
 from app.extract import CardPayload, resolve_payload
 from app.text import clean_name, make_key
@@ -52,12 +52,29 @@ def print_counts() -> None:
         print(f"  {rel:14} {n}")
 
 
+def _retidied(post: dict, names: dict[str, str]) -> dict:
+    """A seed post's card with every issue name read as the issue is now."""
+    return {
+        "issues": [{**item, "name": tidy.retidy(item["name"], names), "parent": tidy.retidy(item.get("parent"), names)}
+                   for item in post["issues"]],
+        "solutions": [{**item, "for_issue": tidy.retidy(item.get("for_issue"), names)} for item in post["solutions"]],
+        "evidence": [{**item, "about": tidy.retidy(item.get("about"), names)} for item in post["evidence"]],
+    }
+
+
 def load(data: dict) -> tuple[int, int]:
     """Issues block first, then every post not already present. Returns (loaded, skipped)."""
     posts = data["posts"]
-    earliest = min(_parse_time(p["created_at"]) for p in posts)
-    graph.seed_issues(data["issues"], created_at=earliest)
     present = graph.existing_post_ids([p["id"] for p in posts])
+    if len(present) == len(posts):
+        # Everything is there: write nothing, so a seed issue John renamed or merged stays tidied.
+        return 0, len(posts)
+    # Some are missing (deleted in the back room): load them, reading every seed issue as it is now.
+    names = tidy.tidied_names(graph_tidy.renames_and_merges())
+    issues = [{**item, "name": tidy.retidy(item["name"], names), "parent": tidy.retidy(item.get("parent"), names)}
+              for item in data["issues"]]
+    earliest = min(_parse_time(p["created_at"]) for p in posts)
+    graph.seed_issues(issues, created_at=earliest)
     loaded = skipped = 0
     for post in sorted(posts, key=lambda p: p["created_at"]):
         if post["id"] in present:
@@ -67,9 +84,7 @@ def load(data: dict) -> tuple[int, int]:
         key = make_key(author)
         if key is None:
             raise SeedError(f"seed post {post['id']} has no usable author name")
-        payload = CardPayload.model_validate(
-            {"issues": post["issues"], "solutions": post["solutions"], "evidence": post["evidence"]}
-        )
+        payload = CardPayload.model_validate(_retidied(post, names))
         resolved = resolve_payload(payload, graph.candidates())
         if resolved.dropped:
             raise SeedError(f"seed post {post['id']} lost items: {resolved.dropped}")
