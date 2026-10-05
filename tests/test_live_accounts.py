@@ -66,3 +66,14 @@ def test_a_person_with_named_and_anonymous_claims_is_listed_only_by_name(live_gr
     claimants = live_graph.issue_claimants("flooding")
     assert claimants["people"] == 1 and claimants["claims"] == 2
     assert claimants["names"] == ["Ada Lovelace"]
+
+
+def test_a_claim_with_no_anonymous_property_is_listed_by_name(live_graph):
+    """collect() drops nulls; a claim edge without the property must still count as named (as in 0.1)."""
+    run = lambda **p: live_graph.driver().execute_query(CLAIM, now=NOW, database_=live_graph.database(), **p)
+    run(person="name:grace", name="Grace", anonymous_person=False, post="p1", anonymous=None)
+    run(person="name:hal", name="Hal", anonymous_person=False, post="p2", anonymous=None)
+    run(person="name:hal", name="Hal", anonymous_person=False, post="p3", anonymous=True)
+    claimants = live_graph.issue_claimants("flooding")
+    assert claimants["people"] == 2 and claimants["claims"] == 3
+    assert sorted(claimants["names"]) == ["Grace", "Hal"]

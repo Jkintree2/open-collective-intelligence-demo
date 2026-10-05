@@ -147,7 +147,7 @@ RETURN i.key AS key, i.name AS name, i.created_at AS created_at, i.seed AS seed,
 # Q3, revised for Phase 1: each person once, by name if any of their claims here is named.
 ISSUE_CLAIMANTS = """
 MATCH (p:Person)-[c:CLAIM]->(i:Issue {key: $key})
-WITH p, count(c) AS claims, any(x IN collect(c.anonymous) WHERE NOT coalesce(x, false)) AS named
+WITH p, count(c) AS claims, any(x IN collect(coalesce(c.anonymous, false)) WHERE NOT x) AS named
 RETURN sum(claims) AS claims, count(p) AS people,
        collect(DISTINCT CASE WHEN named THEN p.name ELSE 'Anonymous' END) AS names
 """
