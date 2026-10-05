@@ -99,3 +99,38 @@ def test_an_edit_on_a_post_gone_at_step_one_writes_nothing(monkeypatch):
                                          extraction_raw=None, model=None, latency_ms=None, now=NOW) is False
     assert calls == [graph_own_posts.OWN_POST, graph_own_posts.DELETE_POST_EDGES]
     assert switches == [] and graph_own_posts.UPDATE_POST not in calls
+
+
+def test_own_posts_show_edit_and_delete_and_edited_shows_to_all(member_app, monkeypatch):
+    now = datetime.now(timezone.utc)
+    posts = [{"id": "mine-1", "text": "My statement", "display_name": None, "anonymous": True, "seed": False, "created_at": now},
+             {"id": "theirs-1", "text": "Their statement", "display_name": "Bob", "anonymous": False, "seed": False, "created_at": now}]
+    monkeypatch.setattr(member_app.main.graph, "list_posts", lambda limit: posts)
+    monkeypatch.setattr("app.graph_own_posts.post_flags", lambda me, ids: {
+        "mine-1": {"id": "mine-1", "edited_at": now, "mine": me == "acct:ada"},
+        "theirs-1": {"id": "theirs-1", "edited_at": None, "mine": False}})
+    member_app.sign_in()
+    page = member_app.client.get("/").text
+    assert page.count('href="/posts/mine-1/edit"') == 1 and page.count('href="/posts/mine-1/delete"') == 1
+    assert "/posts/theirs-1/edit" not in page and "/posts/theirs-1/delete" not in page
+    assert "· edited" in page
+    assert "acct:ada" not in page
+    member_app.sign_in(key="acct:bob", name="Bob", email="bob@example.org")
+    other = member_app.client.get("/").text
+    assert "/posts/mine-1/edit" not in other and "· edited" in other
+
+
+def test_with_accounts_off_the_feed_asks_nothing_more(member_app, monkeypatch):
+    """Item 38: no member, no flags query; the passphrase feed reads the record as today."""
+    from dataclasses import replace
+    off = replace(member_app.settings, accounts_enabled=False)
+    for target in ("app.config.get_settings", "app.auth.get_settings"):
+        monkeypatch.setattr(target, lambda: off)
+    monkeypatch.setattr(member_app.main, "settings", off)
+    monkeypatch.setattr(member_app.main.graph, "list_posts", lambda limit: [
+        {"id": "one", "text": "Hello", "display_name": "Tester", "anonymous": False, "seed": False,
+         "created_at": datetime.now(timezone.utc)}])
+    monkeypatch.setattr("app.graph_own_posts.post_flags", lambda me, ids: pytest.fail("no flags without a member"))
+    member_app.client.post("/enter", data={"passphrase": "gate words"})
+    page = member_app.client.get("/").text
+    assert "Hello" in page and "/posts/one/edit" not in page and "· edited" not in page

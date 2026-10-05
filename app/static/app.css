@@ -364,5 +364,7 @@ button:disabled { opacity: .6; cursor: default; }
 /* Phase 1: stances (sub-plan C) */
 
 /* Phase 1: own posts (sub-plan D) */
+.own-post { display: flex; gap: 1rem; margin: 0.25rem 0; }
+.own-post a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-soft); }
 
 /* Phase 1: search and tidying (sub-plan E) */
