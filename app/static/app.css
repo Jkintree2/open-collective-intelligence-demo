@@ -366,6 +366,7 @@ form.stance { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; 
 form.stance button { min-height: 44px; min-width: 6.5rem; }
 form.stance button[aria-pressed="true"] { background: var(--accent); color: var(--input); border-color: var(--accent); }
 form.stance p { flex-basis: 100%; margin: 0; }
+form.stance[aria-busy="true"] button { opacity: 0.6; cursor: progress; }
 
 /* Phase 1: own posts (sub-plan D) */
 .own-post { display: flex; gap: 1rem; margin: 0.25rem 0; }

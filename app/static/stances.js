@@ -22,21 +22,21 @@
     const button = event.submitter;
     if (!button) return;
     event.preventDefault();
-    if (form.dataset.busy) return;  // a second tap waits for the first answer
-    form.dataset.busy = '1';
+    if (form.hasAttribute('aria-busy')) return;  // a second tap while one is saving is ignored
+    form.setAttribute('aria-busy', 'true');
     const body = new URLSearchParams(new FormData(form));
     body.set('choice', button.value);
     try {
       const response = await fetch(form.action, {method: 'POST', body, headers: {Accept: 'application/json'}});
       const type = response.headers.get('content-type') || '';
       const data = type.includes('json') ? await response.json() : null;
-      if (response.status === 401 && data && data.redirect) { location.href = data.redirect; return; }
+      if (response.status === 401 && data && data.redirect) { location.href = data.redirect + '?next=' + encodeURIComponent(location.pathname + location.search); return; }
       if (!response.ok || !data || data.approves === undefined) throw new Error('not saved');
       show(form, data);
     } catch {
       form.querySelector('[data-stance-line]').textContent = notSaved;
     } finally {
-      delete form.dataset.busy;
+      form.removeAttribute('aria-busy');
     }
   });
 })();

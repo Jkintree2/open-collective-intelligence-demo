@@ -10,10 +10,12 @@ function page() {
   const approves = node(), opposes = node(), line = node();
   const approve = Object.assign(node(), {value: 'approve'}), oppose = Object.assign(node(), {value: 'oppose'});
   const section = {querySelector: s => ({'[data-approves]': approves, '[data-opposes]': opposes})[s]};
-  const form = {action: '/solutions/a/stance', dataset: {}, matches: s => s === 'form.stance', closest: () => section,
+  const attrs = {};
+  const form = {action: '/solutions/a/stance', dataset: {}, attrs, setAttribute: (k, v) => { attrs[k] = v; },
+    removeAttribute: k => { delete attrs[k]; }, getAttribute: k => attrs[k], hasAttribute: k => k in attrs, matches: s => s === 'form.stance', closest: () => section,
     querySelectorAll: () => [approve, oppose], querySelector: s => s === '[data-stance-line]' ? line : null};
   let submit; const requests = [];
-  const location = {href: '/issues/veto'};
+  const location = {href: '/issues/veto', pathname: '/issues/veto', search: '?from=a b'};
   const context = {
     document: {addEventListener: (name, fn) => { if (name === 'submit') submit = fn; }}, location,
     FormData: class { constructor() { return [['issue', 'veto']]; } }, URLSearchParams,
@@ -45,7 +47,7 @@ test('a signed out page goes to sign in', async () => {
   const p = page();
   p.press(p.approve);
   p.requests[0].resolve(json({message: 'Please sign in again.', redirect: '/sign-in'}, 401)); await p.flush();
-  assert.equal(p.location.href, '/sign-in');
+  assert.equal(p.location.href, '/sign-in?next=' + encodeURIComponent('/issues/veto?from=a b'));
 });
 
 test('a browser that does not say which button was pressed submits the plain form', () => {
@@ -54,4 +56,14 @@ test('a browser that does not say which button was pressed submits the plain for
   const event = p.press(undefined);
   assert.equal(event.prevented, false);
   assert.equal(p.requests.length, 0);
+});
+
+test('the form is marked busy while saving and not after', async () => {
+  const p = page();
+  p.press(p.approve);
+  assert.equal(p.form.attrs['aria-busy'], 'true');
+  p.press(p.oppose);
+  assert.equal(p.requests.length, 1);
+  p.requests[0].resolve(json({approves: 1, opposes: 0, my_stance: 'APPROVE'})); await p.flush();
+  assert.equal('aria-busy' in p.form.attrs, false);
 });
