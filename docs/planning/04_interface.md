@@ -572,6 +572,10 @@ A "Sending email" line, like the reading service line:
 
 > The last email could not be sent, on {4 October 2026, 14:02 UTC}. If this keeps happening, Google needs John's permission again.
 
+When the time of the failure is not known:
+
+> The last email could not be sent. If this keeps happening, Google needs John's permission again.
+
 "Reset to seed" now reads:
 
 > This deletes every post and restores the seed statements. Accounts, and who entered whom, stay. Download a copy first if you want to keep the current record.

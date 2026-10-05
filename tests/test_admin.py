@@ -170,3 +170,16 @@ def test_reset_copy_says_accounts_stay(admin_client):
     client, _, _ = admin_client
     assert ("This deletes every post and restores the seed statements. Accounts, and who entered whom, "
             "stay. Download a copy first if you want to keep the current record.") in client.get("/admin", auth=AUTH).text
+
+
+def test_sending_email_line_says_when_the_last_email_failed(admin_client, monkeypatch):
+    _, admin, _ = admin_client
+    monkeypatch.setattr("app.mailer.last_mail_error", None)
+    assert admin.mail_error() == "No problems recorded."
+    monkeypatch.setattr("app.mailer.last_mail_error", {"time": "2026-10-04T16:02:00+02:00", "http": 400})
+    assert admin.mail_error() == ("The last email could not be sent, on 4 October 2026, 14:02 UTC. "
+                                  "If this keeps happening, Google needs John's permission again.")
+    for odd in ({"time": "not a time", "http": None}, {"http": 500}, {"time": "2026-10-04T14:02:00", "http": None}):
+        monkeypatch.setattr("app.mailer.last_mail_error", odd)
+        assert admin.mail_error() == ("The last email could not be sent. "
+                                      "If this keeps happening, Google needs John's permission again.")
