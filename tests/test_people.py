@@ -64,6 +64,7 @@ def test_the_entry_form_never_fills_in_the_members_own_details(people):
     page = people.client.get("/people").text
     for field in ("name", "email", "country", "postal_code", "relationship"):
         assert re.search(rf'<(input|select) id="{field}" name="{field}"[^>]*autocomplete="off"', page), field
+    assert re.search(r'<input type="checkbox" name="agreed"[^>]*autocomplete="off"', page)
     options = re.findall(r'<option value="([a-z]*)">', page)
     assert options == ["", "family", "neighbor", "friend", "work", "school", "health", "organization"]
     assert "This person has agreed to be entered" in page

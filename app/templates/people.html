@@ -22,7 +22,7 @@
     <option value="">Choose one</option>
     {% for value in relationships %}<option value="{{ value }}"{% if form.relationship == value %} selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}
   </select>
-  <label class="check"><input type="checkbox" name="agreed" value="yes" required> This person has agreed to be entered</label>
+  <label class="check"><input type="checkbox" name="agreed" value="yes" autocomplete="off" required> This person has agreed to be entered</label>
   <button type="submit" class="primary">Enter and send the invitation</button>
 </form>
 
