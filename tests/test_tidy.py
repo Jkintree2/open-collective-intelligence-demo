@@ -34,7 +34,7 @@ def test_a_move_refused_after_the_lock_says_why(monkeypatch):
     other issues are now part of it, and the answer says that, not that the parent is a sub-issue."""
     from app import graph_tidy
     place = {"key": "parking", "name": "Parking", "parent_key": None, "parent_name": None, "has_children": False}
-    rows = iter([place, {**place, "key": "world", "name": "World"}, None, {**place, "has_children": True}])
+    rows = iter([None, place, {**place, "key": "world", "name": "World"}, None, {**place, "has_children": True}])
 
     class Tx:
         def run(self, query, **params):

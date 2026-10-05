@@ -84,3 +84,32 @@ def test_choices_offer_top_level_parents_and_every_other_issue(live_graph):
     assert [c["key"] for c in choices["parents"]] == ["world"]  # Veto and Law are sub-issues
     assert sorted(c["key"] for c in choices["others"]) == ["law", "veto", "world"]
     assert graph_tidy.tidy_choices("world")["has_children"] is True
+
+
+def double_submit(monkeypatch, call):
+    """Run the same call a second time inside the first call's transaction, right after its
+    first statement (the lock), as a double click would interleave."""
+    real, state = graph_tidy._write, {"inner": None}
+
+    def interleaved(work):
+        def wrapped(tx):
+            class Spy:
+                def run(self, query, **params):
+                    result = tx.run(query, **params)
+                    if state["inner"] is None and query == graph_tidy.LOCK_ISSUES:
+                        state["inner"] = work(tx)  # the second submit, on the locked state
+                    return result
+            return work(Spy())
+        return real(wrapped)
+    monkeypatch.setattr(graph_tidy, "_write", interleaved)
+    outer = call()
+    return state["inner"], outer
+
+
+def test_a_double_submit_records_one_change(live_graph, monkeypatch):
+    run(live_graph, TREE)
+    inner, outer = double_submit(monkeypatch, lambda: graph_tidy.move_issue("acct:john", "parking", "world", NOW))
+    assert (inner, outer) == ("moved", "same")
+    inner, outer = double_submit(monkeypatch, lambda: graph_tidy.rename_issue("acct:john", "parking", "Car parking", NOW))
+    assert (inner, outer) == (("renamed", "car parking"), ("same", "car parking"))
+    assert sorted(k for k, _ in changes(live_graph)) == ["move", "rename"]

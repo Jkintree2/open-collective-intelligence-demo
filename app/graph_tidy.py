@@ -26,6 +26,10 @@ OPTIONAL MATCH (other)-[:PART_OF]->(up:Issue)
 RETURN has_children, collect({key: other.key, name: other.name, top: up IS NULL}) AS others
 """
 
+# Locks first, reads after (as Q23): a repeated submit waits here and then sees the finished change.
+# A key that does not exist is simply not matched.
+LOCK_ISSUES = "MATCH (i:Issue) WHERE i.key IN $keys SET i.key = i.key"
+
 # Q28. Under a top-level parent: the guards repeat the one-level rule after the locks.
 MOVE_UNDER = """
 MATCH (child:Issue {key: $key}), (parent:Issue {key: $parent_key})
@@ -110,6 +114,7 @@ def tidy_choices(key: str) -> dict[str, Any]:
 
 def move_issue(me: str, key: str, parent_key: str | None, now: datetime) -> str:
     def work(tx: Any) -> str:
+        tx.run(LOCK_ISSUES, keys=[key, parent_key] if parent_key else [key]).consume()
         place = tx.run(ISSUE_PLACE, key=key).single()
         if place is None:
             return "gone"
@@ -135,7 +140,12 @@ def move_issue(me: str, key: str, parent_key: str | None, now: datetime) -> str:
                 again = tx.run(ISSUE_PLACE, key=key).single()
                 if again is None:
                     return "gone"
-                return "has_children" if again["has_children"] else "parent_is_sub"
+                if again["has_children"]:
+                    return "has_children"
+                recheck = tx.run(ISSUE_PLACE, key=parent_key).single()
+                if recheck is None:
+                    return "gone"
+                return "parent_is_sub"
             to = {"to_parent_key": parent_key, "to_parent_name": target["name"]}
         _record(tx, me, "move", key, {"issue_key": key, "issue_name": place["name"],
                                       "from_parent_key": place["parent_key"],
@@ -151,9 +161,12 @@ def rename_issue(me: str, key: str, new_name: str, now: datetime) -> tuple[str, 
         return "short", key
 
     def work(tx: Any) -> tuple[str, str]:
+        tx.run(LOCK_ISSUES, keys=[key, new_key]).consume()
         place = tx.run(ISSUE_PLACE, key=key).single()
         if place is None:
-            return "gone", key
+            # A repeated submit: the first one already renamed it to exactly this.
+            done = tx.run(ISSUE_PLACE, key=new_key).single()
+            return ("same", new_key) if done is not None and done["name"] == name else ("gone", key)
         if name == place["name"]:
             return "same", key
         if tx.run(RENAME, key=key, new_key=new_key, new_name=name).single() is None:
