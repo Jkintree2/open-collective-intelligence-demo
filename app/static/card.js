@@ -6,6 +6,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     candidates: {issues: {}, solutions: {}, evidence: {}}, candidatesReady: false, prefillConsumed: false,
     groups: {issues: [], solutions: [], evidence: []},
     metadata: {source: 'manual'}, plain: false, reading: false, posting: false,
+    // Positions chosen in the panel above the box, by solution key; a reading keeps them (issue 8).
+    positions: new Map(),
     previewController: null, previewTimer: null, revision: 0, serial: 0,
     // The preview a tap on Post waits for, so a blur that re-runs it does not swallow the tap.
     previewPending: null, previewSettle: null
@@ -177,6 +179,9 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       })().then(ok => { if (expected === state.revision) settle(ok); });
     }, 200);
   }
+  // A card row that came from the panel stops being the panel's once it is removed or edited on the
+  // card, so the next reading does not bring it back.
+  function release(row) { if (row.position) { state.positions.delete(row.position); row.position = null; } }
   function addRow(group, item = {}) {
     if (state.groups[group].length >= (group === 'issues' ? 3 : 5)) return;
     const row = {element: node('div', '', 'card-row')};
@@ -205,17 +210,17 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       field(row, 'about', 'about', 'select');
     }
     const remove = node('button', 'remove from this form', 'quiet'); remove.type = 'button';
-    remove.addEventListener('click', () => { state.groups[group] = state.groups[group].filter(other => other !== row); row.element.remove(); changed(); });
+    remove.addEventListener('click', () => { release(row); state.groups[group] = state.groups[group].filter(other => other !== row); row.element.remove(); changed(); });
     row.element.append(remove);
-    row.element.addEventListener('input', () => { suggest(row, group); changed(); });
-    row.element.addEventListener('change', changed);
+    row.element.addEventListener('input', () => { release(row); suggest(row, group); changed(); });
+    row.element.addEventListener('change', () => { release(row); changed(); });
     state.groups[group].push(row);
     find(group === 'issues' ? 'issue-rows' : group === 'solutions' ? 'solution-rows' : 'evidence-rows').append(row.element);
     refresh();
     for (const name of ['parent', 'for_issue', 'about']) if (row[name] && item[name]) row[name].value = item[name];
     changed();
   }
-  function openCard(payload = {}, message = '', meta = {source: 'manual'}) {
+  function openCard(payload = {}, message = '', meta = {source: 'manual'}, reapply = true) {
     stopDictation(); stopReading(); state.metadata = meta; state.plain = false;
     card.hidden = false;
     find('card-message').textContent = message;
@@ -227,12 +232,21 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     const prefill = state.candidates.issues[new URLSearchParams(location.search).get('issue')];
     if ((!payload.issues || !payload.issues.length) && prefill) payload.issues = [{name: prefill.name, parent: state.candidates.issues[prefill.parent_key]?.name}];
     for (const group of Object.keys(state.groups)) (payload[group] || []).forEach(item => addRow(group, item));
+    // A position chosen in the panel above survives a reading (GitHub issue 8): it wins over the
+    // reading's own guess for the same solution, and is added when the reading did not find it.
+    if (reapply) for (const [held, position] of state.positions) {
+      const match = () => state.groups.solutions.find(other => key(other.name.value) === held);
+      let row = match();
+      if (row) row.radios.forEach(radio => { radio.checked = radio.value === position.stance; });
+      else { addRow('solutions', position); row = match(); }
+      if (row) row.position = held;
+    }
     if (!state.groups.issues.length) addRow('issues');
     changed();
   }
   // Posting the text with no structure: the card opens with its issue rows emptied.
   function openPlain() {
-    openCard(); state.groups.issues.forEach(row => { row.name.value = ''; }); state.plain = true; changed();
+    openCard({}, '', {source: 'manual'}, false); state.groups.issues.forEach(row => { row.name.value = ''; }); state.plain = true; changed();
   }
   function noteShortened() {
     const note = find('card-note');
@@ -276,10 +290,15 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     if (state.reading) return 'reading';  // A reading in flight is never abandoned by a choice up there.
     if (card.hidden) openCard();
     const mine = () => state.groups.solutions.find(r => key(r.name.value) === key(name)); let row = mine();
-    if (stance === 'none') { if (row) { state.groups.solutions = state.groups.solutions.filter(r => r !== row); row.element.remove(); changed(); } return true; }
+    if (stance === 'none') {
+      state.positions.delete(key(name));
+      if (row) { state.groups.solutions = state.groups.solutions.filter(r => r !== row); row.element.remove(); changed(); }
+      return true;
+    }
     // A full card takes no more rows, and the last row there belongs to someone else.
     if (!row) { addRow('solutions', {name, for_issue: forIssue, stance}); row = mine(); }
     if (!row) return 'full';
+    state.positions.set(key(name), {name, for_issue: forIssue, stance}); row.position = key(name);
     row.radios.forEach(r => { r.checked = r.value === stance; });
     changed(); return true;
   }

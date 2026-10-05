@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ issue.name }} · {{ site_name }}{% endblock %}
-{% block content %}
+{% block content %}{% if member %}<script src="/static/stances.js?v={{ asset_version }}" defer></script>{% endif %}
 <p class="crumbs"><a href="/issues">Issues</a>{% if issue.parent_key %} › <a href="/issues/{{ issue.parent_key|urlencode }}">{{ issue.parent_name }}</a>{% endif %} › {{ issue.name }}</p>
 <h1>{{ issue.name }}</h1>
 <a class="write-issue" href="/?issue={{ issue.key|urlencode }}">Write about this issue</a>
@@ -13,11 +13,12 @@
 </ul>
 {% endif %}
 
-<h2>Proposed solutions</h2>
+<h2>Proposed solutions</h2>{% if member and solutions %}
+<p class="counts">Listed by approvals minus oppositions.</p>{% endif %}
 {% for solution in solutions %}
-<section class="solution">
+<section class="solution"{% if member %} id="{{ solution.key|anchor }}"{% endif %}>
   <h3>{{ solution.name }}</h3>
-  <p class="counts">proposed by {{ solution.proposers }} · approved by {{ solution.approves }} · opposed by {{ solution.opposes }}</p>
+  {% if member %}{% include "_stance.html" %}{% else %}<p class="counts">proposed by {{ solution.proposers }} · approved by {{ solution.approves }} · opposed by {{ solution.opposes }}</p>{% endif %}
   {% set supports = solution.evidence|selectattr("stance", "equalto", "SUPPORTS")|list %}
   {% set refutes = solution.evidence|selectattr("stance", "equalto", "REFUTES")|list %}
   {% if supports %}<p class="ev-label">Supported by</p><ul class="evidence">{% for item in supports %}<li>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}</li>{% endfor %}</ul>{% endif %}
