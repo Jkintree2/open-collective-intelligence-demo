@@ -8,6 +8,7 @@ from typing import Any
 
 from neo4j.exceptions import ConstraintError, ServiceUnavailable
 
+from app.graph import EVIDENCE_TYPES
 from app.graph_runtime import RecordAsleep, _read, database, driver
 from app.text import clean_name, make_key
 
@@ -76,6 +77,50 @@ RETURN c.id AS id, c.kind AS kind, c.created_at AS created_at, c.details AS deta
 ORDER BY c.created_at DESC, c.id DESC
 LIMIT 200
 """
+
+
+# Q30. Merge issue B ($merged) into issue A ($kept): every relationship of B moves to A with its
+# properties, one statement per type, plain Cypher. A keeps its own place in the tree.
+MERGE_LOCK = """
+MATCH (a:Issue {key: $kept}), (b:Issue {key: $merged}) WHERE a <> b
+SET a.key = a.key, b.key = b.key
+RETURN a.name AS kept_name, b.name AS merged_name
+"""
+MERGE_DROP_LINK = "MATCH (:Issue {key: $kept})-[r:PART_OF]-(:Issue {key: $merged}) DELETE r"
+MERGE_CLAIMS = """
+MATCH (p:Person)-[r:CLAIM]->(:Issue {key: $merged}), (a:Issue {key: $kept})
+CREATE (p)-[n:CLAIM]->(a) SET n = properties(r) DELETE r
+RETURN count(*) AS moved
+"""
+# {rel} is SUPPORTS, then REFUTES, from EVIDENCE_TYPES.
+MERGE_EVIDENCE = """
+MATCH (e:Evidence)-[r:{rel}]->(:Issue {key: $merged}), (a:Issue {key: $kept})
+CREATE (e)-[n:{rel}]->(a) SET n = properties(r) DELETE r
+RETURN count(*) AS moved
+"""
+MERGE_SOLUTIONS = """
+MATCH (:Issue {key: $merged})-[r:HAVE_PROPOSED]->(s:Solution), (a:Issue {key: $kept})
+MERGE (a)-[n:HAVE_PROPOSED]->(s) ON CREATE SET n = properties(r)
+DELETE r
+RETURN count(*) AS moved
+"""
+# B's sub-issues go under A when A is top level, otherwise under A's parent (one level).
+MERGE_CHILDREN = """
+MATCH (c:Issue)-[r:PART_OF]->(:Issue {key: $merged}), (a:Issue {key: $kept})
+OPTIONAL MATCH (a)-[:PART_OF]->(ap:Issue)
+WITH c, r, coalesce(ap, a) AS parent
+MERGE (c)-[n:PART_OF]->(parent) ON CREATE SET n = properties(r)
+DELETE r
+RETURN count(*) AS moved
+"""
+MERGE_DROP_PARENT = "MATCH (:Issue {key: $merged})-[r:PART_OF]->(:Issue) DELETE r"
+MERGE_HISTORY = """
+MATCH (c:Change)-[r:CHANGED]->(:Issue {key: $merged}), (a:Issue {key: $kept})
+CREATE (c)-[n:CHANGED]->(a) SET n = properties(r) DELETE r
+RETURN count(*) AS moved
+"""
+# Plain DELETE, not DETACH: if any relationship was missed, the whole merge fails and nothing changes.
+MERGE_DELETE = "MATCH (b:Issue {key: $merged}) DELETE b"
 
 ONE_CHANGE = "MATCH (c:Change {id: $id}) RETURN c.kind AS kind, c.details AS details"
 
@@ -187,3 +232,28 @@ def list_changes() -> list[dict[str, Any]]:
 def change(change_id: str) -> dict[str, Any] | None:
     rows = _read(ONE_CHANGE, id=change_id) if change_id else []
     return rows[0] if rows else None
+
+
+def merge_issues(me: str, kept: str, merged: str, now: datetime) -> tuple[str, str | None]:
+    if kept == merged:
+        return "self", None
+
+    def work(tx: Any) -> tuple[str, str | None]:
+        keys = {"kept": kept, "merged": merged}
+        names = tx.run(MERGE_LOCK, **keys).single()
+        if names is None:
+            return "gone", None
+        tx.run(MERGE_DROP_LINK, **keys).consume()
+        moved = {"CLAIM": tx.run(MERGE_CLAIMS, **keys).single()["moved"]}
+        for rel in EVIDENCE_TYPES.values():
+            moved[rel] = tx.run(MERGE_EVIDENCE.replace("{rel}", rel), **keys).single()["moved"]
+        moved["HAVE_PROPOSED"] = tx.run(MERGE_SOLUTIONS, **keys).single()["moved"]
+        moved["PART_OF"] = tx.run(MERGE_CHILDREN, **keys).single()["moved"]
+        tx.run(MERGE_DROP_PARENT, **keys).consume()
+        moved["CHANGED"] = tx.run(MERGE_HISTORY, **keys).single()["moved"]
+        tx.run(MERGE_DELETE, merged=merged).consume()
+        change_id = _record(tx, me, "merge", kept, {"kept_key": kept, "kept_name": names["kept_name"],
+                                                    "merged_key": merged, "merged_name": names["merged_name"],
+                                                    "moved": moved}, now)
+        return "merged", change_id
+    return _write(work)

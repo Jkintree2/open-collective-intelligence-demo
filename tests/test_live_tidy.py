@@ -113,3 +113,84 @@ def test_a_double_submit_records_one_change(live_graph, monkeypatch):
     inner, outer = double_submit(monkeypatch, lambda: graph_tidy.rename_issue("acct:john", "parking", "Car parking", NOW))
     assert (inner, outer) == (("renamed", "car parking"), ("same", "car parking"))
     assert sorted(k for k, _ in changes(live_graph)) == ["move", "rename"]
+
+
+MERGE_SETUP = """
+CREATE (john:Person {key: 'acct:john', name: 'John Kintree', admin: true})
+CREATE (ada:Person {key: 'acct:ada', name: 'Ada'}), (bob:Person {key: 'name:bob', name: 'Bob'})
+CREATE (a:Issue {key: 'platform', name: 'Platform for digital democracy', seed: true, created_at: $now})
+CREATE (b:Issue {key: 'online platform', name: 'Online platform', seed: false, created_at: $now})
+CREATE (c1:Issue {key: 'c1', name: 'C1', seed: false}), (c2:Issue {key: 'c2', name: 'C2', seed: false})
+CREATE (c1)-[:PART_OF {created_at: $now}]->(b), (c2)-[:PART_OF {created_at: $now}]->(b)
+CREATE (ada)-[:CLAIM {post_id: 'p1', anonymous: false, created_at: $now}]->(b)
+CREATE (bob)-[:CLAIM {post_id: 'p2', anonymous: true, created_at: $now}]->(b)
+CREATE (ada)-[:CLAIM {post_id: 'p3', anonymous: false, created_at: $now}]->(a)
+CREATE (s1:Solution {key: 's1', name: 'S1'}), (s2:Solution {key: 's2', name: 'S2'})
+CREATE (a)-[:HAVE_PROPOSED {post_id: 'pa', created_at: $now}]->(s1)
+CREATE (b)-[:HAVE_PROPOSED {post_id: 'pb', created_at: $now}]->(s1)
+CREATE (b)-[:HAVE_PROPOSED {post_id: 'pb2', created_at: $now}]->(s2)
+CREATE (ada)-[:APPROVE {source: 'click', anonymous: false, created_at: $now}]->(s2)
+CREATE (e1:Evidence {key: 'e1', name: 'E1'}), (e2:Evidence {key: 'e2', name: 'E2'})
+CREATE (e1)-[:SUPPORTS {post_id: 'p4', created_at: $now}]->(b)
+CREATE (e2)-[:REFUTES {post_id: 'p5', created_at: $now}]->(b)
+CREATE (old:Change {id: 'old', kind: 'rename', created_at: $earlier, details: '{}'})
+CREATE (john)-[:MADE {created_at: $earlier}]->(old)
+CREATE (old)-[:CHANGED {created_at: $earlier}]->(b)
+"""
+
+
+def test_merge_moves_everything_and_records_it(live_graph):
+    # The earlier change is a day older, so "newest first" puts the merge first (item 8 of the review).
+    run(live_graph, MERGE_SETUP, earlier=NOW - timedelta(days=1))
+    outcome, change_id = graph_tidy.merge_issues("acct:john", "platform", "online platform", NOW)
+    assert outcome == "merged" and change_id
+    assert run(live_graph, "MATCH (i:Issue {key: 'online platform'}) RETURN i") == []
+    claims = run(live_graph, "MATCH (:Person)-[c:CLAIM]->(:Issue {key: 'platform'}) RETURN c.post_id AS p, c.anonymous AS a")
+    assert sorted((r["p"], r["a"]) for r in claims) == [("p1", False), ("p2", True), ("p3", False)]
+    proposed = run(live_graph, "MATCH (:Issue {key: 'platform'})-[h:HAVE_PROPOSED]->(s) RETURN s.key AS s, h.post_id AS p")
+    assert sorted((r["s"], r["p"]) for r in proposed) == [("s1", "pa"), ("s2", "pb2")]
+    solutions = {row["key"]: row for row in live_graph.issue_solutions("platform")}
+    assert solutions["s2"]["approves"] == 1  # the stance followed its solution
+    evidence = run(live_graph, "MATCH (e:Evidence)-[r]->(:Issue {key: 'platform'}) RETURN e.key AS e, type(r) AS t")
+    assert sorted((r["e"], r["t"]) for r in evidence) == [("e1", "SUPPORTS"), ("e2", "REFUTES")]
+    assert parent(live_graph, "c1") == "platform" and parent(live_graph, "c2") == "platform"
+    history = run(live_graph, "MATCH (c:Change)-[:CHANGED]->(:Issue {key: 'platform'}) RETURN c.id AS id")
+    assert sorted(r["id"] for r in history) == sorted(["old", change_id])
+    kind, details = changes(live_graph)[0]
+    assert kind == "merge" and details["kept_name"] == "Platform for digital democracy"
+    assert details["merged_name"] == "Online platform"
+    assert details["moved"] == {"CLAIM": 2, "SUPPORTS": 1, "REFUTES": 1, "HAVE_PROPOSED": 2, "PART_OF": 2, "CHANGED": 1}
+    assert_one_level(live_graph)
+
+
+@pytest.mark.parametrize("arrangement, expect", [
+    # A is a sub-issue of P; B's sub-issue C goes under P, not under A.
+    ("CREATE (p:Issue {key: 'p', name: 'P'}), (a:Issue {key: 'a', name: 'A'}), (b:Issue {key: 'b', name: 'B'}), "
+     "(c:Issue {key: 'c', name: 'C'}) CREATE (a)-[:PART_OF {created_at: $now}]->(p), (c)-[:PART_OF {created_at: $now}]->(b)",
+     {"a": "p", "c": "p"}),
+    # A is a sub-issue of B; A becomes top level and B's other sub-issue D goes under A.
+    ("CREATE (a:Issue {key: 'a', name: 'A'}), (b:Issue {key: 'b', name: 'B'}), (d:Issue {key: 'd', name: 'D'}) "
+     "CREATE (a)-[:PART_OF {created_at: $now}]->(b), (d)-[:PART_OF {created_at: $now}]->(b)",
+     {"a": None, "d": "a"}),
+    # B is a sub-issue of A; no self-loop, A keeps its place.
+    ("CREATE (a:Issue {key: 'a', name: 'A'}), (b:Issue {key: 'b', name: 'B'}) CREATE (b)-[:PART_OF {created_at: $now}]->(a)",
+     {"a": None}),
+    # B is a sub-issue of P and A is top level: A does not move.
+    ("CREATE (p:Issue {key: 'p', name: 'P'}), (a:Issue {key: 'a', name: 'A'}), (b:Issue {key: 'b', name: 'B'}) "
+     "CREATE (b)-[:PART_OF {created_at: $now}]->(p)",
+     {"a": None}),
+])
+def test_merge_keeps_one_level_in_every_arrangement(live_graph, arrangement, expect):
+    run(live_graph, "CREATE (:Person {key: 'acct:john', name: 'John Kintree', admin: true})")
+    run(live_graph, arrangement)
+    assert graph_tidy.merge_issues("acct:john", "a", "b", NOW)[0] == "merged"
+    for key, expected_parent in expect.items():
+        assert parent(live_graph, key) == expected_parent
+    assert_one_level(live_graph)
+
+
+def test_merging_an_issue_into_itself_or_a_missing_one(live_graph):
+    run(live_graph, TREE)
+    assert graph_tidy.merge_issues("acct:john", "world", "world", NOW) == ("self", None)
+    assert graph_tidy.merge_issues("acct:john", "world", "nowhere", NOW) == ("gone", None)
+    assert changes(live_graph) == []
