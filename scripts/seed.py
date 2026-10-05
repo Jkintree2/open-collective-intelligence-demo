@@ -2,9 +2,10 @@
 
     python -m scripts.seed                  reload: idempotent, adds what is missing
     python -m scripts.seed --counts         print node and relationship counts and exit
-    python -m scripts.seed --reset --yes    delete everything, then load; refuses when the
-                                            database holds any node without seed = true
-                                            unless --force is also given
+    python -m scripts.seed --reset --yes    clear everything except the accounts and who entered
+                                            whom, then load; refuses when the database holds
+                                            anything else that is not seed, unless --force
+                                            is also given
 
 The connection comes from the environment (and `.env` when it exists). Production is seeded
 from a shell with the variables typed inline, never from a saved file.
@@ -21,7 +22,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app import graph
+from app import graph, graph_tidy, tidy
 from app.config import load_settings
 from app.extract import CardPayload, resolve_payload
 from app.text import clean_name, make_key
@@ -51,12 +52,35 @@ def print_counts() -> None:
         print(f"  {rel:14} {n}")
 
 
+def _retidied_issue(item: dict, names: dict[str, str], moved: set[str]) -> dict:
+    name = tidy.retidy(item["name"], names)
+    # An issue John moved keeps the place he gave it: its seed parent is not applied again.
+    parent = None if make_key(name or "") in moved else tidy.retidy(item.get("parent"), names)
+    return {**item, "name": name, "parent": parent}
+
+
+def _retidied(post: dict, names: dict[str, str], moved: set[str]) -> dict:
+    """A seed post's card with every issue name read as the issue is now."""
+    return {
+        "issues": [_retidied_issue(item, names, moved) for item in post["issues"]],
+        "solutions": [{**item, "for_issue": tidy.retidy(item.get("for_issue"), names)} for item in post["solutions"]],
+        "evidence": [{**item, "about": tidy.retidy(item.get("about"), names)} for item in post["evidence"]],
+    }
+
+
 def load(data: dict) -> tuple[int, int]:
     """Issues block first, then every post not already present. Returns (loaded, skipped)."""
     posts = data["posts"]
-    earliest = min(_parse_time(p["created_at"]) for p in posts)
-    graph.seed_issues(data["issues"], created_at=earliest)
     present = graph.existing_post_ids([p["id"] for p in posts])
+    if len(present) == len(posts):
+        # Everything is there: write nothing, so a seed issue John renamed or merged stays tidied.
+        return 0, len(posts)
+    # Some are missing (deleted in the back room): load them, reading every seed issue as it is now.
+    history = graph_tidy.tidy_history()
+    names, moved = tidy.tidied_names(history), tidy.moved_keys(history)
+    issues = [_retidied_issue(item, names, moved) for item in data["issues"]]
+    earliest = min(_parse_time(p["created_at"]) for p in posts)
+    graph.seed_issues(issues, created_at=earliest)
     loaded = skipped = 0
     for post in sorted(posts, key=lambda p: p["created_at"]):
         if post["id"] in present:
@@ -66,9 +90,7 @@ def load(data: dict) -> tuple[int, int]:
         key = make_key(author)
         if key is None:
             raise SeedError(f"seed post {post['id']} has no usable author name")
-        payload = CardPayload.model_validate(
-            {"issues": post["issues"], "solutions": post["solutions"], "evidence": post["evidence"]}
-        )
+        payload = CardPayload.model_validate(_retidied(post, names, moved))
         resolved = resolve_payload(payload, graph.candidates())
         if resolved.dropped:
             raise SeedError(f"seed post {post['id']} lost items: {resolved.dropped}")
@@ -91,7 +113,7 @@ def load(data: dict) -> tuple[int, int]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--counts", action="store_true", help="print counts and exit")
-    parser.add_argument("--reset", action="store_true", help="delete everything before loading")
+    parser.add_argument("--reset", action="store_true", help="clear everything except accounts before loading")
     parser.add_argument("--yes", action="store_true", help="confirm --reset")
     parser.add_argument("--force", action="store_true", help="reset even when non-seed nodes exist")
     parser.add_argument("--file", default=str(SEED_FILE))
@@ -117,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 3
             graph.delete_everything()
-            print("deleted everything")
+            print("cleared everything except the accounts and who entered whom")
         data = json.loads(Path(args.file).read_text(encoding="utf-8"))
         try:
             loaded, skipped = load(data)

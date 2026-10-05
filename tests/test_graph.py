@@ -92,3 +92,21 @@ def test_a_position_on_an_existing_solution_writes_only_the_stance(monkeypatch):
     assert graph.MERGE_ISSUE_CLAIM not in queries and graph.MERGE_SOLUTION_PROPOSE not in queries
     stances = [params for query, params in calls if query == graph.MERGE_STANCE.replace("{stance}", "APPROVE")]
     assert [params["solution_key"] for params in stances] == ["ev fleets"]
+
+
+def test_an_accounts_post_writes_the_one_stance_statement(monkeypatch):
+    """X1: the one-stance statement only when the caller says so (an account's post)."""
+    from app import graph, graph_posts
+    from app.extract import ResolvedPayload
+    assert "{other}" in graph.MERGE_ONE_STANCE and "DELETE old" in graph.MERGE_ONE_STANCE
+    assert graph.MERGE_ONE_STANCE.index("SET p.key = p.key") < graph.MERGE_ONE_STANCE.index("OPTIONAL MATCH")
+    assert "{other}" not in graph.MERGE_STANCE  # 0.1's statement, unchanged
+    payload = ResolvedPayload(solutions=[{"key": "abolish", "name": "Abolish", "for_issue_key": "veto",
+                                          "stance": "oppose", "stance_only": True}])
+    for one_stance, expected in ((True, graph.MERGE_ONE_STANCE.replace("{stance}", "OPPOSE").replace("{other}", "APPROVE")),
+                                 (False, graph.MERGE_STANCE.replace("{stance}", "OPPOSE"))):
+        queries = []
+        tx = type("T", (), {"run": lambda self, query, **params: queries.append(query)})()
+        graph_posts.write_payload(tx, payload, {"person_key": "acct:ada", "post_id": "p", "anonymous": False,
+                                                "now": None, "seed": False}, one_stance=one_stance)
+        assert queries == [expected]

@@ -19,6 +19,7 @@ from app.graph_runtime import (RecordAsleep, _read, _write, close_driver, databa
 log = logging.getLogger("oci")
 
 STANCE_TYPES = {"approve": "APPROVE", "oppose": "OPPOSE"}
+OPPOSITE_STANCE = {"APPROVE": "OPPOSE", "OPPOSE": "APPROVE"}
 EVIDENCE_TYPES = {"supports": "SUPPORTS", "refutes": "REFUTES"}
 TARGET_LABELS = ("Issue", "Solution", "Evidence")
 
@@ -30,6 +31,11 @@ CONSTRAINTS = (
     "CREATE CONSTRAINT evidence_key IF NOT EXISTS FOR (e:Evidence) REQUIRE e.key IS UNIQUE",
     "CREATE CONSTRAINT post_id      IF NOT EXISTS FOR (p:Post)     REQUIRE p.id IS UNIQUE",
     "CREATE INDEX post_created      IF NOT EXISTS FOR (p:Post)     ON (p.created_at)",
+    "CREATE CONSTRAINT person_email IF NOT EXISTS FOR (p:Person) REQUIRE p.email IS UNIQUE",
+    "CREATE CONSTRAINT person_token IF NOT EXISTS FOR (p:Person) REQUIRE p.token_hash IS UNIQUE",
+    "CREATE CONSTRAINT change_id    IF NOT EXISTS FOR (c:Change)   REQUIRE c.id IS UNIQUE",
+    "CREATE FULLTEXT INDEX record_names IF NOT EXISTS FOR (n:Issue|Solution|Evidence) ON EACH [n.name]",
+    "CREATE FULLTEXT INDEX post_text    IF NOT EXISTS FOR (p:Post) ON EACH [p.text]",
 )
 
 # The write path, statement by statement, from docs/planning/03_schema.md.
@@ -61,7 +67,7 @@ CREATE (p)-[:CLAIM {post_id: $post_id, anonymous: $anonymous, created_at: $now}]
 
 MERGE_PART_OF = """
 MATCH (child:Issue {key: $issue_key}), (parent:Issue {key: $parent_key})
-SET child.key = child.key, parent.key = parent.key
+SET child.tidy_lock = true, parent.tidy_lock = true REMOVE child.tidy_lock, parent.tidy_lock
 WITH child, parent
 WHERE child <> parent
   AND NOT (parent)-[:PART_OF]->(:Issue)
@@ -85,6 +91,21 @@ ON MATCH  SET hp.last_post_id = $post_id
 # {stance} is APPROVE or OPPOSE, substituted from STANCE_TYPES; never from input.
 MERGE_STANCE = """
 MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
+MERGE (p)-[r:{stance}]->(s)
+ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now
+ON MATCH  SET r.last_post_id = $post_id
+"""
+
+# 4b for a post by an account (D7, Q23): {stance} is APPROVE or OPPOSE, {other} the opposite, from
+# STANCE_TYPES and OPPOSITE_STANCE, never from input. The opposite stance goes first, under the same
+# locks as a click. MERGE_STANCE above stays the 0.1 statement, used while ACCOUNTS_ENABLED is unset.
+MERGE_ONE_STANCE = """
+MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
+SET p.key = p.key, s.key = s.key
+WITH p, s
+OPTIONAL MATCH (p)-[old:{other}]->(s)
+DELETE old
+WITH DISTINCT p, s
 MERGE (p)-[r:{stance}]->(s)
 ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now
 ON MATCH  SET r.last_post_id = $post_id
@@ -117,14 +138,14 @@ LIST_ISSUES = """
 MATCH (i:Issue)
 OPTIONAL MATCH (i)-[:PART_OF]->(parent:Issue)
 OPTIONAL MATCH (p:Person)-[c:CLAIM]->(i)
-WITH i, parent, count(c) AS claims, count(DISTINCT p) AS people,
-     collect(DISTINCT p.key) AS person_keys
+WITH i, parent, c, p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who
+WITH i, parent, count(c) AS claims, count(DISTINCT who) AS people, collect(DISTINCT who) AS person_keys
 OPTIONAL MATCH (i)-[:HAVE_PROPOSED]->(s:Solution)
 WITH i, parent, claims, people, person_keys, count(DISTINCT s) AS solutions
 OPTIONAL MATCH (ev:Evidence)-[:SUPPORTS|REFUTES]->(t)<-[:HAVE_PROPOSED*0..1]-(i)
 WITH i, parent, claims, people, person_keys, solutions,
      collect(DISTINCT ev.key) AS evidence_keys
-OPTIONAL MATCH (i)-[r]-()
+OPTIONAL MATCH (i)-[r]-() WHERE type(r) <> 'CHANGED' AND NOT (type(r) = 'PART_OF' AND r.post_id IS NULL)
 WITH i, parent, claims, people, person_keys, solutions, evidence_keys,
      coalesce(max(r.created_at), i.created_at) AS last_activity
 RETURN i.key AS key, i.name AS name, i.seed AS seed,
@@ -142,24 +163,49 @@ RETURN i.key AS key, i.name AS name, i.created_at AS created_at, i.seed AS seed,
        [c IN collect(DISTINCT child) | {key: c.key, name: c.name}] AS children
 """
 
+# Q3, revised for Phase 1 (D2): an account's anonymous claims count apart from its named ones,
+# so no page can link an anonymous post to a name. A missing flag counts as named, as in 0.1.
 ISSUE_CLAIMANTS = """
 MATCH (p:Person)-[c:CLAIM]->(i:Issue {key: $key})
-RETURN count(c) AS claims, count(DISTINCT p) AS people,
-       collect(DISTINCT CASE WHEN c.anonymous THEN 'Anonymous' ELSE p.name END) AS names
+WITH p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who,
+     coalesce(c.anonymous, false) AS hidden, p.name AS name, count(c) AS claims
+RETURN sum(claims) AS claims, count(who) AS people,
+       collect(DISTINCT CASE WHEN hidden THEN 'Anonymous' ELSE name END) AS names
 """
 
 ISSUE_SOLUTIONS = """
 MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
-OPTIONAL MATCH (pp:Person)-[:PROPOSE]->(s)
+OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
 OPTIONAL MATCH (pa:Person)-[:APPROVE]->(s)
 OPTIONAL MATCH (po:Person)-[:OPPOSE]->(s)
-WITH s, count(DISTINCT pp) AS proposers, count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
+WITH s, count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+     count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
 OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
 WITH s, proposers, approves, opposes,
      [x IN collect(DISTINCT {key: ev.key, name: ev.name, url: ev.url, stance: type(r)})
         WHERE x.key IS NOT NULL] AS evidence
 RETURN s.key AS key, s.name AS name, proposers, approves, opposes, evidence
 ORDER BY proposers DESC, approves DESC, s.created_at ASC
+"""
+
+# Q4, revised for Phase 1 (with ACCOUNTS_ENABLED): ranked by net support; the member's own stance
+# comes with each row. $me null matches nothing. Until rollout the page uses ISSUE_SOLUTIONS (X1).
+# Proposers are counted by account and anonymity, as in ISSUE_SOLUTIONS (D2, option a).
+ISSUE_SOLUTIONS_RANKED = """
+MATCH (i:Issue {key: $key})-[:HAVE_PROPOSED]->(s:Solution)
+OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
+OPTIONAL MATCH (pa:Person)-[:APPROVE]->(s)
+OPTIONAL MATCH (po:Person)-[:OPPOSE]->(s)
+WITH s, count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+     count(DISTINCT pa) AS approves, count(DISTINCT po) AS opposes
+OPTIONAL MATCH (:Person {key: $me})-[mine:APPROVE|OPPOSE]->(s)
+WITH s, proposers, approves, opposes, head(collect(type(mine))) AS my_stance
+OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
+WITH s, proposers, approves, opposes, my_stance,
+     [x IN collect(DISTINCT {key: ev.key, name: ev.name, url: ev.url, stance: type(r)})
+        WHERE x.key IS NOT NULL] AS evidence
+RETURN s.key AS key, s.name AS name, proposers, approves, opposes, my_stance, evidence
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 """
 
 ISSUE_EVIDENCE = """
@@ -212,7 +258,8 @@ ORDER BY r.created_at
 TOP_ISSUES = """
 MATCH (i:Issue)
 OPTIONAL MATCH (p:Person)-[c:CLAIM]->(i)
-WITH i, count(DISTINCT p) AS people, count(c) AS claims
+WITH i, c, p.key + CASE WHEN coalesce(c.anonymous, false) THEN '|anonymous' ELSE '' END AS who
+WITH i, count(DISTINCT who) AS people, count(c) AS claims
 ORDER BY people DESC, claims DESC, i.created_at DESC
 LIMIT $limit
 RETURN i.key AS key, i.name AS name
@@ -251,9 +298,13 @@ ORDER BY e.created_at DESC LIMIT 200
 COUNT_NODES = "MATCH (n) RETURN count(n) AS n"
 COUNT_BY_LABEL = "MATCH (n) RETURN labels(n)[0] AS label, count(*) AS n ORDER BY label"
 COUNT_BY_TYPE = "MATCH ()-[r]->() RETURN type(r) AS type, count(*) AS n ORDER BY type"
-COUNT_NON_SEED = "MATCH (n) WHERE coalesce(n.seed, false) = false RETURN count(n) AS n"
+# Q10, revised for Phase 1: everything except accounts and who entered whom.
+COUNT_NON_SEED = """
+MATCH (n) WHERE coalesce(n.seed, false) = false AND NOT (n:Person AND n.email IS NOT NULL)
+RETURN count(n) AS n
+"""
 EXISTING_POST_IDS = "MATCH (p:Post) WHERE p.id IN $ids RETURN collect(p.id) AS ids"
-DELETE_EVERYTHING = "MATCH (n) DETACH DELETE n"
+DELETE_EVERYTHING = "MATCH (n) WHERE NOT (n:Person AND n.email IS NOT NULL) DETACH DELETE n"
 
 # Q11 uses element ids only inside its transaction so equal keys on different
 # labels cannot cause cleanup of an unrelated orphan.
@@ -372,7 +423,10 @@ def issue_claimants(key: str) -> dict[str, Any]:
     return rows[0] if rows else {"claims": 0, "people": 0, "names": []}
 
 
-def issue_solutions(key: str) -> list[dict[str, Any]]:
+def issue_solutions(key: str, me: str | None = None, ranked: bool = False) -> list[dict[str, Any]]:
+    """Q4. `ranked` is ACCOUNTS_ENABLED on the issue page: net support and the member's own stance."""
+    if ranked:
+        return _read(ISSUE_SOLUTIONS_RANKED, key=key, me=me)
     return _read(ISSUE_SOLUTIONS, key=key)
 
 
@@ -415,5 +469,5 @@ def existing_post_ids(ids: list[str]) -> set[str]:
 
 
 def delete_everything() -> None:
-    """Q10. Reset. Always followed by a seed load."""
+    """Q10. Reset: removes everything but accounts. Always followed by a seed load."""
     _write(DELETE_EVERYTHING)

@@ -7,7 +7,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from app import graph, extract
+from app import config, extract, graph, mailer
+from app import routes_admin_people as people
 from app.auth import make_admin_csrf, require_admin, require_admin_mutation
 from scripts import seed
 
@@ -26,31 +27,60 @@ NOTICES = {"reload": "Seed reloaded.", "reset": "Reset to seed.", "delete": "Pos
            "empty": "The record was cleared, but the seed statements did not all load. "
                     "Press Reload seed."}
 
+# Client facing copy, word for word from docs/planning/04_interface.md ("Back room additions").
+MAIL_OK = "No problems recorded."
+MAIL_FAILED = ("The last email could not be sent, on {when}. If this keeps happening, "
+               "Google needs John's permission again.")
+MAIL_FAILED_UNDATED = ("The last email could not be sent. If this keeps happening, "
+                       "Google needs John's permission again.")
+
+
+def _utc(value) -> str | None:
+    """'4 October 2026, 14:02 UTC' for an ISO time that carries a zone; None for anything else."""
+    try:
+        timestamp = datetime.fromisoformat(value)
+        if timestamp.tzinfo is None:
+            raise ValueError("Timestamp must have a time zone")
+    except (ValueError, TypeError):
+        return None
+    return timestamp.astimezone(timezone.utc).strftime("%-d %B %Y, %H:%M UTC")
+
 
 def reading_error() -> str:
     error = extract.last_model_error
     if not error:
         return "none"
     message = ERRORS.get(error.get("http"), "The reading service could not complete a request.")
-    try:
-        timestamp = datetime.fromisoformat(error["time"])
-        if timestamp.tzinfo is None:
-            raise ValueError("Timestamp must have a time zone")
-        when = timestamp.astimezone(timezone.utc).strftime("%-d %B %Y, %H:%M UTC")
-    except (ValueError, TypeError, KeyError):
-        return message
-    return f"{message} Last recorded: {when}."
+    when = _utc(error.get("time"))
+    return f"{message} Last recorded: {when}." if when else message
+
+
+def mail_error() -> str:
+    """The "Sending email" line, from mailer.last_mail_error. A restart clears it, like the reading line."""
+    error = mailer.last_mail_error
+    if not error:
+        return MAIL_OK
+    when = _utc(error.get("time"))
+    return MAIL_FAILED.format(when=when) if when else MAIL_FAILED_UNDATED
 
 
 @router.get("")
 def page(request: Request):
     from app.main import templates
     labels, relations = graph.counts()
+    with_accounts = config.get_settings().accounts_enabled
+    done = request.query_params.get("done")
     return templates.TemplateResponse(request=request, name="admin.html", context={
         "counts": [(name, labels.get(label, 0)) for label, name in LABEL_NAMES.items()],
         "relations": [(name, relations.get(rel, 0)) for rel, name in REL_NAMES.items()],
         "posts": graph.list_posts(limit=50), "csrf_token": make_admin_csrf(),
-        "reading_error": reading_error(), "notice": NOTICES.get(request.query_params.get("done")),
+        "reading_error": reading_error(),
+        # Phase 1, only with accounts: the Sending email line and the People section.
+        "mail_error": mail_error() if with_accounts else None,
+        "people": people.page_rows() if with_accounts else None,
+        "buttons": people.BUTTONS,
+        "notice": NOTICES.get(done),
+        "people_notice": people.NOTICES.get(done) if with_accounts else None,
     }, headers={"Cache-Control": "no-store"})
 
 

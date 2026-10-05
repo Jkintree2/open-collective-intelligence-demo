@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Forgot your password · {{ site_name }}{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<section class="card gate">
+  <h1>Forgot your password</h1>
+  {% if message %}<p class="notice" role="{{ 'status' if sent else 'alert' }}">{{ message }}</p>{% endif %}
+  {% if not sent %}
+  <p>Enter the email address you were invited with, and we will send you a link to choose a password.</p>
+  <form method="post" action="/forgot-password" data-once>
+    <label for="email">Email:</label>
+    <input id="email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    <button type="submit" class="primary">Send the link</button>
+  </form>
+  {% endif %}
+  <p><a href="/sign-in">Sign in</a></p>
+</section>
+{% endblock %}

@@ -1,4 +1,4 @@
-"""Version 1 portable record format and validation, with no database access.
+"""Version 2 portable record format (version 1 still restores), with no database access.
 
 Nodes use (label, identity), where identity is Post.id or the other labels' key.
 Relationships are a list, not a set: identical per-post facts remain distinct.
@@ -14,8 +14,11 @@ from zoneinfo import ZoneInfo
 from neo4j.time import Date, DateTime, Duration, Time
 
 FORMAT = "oci-record"
-VERSION = 1
-LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id"}
+VERSION = 2
+VERSIONS = (1, 2)
+# Never in a copy (03_schema.md Q33): a restored account chooses a new password by link.
+SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at"})
+LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id", "Change": "id"}
 DIRECTIONS = {
     "POSTED": ("Person", {"Post"}), "CLAIM": ("Person", {"Issue"}),
     "SUBMIT": ("Person", {"Evidence"}), "PROPOSE": ("Person", {"Solution"}),
@@ -23,6 +26,8 @@ DIRECTIONS = {
     "OPPOSE": ("Person", {"Solution"}), "PART_OF": ("Issue", {"Issue"}),
     "SUPPORTS": ("Evidence", {"Issue", "Solution", "Evidence"}),
     "REFUTES": ("Evidence", {"Issue", "Solution", "Evidence"}),
+    "ENTERED": ("Person", {"Person"}),
+    "MADE": ("Person", {"Change"}), "CHANGED": ("Change", {"Issue"}),
 }
 TEMPORALS = {"DateTime": DateTime, "Date": Date, "Time": Time, "Duration": Duration}
 
@@ -116,16 +121,19 @@ def reference(value):
 def properties(value):
     if not isinstance(value, dict) or any(not isinstance(k, str) or not k or "\x00" in k for k in value):
         raise InvalidBackup("Malformed properties.")
+    if SECRET_PROPERTIES & set(value):
+        raise InvalidBackup("A copy must not hold passwords or links.")
     decoded = {k: decode_value(v) for k, v in value.items()}
     for key, item in decoded.items():
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
-                   "model", "payload", "post_id", "last_post_id"} and not isinstance(item, str):
+                   "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
+                   "relationship", "kind", "details"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
-        if key in {"seed", "anonymous"} and type(item) is not bool:
+        if key in {"seed", "anonymous", "admin", "active", "agreed"} and type(item) is not bool:
             raise InvalidBackup("A boolean property has the wrong type.")
         if key == "latency_ms" and (type(item) is not int or item < 0):
             raise InvalidBackup("A latency property has the wrong type.")
-        if key == "created_at" and not isinstance(item, DateTime):
+        if key in {"created_at", "accepted_at", "edited_at"} and not isinstance(item, DateTime):
             raise InvalidBackup("A timestamp property has the wrong type.")
     return decoded
 
@@ -133,7 +141,7 @@ def properties(value):
 def validate_record(data):
     """Validate the entire document and return its decoded, database-ready copy."""
     _fields(data, ("format", "version", "nodes", "relationships"))
-    if data["format"] != FORMAT or type(data["version"]) is not int or data["version"] != VERSION:
+    if data["format"] != FORMAT or type(data["version"]) is not int or data["version"] not in VERSIONS:
         raise InvalidBackup("Unsupported export format or version.")
     if not isinstance(data["nodes"], list) or not isinstance(data["relationships"], list):
         raise InvalidBackup("Records must be lists.")

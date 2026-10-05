@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Choose a new password · {{ site_name }}{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<section class="card gate">
+  <h1>Choose a new password</h1>
+  {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
+  <form method="post" action="/reset/{{ secret }}">
+    <label for="username">Email:</label>
+    <input id="username" name="username" type="email" value="{{ email }}" autocomplete="username" readonly>
+    <label for="password">New password:</label>
+    <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" required>
+    <label for="again">Type it again:</label>
+    <input id="again" name="again" type="password" autocomplete="new-password" minlength="10" required>
+    <button type="submit" class="primary">Save the new password</button>
+  </form>
+</section>
+{% endblock %}

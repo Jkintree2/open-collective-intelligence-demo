@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -43,10 +44,25 @@ class Settings:
     llm_api_key: str | None = None
     llm_base_url: str = DEFAULT_LLM_BASE_URL
     llm_model: str = DEFAULT_LLM_MODEL
+    accounts_enabled: bool = False
+    site_url: str | None = None
+    mail_from: str | None = None
+    gmail_client_id: str | None = None
+    gmail_client_secret: str | None = None
+    gmail_refresh_token: str | None = None
+    mail_console: bool = False
 
     @property
     def is_local(self) -> bool:
         return self.app_env == "local"
+
+
+def _site_url_ok(url: str, local: bool) -> bool:
+    """https always; plain http only for this machine (parsed hostname, not a prefix) when APP_ENV=local."""
+    if url.startswith("https://"):
+        return True
+    parts = urlsplit(url)
+    return local and parts.scheme == "http" and parts.hostname in ("localhost", "127.0.0.1")
 
 
 def load_settings(env: dict[str, str] | None = None) -> Settings:
@@ -61,6 +77,12 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
     for name in REQUIRED:
         if not env.get(name):
             raise SystemExit(f"{name} is not set")
+    accounts_enabled = (env.get("ACCOUNTS_ENABLED") or "").strip().lower() in ("1", "true", "yes")
+    site_url = (env.get("SITE_URL") or "").strip().rstrip("/") or None
+    if accounts_enabled and not site_url:
+        raise SystemExit("SITE_URL is not set")
+    if accounts_enabled and not _site_url_ok(site_url, (env.get("APP_ENV") or "production") == "local"):
+        raise SystemExit("SITE_URL must start with https://")
     return Settings(
         demo_passphrase=env["DEMO_PASSPHRASE"],
         secret_key=env["SECRET_KEY"],
@@ -75,6 +97,13 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         llm_api_key=env.get("LLM_API_KEY") or None,
         llm_base_url=env.get("LLM_BASE_URL") or DEFAULT_LLM_BASE_URL,
         llm_model=env.get("LLM_MODEL") or DEFAULT_LLM_MODEL,
+        accounts_enabled=accounts_enabled,
+        site_url=site_url,
+        mail_from=env.get("MAIL_FROM") or None,
+        gmail_client_id=env.get("GMAIL_CLIENT_ID") or None,
+        gmail_client_secret=env.get("GMAIL_CLIENT_SECRET") or None,
+        gmail_refresh_token=env.get("GMAIL_REFRESH_TOKEN") or None,
+        mail_console=(env.get("MAIL_CONSOLE") or "") == "1",
     )
 
 

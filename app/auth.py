@@ -69,24 +69,11 @@ def passphrase_matches(given: str, *, passphrase: str | None = None) -> bool:
 
 
 class GateRequired(Exception):
-    """Raised by `require_gate`; the app turns it into a redirect to /enter."""
+    """Raised by `members.require_access`; the app redirects to /sign-in when accounts are on, else /enter."""
 
     def __init__(self, next_path: str) -> None:
         super().__init__(next_path)
         self.next_path = next_path
-
-
-def require_gate(request: Request) -> None:
-    """FastAPI dependency: the gate cookie must be present and valid."""
-    if check_gate_token(request.cookies.get(GATE_COOKIE)):
-        return
-    if request.method == "GET":
-        next_path = request.url.path
-        if request.url.query:
-            next_path += "?" + request.url.query
-    else:
-        next_path = "/"
-    raise GateRequired(next_path)
 
 
 class MinuteBucket:
@@ -166,6 +153,34 @@ class PostSpacing:
 
 
 post_spacing = PostSpacing()
+
+# Shown when a bucket is empty (the passphrase's, and the account limits').
+TOO_MANY_TRIES = "Too many tries. Please wait a minute and try again."
+
+
+class KeyedLimit:
+    """At most `count` uses per key (an email address, an account) in any `period` seconds,
+    held in this process. Keys whose uses have all aged out are forgotten."""
+
+    def __init__(self, count: int, period: float) -> None:
+        self.count = count
+        self.period = period
+        self.uses: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def take(self, key: str, now: float | None = None) -> bool:
+        now = time.monotonic() if now is None else now
+        with self._lock:
+            for other in list(self.uses):
+                self.uses[other] = [then for then in self.uses[other] if now - then < self.period]
+                if not self.uses[other]:
+                    del self.uses[other]
+            recent = self.uses.setdefault(key, [])
+            if len(recent) >= self.count:
+                return False
+            recent.append(now)
+            return True
+
 
 admin_basic = HTTPBasic()
 

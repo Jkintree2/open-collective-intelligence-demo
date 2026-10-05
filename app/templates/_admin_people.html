@@ -1,0 +1,29 @@
+<h2>Sending email</h2><p>{{ mail_error }}</p>
+<h2 id="people">People</h2>
+{% if people_notice %}<p class="notice" role="status">{{ people_notice }}</p>{% endif %}
+{% for person in people %}
+<section class="account-row">
+  <p>{{ person.name }} · {{ person.email }} · {% if person.first %}first account{% else %}entered by {{ person.inviter_name }} ({{ person.relationship }}) on {{ person.entered_at.strftime("%-d %B %Y") }}{% endif %} · {% if person.state == "joined" %}joined {{ person.accepted_at.strftime("%-d %B %Y") }}{% elif person.state == "invited" %}invited, not accepted yet{% elif person.state == "expired" %}invitation expired{% else %}switched off{% endif %}</p>
+  {% for action in person.actions %}
+  {% if action == "switch_off" %}
+  <details><summary>Switch off</summary>
+    <form method="post" action="/admin/people/{{ person.key | urlencode }}/switch-off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <p>Switch off {{ person.name }}? They can no longer sign in. Their posts stay.</p>
+      <button class="primary" type="submit">Switch off</button>
+    </form>
+  </details>
+  {% elif action == "withdraw" %}
+  <details><summary>Withdraw</summary>
+    <form method="post" action="/admin/people/{{ person.key | urlencode }}/withdraw">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <p>Withdraw the entry for {{ person.name }}? Their link stops working and the details entered for them are removed.</p>
+      <button class="primary" type="submit">Withdraw</button>
+    </form>
+  </details>
+  {% else %}
+  <form method="post" action="/admin/people/{{ person.key | urlencode }}/{{ buttons[action][0] }}"{% if action in ("resend", "password_link") %} data-once{% endif %}><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="quiet" type="submit">{{ buttons[action][1] }}</button></form>
+  {% endif %}
+  {% endfor %}
+</section>
+{% endfor %}

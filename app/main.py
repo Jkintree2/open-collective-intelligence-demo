@@ -27,28 +27,50 @@ from app.extract import CardPayload, resolve_payload
 from app.auth import (
     GATE_COOKIE,
     GATE_SECONDS,
+    TOO_MANY_TRIES,
     WRONG_PASSPHRASE_DELAY,
     GateRequired,
     attempt_bucket,
     make_gate_token,
     passphrase_matches,
-    require_gate,
     reading_limit,
     post_spacing,
 )
 from app.config import get_settings
+from app.pages import loggable_path, write_notice
+from app.members import (
+    RELOAD_AND_RETRY,
+    SIGN_IN_AGAIN,
+    CrossSite,
+    current_member,
+    member_key,
+    posting_identity,
+    require_access,
+    require_same_origin,
+    safe_next,
+    wants_json,
+)
 from app.graph import RecordAsleep
+from app.routes_stances import solution_anchor
+from app import graph_own_posts
 from app.text import clean_name, count_line, make_key, relative_time, sentences
+from app import search, tidy
 
 settings = get_settings()
 
 BASE = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE / "templates"))
+def _member_context(request: Request) -> dict:
+    # What require_access found for this request; pages outside the door have no member.
+    return {"member": getattr(request.state, "member", None)}
+
+
+templates = Jinja2Templates(directory=str(BASE / "templates"), context_processors=[_member_context])
 templates.env.globals["site_name"] = settings.site_name
 # The script and style links carry a hash of the files, so a phone fetches them again after a change.
 templates.env.globals["asset_version"] = hashlib.sha256(
     b"".join(path.read_bytes() for path in sorted((BASE / "static").iterdir()) if path.is_file())
 ).hexdigest()[:10]
+templates.env.filters["anchor"] = solution_anchor
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
@@ -73,8 +95,6 @@ YEAR_SECONDS = 365 * 86400
 # Client facing copy, word for word from docs/planning/04_interface.md.
 WRONG_PASSPHRASE = "That passphrase did not match. Check the message from John and try again."
 TOO_LONG = "That is longer than this demo can read at once. Please shorten it to a few paragraphs."
-# Not in the interface doc: shown when the passphrase bucket is empty.
-TOO_MANY_TRIES = "Too many tries. Please wait a minute and try again."
 NOT_ANSWERING = "The reading service is not answering right now. You can fill in the form by hand, or try again in a minute."
 NOT_FOUND = "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again."
 ENGLISH_ONLY = "This demo reads English only for now."
@@ -124,7 +144,7 @@ async def log_request(request: Request, call_next):  # type: ignore[no-untyped-d
             json.dumps(
                 {
                     "method": request.method,
-                    "path": request.url.path,
+                    "path": loggable_path(request.url.path),
                     "status": status,
                     "ms": round((time.perf_counter() - started) * 1000),
                     "request_id": request.state.request_id,
@@ -149,24 +169,27 @@ def _set_cookie(response: Response, key: str, value: str, max_age: int) -> None:
 
 
 def _safe_next(next_path: str | None) -> str:
-    if next_path and next_path.startswith("/") and not next_path.startswith("//"):
-        return next_path
-    return "/"
+    return safe_next(next_path)
 
 
 def _issue_href(key: str | None) -> str:
     return f"/issues/{quote(key, safe='')}" if key else "/issues"
 
 
-def _decorate_posts(posts: list[dict]) -> list[dict]:
+def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
     """Relative times, chips and the sentence list for a page of posts."""
     now = datetime.now(timezone.utc)
     structure = graph.post_structure([post["id"] for post in posts])
+    # Only a member has own posts (with accounts off `me` is None and the record is asked nothing more).
+    flags = graph_own_posts.post_flags(me, [post["id"] for post in posts]) if me else {}
     for post in posts:
         created = post.get("created_at")
         post["when"] = relative_time(created, now) if created else ""
         post["absolute"] = created.strftime("%Y-%m-%d %H:%M UTC") if created else ""
         post["iso"] = created.isoformat() if created else ""
+        flag = flags.get(post["id"], {})
+        post["mine"] = bool(flag.get("mine")) and not post.get("seed")
+        post["edited"] = flag.get("edited_at") is not None
         rows = structure.get(post["id"], [])
         issue_keys = [r["to_key"] for r in rows if r["rel"] == "CLAIM"]
         first_issue = issue_keys[0] if issue_keys else None
@@ -218,8 +241,10 @@ def _render_index(
     text: str = "",
     status_code: int = 200,
     about: dict | None = None,
+    notice: str | None = None,
+    editing: dict | None = None,
 ) -> Response:
-    posts = _decorate_posts(graph.list_posts(FEED_LIMIT))
+    posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
     chips = graph.top_issues(CHIP_LIMIT)
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
     return templates.TemplateResponse(
@@ -231,27 +256,33 @@ def _render_index(
             "chips": chips,
             "name": name,
             "message": message,
+            "notice": notice,
             "text": text,
             "about": about,
+            "editing": editing,
         },
         status_code=status_code,
     )
 
 
-@app.get("/issues", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
-def issues_page(request: Request, sort: str = Query("people")) -> Response:
+@app.get("/issues", response_class=HTMLResponse, dependencies=[Depends(require_access)])
+def issues_page(request: Request, sort: str = Query("people"), q: str = Query("")) -> Response:
     sort = sort if sort in graph.SORTS else "people"
+    words = " ".join(q.split())[:search.MAX_CHARS]
+    if words:
+        results = search.run(words, lambda posts: _decorate_posts(posts, me=member_key(request)))
+        return templates.TemplateResponse(
+            request, "issues.html", {"issues": [], "sort": sort, "sorts": SORTS, "q": words, "results": results})
     grouped = graph.group_issues(graph.list_issues(), sort)
     for issue in grouped:
         issue["line"] = count_line(issue)
         for child in issue["children"]:
             child["line"] = count_line(child)
     return templates.TemplateResponse(
-        request, "issues.html", {"issues": grouped, "sort": sort, "sorts": SORTS}
-    )
+        request, "issues.html", {"issues": grouped, "sort": sort, "sorts": SORTS, "q": "", "results": None})
 
 
-@app.get("/issues/{key}", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
+@app.get("/issues/{key}", response_class=HTMLResponse, dependencies=[Depends(require_access)])
 def issue_page(request: Request, key: str) -> Response:
     header = graph.issue_header(key)
     if header is None:
@@ -262,15 +293,18 @@ def issue_page(request: Request, key: str) -> Response:
         {
             "issue": header,
             "claimants": graph.issue_claimants(key),
-            "solutions": graph.issue_solutions(key),
+            "solutions": graph.issue_solutions(key, me=member_key(request), ranked=settings.accounts_enabled),
             "evidence": graph.issue_evidence(key),
-            "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT)),
+            "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
+            "tidy": tidy.page_context(request, header),
         },
     )
 
 
 @app.get("/enter", response_class=HTMLResponse)
 def enter_form(request: Request, next: str = "/") -> Response:
+    if settings.accounts_enabled:
+        return RedirectResponse(f"/sign-in?next={quote(_safe_next(next), safe='/')}", status_code=303)
     return templates.TemplateResponse(
         request, "enter.html", {"next": _safe_next(next), "message": None}
     )
@@ -280,6 +314,8 @@ def enter_form(request: Request, next: str = "/") -> Response:
 def enter_submit(
     request: Request, passphrase: str = Form(""), next: str = Form("/")
 ) -> Response:
+    if settings.accounts_enabled:
+        return RedirectResponse(f"/sign-in?next={quote(_safe_next(next), safe='/')}", status_code=303)
     target = _safe_next(next)
     if passphrase_matches(passphrase):
         response = RedirectResponse(target, status_code=303)
@@ -295,9 +331,10 @@ def enter_submit(
     )
 
 
-@app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
-def write_page(request: Request, issue: str | None = Query(None, max_length=200)) -> Response:
-    return _render_index(request, about=_about_issue(issue))
+@app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_access)])
+def write_page(request: Request, issue: str | None = Query(None, max_length=200),
+               done: str | None = Query(None, max_length=20)) -> Response:
+    return _render_index(request, about=_about_issue(issue), notice=write_notice(done, current_member(request)))
 
 
 def _valid_anon_id(value: str | None) -> str | None:
@@ -309,7 +346,7 @@ def _valid_anon_id(value: str | None) -> str | None:
         return None
 
 
-@app.post("/posts", dependencies=[Depends(require_gate)])
+@app.post("/posts", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def create_post(
     request: Request,
     display_name: str = Form(""),
@@ -320,6 +357,13 @@ def create_post(
         return _render_index(request, message=TOO_LONG, text=text, status_code=413)
     text = text.strip()
     if not text:
+        return RedirectResponse("/", status_code=303)
+    member = current_member(request)
+    if member is not None:
+        identity = posting_identity(member, bool(anonymous))
+        if not post_spacing.take(identity[0]):
+            return _render_index(request, message=WAIT_BEFORE_POSTING, text=text, status_code=429)
+        graph.create_raw_post(*identity, text)
         return RedirectResponse("/", status_code=303)
     name = _display_name(display_name)
     # A ticked box, an empty name or a name with no usable key all post anonymously.
@@ -379,18 +423,21 @@ def _text_error(text: str, *, allow_empty: bool = False) -> Response | None:
     return None
 
 
-def _poster(data: ReadingRequest | PostRequest) -> tuple[str | None, bool]:
+def _poster(data: ReadingRequest | PostRequest, member=None) -> tuple[str | None, bool]:
+    if member is not None:
+        _, name, anonymous, _ = posting_identity(member, data.anonymous)
+        return name, anonymous
     name = _display_name(data.display_name)
     anonymous = data.anonymous or make_key(name) is None
     return (None if anonymous else name), anonymous
 
 
-@app.get("/api/candidates", dependencies=[Depends(require_gate)])
+@app.get("/api/candidates", dependencies=[Depends(require_access)])
 def card_candidates() -> dict:
     return asdict(graph.candidates())
 
 
-@app.post("/api/extract", dependencies=[Depends(require_gate)])
+@app.post("/api/extract", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def read_statement(request: Request, data: ReadingRequest) -> Response:
     error = _text_error(data.text)
     if error is not None:
@@ -399,7 +446,7 @@ def read_statement(request: Request, data: ReadingRequest) -> Response:
     # request is made, so that path must not spend anyone's allowance.
     if settings.llm_api_key and not reading_limit.take(attempt_bucket):
         return JSONResponse({"message": READING_LIMIT}, status_code=429)
-    name, _ = _poster(data)
+    name, _ = _poster(data, current_member(request))
     candidates = graph.candidates() if settings.llm_api_key else reading.Candidates.empty()
     result = reading.extract(data.text, name or "Anonymous", candidates, settings,
                              request_id=_request_id(request), writing_about=data.issue)
@@ -419,20 +466,20 @@ def _card_result(data: PostRequest):
     return candidates, resolved, card
 
 
-@app.post("/api/preview", dependencies=[Depends(require_gate)])
-def preview_card(data: PostRequest) -> Response:
+@app.post("/api/preview", dependencies=[Depends(require_access), Depends(require_same_origin)])
+def preview_card(request: Request, data: PostRequest) -> Response:
     error = _text_error(data.text, allow_empty=True)
     if error is not None:
         return error
     _, resolved, card = _card_result(data)
-    name, _ = _poster(data)
+    name, _ = _poster(data, current_member(request))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     return JSONResponse({"sentences": sentences(card, name or "Anonymous"), "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
                          "payload": card.model_dump()})
 
 
-@app.post("/api/posts", dependencies=[Depends(require_gate)])
+@app.post("/api/posts", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def post_card(request: Request, data: PostRequest) -> Response:
     error = _text_error(data.text, allow_empty=True)
     if error is not None:
@@ -441,9 +488,14 @@ def post_card(request: Request, data: PostRequest) -> Response:
     if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": "Please check the form before posting.",
                              "dropped": resolved.dropped}, status_code=422)
-    name, anonymous = _poster(data)
-    anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
-    person_key = graph.person_key(name, anonymous, anon_id)
+    member = current_member(request)
+    if member is not None:
+        person_key, name, anonymous, _ = posting_identity(member, data.anonymous)
+        anon_id = None
+    else:
+        name, anonymous = _poster(data)
+        anon_id = (_valid_anon_id(request.cookies.get(ANON_COOKIE)) or str(uuid.uuid4())) if anonymous else None
+        person_key = graph.person_key(name, anonymous, anon_id)
     if not post_spacing.take(person_key):
         return JSONResponse({"message": WAIT_BEFORE_POSTING}, status_code=429)
     source = data.source if not resolved.is_empty else "manual"
@@ -465,25 +517,36 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 statement, resolved, source=source,
                                 extraction_raw=data.extraction_raw, model=data.model,
                                 latency_ms=data.latency_ms,
-                                request_id=_request_id(request), edited=edited)
+                                request_id=_request_id(request), edited=edited,
+                                one_stance=settings.accounts_enabled)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
-    if anonymous:
-        _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
-    else:
-        _set_cookie(response, NAME_COOKIE, quote(name), YEAR_SECONDS)
+    if member is None:
+        if anonymous:
+            _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
+        else:
+            _set_cookie(response, NAME_COOKIE, quote(name), YEAR_SECONDS)
     return response
 
 
-@app.get("/feed", dependencies=[Depends(require_gate)])
+@app.get("/feed", dependencies=[Depends(require_access)])
 def feed(request: Request) -> Response:
-    return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT))})
+    return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))})
 
 
 @app.exception_handler(GateRequired)
 async def gate_redirect(request: Request, exc: GateRequired) -> Response:
-    if request.url.path.startswith("/api/"):
-        return JSONResponse({"message": "Please enter the passphrase again.", "redirect": "/enter"}, status_code=401)
-    return RedirectResponse(f"/enter?next={quote(exc.next_path, safe='/')}", status_code=303)
+    door = "/sign-in" if settings.accounts_enabled else "/enter"
+    if wants_json(request):
+        message = SIGN_IN_AGAIN if settings.accounts_enabled else "Please enter the passphrase again."
+        return JSONResponse({"message": message, "redirect": door}, status_code=401)
+    return RedirectResponse(f"{door}?next={quote(exc.next_path, safe='/')}", status_code=303)
+
+
+@app.exception_handler(CrossSite)
+async def cross_site(request: Request, exc: CrossSite) -> Response:
+    if wants_json(request):
+        return JSONResponse({"message": RELOAD_AND_RETRY}, status_code=403)
+    return templates.TemplateResponse(request, "error.html", {"message": RELOAD_AND_RETRY}, status_code=403)
 
 
 @app.exception_handler(RecordAsleep)
@@ -513,6 +576,16 @@ async def unhandled_error(request: Request, exc: Exception) -> Response:
         return JSONResponse({"message": "Something went wrong. Please try again in a minute."}, status_code=500)
     return templates.TemplateResponse(request, "error.html", {}, status_code=500)
 
-# Imported after app/templates exist; admin imports templates only when rendering.
+# Imported after app/templates exist; routers import templates only when rendering.
 from app.admin import router as admin_router
 app.include_router(admin_router)
+
+
+def include_routers(target: FastAPI, folder: Path = BASE, package: str = "app") -> None:
+    """Each <package>/routes_*.py brings its own router, so a new page adds a file, not a line here."""
+    import importlib
+    for module in sorted(folder.glob("routes_*.py")):
+        target.include_router(importlib.import_module(f"{package}.{module.stem}").router)
+
+
+include_routers(app)

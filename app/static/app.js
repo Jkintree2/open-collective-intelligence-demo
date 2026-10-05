@@ -22,7 +22,8 @@
   const card = window.ociCard({find, request, unavailable, stopDictation: () => dictation.stop(), stopReading, updateText});
   const {state} = card;
   const dictation = window.ociDictation({find, tooLong, updateText, busy: () => state.reading || state.posting,
-    heard: () => { state.metadata = {source: 'manual'}; updateText(); card.changed(); }});
+    // Spoken words are the writer's own, as typed ones are; the reading they follow still goes with them.
+    heard: () => { state.metadata = {...state.metadata, source: 'manual'}; updateText(); card.changed(); }});
   function stopReading() {
     readController?.abort(); readController = null;
     clearTimeout(slowTimer); clearTimeout(abandonTimer);
@@ -71,7 +72,7 @@
     if ([...next].length > 4000) { event.preventDefault(); find('compose-message').textContent = tooLong; }
   });
   find('anonymous').addEventListener('change', card.changed);
-  find('display_name').addEventListener('input', card.changed);
+  find('display_name')?.addEventListener('input', card.changed);
   find('skip').hidden = false; find('skip-help').hidden = false; find('skip').addEventListener('click', () => { card.openCard(); if (!state.candidatesReady) card.loadCandidates(); });
   find('stop').addEventListener('click', () => card.openCard());
   find('retry').addEventListener('click', read);
@@ -82,6 +83,6 @@
   find('discard').addEventListener('click', () => { dictation.stop(); stopReading(); find('card').hidden = true; card.changed(); text.focus(); });
   find('post').addEventListener('click', card.post);
   // The summary above the form (about_issue.js) chooses positions through this.
-  window.oci = {setPositionOnExisting: card.setPositionOnExisting};
+  window.oci = {setPositionOnExisting: card.setPositionOnExisting, card};
   find('read').textContent = 'Read my statement'; updateText(); card.loadCandidates();
 })();

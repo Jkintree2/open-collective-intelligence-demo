@@ -54,7 +54,7 @@ def driver() -> Driver:
     return _driver
 
 
-def _read(query: str, **params: Any) -> list[dict[str, Any]]:
+def _read(query: str, /, **params: Any) -> list[dict[str, Any]]:
     try:
         result = driver().execute_query(
             query, params, database_=_database, routing_=RoutingControl.READ

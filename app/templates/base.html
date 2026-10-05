@@ -5,11 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ site_name }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/app.css?v={{ asset_version }}">
+  <script src="/static/once.js?v={{ asset_version }}" defer></script>
 </head>
 <body>
   <header class="site-header">
     <a class="site-name" href="/">{{ site_name }}</a>
-    {% block nav %}<nav><a href="/">Write</a><a href="/issues">Issues</a></nav>{% endblock %}
+    {% block nav %}<nav><a href="/">Write</a><a href="/issues">Issues</a>{% if member %}<a href="/people">Enter a person</a><a href="/account">Your account</a>{% endif %}</nav>{% endblock %}
   </header>
   <main class="column">
     {% block content %}{% endblock %}

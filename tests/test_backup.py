@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 from neo4j.time import DateTime, Date, Time, Duration
 from app import graph
-from app.backup import InvalidBackup, encode_value, decode_value, validate_record
+from app.backup import VERSION, InvalidBackup, encode_value, decode_value, validate_record
 from app.graph_backup import NonemptyRecord
 
 
@@ -88,6 +88,8 @@ def sample():
             "created_at": timestamp, "payload": '{"issues": [{"key": "same"}]}',
             "extraction_raw": ' { "found" : true } ', "model": "reading-version", "latency_ms": 123,
             "source": "model", "anonymous": True, "seed": False}},
+        {"label": "Change", "identity": "change", "properties": {"id": "change", "kind": "rename",
+            "created_at": timestamp, "details": "{}"}},
     ]
     refs = {n["label"]: {k: n[k] for k in ("label", "identity")} for n in nodes}
     from app.backup import DIRECTIONS
@@ -97,7 +99,7 @@ def sample():
             props = {"created_at": timestamp, "post_id": "deleted-post", "last_post_id": "latest"}
             rels.append({"type": kind, "source": refs[source], "target": refs[target], "properties": props})
     rels.append(deepcopy(next(r for r in rels if r["type"] == "CLAIM")))
-    return {"format": "oci-record", "version": 1, "nodes": nodes, "relationships": rels}
+    return {"format": "oci-record", "version": VERSION, "nodes": nodes, "relationships": rels}
 
 
 def canonical(data):
@@ -111,11 +113,17 @@ def test_full_round_trip_preserves_every_property_and_relationship_duplicate(mon
     memory = Memory()
     monkeypatch.setattr(graph, "driver", lambda: memory)
     original = sample()
-    assert graph.restore_record(original) == (5, len(original["relationships"]))
+    assert graph.restore_record(original) == (len(original["nodes"]), len(original["relationships"]))
     assert memory.queries[0][0] == graph.COUNT_NODES and memory.transactions == 1
     exported = json.loads(json.dumps(graph.export_record()))
     assert exported == canonical(original)
     assert len([r for r in exported["relationships"] if r["type"] == "CLAIM"]) == 2
+
+
+def test_change_records_round_trip():
+    data = sample()
+    assert {r["type"] for r in data["relationships"]} >= {"MADE", "CHANGED"}
+    validate_record(data)
 
 
 def test_nonempty_guard_precedes_first_write_and_failure_rolls_back(monkeypatch):
@@ -134,7 +142,7 @@ def test_nonempty_guard_precedes_first_write_and_failure_rolls_back(monkeypatch)
 
 
 @pytest.mark.parametrize("mutate", [
-    lambda d: d.update(version=2), lambda d: d.update(version=True),
+    lambda d: d.update(version=99), lambda d: d.update(version=True),
     lambda d: d["nodes"].append(deepcopy(d["nodes"][0])),
     lambda d: d["nodes"][0].update(label="Unknown"),
     lambda d: d["nodes"][0].update(identity=""),
@@ -180,3 +188,62 @@ def test_cli_rejects_file_before_connection_and_never_prints_failure_details(tmp
     assert restore.main([str(path)]) == 1
     captured = capsys.readouterr()
     assert "PASSWORD" not in captured.err + captured.out
+
+
+def test_export_leaves_out_passwords_and_links(monkeypatch):
+    memory = Memory()
+    memory.nodes["Person", "acct:ada"] = {"key": "acct:ada", "name": "Ada", "email": "ada@example.org",
+        "password_hash": "scrypt$secret", "token_hash": "abc", "token_purpose": "reset",
+        "token_expires_at": DateTime(2026, 10, 6, 12, 0, 0, 0)}
+    monkeypatch.setattr(graph, "driver", lambda: memory)
+    exported = graph.export_record()
+    person = next(n for n in exported["nodes"] if n["identity"] == "acct:ada")
+    assert set(person["properties"]) == {"key", "name", "email"}
+    assert exported["version"] == 2
+    assert "scrypt$secret" not in json.dumps(exported)
+
+
+@pytest.mark.parametrize("secret", ["password_hash", "token_hash", "token_purpose", "token_expires_at"])
+def test_restore_refuses_a_file_with_password_or_link_fields(secret):
+    data = sample()
+    data["nodes"][0]["properties"][secret] = "anything"
+    with pytest.raises(InvalidBackup):
+        validate_record(data)
+
+
+def test_restore_still_takes_a_version_one_copy():
+    data = sample()
+    data["version"] = 1
+    validate_record(data)
+
+
+def test_account_properties_round_trip():
+    data = sample()
+    data["nodes"][0]["properties"].update(email="ada@example.org", country="UK", postal_code="N1",
+                                           admin=False, active=True)
+    validate_record(data)
+    data["nodes"][0]["properties"]["admin"] = "no"
+    with pytest.raises(InvalidBackup):
+        validate_record(data)
+
+
+def test_a_bad_latency_is_refused():
+    data = sample()
+    data["nodes"][4]["properties"]["latency_ms"] = "fast"
+    with pytest.raises(InvalidBackup):
+        validate_record(data)
+
+
+def test_phase_1_needs_no_new_copy_version():
+    from app.backup import VERSION, VERSIONS
+    assert (VERSION, VERSIONS) == (2, (1, 2))
+
+
+def test_an_edited_time_must_be_a_timestamp():
+    data = sample()
+    post = next(node for node in data["nodes"] if node["label"] == "Post")
+    post["properties"]["edited_at"] = post["properties"]["created_at"]
+    validate_record(data)
+    post["properties"]["edited_at"] = "2026-10-06"
+    with pytest.raises(InvalidBackup):
+        validate_record(data)

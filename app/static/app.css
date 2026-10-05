@@ -81,6 +81,8 @@ label {
 
 input[type="text"],
 input[type="password"],
+input[type="email"],
+input[type="search"],
 textarea {
   width: 100%;
   font: inherit;
@@ -92,7 +94,9 @@ textarea {
 }
 
 input[type="text"],
-input[type="password"] { height: 40px; }
+input[type="password"],
+input[type="email"],
+input[type="search"] { height: 40px; }
 
 textarea {
   min-height: 120px;
@@ -213,6 +217,11 @@ button.primary:hover { background: var(--accent-hover); }
 
 .gate form input { flex: 1 1 160px; }
 
+/* The acceptance form: each label above its own field, one field per row. */
+.gate form.stacked { display: block; }
+.gate form.stacked .field { margin: 0 0 14px; }
+.gate form.stacked .field label { margin: 0 0 6px; }
+
 /* Session 2: chips, the Issues page and the issue page. */
 h1 {
   font-family: var(--serif);
@@ -311,7 +320,8 @@ h3 {
 .evidence a { color: var(--accent); }
 .by { font-size: 0.85rem; color: var(--ink-soft); }
 
-.site-header nav { display: flex; white-space: nowrap; }
+.site-header nav { display: flex; flex-wrap: wrap; }
+.site-header nav a { white-space: nowrap; }
 .site-header .site-name { padding-right: 12px; }
 
 [hidden] { display: none !important; }
@@ -325,6 +335,15 @@ h3 {
 .card optgroup { font: inherit; font-weight: 600; font-style: normal; color: var(--ink); }
 .card optgroup option { font-weight: 400; }
 .quiet { color: var(--accent); background: transparent; border: 0; text-align: left; min-height: 44px; cursor: pointer; }
+/* Phase 1 forms at 360 px: a select outside the card, and a link styled as a quiet button. */
+main select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--input); border: 1px solid var(--rule); border-radius: 6px; }
+a.quiet { display: inline-flex; align-items: center; min-height: 44px; }
+/* A quiet button and a quiet link look alike, only inside a row of actions. */
+.row-actions .quiet { font: inherit; padding: 0; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.row-actions .quiet:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+.row-actions form { display: inline; margin: 0; }
+.row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 1rem; }
+blockquote.statement + .row-actions { margin-top: 1rem; }
 .badge { display: block; font-size: .8rem; color: var(--ink-soft); margin: 4px 0; }
 .write-issue { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
 .card input, .card select { min-width: 0; max-width: 100%; }
@@ -347,3 +366,36 @@ button:disabled { opacity: .6; cursor: default; }
 .about-issue { margin: 12px 0 16px; padding: 12px 16px; background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; }
 .about-issue h2 { margin: 0 0 6px; }
 .about-name { margin: 8px 0 0; }
+
+/* Phase 1: stances (sub-plan C) */
+form.stance { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.5rem 0; }
+form.stance button { min-height: 44px; min-width: 6.5rem; }
+form.stance button[aria-pressed="true"] { background: var(--accent); color: var(--input); border-color: var(--accent); }
+form.stance p { flex-basis: 100%; margin: 0; }
+form.stance[aria-busy="true"] button { opacity: 0.6; cursor: progress; }
+
+/* Phase 1: own posts (sub-plan D) */
+.own-post { display: flex; gap: 1rem; margin: 0.25rem 0; }
+.own-post a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-soft); }
+
+/* Phase 1: search and tidying (sub-plan E) */
+form.search { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.5rem 0 1rem; }
+form.search input { flex: 1 1 12rem; min-height: 40px; }
+form.search button { min-height: 44px; }
+.results li { margin: 0; padding: 10px 0; }
+.tidy { border-top: 1px solid var(--rule, #D8CFB8); margin-top: 2rem; padding-top: 1rem; }
+.tidy form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.75rem 0; }
+.tidy label { flex-basis: 100%; }
+.tidy select, .tidy input { flex: 1 1 12rem; min-height: 40px; }
+.tidy button { min-height: 44px; }
+.results a, .search-links a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.search-links a { display: inline-block; min-height: 44px; }
+.results a:hover, .search-links a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+
+/* Phase 1: back room (sub-plan F) */
+.account-row { border-top: 1px solid var(--rule); padding: 8px 0; }
+.account-row p { margin: 0 0 4px; overflow-wrap: anywhere; }
+.account-row form, .account-row details { display: inline-block; margin: 0 16px 0 0; }
+.account-row details[open] { display: block; }
+.account-row summary { color: var(--accent); cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.account-row button.quiet { font: inherit; }

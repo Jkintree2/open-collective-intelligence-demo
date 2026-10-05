@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Enter a person · {{ site_name }}{% endblock %}
+{% block content %}
+<h1>Enter a person</h1>
+<p>Enter someone who has already agreed to take part. We will email them from John Kintree's address with a link to accept and choose their own password. They will see your name as the person who entered them.</p>
+{% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
+{% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
+{% if failed_key %}
+<form method="post" action="/people/{{ failed_key }}/resend" data-once><button type="submit" class="primary">Send the invitation again</button></form>
+{% endif %}
+<form method="post" action="/people" class="enter-person" data-once>
+  <label for="name">Name:</label>
+  <input id="name" name="name" type="text" maxlength="120" autocomplete="off" required value="{{ form.name }}">
+  <label for="email">Email:</label>
+  <input id="email" name="email" type="email" maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false" required value="{{ form.email }}">
+  <label for="country">Country:</label>
+  <input id="country" name="country" type="text" maxlength="80" autocomplete="off" required value="{{ form.country }}">
+  <label for="postal_code">Postal code:</label>
+  <input id="postal_code" name="postal_code" type="text" maxlength="20" autocomplete="off" required value="{{ form.postal_code }}">
+  <label for="relationship">How do you know them?</label>
+  <select id="relationship" name="relationship" autocomplete="off" required>
+    <option value="">Choose one</option>
+    {% for value in relationships %}<option value="{{ value }}"{% if form.relationship == value %} selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}
+  </select>
+  <label class="check"><input type="checkbox" name="agreed" value="yes" autocomplete="off" required> This person has agreed to be entered</label>
+  <button type="submit" class="primary">Enter and send the invitation</button>
+</form>
+
+<h2>People you have entered</h2>
+{% for entry in entries %}
+<section class="entered">
+  <p>{{ entry.name }} · {{ entry.relationship }} · entered {{ entry.entered_at.strftime("%-d %B") }}</p>
+  {% if entry.state == "joined" %}<p class="counts">joined {{ entry.accepted_at.strftime("%-d %B") }}</p>
+  {% elif entry.state == "switched off" %}<p class="counts">switched off</p>
+  {% else %}
+  <p class="counts">{{ "invited, not accepted yet" if entry.state == "invited" else "invitation expired" }}</p>
+  <div class="row-actions">
+    <form method="post" action="/people/{{ entry.key }}/resend" data-once><button type="submit" class="quiet">Send the invitation again</button></form>
+    <a class="quiet" href="/people/{{ entry.key }}/withdraw">Withdraw</a>
+  </div>
+  {% endif %}
+</section>
+{% else %}
+<p class="empty">You have not entered anyone yet.</p>
+{% endfor %}
+{% if entries %}<p class="counts">If an email address was mistyped, withdraw the entry and enter the person again.</p>{% endif %}
+{% endblock %}

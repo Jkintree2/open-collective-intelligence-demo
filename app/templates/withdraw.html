@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Withdraw · {{ site_name }}{% endblock %}
+{% block content %}
+<p>Withdraw the entry for {{ entry.name }}? Their link stops working and the details you entered are removed.</p>
+<div class="row-actions">
+  <form method="post" action="/people/{{ entry.key }}/withdraw"><button type="submit" class="primary">Withdraw</button></form>
+  <a class="quiet" href="/people">Keep it</a>
+</div>
+{% endblock %}

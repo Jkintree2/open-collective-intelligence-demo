@@ -2,6 +2,8 @@
 
 > **Revised 5 September 2026 after REVIEW.md.** Changed: the gate names DeepSeek (M16); the sentence and site name come from environment variables (M15); anonymous clears the name and stores none (M7); a row of the most discussed issue chips sits above the text box (C7); the limit is 4,000 characters (m11); a cancel link during reading (m10); Post is gated on an empty card (M17); the feed shows sixty posts, no paging (table); the sort is labelled "Most people" and top-level rows show inclusive counts (m9, C7); evidence links carry `noopener` (M17); admin uses basic auth and shows the last reading-service error (table, M5); the "posting as" header line is cut (table); error and asleep page copy added (m2, C4).
 
+> **Extended 4 October 2026 for Phase 1 (People and positions, SOW 0.2).** Added: sign in, entering a person, the invitation and password emails, accepting, password pages, your account, approve and oppose buttons, editing and deleting your own posts, search, tidying and the list of changes, and back room additions. See "Phase 1: people and positions" at the end. With `ACCOUNTS_ENABLED` unset the screens above are unchanged, except search on the Issues page, which works behind the passphrase too.
+
 Five screens, one CSS file, one JavaScript file. Look taken from John's two Claude prototypes: the paper palette and serif statements of the second ("The Commons"), the sidebar-free single column and the plain-sentence relationships of both. Anything marked **client-facing** is copy John will read; it avoids dashes and machine phrasing, and John may replace any of it.
 
 ## Look
@@ -159,3 +161,440 @@ And a list of the last fifty posts with a "delete" link each (removes the post, 
 ## Note on John's artifact
 
 The artifact he likes most ("The Commons") does persist a shared record between viewers through Claude's artifact storage, and it calls a model. What it cannot do is live outside claude.ai, hold a real graph, rank issues, or be owned and moved. The difference is ownership and the Issues view, not whether it shares.
+
+## Phase 1: people and positions
+
+Added 4 October 2026 at Gate 0 of Phase 1. With `ACCOUNTS_ENABLED` set, sign in replaces the passphrase, and every screen above needs a signed-in member. The look does not change: same palette and type, one column, 44 px touch targets, and every screen holds at 360 px. Everything in a quote is **client-facing**; John may replace any of it. `{name}` and similar mark values filled in by the site. The emails go from John Kintree <jkintree@gmail.com>, as plain text.
+
+### Header
+
+Signed in, the header links read "Write", "Issues", "Enter a person" and "Your account", and wrap onto a second line on a narrow phone. The sign in, accept and password pages show the site name only.
+
+### Sign in (`/sign-in`)
+
+Replaces Screen 1. The two paragraphs about the shared record and the reading service stay exactly as they read on the live passphrase page.
+
+> **{SITE_NAME}**
+>
+> A closed test of a shared record of what people are claiming, proposing and citing.
+>
+> *(the two paragraphs from the passphrase page)*
+>
+> Email: [ input ]
+> Password: [ input ]
+> [ Sign in ]
+>
+> Forgot your password?
+>
+> New here? Someone already taking part enters you, and you get an email from John Kintree with a link to choose your password.
+
+Messages:
+
+> That email and password did not match. Check them and try again.
+
+> Too many tries. Please wait a minute and try again.
+
+> You are signed out.
+
+When a page finds the member signed out (the card, a preview, Post, an Approve or Oppose button):
+
+> Please sign in again.
+
+Any form posted from another site is refused with:
+
+> Please reload the page and try again.
+
+The same "did not match" line answers a wrong password, an unknown email, an invitation not yet accepted and an account that is switched off, so the page never says who is taking part.
+
+### Writing with an account
+
+The "Your name" field goes; posts are credited to the account's name. The "Post anonymously" box stays, with a line under it:
+
+> Your name is not shown to others. The record still knows the post is yours, so you can edit or delete it later.
+
+The card's footnote is unchanged ("credited to {name}" or "listed as Anonymous").
+
+### Enter a person (`/people`)
+
+> **Enter a person**
+>
+> Enter someone who has already agreed to take part. We will email them from John Kintree's address with a link to accept and choose their own password. They will see your name as the person who entered them.
+>
+> Name: [ input ]
+> Email: [ input ]
+> Country: [ input ]
+> Postal code: [ input ]
+> How do you know them? [ Choose one / Family / Neighbor / Friend / Work / School / Health / Organization ]
+> [ ] This person has agreed to be entered
+> [ Enter and send the invitation ]
+
+Messages:
+
+> Please fill in every field.
+
+> Please enter only someone who has agreed, and tick the box to say so.
+
+> That email address does not look complete. Please check it.
+
+> Someone with that email address has already been entered.
+
+> {name} is entered. The invitation is on its way to {email}. The link works for 14 days.
+
+> {name} is entered, but the invitation email did not go. Please try again in a minute.
+> [ Send the invitation again ]
+
+When the form is sent twice in a row (a double tap), the second answer promises nothing, since the first email may not have gone; the list below shows the truth:
+
+> {name} is entered. If the invitation does not arrive, use Send the invitation again in the list below.
+
+> Too many tries. Please wait a minute and try again.
+
+When "Send the invitation again" has reached the same address too often in the last hour (the same limit as "Forgot your password?"):
+
+> Too many emails to that address in the last hour. Please try again later.
+
+Below the form, the people this member has entered, newest first:
+
+> **People you have entered**
+>
+> {name} · {relationship} · entered {4 October}
+> joined {6 October}
+> *or* invited, not accepted yet [ Send the invitation again ] [ Withdraw ]
+> *or* invitation expired [ Send the invitation again ] [ Withdraw ]
+> *or* switched off
+>
+> If an email address was mistyped, withdraw the entry and enter the person again.
+
+> You have not entered anyone yet.
+
+Withdraw asks first:
+
+> Withdraw the entry for {name}? Their link stops working and the details you entered are removed.
+> [ Withdraw ] [ Keep it ]
+
+After either button:
+
+> A new invitation is on its way to {email}. The earlier link no longer works.
+
+> The entry for {name} is withdrawn.
+
+### The invitation email
+
+> **Subject:** Your invitation to {SITE_NAME}
+>
+> Hello {name},
+>
+> Thank you for agreeing to take part in {SITE_NAME}, a closed test of a shared record of what people are claiming, proposing and citing.
+>
+> Entered by: {inviter}
+> How you know each other: {relationship}
+>
+> To accept and choose your own password, open this link:
+> {SITE_URL}/accept/{link}
+>
+> The link works once, for 14 days. If it has expired, ask {inviter} to send a new one. If you were not expecting this email, you can ignore it.
+>
+> If you have a question, reply to this email.
+>
+> John Kintree
+
+Note for the builder: `{relationship}` starts with a capital letter when it stands alone after a label.
+
+John's own first email has no "Entered by" lines. `make_admin.py` makes his account and sends nothing; the email goes when he first uses "Forgot your password?" on the site, since his account is not yet accepted (the same goes for any invitation sent again to his account before he accepts):
+
+> **Subject:** Choose your password for {SITE_NAME}
+>
+> Hello {name},
+>
+> Your account on {SITE_NAME} is ready. To choose your password, open this link:
+> {SITE_URL}/accept/{link}
+>
+> The link works once, for 14 days.
+
+### Accepting (`/accept/{link}`)
+
+> **Welcome to {SITE_NAME}**
+>
+> {inviter} entered you. Please check your details and choose a password.
+>
+> Name: [ {name} ]
+> Email: {email}
+> Country: [ {country} ]
+> Postal code: [ {postal code} ]
+> How you know {inviter}: {relationship}
+>
+> Choose a password: [ input ]
+> At least 10 characters. Your browser may offer a strong password and remember it for you.
+> Type it again: [ input ]
+>
+> *(the two paragraphs from the passphrase page)*
+>
+> [ Accept and sign in ]
+
+For John's own account the heading is "Choose your password" and the "entered you" and "How you know" lines are left out. Messages:
+
+> Please fill in your name.
+
+> Please use at least 10 characters for your password.
+
+> The two passwords are not the same.
+
+After accepting, the write page opens with:
+
+> Welcome, {name}. You are signed in.
+
+When the link cannot be used, one page with one of these:
+
+> This invitation has expired. Please ask {inviter} to send a new one.
+> [ Ask for a new link ]
+
+The button opens "Forgot your password?", which sends a person not yet accepted their invitation again (D4). John's own first link has no inviter; when it expires it shows "This link has expired. You can ask for a new one." with "Forgot your password?".
+
+> This link has expired. You can ask for a new one.
+> [ Forgot your password? ]
+
+> This link no longer works. It may have been used already, or a newer one sent. If you have chosen a password, sign in. If not, use the most recent email, or ask the person who entered you to send the invitation again.
+> [ Sign in ]
+
+> You are signed in as {name}. This link is for someone else.
+> [ Sign out and continue ]
+
+### Forgot your password (`/forgot-password`)
+
+> **Forgot your password**
+>
+> Enter the email address you were invited with, and we will send you a link to choose a password.
+>
+> Email: [ input ]
+> [ Send the link ]
+>
+> Sign in
+
+Afterwards, whatever was typed (the "Sign in" link stays under it):
+
+> If that address belongs to someone taking part, an email with a link is on its way.
+
+Someone who was entered but has not accepted yet gets the invitation email again, with a fresh link, instead of the password email. Nobody else gets anything.
+
+> Too many tries. Please wait a minute and try again.
+
+### The password email
+
+> **Subject:** Choose a new password for {SITE_NAME}
+>
+> Hello {name},
+>
+> Someone asked for a new password for your account on {SITE_NAME}. If it was you, open this link to choose one:
+> {SITE_URL}/reset/{link}
+>
+> The link works once, for one hour. Your current password keeps working until you choose a new one.
+>
+> If it was not you, you can ignore this email.
+>
+> John Kintree
+
+### Choose a new password (`/reset/{link}`)
+
+> **Choose a new password**
+>
+> Email: {email}
+> New password: [ input ]
+> Type it again: [ input ]
+> [ Save the new password ]
+
+Then the write page opens with:
+
+> Your new password is saved. You are signed out everywhere else.
+
+The same length and "not the same" messages as accepting, and the same page when the link cannot be used.
+
+### Your account (`/account`)
+
+> **Your account**
+>
+> {name} · {email}
+> Entered by {inviter} ({relationship}) on {4 October 2026}.
+>
+> **Change your password**
+> Email: {email}
+> Current password: [ input ]
+> New password: [ input ]
+> Type it again: [ input ]
+> [ Change password ]
+>
+> [ Sign out ]
+
+> That is not your current password.
+
+> Your password is changed. You are signed out everywhere else.
+
+John's account leaves out the "Entered by" line.
+
+### Approve and oppose on the issue page
+
+Under "Proposed solutions", one line:
+
+> Listed by approvals minus oppositions.
+
+Each solution keeps its counts line ("proposed by 2 · approved by 3 · opposed by 1") and gains two buttons, "Approve" and "Oppose". The one the member holds is highlighted, with a line under the buttons:
+
+> You approve this. Press Approve again to withdraw.
+
+> You oppose this. Press Oppose again to withdraw.
+
+Pressing the other button switches. The counts update in place; without JavaScript the buttons are forms and the page reloads at the same solution. On failure, under the buttons (without JavaScript too, after the page reloads at the solution):
+
+> Your position was not saved. Please try again.
+
+With `ACCOUNTS_ENABLED` unset there are no buttons and no "Listed by" line, and the solutions keep today's order, so the issue page reads exactly as before.
+
+The "Already on record" panel above the write box keeps its three choices, which add a row to the card as before; a choice made there survives "Read my statement" (GitHub issue 8).
+
+### Your own posts
+
+On a member's own posts, after the byline: "Edit" and "Delete". An edited post's byline reads "{name} · 2 hours ago · edited".
+
+Delete asks first:
+
+> Delete this post? What it claimed, proposed and cited goes, unless something else still uses it. Approvals and oppositions stay; you can change them on the issue page.
+> [ Delete ] [ Keep it ]
+
+> Your post is deleted.
+
+Edit opens the write page with the statement and the card filled from the post as the record holds it now (an issue renamed or merged since shows under its new name). "Read my statement" and "Skip the reading" are hidden while editing. Without JavaScript the page shows the statement and a "Save changes" button, which saves the new words with the post's card as it is. The card's heading reads "Edit your post", its buttons "Save changes" and "Cancel", and a line at the top says:
+
+> Saving replaces what this post added. It keeps the name or Anonymous it was first posted with. Removing a position here does not withdraw it; use the buttons on the issue page.
+
+Note for the builder: while editing, the reading buttons and the "post it as a plain statement anyway" button are hidden; the card is the edit.
+
+> Your post is updated.
+
+> You can change only your own posts.
+
+> That post is no longer here.
+
+### Search on the Issues page
+
+Above "Sort by":
+
+> Search: [ input, placeholder "A word or two, for example: housing" ] [ Search ]
+
+Results replace the list, in groups that have results, each item linking to its issue page; posts look as in the feed:
+
+> **Results for {words}**
+> Issues · Solutions · Evidence · Posts
+> Show all issues
+
+Every word must match, as written or as the start of a word, so a second word narrows the results.
+
+> Nothing matches {words}. Try another word, or fewer words.
+
+### Tidying an issue (John only)
+
+At the foot of an issue page, seen only by an admin account:
+
+> **Tidy this issue**
+>
+> New name: [ {name} ] [ Rename ]
+>
+> Make it part of: [ none, make it a top level issue / top level issues ] [ Move ]
+> *or, when other issues are part of it:* Other issues are part of this one, so it stays at the top level.
+>
+> Merge another issue into this one: [ Choose an issue / every other issue ] [ Merge ]
+
+Merge asks first:
+
+> Merge {other} into {this}? Its claims, solutions, evidence and the issues that are part of it move here, and {other} is removed. This cannot be undone. It is recorded in the list of changes.
+> [ Merge ] [ Cancel ]
+
+Messages:
+
+> Renamed.
+
+> Moved.
+
+> Merged. Everything about {other} is now here.
+
+> Another issue already has that name. To join the two, use Merge.
+
+> That name is too short.
+
+> An issue cannot be part of itself.
+
+> That issue is part of another issue, so nothing can be part of it.
+
+> Choose a different issue to merge.
+
+### Changes to the issues (`/changes`)
+
+Linked at the foot of the Issues page as "Changes to the issues"; every member can read it.
+
+> **Changes to the issues**
+>
+> Every move, rename and merge, newest first.
+>
+> {4 October 2026, 14:02 UTC} · {name} renamed {old name} to {new name}
+> {date} · {name} moved {issue} under {parent}
+> {date} · {name} made {issue} a top level issue
+> {date} · {name} merged {other} into {issue}
+
+> No changes yet.
+
+### Back room additions
+
+A "People" section listing every account:
+
+> {name} · {email} · entered by {inviter} ({relationship}) on {date} · joined {date}
+> *or* invited, not accepted yet *or* invitation expired *or* switched off
+> *or, for John's own account:* first account
+
+Buttons, as they apply: "Send the invitation again", "Send a password link", "Withdraw", "Switch off", "Switch on". Switch off asks first:
+
+> Switch off {name}? They can no longer sign in. Their posts stay.
+
+Withdraw asks first too, because in the back room John withdraws entries that other members made:
+
+> Withdraw the entry for {name}? Their link stops working and the details entered for them are removed.
+> [ Withdraw ]
+
+Notices:
+
+> Invitation sent again.
+
+> Password link sent.
+
+> Entry withdrawn.
+
+> Switched off.
+
+> Switched on.
+
+> The email did not go. Please try again in a minute.
+
+> Too many emails to that address in the last hour. Please try again later.
+
+The line above appears when a back room email would pass the per address limit that "Forgot your password?" and "Send the invitation again" also use; the back room has no per minute limit, since only John can reach it. John's own row reads "{name} · {email} · first account" followed by its state, because nobody entered him; it offers neither Withdraw nor Switch off. Switch off is offered only to accounts that have joined; someone not yet accepted is withdrawn instead.
+
+A "Sending email" line, like the reading service line:
+
+> No problems recorded.
+
+> The last email could not be sent, on {4 October 2026, 14:02 UTC}. If this keeps happening, Google needs John's permission again.
+
+When the time of the failure is not known:
+
+> The last email could not be sent. If this keeps happening, Google needs John's permission again.
+
+"Reset to seed" now reads:
+
+> This deletes every post and restores the seed statements. Accounts, and who entered whom, stay. Download a copy first if you want to keep the current record.
+
+### Phone and browser details (not client-facing)
+
+* Sign in: `type="email" autocomplete="username" autocapitalize="none" spellcheck="false"` and `autocomplete="current-password"`. Accept, reset and change password: the email is present as a read-only `autocomplete="username"` field, and both new password fields use `autocomplete="new-password" minlength="10"`, so the phone or browser offers a strong password and saves it under the right email.
+* Enter a person: every field `autocomplete="off"`, so the browser does not fill in the member's own name, email or address for someone else. Email `type="email"`.
+* Accept, reset, sign in and account pages send `Cache-Control: no-store` and `Referrer-Policy: same-origin`: a link's address never goes to another site, and the page's own forms still carry this site's `Origin` (under `no-referrer` a browser sends `Origin: null` with every form, which the same-site check must refuse). The link pages load nothing from another site.
+* The request log writes `/accept/…` and `/reset/…` with the link cut out. A link never appears in a log at any level.
+* Email links are built from `SITE_URL`, never from the request's host.
+* New scripts and styles sit in `app/static/`, so the `?v=` hash from fe88bd4 covers them.
+* Every form works without JavaScript; a mutation is a POST, refused unless it comes from this site.

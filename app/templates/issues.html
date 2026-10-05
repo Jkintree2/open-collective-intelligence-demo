@@ -2,6 +2,23 @@
 {% block title %}Issues · {{ site_name }}{% endblock %}
 {% block content %}
 <h1>Issues</h1>
+<form class="search" method="get" action="/issues" role="search">
+  <label for="q">Search:</label>
+  <input id="q" name="q" type="search" value="{{ q }}" placeholder="A word or two, for example: housing" maxlength="200" enterkeyhint="search">
+  <button type="submit">Search</button>
+</form>
+{% if results is not none %}
+<h2>Results for {{ q }}</h2>
+{% set found = results.issues or results.solutions or results.evidence or results.posts %}
+{% for title, rows in (("Issues", results.issues), ("Solutions", results.solutions), ("Evidence", results.evidence)) if rows %}
+<h3>{{ title }}</h3>
+<ul class="plain results">{% for row in rows %}<li>{% if row.href %}<a href="{{ row.href }}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}</li>{% endfor %}</ul>
+{% endfor %}
+{% if results.posts %}<h3>Posts</h3>
+<section class="feed">{% for post in results.posts %}{% include "_post.html" %}{% endfor %}</section>{% endif %}
+{% if not found %}<p class="empty">Nothing matches {{ q }}. Try another word, or fewer words.</p>{% endif %}
+<p class="search-links"><a href="/issues">Show all issues</a></p>
+{% else %}
 <nav class="sorts" aria-label="Sort"><span class="counts">Sort by</span>
   {% for value, label in sorts %}
   <a href="/issues?sort={{ value }}"{% if value == sort %} aria-current="page"{% endif %}>{{ label }}</a>
@@ -25,4 +42,6 @@
 {% else %}
 <p class="empty">No issues yet. Write something on the front page and it will appear here.</p>
 {% endfor %}
+{% endif %}
+{% if member %}<p class="counts search-links"><a href="/changes">Changes to the issues</a></p>{% endif %}
 {% endblock %}

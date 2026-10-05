@@ -254,3 +254,8 @@ def test_approving_an_existing_solution_previews_and_posts_one_approval(api, mon
     args, _ = writes[0]
     assert args[4] == "Anonymous approves EV fleets."
     assert args[5].issues == [] and [row["key"] for row in args[5].solutions] == ["ev fleets"]
+
+
+def test_with_accounts_off_the_name_field_stays(api):
+    page = api[0].get("/").text
+    assert 'id="display_name"' in page and "data-member" not in page
