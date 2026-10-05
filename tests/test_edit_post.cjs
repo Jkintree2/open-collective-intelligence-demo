@@ -24,6 +24,11 @@ test('the edit page opens the card from the post and saves under its id', async 
   assert.equal(p.get('post').textContent, 'Save changes');
   assert.equal(p.get('discard').textContent, 'Cancel');
   assert.equal(p.get('issue-rows').children.at(-1).children[1].value, 'Flooding');
+  // Enter in a card field submits the form; while editing that must not start a reading. The fake page
+  // does not model capture or stopping, so the edit page's own listener (added last) is called alone.
+  let stopped = false, prevented = false;
+  p.get('compose').listeners.submit.at(-1)({preventDefault() { prevented = true; }, stopImmediatePropagation() { stopped = true; }});
+  assert.equal(stopped && prevented, true);
   await p.runTimer(200);
   p.requests.at(-1).resolve({sentences: ['Anonymous claims Flooding'], valid: true, dropped: [], corrected: []});
   await p.flush();

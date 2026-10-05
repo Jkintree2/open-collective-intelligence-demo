@@ -14,6 +14,8 @@
   find('anonymous').disabled = true;
   // A reading would clear the intro line, and skipping it would empty the card: the card is the edit.
   for (const id of ['read', 'skip', 'skip-help']) find(id).hidden = true;
+  // Enter in a card field submits the form, which would start a reading (app.js); while editing it does nothing.
+  find('compose').addEventListener('submit', event => { event.preventDefault(); event.stopImmediatePropagation(); }, true);
   function open() {
     card.openCard(post.card, '', {source: 'manual'});
     find('card-title').textContent = 'Edit your post';
