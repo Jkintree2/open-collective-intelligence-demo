@@ -12,8 +12,9 @@ from fastapi.responses import RedirectResponse, Response
 from app import accounts, config, emails, graph_accounts, mailer
 from app.auth import TOO_MANY_TRIES
 from app.graph_accounts import EmailTaken
-from app.members import Member, require_member, require_same_origin
-from app.pages import page
+from app.members import Member, current_member, require_member, require_same_origin, set_member_cookie
+from app.pages import link_problem, page
+from app.routes_accounts import accounts_on
 from app.text import make_key
 
 log = logging.getLogger("oci")
@@ -30,6 +31,7 @@ ALREADY_ENTERED = "Someone with that email address has already been entered."
 TOO_MANY_TO_ADDRESS = "Too many emails to that address in the last hour. Please try again later."
 RESENT = "A new invitation is on its way to {email}. The earlier link no longer works."
 WITHDRAWN = "The entry for {name} is withdrawn."
+FILL_IN_NAME = "Please fill in your name."
 
 DOUBLE_TAP_SECONDS = 60
 
@@ -157,3 +159,56 @@ def withdraw(request: Request, key: str, member: Member = Depends(require_member
     if entry is None or not graph_accounts.withdraw(key, inviter_key=member.key):
         return RedirectResponse("/people", status_code=303)
     return _people_page(request, member, notice=WITHDRAWN.format(name=entry["name"]))
+
+
+def _open_invitation(request: Request, secret: str) -> tuple[dict | None, Response | None]:
+    accounts_on()
+    here = f"/accept/{secret}"
+    row = graph_accounts.open_link(accounts.link_hash(secret)) if len(secret) <= 100 else None
+    state = accounts.link_state(row, "invite", datetime.now(timezone.utc))
+    if state == "expired":
+        return None, link_problem(request, "expired_invite", here=here, inviter_name=row["inviter_name"])
+    if state != "ok":
+        return None, link_problem(request, "gone", here=here)
+    member = current_member(request)
+    if member is not None and member.key != row["key"]:
+        return None, link_problem(request, "someone_else", here=here)
+    return row, None
+
+
+def _accept_page(request: Request, secret: str, row: dict, *, message: str | None = None,
+                 details: dict | None = None) -> Response:
+    return page(request, "accept.html", {"secret": secret, "message": message, "email": row["email"],
+                                         "inviter_name": row["inviter_name"], "relationship": row["relationship"],
+                                         **(details or {k: row[k] for k in ("name", "country", "postal_code")})},
+                private=True)
+
+
+@router.get("/accept/{secret}")
+def accept_form(request: Request, secret: str) -> Response:
+    row, problem = _open_invitation(request, secret)
+    return problem or _accept_page(request, secret, row)
+
+
+@router.post("/accept/{secret}", dependencies=[Depends(require_same_origin)])
+def accept(request: Request, secret: str, name: str = Form(""), country: str = Form(""),
+           postal_code: str = Form(""), password: str = Form(""), again: str = Form("")) -> Response:
+    row, problem = _open_invitation(request, secret)
+    if problem:
+        return problem
+    # The person may correct their own name, country and postal code; the relationship stays (D8).
+    details = {"name": accounts.person_name(name), "country": _field(country, 80) or row["country"],
+               "postal_code": _field(postal_code, 20) or row["postal_code"]}
+    if make_key(details["name"]) is None:
+        return _accept_page(request, secret, row, message=FILL_IN_NAME, details=details)
+    message = accounts.password_problem(password, again)
+    if message:
+        return _accept_page(request, secret, row, message=message, details=details)
+    password_hash = accounts.hash_password(password)
+    key = graph_accounts.accept(accounts.link_hash(secret), password_hash=password_hash,
+                                now=datetime.now(timezone.utc), **details)
+    if key is None:  # accepted a moment ago in another tab, or replaced
+        return link_problem(request, "gone", here=f"/accept/{secret}")
+    response = RedirectResponse("/?done=welcome", status_code=303)
+    set_member_cookie(response, key, password_hash)
+    return response

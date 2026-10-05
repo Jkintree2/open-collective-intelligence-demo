@@ -25,3 +25,22 @@ def page(request: Request, name: str, context: dict | None = None, *, status_cod
     from app.main import templates
     return templates.TemplateResponse(request, name, context or {}, status_code=status_code,
                                       headers=PRIVATE_HEADERS if private else None)
+
+
+# Notices on the write page after a redirect (/?done=<name>), from 04_interface.md. A8 adds
+# "reset"; sub-plan D adds "deleted" and "edited".
+WRITE_NOTICES = {"welcome": "Welcome, {name}. You are signed in."}
+
+
+def write_notice(done: str | None, member) -> str | None:
+    notice = WRITE_NOTICES.get(done or "")
+    return notice.format(name=member.name) if notice and member else None
+
+
+def link_problem(request: Request, problem: str, *, here: str, inviter_name: str | None = None) -> Response:
+    """One page for every link that cannot be used (04_interface.md, Accepting). `here` is where
+    "Sign out and continue" comes back to."""
+    from app.members import current_member
+    member = current_member(request)
+    return page(request, "link_problem.html", {"problem": problem, "here": here, "inviter_name": inviter_name,
+                                               "member_name": member.name if member else None}, private=True)

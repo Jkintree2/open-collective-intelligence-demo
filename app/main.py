@@ -37,7 +37,7 @@ from app.auth import (
     post_spacing,
 )
 from app.config import get_settings
-from app.pages import loggable_path
+from app.pages import loggable_path, write_notice
 from app.members import (
     RELOAD_AND_RETRY,
     SIGN_IN_AGAIN,
@@ -314,8 +314,9 @@ def enter_submit(
 
 
 @app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_access)])
-def write_page(request: Request, issue: str | None = Query(None, max_length=200)) -> Response:
-    return _render_index(request, about=_about_issue(issue))
+def write_page(request: Request, issue: str | None = Query(None, max_length=200),
+               done: str | None = Query(None, max_length=20)) -> Response:
+    return _render_index(request, about=_about_issue(issue), message=write_notice(done, current_member(request)))
 
 
 def _valid_anon_id(value: str | None) -> str | None:
