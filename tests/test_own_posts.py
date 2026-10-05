@@ -230,6 +230,25 @@ def test_the_edit_card_comes_from_the_posts_edges_as_they_are_now():
     assert edit_card([], None, {}) == {"issues": [], "solutions": [], "evidence": []}
 
 
+def test_an_edit_leaves_out_only_the_posts_own_proposal_links(monkeypatch):
+    """Q25: only this post's own HAVE_PROPOSED link is left out. Seawalls hangs on Flooding by this post
+    and on Storms by someone else: moving it to Storms is a position only (GitHub issue 4), while keeping
+    it on Flooding keeps the claim and the proposal."""
+    from app.routes_own_posts import resolve_edit
+    candidates = Candidates(issues={"flooding": {"name": "Flooding", "parent_key": None},
+                                    "storms": {"name": "Storms", "parent_key": None}},
+                            solutions={"seawalls": "Seawalls"}, solution_issues={"seawalls": ["Flooding", "Storms"]})
+    monkeypatch.setattr(graph, "candidates", lambda: candidates)
+    own = {"seawalls": {"flooding"}}
+    moved, _ = resolve_edit(CardPayload.model_validate(
+        {"issues": [{"name": "Storms"}], "solutions": [{"name": "Seawalls", "for_issue": "Storms", "stance": "approve"}]}), own)
+    assert moved.dropped == [] and moved.issues == [] and [row["stance_only"] for row in moved.solutions] == [True]
+    kept, _ = resolve_edit(CardPayload.model_validate(
+        {"issues": [{"name": "Flooding"}], "solutions": [{"name": "Seawalls", "for_issue": "Flooding", "stance": "approve"}]}), own)
+    assert [row["key"] for row in kept.issues] == ["flooding"] and [row["stance_only"] for row in kept.solutions] == [False]
+    assert candidates.solution_issues == {"seawalls": ["Flooding", "Storms"]}  # the record's candidates are not changed
+
+
 def test_the_edit_page_carries_the_post_and_its_card(owned, monkeypatch):
     monkeypatch.setattr(owned.main.graph, "candidates", Candidates.empty)
     page = owned.client.get("/posts/mine-1/edit")

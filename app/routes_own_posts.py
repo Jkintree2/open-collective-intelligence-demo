@@ -13,7 +13,7 @@ from app import extract as reading, graph, graph_own_posts
 from app.extract import CardPayload, ResolvedPayload, resolve_payload
 from app.members import Member, posting_identity, require_member, require_same_origin
 from app.pages import page
-from app.text import sentences
+from app.text import make_key, sentences
 
 router = APIRouter()
 # Client facing copy, word for word from docs/planning/04_interface.md.
@@ -95,8 +95,9 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
             "evidence": list(evidence.values())}
 
 
-def current_card(post_id: str, stored_json: str | None) -> tuple[dict, set[str]]:
-    """The edit card from the record as it is now, and the solutions this post itself proposes."""
+def current_card(post_id: str, stored_json: str | None) -> tuple[dict, dict[str, set[str]]]:
+    """The edit card from the record as it is now, and this post's own proposal links: each solution
+    key mapped to the keys of the issues whose HAVE_PROPOSED link to it this post made."""
     rows = graph.post_structure([post_id]).get(post_id, [])
     stored = json.loads(stored_json or "{}")
     keys = {row["to_key"] for row in rows if row["rel"] == "CLAIM"}
@@ -104,18 +105,23 @@ def current_card(post_id: str, stored_json: str | None) -> tuple[dict, set[str]]
     keys |= {row["home_key"] for row in rows if row.get("home_key")}
     keys |= {row["for_issue_key"] for row in stored.get("solutions", []) if row.get("for_issue_key")}
     issues = {key: header for key in keys if (header := graph.issue_header(key))}
-    own = {row["to_key"] for row in rows if row["rel"] == "PROPOSE"}
+    own: dict[str, set[str]] = {}
+    for row in rows:
+        if row["rel"] == "HAVE_PROPOSED":
+            own.setdefault(row["to_key"], set()).add(row["from_key"])
     return edit_card(rows, stored_json, issues), own
 
 
-def resolve_edit(data: CardPayload, own: set[str]) -> tuple[ResolvedPayload, CardPayload]:
+def resolve_edit(data: CardPayload, own: dict[str, set[str]]) -> tuple[ResolvedPayload, CardPayload]:
     """resolve_payload for an edit. The post's own HAVE_PROPOSED links would make the solutions it
     proposed look like positions on solutions already listed (GitHub issue 4's rule), dropping its own
-    claim and proposal; so for those solutions the record's links are left out, and they are proposed
-    again under the same post id."""
+    claim and proposal; so those links, and only those (Q25), are left out of the record's links, and
+    they are proposed again under the same post id. A link someone else made still turns a move onto
+    it into a position."""
     candidates = graph.candidates()
-    candidates = replace(candidates, solution_issues={key: names for key, names in candidates.solution_issues.items()
-                                                      if key not in own})
+    candidates = replace(candidates, solution_issues={
+        key: [name for name in names if make_key(name) not in own.get(key, set())]
+        for key, names in candidates.solution_issues.items()})
     incoming = data.model_copy(update={"found": True, "language_ok": True})
     return resolve_payload(incoming, candidates), reading.prepared_card(incoming, candidates)
 
