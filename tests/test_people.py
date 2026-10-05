@@ -254,3 +254,8 @@ def test_forms_that_send_an_email_are_sent_once_per_tap(people):
 def main_version():
     from app import main
     return main.templates.env.globals["asset_version"]
+
+
+def test_both_people_pages_use_one_state_rule():
+    from app import routes_people
+    assert not hasattr(routes_people, "_state")

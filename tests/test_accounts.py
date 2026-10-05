@@ -137,3 +137,18 @@ def test_an_expired_member_cookie_is_not_valid():
 def test_a_password_that_cannot_be_encoded_never_matches():
     stored = accounts.hash_password("correct horse battery")
     assert accounts.check_password("lone surrogate \ud800", stored) is False
+
+
+@pytest.mark.parametrize("row, state", [
+    ({"active": True, "accepted_at": NOW, "purpose": None, "expires_at": None}, "joined"),
+    ({"active": True, "accepted_at": NOW, "purpose": "reset", "expires_at": NOW + timedelta(hours=1)}, "joined"),
+    # Switched off is checked first, so a switched-off account never reads as joined (review item 23).
+    ({"active": False, "accepted_at": NOW, "purpose": None, "expires_at": None}, "switched off"),
+    ({"active": False, "accepted_at": None, "purpose": "invite", "expires_at": NOW + timedelta(days=1)}, "switched off"),
+    ({"active": True, "accepted_at": None, "purpose": "invite", "expires_at": NOW + timedelta(seconds=1)}, "invited"),
+    ({"active": True, "accepted_at": None, "purpose": "invite", "expires_at": NOW}, "expired"),
+    # No link at all: John's own account straight after make_admin (X3), or anyone after a restore.
+    ({"active": True, "accepted_at": None, "purpose": None, "expires_at": None}, "expired"),
+])
+def test_entry_state_checks_switched_off_first(row, state):
+    assert accounts.entry_state(row, NOW) == state
