@@ -33,18 +33,31 @@ from app.auth import (
     attempt_bucket,
     make_gate_token,
     passphrase_matches,
-    require_gate,
     reading_limit,
     post_spacing,
 )
 from app.config import get_settings
+from app.members import (
+    RELOAD_AND_RETRY,
+    SIGN_IN_AGAIN,
+    CrossSite,
+    require_access,
+    require_same_origin,
+    safe_next,
+    wants_json,
+)
 from app.graph import RecordAsleep
 from app.text import clean_name, count_line, make_key, relative_time, sentences
 
 settings = get_settings()
 
 BASE = Path(__file__).resolve().parent
-templates = Jinja2Templates(directory=str(BASE / "templates"))
+def _member_context(request: Request) -> dict:
+    # What require_access found for this request; pages outside the door have no member.
+    return {"member": getattr(request.state, "member", None)}
+
+
+templates = Jinja2Templates(directory=str(BASE / "templates"), context_processors=[_member_context])
 templates.env.globals["site_name"] = settings.site_name
 # The script and style links carry a hash of the files, so a phone fetches them again after a change.
 templates.env.globals["asset_version"] = hashlib.sha256(
@@ -148,9 +161,7 @@ def _set_cookie(response: Response, key: str, value: str, max_age: int) -> None:
 
 
 def _safe_next(next_path: str | None) -> str:
-    if next_path and next_path.startswith("/") and not next_path.startswith("//"):
-        return next_path
-    return "/"
+    return safe_next(next_path)
 
 
 def _issue_href(key: str | None) -> str:
@@ -237,7 +248,7 @@ def _render_index(
     )
 
 
-@app.get("/issues", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
+@app.get("/issues", response_class=HTMLResponse, dependencies=[Depends(require_access)])
 def issues_page(request: Request, sort: str = Query("people")) -> Response:
     sort = sort if sort in graph.SORTS else "people"
     grouped = graph.group_issues(graph.list_issues(), sort)
@@ -250,7 +261,7 @@ def issues_page(request: Request, sort: str = Query("people")) -> Response:
     )
 
 
-@app.get("/issues/{key}", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
+@app.get("/issues/{key}", response_class=HTMLResponse, dependencies=[Depends(require_access)])
 def issue_page(request: Request, key: str) -> Response:
     header = graph.issue_header(key)
     if header is None:
@@ -270,6 +281,8 @@ def issue_page(request: Request, key: str) -> Response:
 
 @app.get("/enter", response_class=HTMLResponse)
 def enter_form(request: Request, next: str = "/") -> Response:
+    if settings.accounts_enabled:
+        return RedirectResponse(f"/sign-in?next={quote(_safe_next(next), safe='/')}", status_code=303)
     return templates.TemplateResponse(
         request, "enter.html", {"next": _safe_next(next), "message": None}
     )
@@ -279,6 +292,8 @@ def enter_form(request: Request, next: str = "/") -> Response:
 def enter_submit(
     request: Request, passphrase: str = Form(""), next: str = Form("/")
 ) -> Response:
+    if settings.accounts_enabled:
+        return RedirectResponse(f"/sign-in?next={quote(_safe_next(next), safe='/')}", status_code=303)
     target = _safe_next(next)
     if passphrase_matches(passphrase):
         response = RedirectResponse(target, status_code=303)
@@ -294,7 +309,7 @@ def enter_submit(
     )
 
 
-@app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_gate)])
+@app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_access)])
 def write_page(request: Request, issue: str | None = Query(None, max_length=200)) -> Response:
     return _render_index(request, about=_about_issue(issue))
 
@@ -308,7 +323,7 @@ def _valid_anon_id(value: str | None) -> str | None:
         return None
 
 
-@app.post("/posts", dependencies=[Depends(require_gate)])
+@app.post("/posts", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def create_post(
     request: Request,
     display_name: str = Form(""),
@@ -384,12 +399,12 @@ def _poster(data: ReadingRequest | PostRequest) -> tuple[str | None, bool]:
     return (None if anonymous else name), anonymous
 
 
-@app.get("/api/candidates", dependencies=[Depends(require_gate)])
+@app.get("/api/candidates", dependencies=[Depends(require_access)])
 def card_candidates() -> dict:
     return asdict(graph.candidates())
 
 
-@app.post("/api/extract", dependencies=[Depends(require_gate)])
+@app.post("/api/extract", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def read_statement(request: Request, data: ReadingRequest) -> Response:
     error = _text_error(data.text)
     if error is not None:
@@ -418,7 +433,7 @@ def _card_result(data: PostRequest):
     return candidates, resolved, card
 
 
-@app.post("/api/preview", dependencies=[Depends(require_gate)])
+@app.post("/api/preview", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def preview_card(data: PostRequest) -> Response:
     error = _text_error(data.text, allow_empty=True)
     if error is not None:
@@ -431,7 +446,7 @@ def preview_card(data: PostRequest) -> Response:
                          "payload": card.model_dump()})
 
 
-@app.post("/api/posts", dependencies=[Depends(require_gate)])
+@app.post("/api/posts", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def post_card(request: Request, data: PostRequest) -> Response:
     error = _text_error(data.text, allow_empty=True)
     if error is not None:
@@ -473,16 +488,25 @@ def post_card(request: Request, data: PostRequest) -> Response:
     return response
 
 
-@app.get("/feed", dependencies=[Depends(require_gate)])
+@app.get("/feed", dependencies=[Depends(require_access)])
 def feed(request: Request) -> Response:
     return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT))})
 
 
 @app.exception_handler(GateRequired)
 async def gate_redirect(request: Request, exc: GateRequired) -> Response:
-    if request.url.path.startswith("/api/"):
-        return JSONResponse({"message": "Please enter the passphrase again.", "redirect": "/enter"}, status_code=401)
-    return RedirectResponse(f"/enter?next={quote(exc.next_path, safe='/')}", status_code=303)
+    door = "/sign-in" if settings.accounts_enabled else "/enter"
+    if wants_json(request):
+        message = SIGN_IN_AGAIN if settings.accounts_enabled else "Please enter the passphrase again."
+        return JSONResponse({"message": message, "redirect": door}, status_code=401)
+    return RedirectResponse(f"{door}?next={quote(exc.next_path, safe='/')}", status_code=303)
+
+
+@app.exception_handler(CrossSite)
+async def cross_site(request: Request, exc: CrossSite) -> Response:
+    if wants_json(request):
+        return JSONResponse({"message": RELOAD_AND_RETRY}, status_code=403)
+    return templates.TemplateResponse(request, "error.html", {"message": RELOAD_AND_RETRY}, status_code=403)
 
 
 @app.exception_handler(RecordAsleep)

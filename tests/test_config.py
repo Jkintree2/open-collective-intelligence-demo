@@ -35,3 +35,13 @@ def test_defaults_apply_when_optional_variables_are_absent():
     assert settings.llm_base_url == "https://api.deepseek.com"
     assert settings.llm_model == "deepseek-v4-flash"
     assert settings.llm_api_key is None
+
+
+def test_accounts_are_off_unless_switched_on():
+    from app.config import load_settings
+    base = {name: "x" for name in ("DEMO_PASSPHRASE", "SECRET_KEY", "ADMIN_TOKEN", "NEO4J_URI",
+                                   "NEO4J_USERNAME", "NEO4J_PASSWORD")}
+    assert load_settings(base).accounts_enabled is False
+    for value in ("true", "TRUE", "1", "yes"):
+        assert load_settings({**base, "ACCOUNTS_ENABLED": value}).accounts_enabled is True
+    assert load_settings({**base, "ACCOUNTS_ENABLED": "false"}).accounts_enabled is False

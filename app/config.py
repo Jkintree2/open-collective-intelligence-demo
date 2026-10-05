@@ -43,6 +43,7 @@ class Settings:
     llm_api_key: str | None = None
     llm_base_url: str = DEFAULT_LLM_BASE_URL
     llm_model: str = DEFAULT_LLM_MODEL
+    accounts_enabled: bool = False
 
     @property
     def is_local(self) -> bool:
@@ -75,6 +76,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         llm_api_key=env.get("LLM_API_KEY") or None,
         llm_base_url=env.get("LLM_BASE_URL") or DEFAULT_LLM_BASE_URL,
         llm_model=env.get("LLM_MODEL") or DEFAULT_LLM_MODEL,
+        accounts_enabled=(env.get("ACCOUNTS_ENABLED") or "").strip().lower() in ("1", "true", "yes"),
     )
 
 

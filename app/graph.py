@@ -30,6 +30,8 @@ CONSTRAINTS = (
     "CREATE CONSTRAINT evidence_key IF NOT EXISTS FOR (e:Evidence) REQUIRE e.key IS UNIQUE",
     "CREATE CONSTRAINT post_id      IF NOT EXISTS FOR (p:Post)     REQUIRE p.id IS UNIQUE",
     "CREATE INDEX post_created      IF NOT EXISTS FOR (p:Post)     ON (p.created_at)",
+    "CREATE CONSTRAINT person_email IF NOT EXISTS FOR (p:Person) REQUIRE p.email IS UNIQUE",
+    "CREATE CONSTRAINT person_token IF NOT EXISTS FOR (p:Person) REQUIRE p.token_hash IS UNIQUE",
 )
 
 # The write path, statement by statement, from docs/planning/03_schema.md.
