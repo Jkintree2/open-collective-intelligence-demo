@@ -134,3 +134,63 @@ def test_with_accounts_off_the_feed_asks_nothing_more(member_app, monkeypatch):
     member_app.client.post("/enter", data={"passphrase": "gate words"})
     page = member_app.client.get("/").text
     assert "Hello" in page and "/posts/one/edit" not in page and "· edited" not in page
+
+
+MINE_ROWS = [{"post_id": "mine-1", "rel": "CLAIM", "from_label": "Person", "from_key": "acct:ada", "from_name": "Ada",
+              "to_label": "Issue", "to_key": "flooding", "to_name": "Flooding", "anonymous": False, "home_key": None}]
+
+
+@pytest.fixture
+def owned(member_app, monkeypatch):
+    now = datetime.now(timezone.utc)
+    record = {"mine-1": {"id": "mine-1", "text": "My statement", "anonymous": False, "created_at": now,
+                         "payload": '{"issues": [{"key": "flooding", "name": "Flooding"}], "solutions": [], "evidence": []}'},
+              "theirs-1": {"id": "theirs-1", "text": "Their statement", "anonymous": False, "created_at": now, "payload": "{}"}}
+    owners = {"mine-1": "acct:ada", "theirs-1": "acct:bob"}
+    monkeypatch.setattr("app.graph_own_posts.post_owner", lambda me, pid:
+                        {**record[pid], "mine": owners[pid] == me} if pid in record else None)
+    deleted = []
+    monkeypatch.setattr("app.graph_own_posts.delete_own_post", lambda me, pid:
+                        (owners.get(pid) == me and record.pop(pid, None) is not None and not deleted.append(pid)))
+    monkeypatch.setattr("app.graph_own_posts.post_flags", lambda me, ids: {})
+    # The edit card reads the post's edges as they are now (Q7's structure query) and the issue's header.
+    g = member_app.main.graph
+    monkeypatch.setattr(g, "post_structure", lambda ids: {"mine-1": MINE_ROWS} if ids == ["mine-1"] else {})
+    monkeypatch.setattr(g, "issue_header", lambda key: {"key": "flooding", "name": "Flooding", "parent_key": None,
+                                                         "parent_name": None, "children": []} if key == "flooding" else None)
+    member_app.sign_in()
+    member_app.record, member_app.deleted = record, deleted
+    return member_app
+
+
+def test_delete_asks_first_then_removes_and_says_so(owned):
+    question = owned.client.get("/posts/mine-1/delete").text
+    assert ("Delete this post? What it claimed, proposed and cited goes, unless something else still uses it. "
+            "Approvals and oppositions stay; you can change them on the issue page.") in question
+    assert "My statement" in question and "Keep it" in question
+    result = owned.client.post("/posts/mine-1/delete", follow_redirects=False)
+    assert result.status_code == 303 and result.headers["location"] == "/?done=deleted"
+    assert owned.deleted == ["mine-1"]
+    assert "Your post is deleted." in owned.client.get("/?done=deleted").text
+
+
+def test_deleting_someone_elses_post_is_refused(owned):
+    for method in ("get", "post"):
+        result = getattr(owned.client, method)("/posts/theirs-1/delete")
+        assert result.status_code == 403 and "You can change only your own posts." in result.text
+    assert owned.deleted == []
+
+
+def test_a_post_gone_meanwhile_says_so(owned):
+    for method in ("get", "post"):
+        result = getattr(owned.client, method)("/posts/nowhere/delete")
+        assert result.status_code == 404 and "That post is no longer here." in result.text
+
+
+def test_delete_needs_an_account_and_this_site(owned, monkeypatch):
+    refused = owned.client.post("/posts/mine-1/delete", headers={"Origin": "https://other.example"})
+    assert refused.status_code == 403 and "Please reload the page and try again." in refused.text
+    from dataclasses import replace
+    monkeypatch.setattr("app.config.get_settings", lambda: replace(owned.settings, accounts_enabled=False))
+    assert owned.client.get("/posts/mine-1/delete").status_code == 404
+    assert owned.deleted == []

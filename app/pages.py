@@ -30,7 +30,8 @@ def page(request: Request, name: str, context: dict | None = None, *, status_cod
 # Notices on the write page after a redirect (/?done=<name>), from 04_interface.md. Sub-plan D
 # adds "deleted" and "edited".
 WRITE_NOTICES = {"welcome": "Welcome, {name}. You are signed in.",
-                 "reset": "Your new password is saved. You are signed out everywhere else."}
+                 "reset": "Your new password is saved. You are signed out everywhere else.",
+                 "deleted": "Your post is deleted."}
 
 
 def write_notice(done: str | None, member) -> str | None:
