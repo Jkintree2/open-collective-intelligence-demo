@@ -204,7 +204,7 @@ def test_moved_keys_follow_renames_and_merges():
         row("rename", from_key="veto", from_name="Veto", to_key="the veto", to_name="The veto"),
         row("move", issue_key="parking", issue_name="Parking", to_parent_key=None, to_parent_name=None),
         row("merge", merged_key="parking", merged_name="Parking", kept_key="transport", kept_name="Transport")]
-    assert tidy.moved_keys(changes) == {"the veto"}
+    assert tidy.moved_keys(changes) == {"the veto", "transport"}  # a merge settles the kept issue too
     kept = [row("move", issue_key="law", issue_name="Law", to_parent_key=None, to_parent_name=None),
             row("merge", merged_key="world", merged_name="World", kept_key="law", kept_name="Law")]
     assert tidy.moved_keys(kept) == {"law"}
@@ -231,3 +231,23 @@ def test_reload_seed_keeps_a_moved_seed_issue_where_john_put_it(monkeypatch):
     assert seed.load(data) == (1, 1)
     assert [(item["name"], item.get("parent")) for item in written] == [(top, None), (sub, None)]
     assert [(i["key"], i.get("parent_key")) for i in posted[0][5].issues] == [("voting online", None)]
+
+
+def test_reload_seed_does_not_hang_a_merged_into_issue_under_the_old_seed_parent(monkeypatch):
+    from scripts import seed
+    from app.extract import Candidates
+    data = {"issues": [{"name": "Platform"}, {"name": "Voting online", "parent": "Platform"}],
+            "posts": [{"id": "seed-01", "author": "John Kintree", "created_at": "2026-09-01T10:00:00Z", "text": "x",
+                       "issues": [], "solutions": [], "evidence": []},
+                      {"id": "seed-02", "author": "John Kintree", "created_at": "2026-09-01T11:00:00Z", "text": "y",
+                       "issues": [{"name": "Voting online", "parent": "Platform"}], "solutions": [], "evidence": []}]}
+    monkeypatch.setattr(seed.graph, "existing_post_ids", lambda ids: {"seed-01"})
+    monkeypatch.setattr(seed.graph_tidy, "tidy_history", lambda: [row(
+        "merge", merged_key="voting online", merged_name="Voting online", kept_key="online voting", kept_name="Online voting")])
+    written, posted = [], []
+    monkeypatch.setattr(seed.graph, "seed_issues", lambda issues, created_at: written.extend(issues))
+    monkeypatch.setattr(seed.graph, "candidates", lambda: Candidates(issues={}))
+    monkeypatch.setattr(seed.graph, "merge_post", lambda *args, **kwargs: posted.append(args))
+    assert seed.load(data) == (1, 1)
+    assert [(i["name"], i.get("parent")) for i in written] == [("Platform", None), ("Online voting", None)]
+    assert [(i["key"], i.get("parent_key")) for i in posted[0][5].issues] == [("online voting", None)]

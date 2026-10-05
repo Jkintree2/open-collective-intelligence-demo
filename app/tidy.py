@@ -61,9 +61,10 @@ def tidied_names(changes: list[dict]) -> dict[str, str]:
 
 
 def moved_keys(changes: list[dict]) -> set[str]:
-    """Current keys of the issues John moved, from graph_tidy.tidy_history() (oldest first). A rename carries
-    the mark to the new key; a merge drops it from the issue that was merged away (the kept issue keeps
-    its own place, and whether it was moved is recorded under its own key)."""
+    """Current keys of the issues whose place John set by a move or a merge, from graph_tidy.tidy_history()
+    (oldest first), so a reload never applies a seed parent to one of them. A rename carries the mark to
+    the new key; a merge drops it from the issue merged away and sets it on the kept issue (it keeps
+    its own place, whether or not it was moved)."""
     moved: set[str] = set()
     for change in changes:
         details = json.loads(change["details"] or "{}")
@@ -74,6 +75,7 @@ def moved_keys(changes: list[dict]) -> set[str]:
             moved.add(details["to_key"])
         elif change["kind"] == "merge":
             moved.discard(details["merged_key"])
+            moved.add(details["kept_key"])
     return moved
 
 
