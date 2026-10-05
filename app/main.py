@@ -52,7 +52,7 @@ from app.members import (
 )
 from app.graph import RecordAsleep
 from app.text import clean_name, count_line, make_key, relative_time, sentences
-from app import search
+from app import search, tidy
 
 settings = get_settings()
 
@@ -286,6 +286,7 @@ def issue_page(request: Request, key: str) -> Response:
             "solutions": graph.issue_solutions(key),
             "evidence": graph.issue_evidence(key),
             "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
+            "tidy": tidy.page_context(request, header),
         },
     )
 

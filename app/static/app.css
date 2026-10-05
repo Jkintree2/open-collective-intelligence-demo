@@ -370,3 +370,8 @@ form.search { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; 
 form.search input { flex: 1 1 12rem; min-height: 40px; }
 form.search button { min-height: 44px; }
 .results li { margin: 0.25rem 0; }
+.tidy { border-top: 1px solid var(--rule, #D8CFB8); margin-top: 2rem; padding-top: 1rem; }
+.tidy form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.75rem 0; }
+.tidy label { flex-basis: 100%; }
+.tidy select, .tidy input { flex: 1 1 12rem; min-height: 40px; }
+.tidy button { min-height: 44px; }

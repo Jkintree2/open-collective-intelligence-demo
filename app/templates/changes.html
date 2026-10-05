@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Changes to the issues · {{ site_name }}{% endblock %}
+{% block content %}
+<h1>Changes to the issues</h1>
+<p>Every move, rename and merge, newest first.</p>
+{% for line in changes %}<p class="change">{{ line }}</p>{% else %}<p class="empty">No changes yet.</p>{% endfor %}
+{% endblock %}
