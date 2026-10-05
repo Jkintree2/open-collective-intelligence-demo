@@ -81,6 +81,8 @@ label {
 
 input[type="text"],
 input[type="password"],
+input[type="email"],
+input[type="search"],
 textarea {
   width: 100%;
   font: inherit;
@@ -92,7 +94,9 @@ textarea {
 }
 
 input[type="text"],
-input[type="password"] { height: 40px; }
+input[type="password"],
+input[type="email"],
+input[type="search"] { height: 40px; }
 
 textarea {
   min-height: 120px;
@@ -311,7 +315,8 @@ h3 {
 .evidence a { color: var(--accent); }
 .by { font-size: 0.85rem; color: var(--ink-soft); }
 
-.site-header nav { display: flex; white-space: nowrap; }
+.site-header nav { display: flex; flex-wrap: wrap; }
+.site-header nav a { white-space: nowrap; }
 .site-header .site-name { padding-right: 12px; }
 
 [hidden] { display: none !important; }
@@ -325,6 +330,9 @@ h3 {
 .card optgroup { font: inherit; font-weight: 600; font-style: normal; color: var(--ink); }
 .card optgroup option { font-weight: 400; }
 .quiet { color: var(--accent); background: transparent; border: 0; text-align: left; min-height: 44px; cursor: pointer; }
+/* Phase 1 forms at 360 px: a select outside the card, and a link styled as a quiet button. */
+main select { min-height: 44px; max-width: 100%; font: inherit; color: var(--ink); background: var(--input); border: 1px solid var(--rule); border-radius: 6px; }
+a.quiet { display: inline-flex; align-items: center; min-height: 44px; }
 .badge { display: block; font-size: .8rem; color: var(--ink-soft); margin: 4px 0; }
 .write-issue { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
 .card input, .card select { min-width: 0; max-width: 100%; }

@@ -14,6 +14,8 @@ import threading
 import time
 from datetime import datetime, timedelta
 
+from app.auth import KeyedLimit, MinuteBucket
+
 MIN_PASSWORD = 10
 INVITE_DAYS = 14
 RESET_HOURS = 1
@@ -25,6 +27,13 @@ RELATIONSHIPS = ("family", "neighbor", "friend", "work", "school", "health", "or
 # Client facing copy, word for word from docs/planning/04_interface.md.
 PASSWORD_TOO_SHORT = "Please use at least 10 characters for your password."
 PASSWORDS_DIFFER = "The two passwords are not the same."
+
+# Limits held in this process, read as accounts.<name> at call time so a test can swap them.
+# Sign in: every attempt on the site, then every attempt for one address, both taken before the
+# password is checked (a flood of attempts must not run scrypt). "Too many tries. Please wait a
+# minute" is true of both: their windows are a minute.
+sign_in_per_minute = MinuteBucket(capacity=20, period=60)
+sign_in_per_address = KeyedLimit(5, 60)
 
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
 # Each scrypt run takes 16 MiB and real CPU; Render's free instance has 512 MB and 0.1 CPU, and
