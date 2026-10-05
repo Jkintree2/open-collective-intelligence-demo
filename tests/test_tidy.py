@@ -45,6 +45,7 @@ def test_a_move_refused_after_the_lock_says_why(monkeypatch):
     monkeypatch.setattr(graph_tidy, "_write", lambda work: work(Tx()))
     assert graph_tidy.move_issue("acct:john", "parking", "world", WHEN) == "has_children"
 
+
 ISSUE = {"key": "platform", "name": "Platform for digital democracy", "parent_key": None, "parent_name": None,
          "children": [], "created_at": None, "seed": True}
 # Each issue under its own name, so the merge question names both (item 9 of the 5 October review).
@@ -99,13 +100,13 @@ def test_tidy_answers_land_back_on_the_issue_page(tidying):
     tidying.sign_in(admin=True)
     client = tidying.client
     result = client.post("/issues/platform/rename", data={"new_name": "Building a platform"}, follow_redirects=False)
-    assert result.headers["location"] == "/issues/building%20a%20platform?done=renamed"
+    assert result.headers["location"] == "/issues/building%20a%20platform?done=renamed#tidy"
     result = client.post("/issues/platform/rename", data={"new_name": "World"}, follow_redirects=False)
-    assert result.headers["location"] == "/issues/platform?problem=taken"
+    assert result.headers["location"] == "/issues/platform?problem=taken#tidy"
     assert "Another issue already has that name. To join the two, use Merge." in client.get("/issues/platform?problem=taken").text
     assert "Renamed." in client.get("/issues/platform?done=renamed").text
     result = client.post("/issues/platform/move", data={"parent": ""}, follow_redirects=False)
-    assert result.headers["location"] == "/issues/platform?done=moved" and tidying.calls[-1] == ("move", "platform", None)
+    assert result.headers["location"] == "/issues/platform?done=moved#tidy" and tidying.calls[-1] == ("move", "platform", None)
 
 
 def test_merge_asks_first_then_says_what_happened(tidying):
@@ -115,10 +116,10 @@ def test_merge_asks_first_then_says_what_happened(tidying):
             "that are part of it move here, and Online platform is removed. This cannot be undone. It is recorded in "
             "the list of changes.") in question.replace("\n", " ")
     result = tidying.client.post("/issues/platform/merge", data={"other": "online platform"}, follow_redirects=False)
-    assert result.headers["location"] == "/issues/platform?done=merged&change=c1"
+    assert result.headers["location"] == "/issues/platform?done=merged&change=c1#tidy"
     assert "Merged. Everything about Online platform is now here." in tidying.client.get(result.headers["location"]).text
     assert tidying.client.get("/issues/platform/merge?other=platform", follow_redirects=False).headers["location"] == \
-        "/issues/platform?problem=choose_other"
+        "/issues/platform?problem=choose_other#tidy"
 
 
 def test_the_list_of_changes(tidying, monkeypatch):
@@ -251,3 +252,32 @@ def test_reload_seed_does_not_hang_a_merged_into_issue_under_the_old_seed_parent
     assert seed.load(data) == (1, 1)
     assert [(i["name"], i.get("parent")) for i in written] == [("Platform", None), ("Online voting", None)]
     assert [(i["key"], i.get("parent_key")) for i in posted[0][5].issues] == [("online voting", None)]
+
+
+def test_a_move_answering_same_goes_back_plain(tidying, monkeypatch):
+    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, parent, now: "same")
+    tidying.sign_in(admin=True)
+    result = tidying.client.post("/issues/platform/move", data={"parent": ""}, follow_redirects=False)
+    assert result.headers["location"] == "/issues/platform"
+
+
+def test_a_move_answering_gone_goes_to_the_list(tidying, monkeypatch):
+    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, parent, now: "gone")
+    tidying.sign_in(admin=True)
+    result = tidying.client.post("/issues/platform/move", data={"parent": ""}, follow_redirects=False)
+    assert result.headers["location"] == "/issues"
+
+
+def test_a_merge_that_found_nothing_asks_to_choose_again(tidying, monkeypatch):
+    monkeypatch.setattr("app.graph_tidy.merge_issues", lambda me, kept, merged, now: ("gone", None))
+    tidying.sign_in(admin=True)
+    result = tidying.client.post("/issues/platform/merge", data={"other": "nothing"}, follow_redirects=False)
+    assert result.headers["location"] == "/issues/platform?problem=choose_other#tidy"
+
+
+def test_a_merge_into_a_missing_issue_goes_to_the_list(tidying, monkeypatch):
+    monkeypatch.setattr("app.graph_tidy.merge_issues", lambda me, kept, merged, now: ("gone", None))
+    monkeypatch.setattr(tidying.main.graph, "issue_header", lambda key: None)
+    tidying.sign_in(admin=True)
+    result = tidying.client.post("/issues/missing/merge", data={"other": "platform"}, follow_redirects=False)
+    assert result.headers["location"] == "/issues"

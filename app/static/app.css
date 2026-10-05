@@ -379,3 +379,5 @@ form.search button { min-height: 44px; }
 .tidy label { flex-basis: 100%; }
 .tidy select, .tidy input { flex: 1 1 12rem; min-height: 40px; }
 .tidy button { min-height: 44px; }
+.results a, .search-links a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; display: inline-block; min-height: 44px; }
+.results a:hover, .search-links a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }

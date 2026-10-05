@@ -21,7 +21,9 @@ def require_tidier(member: Member = Depends(require_member)) -> Member:
 
 def _back(key: str, **query: str) -> RedirectResponse:
     address = f"/issues/{quote(key, safe='')}"
-    return RedirectResponse(address + ("?" + urlencode(query) if query else ""), status_code=303)
+    if query:  # an answer lands on the tidying section, where it is written
+        address += "?" + urlencode(query) + "#tidy"
+    return RedirectResponse(address, status_code=303)
 
 
 def _now() -> datetime:

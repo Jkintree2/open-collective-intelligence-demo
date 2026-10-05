@@ -17,7 +17,7 @@
 {% if results.posts %}<h3>Posts</h3>
 <section class="feed">{% for post in results.posts %}{% include "_post.html" %}{% endfor %}</section>{% endif %}
 {% if not found %}<p class="empty">Nothing matches {{ q }}. Try another word, or fewer words.</p>{% endif %}
-<p><a href="/issues">Show all issues</a></p>
+<p class="search-links"><a href="/issues">Show all issues</a></p>
 {% else %}
 <nav class="sorts" aria-label="Sort"><span class="counts">Sort by</span>
   {% for value, label in sorts %}
@@ -43,5 +43,5 @@
 <p class="empty">No issues yet. Write something on the front page and it will appear here.</p>
 {% endfor %}
 {% endif %}
-{% if member %}<p class="counts"><a href="/changes">Changes to the issues</a></p>{% endif %}
+{% if member %}<p class="counts search-links"><a href="/changes">Changes to the issues</a></p>{% endif %}
 {% endblock %}
