@@ -146,3 +146,13 @@ def member_cookie_valid(cookie: str, password_hash: str | None, secret_key: str)
     if not signature.isascii():  # compare_digest raises on non-ASCII text; a forged cookie must just fail
         return False
     return hmac.compare_digest(signature, _member_signature(key, int(expiry), password_hash, secret_key))
+
+
+LINK_KINDS = ("accept", "reset")
+
+
+def link_url(site_url: str, kind: str, secret: str) -> str:
+    """The address in an email, built from SITE_URL and never from a request's host."""
+    if kind not in LINK_KINDS:
+        raise ValueError(f"unknown link kind {kind!r}")
+    return f"{site_url.rstrip('/')}/{kind}/{secret}"
