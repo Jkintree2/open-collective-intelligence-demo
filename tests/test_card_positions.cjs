@@ -68,3 +68,16 @@ test('a plain statement carries no panel position', async () => {
   await p.get('plain').emit('click');
   assert.equal(p.get('solution-rows').children.length, 0);
 });
+
+test('dictating after a reading keeps what the reading returned', async () => {
+  const p = await setup(); await p.flush();
+  await readWith(p, reading());
+  await p.get('dictate').emit('click');
+  p.recognizers.at(-1).result('and the assembly should decide');
+  await p.runTimer(200);
+  const body = JSON.parse(p.requests.at(-1).options.body);
+  assert.equal(body.source, 'manual');
+  assert.equal(body.extraction_raw, '{"found": true}');
+  assert.equal(body.model, 'reader');
+  assert.equal(body.latency_ms, 5);
+});
