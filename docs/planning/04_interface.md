@@ -365,8 +365,10 @@ The button opens "Forgot your password?", which sends a person not yet accepted 
 >
 > Email: [ input ]
 > [ Send the link ]
+>
+> Sign in
 
-Afterwards, whatever was typed:
+Afterwards, whatever was typed (the "Sign in" link stays under it):
 
 > If that address belongs to someone taking part, an email with a link is on its way.
 
@@ -393,7 +395,7 @@ Someone who was entered but has not accepted yet gets the invitation email again
 
 > **Choose a new password**
 >
-> {email}
+> Email: {email}
 > New password: [ input ]
 > Type it again: [ input ]
 > [ Save the new password ]
@@ -573,7 +575,7 @@ A "Sending email" line, like the reading service line:
 
 * Sign in: `type="email" autocomplete="username" autocapitalize="none" spellcheck="false"` and `autocomplete="current-password"`. Accept, reset and change password: the email is present as a read-only `autocomplete="username"` field, and both new password fields use `autocomplete="new-password" minlength="10"`, so the phone or browser offers a strong password and saves it under the right email.
 * Enter a person: every field `autocomplete="off"`, so the browser does not fill in the member's own name, email or address for someone else. Email `type="email"`.
-* Accept, reset, sign in and account pages send `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; the link pages load nothing from another site.
+* Accept, reset, sign in and account pages send `Cache-Control: no-store` and `Referrer-Policy: same-origin`: a link's address never goes to another site, and the page's own forms still carry this site's `Origin` (under `no-referrer` a browser sends `Origin: null` with every form, which the same-site check must refuse). The link pages load nothing from another site.
 * The request log writes `/accept/…` and `/reset/…` with the link cut out. A link never appears in a log at any level.
 * Email links are built from `SITE_URL`, never from the request's host.
 * New scripts and styles sit in `app/static/`, so the `?v=` hash from fe88bd4 covers them.
