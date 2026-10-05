@@ -232,3 +232,18 @@ def test_a_bad_latency_is_refused():
     data["nodes"][4]["properties"]["latency_ms"] = "fast"
     with pytest.raises(InvalidBackup):
         validate_record(data)
+
+
+def test_phase_1_needs_no_new_copy_version():
+    from app.backup import VERSION, VERSIONS
+    assert (VERSION, VERSIONS) == (2, (1, 2))
+
+
+def test_an_edited_time_must_be_a_timestamp():
+    data = sample()
+    post = next(node for node in data["nodes"] if node["label"] == "Post")
+    post["properties"]["edited_at"] = post["properties"]["created_at"]
+    validate_record(data)
+    post["properties"]["edited_at"] = "2026-10-06"
+    with pytest.raises(InvalidBackup):
+        validate_record(data)

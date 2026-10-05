@@ -133,7 +133,7 @@ def properties(value):
             raise InvalidBackup("A boolean property has the wrong type.")
         if key == "latency_ms" and (type(item) is not int or item < 0):
             raise InvalidBackup("A latency property has the wrong type.")
-        if key in {"created_at", "accepted_at"} and not isinstance(item, DateTime):
+        if key in {"created_at", "accepted_at", "edited_at"} and not isinstance(item, DateTime):
             raise InvalidBackup("A timestamp property has the wrong type.")
     return decoded
 
