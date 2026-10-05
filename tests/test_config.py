@@ -41,7 +41,22 @@ def test_accounts_are_off_unless_switched_on():
     from app.config import load_settings
     base = {name: "x" for name in ("DEMO_PASSPHRASE", "SECRET_KEY", "ADMIN_TOKEN", "NEO4J_URI",
                                    "NEO4J_USERNAME", "NEO4J_PASSWORD")}
+    base["SITE_URL"] = "https://record.example"
     assert load_settings(base).accounts_enabled is False
     for value in ("true", "TRUE", "1", "yes"):
         assert load_settings({**base, "ACCOUNTS_ENABLED": value}).accounts_enabled is True
     assert load_settings({**base, "ACCOUNTS_ENABLED": "false"}).accounts_enabled is False
+
+
+def test_mail_and_link_settings(monkeypatch):
+    from app.config import load_settings
+    base = {name: "x" for name in ("DEMO_PASSPHRASE", "SECRET_KEY", "ADMIN_TOKEN", "NEO4J_URI",
+                                   "NEO4J_USERNAME", "NEO4J_PASSWORD")}
+    settings = load_settings({**base, "SITE_URL": "https://record.example/", "MAIL_FROM": "John <j@example.org>",
+                              "GMAIL_CLIENT_ID": "id", "GMAIL_CLIENT_SECRET": "s", "GMAIL_REFRESH_TOKEN": "r",
+                              "MAIL_CONSOLE": "1"})
+    assert settings.site_url == "https://record.example" and settings.mail_from == "John <j@example.org>"
+    assert (settings.gmail_client_id, settings.gmail_client_secret, settings.gmail_refresh_token) == ("id", "s", "r")
+    assert settings.mail_console is True
+    with pytest.raises(SystemExit, match="SITE_URL is not set"):
+        load_settings({**base, "ACCOUNTS_ENABLED": "true"})

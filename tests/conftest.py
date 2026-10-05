@@ -65,7 +65,8 @@ def member_app(monkeypatch):
     """The app with ACCOUNTS_ENABLED, stubbed reads and no database. `sign_in()` puts an account in
     the stubbed record and gives the client a valid member cookie for it."""
     settings = Settings("gate words", "member secret", "admin words", "neo4j://unused", "neo4j",
-                        "test", app_env="local", accounts_enabled=True)
+                        "test", app_env="local", accounts_enabled=True,
+                        site_url="https://record.example")
     for target in ("app.config.get_settings", "app.auth.get_settings"):
         monkeypatch.setattr(target, lambda: settings)
     main = importlib.import_module("app.main")
