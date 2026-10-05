@@ -185,3 +185,14 @@ def test_reload_seed_reads_a_renamed_seed_issue_as_it_is_now(monkeypatch):
     assert seed.load(data) == (1, 1)
     assert [(item["name"], item.get("parent")) for item in written] == [(new, None), ("Voting online", new)]
     assert [issue["key"] for issue in posted[0][5].issues] == ["building a platform for digital democracy"]
+
+
+def test_tidied_names_ignore_a_step_made_stale_when_a_key_is_used_again():
+    merged_then_taken = [
+        row("merge", merged_key="y", merged_name="Y", kept_key="z", kept_name="Z"),
+        row("rename", from_key="x", from_name="X", to_key="y", to_name="Y")]
+    assert tidy.tidied_names(merged_then_taken) == {"x": "Y"}
+    back_again = [
+        row("rename", from_key="a", from_name="A", to_key="b", to_name="B"),
+        row("rename", from_key="b", from_name="B", to_key="a", to_name="A")]
+    assert tidy.tidied_names(back_again) == {"b": "A"}

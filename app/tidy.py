@@ -45,8 +45,10 @@ def tidied_names(changes: list[dict]) -> dict[str, str]:
     for change in changes:  # oldest first, so a later change of the same key wins
         details = json.loads(change["details"] or "{}")
         if change["kind"] == "rename":
+            step.pop(details["to_key"], None)  # the key is live again: an older step away from it is stale
             step[details["from_key"]] = (details["to_key"], details["to_name"])
         elif change["kind"] == "merge":
+            step.pop(details["kept_key"], None)
             step[details["merged_key"]] = (details["kept_key"], details["kept_name"])
     names = {}
     for old in step:

@@ -52,11 +52,14 @@ def print_counts() -> None:
         print(f"  {rel:14} {n}")
 
 
+def _retidied_issue(item: dict, names: dict[str, str]) -> dict:
+    return {**item, "name": tidy.retidy(item["name"], names), "parent": tidy.retidy(item.get("parent"), names)}
+
+
 def _retidied(post: dict, names: dict[str, str]) -> dict:
     """A seed post's card with every issue name read as the issue is now."""
     return {
-        "issues": [{**item, "name": tidy.retidy(item["name"], names), "parent": tidy.retidy(item.get("parent"), names)}
-                   for item in post["issues"]],
+        "issues": [_retidied_issue(item, names) for item in post["issues"]],
         "solutions": [{**item, "for_issue": tidy.retidy(item.get("for_issue"), names)} for item in post["solutions"]],
         "evidence": [{**item, "about": tidy.retidy(item.get("about"), names)} for item in post["evidence"]],
     }
@@ -71,8 +74,7 @@ def load(data: dict) -> tuple[int, int]:
         return 0, len(posts)
     # Some are missing (deleted in the back room): load them, reading every seed issue as it is now.
     names = tidy.tidied_names(graph_tidy.renames_and_merges())
-    issues = [{**item, "name": tidy.retidy(item["name"], names), "parent": tidy.retidy(item.get("parent"), names)}
-              for item in data["issues"]]
+    issues = [_retidied_issue(item, names) for item in data["issues"]]
     earliest = min(_parse_time(p["created_at"]) for p in posts)
     graph.seed_issues(issues, created_at=earliest)
     loaded = skipped = 0
