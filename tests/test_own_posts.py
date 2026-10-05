@@ -242,8 +242,14 @@ def test_the_edit_page_carries_the_post_and_its_card(owned, monkeypatch):
     # Without JavaScript the same form saves the edit; it never posts to /posts.
     assert 'action="/posts/mine-1/edit"' in page.text and 'action="/posts"' not in page.text
     assert ">Save changes</button>" in page.text
+    # Without JavaScript too, the box shows the post's own choice and cannot be changed.
+    assert '<input id="anonymous" name="anonymous" type="checkbox" disabled> Post anonymously' in page.text
+    owned.record["mine-1"]["anonymous"] = True
+    anonymous = owned.client.get("/posts/mine-1/edit").text
+    assert '<input id="anonymous" name="anonymous" type="checkbox" checked disabled> Post anonymously' in anonymous
     home = owned.client.get("/").text
     assert home.count("edit_post.js") == 0 and 'action="/posts"' in home
+    assert '<input id="anonymous" name="anonymous" type="checkbox"> Post anonymously' in home
 
 
 def test_editing_someone_elses_post_is_refused_on_the_page(owned):
