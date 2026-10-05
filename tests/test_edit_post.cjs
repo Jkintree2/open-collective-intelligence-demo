@@ -20,6 +20,8 @@ test('the edit page opens the card from the post and saves under its id', async 
   assert.equal(p.get('read').hidden, true);
   assert.equal(p.get('skip').hidden, true);
   assert.equal(p.get('skip-help').hidden, true);
+  // "post it as a plain statement anyway" would drop every claim the post makes: the card is the edit.
+  assert.equal(p.get('plain').hidden, true);
   assert.equal(p.get('card-title').textContent, 'Edit your post');
   assert.equal(p.get('post').textContent, 'Save changes');
   assert.equal(p.get('discard').textContent, 'Cancel');
@@ -46,4 +48,8 @@ test('a page without a post to edit is left alone', async () => {
   assert.equal(p.get('card').hidden, true);
   assert.equal(p.get('read').hidden, false);
   assert.equal(p.get('post').textContent || '', '');
+  // On a normal write page the plain statement button stays visible once the card is open.
+  await p.type('Flooding matters'); await p.get('skip').emit('click');
+  assert.equal(p.get('card').hidden, false);
+  assert.equal(p.get('plain').hidden, false);
 });

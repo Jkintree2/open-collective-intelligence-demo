@@ -465,6 +465,8 @@ Edit opens the write page with the statement and the card filled from the post a
 
 > Saving replaces what this post added. It keeps the name or Anonymous it was first posted with. Removing a position here does not withdraw it; use the buttons on the issue page.
 
+Note for the builder: while editing, the reading buttons and the "post it as a plain statement anyway" button are hidden; the card is the edit.
+
 > Your post is updated.
 
 > You can change only your own posts.
