@@ -1,6 +1,6 @@
 # Roadmap
 
-Open Collective Intelligence is a conversational platform for digital democracy: people write statements about issues they care about, the platform sorts each one into issues, solutions and evidence, and everything joins one shared record that everyone can read. This page lists what has been built so far and the phases that come next. Each phase stands on its own.
+Open Collective Intelligence is a conversational platform for digital democracy: people write statements about issues they care about, the platform sorts each one into issues, solutions and evidence, and everything joins one shared database that everyone can read. This page lists what has been built so far and the phases that come next. Each phase stands on its own.
 
 ## Built so far
 
@@ -20,7 +20,7 @@ At handover on 24 September 2026 the prototype moved to accounts held by John Ki
 * **28 September to 1 October 2026:** the platform's statement of purpose, followed by the full text of the Universal Declaration of Human Rights and the Earth Charter, added to the instructions the model reads ([app/extract.py](app/extract.py)).
 * **2 October 2026:** approving a solution now records just the approval ([issue 4](https://github.com/Jkintree2/open-collective-intelligence-demo/issues/4)), and two fixes for posting and dictation on phones.
 
-## Next phases
+## Next phases towards prototype v0.2
 
 ### Phase 1: People and positions
 
@@ -39,17 +39,17 @@ Evidence stops being just a link. The platform reads the page behind it and tell
 * Read the page behind an evidence link and check whether it says what the poster claims (supports, refutes or unclear), and suggest the further issues, solutions and evidence it contains, for the person to accept or correct
 * Source confidence: a simple, published method (type of source, date, primary or secondary, agreement with other sources), shown in words rather than scores
 
-### Phase 3: Talking to the record
+### Phase 3: Talking to the prototype
 
 The platform starts to talk back: it answers questions from what people have posted and asks the questions a good moderator would.
 
-* Ask the record a question in plain language, with answers that come only from what is posted and cite the posts they came from
+* Ask the prototype a question in plain language, with answers that come only from what is posted and cite the posts they came from
 * Follow up questions on the card: who, when, where, why and how for a new issue, piece of evidence or solution
 * Guiding principles: rules that put the statement of purpose, the Universal Declaration of Human Rights and the Earth Charter to work when reading statements, answering questions and asking follow ups (the documents themselves are already in place)
 * An About page describing the model, software and host, what each answer is built from, and the two guiding documents in full
 * A place on each post and an "issues near me" filter
 
-### Phase 4: Meeting people where they are (after Phases 1 and 3)
+### Phase 4: Meeting people where they are (after prototype v0.2)
 
 A connector for AI assistants (MCP), so people can read and post to the record through ChatGPT, Claude or similar assistants instead of the website. It builds on Phases 1 and 3, because an assistant acting for someone needs that person's account and a way to query the record.
 
