@@ -61,4 +61,4 @@ A connector for AI assistants (MCP), so people can read and post to the record t
 
 ## Taking part
 
-To test the prototype or suggest a change, open an issue in this repository or contact John Kintree. All code is released under the [MIT License](LICENSE).
+To test the prototype or suggest a change, open an issue in this repository or contact John Kintree at jkintree@gmail.com. All code is released under the [MIT License](LICENSE).
