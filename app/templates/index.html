@@ -22,7 +22,7 @@
   <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/?issue={{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
   {% endif %}
   {% if about %}{% include "_about_issue.html" %}{% endif %}
-  <label for="text">A claim, a piece of evidence, or a proposed solution</label>
+  <label for="text">Write your statement in this text box. Recently entered statements are displayed below.</label>
   <textarea id="text" name="text" rows="4" maxlength="4000" required placeholder="For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs.">{{ text }}</textarea>
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
   <p id="counter" hidden></p>

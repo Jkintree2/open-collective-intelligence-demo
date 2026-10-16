@@ -46,7 +46,7 @@ def test_the_acceptance_page_lets_a_phone_suggest_and_save_a_password(invited):
     assert text.count('autocomplete="new-password"') == 2
     assert 'autocomplete="country-name"' in text and 'autocomplete="postal-code"' in text
     assert "At least 10 characters. Your browser may offer a strong password and remember it for you." in text
-    assert "reads what you write to fill in the form" in text  # the shared paragraphs
+    assert "reads what you write when you enter statements" in text  # the shared paragraphs
     assert page.headers["referrer-policy"] == "same-origin" and page.headers["cache-control"] == "no-store"
 
 

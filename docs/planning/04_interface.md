@@ -24,11 +24,11 @@ Shown for any URL when the passphrase cookie is missing or stale. One card, cent
 
 > **Open Collective Intelligence**
 >
-> A closed test of a shared record of what people are claiming, proposing and citing.
+> An invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, submitting.
 >
-> Everything written here is merged into a shared record that other testers can read. It is not a private conversation. Use it for things you are happy to say in public.
+> Everything written here is merged into a free instance of the Neo4j Aura graph database that other testers can read. It is not a private conversation. Use it for things you are happy to say in public.
 >
-> A reading service run by an outside company, DeepSeek, reads what you write to fill in the form. Do not write anything you would not want a company to store.
+> A language model run by an outside company, DeepSeek, reads what you write when you enter statements. In the future, we would like to provide the option of using a small language model that runs on personal computers such as smartphones.
 >
 > Passphrase: [ input ]   [ Enter ]
 
@@ -72,7 +72,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
 > The form already holds five solutions. Remove one from the form to add this.
 > Please wait for the reading to finish, then choose a position.
 
-**Text box.** Label **client-facing**: "A claim, a piece of evidence, or a proposed solution". Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500. Placeholder **client-facing**: "For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs."
+**Text box.** Label **client-facing**: "Write your statement in this text box. Recently entered statements are displayed below." (John's wording, 16 October 2026.) Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500. Placeholder **client-facing**: "For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs."
 
 **Buttons.** "Dictate" with a microphone glyph (hidden when the browser has no speech recognition). "Read my statement" as the primary button, disabled until the box has text. A third, quieter link: "Skip the reading and fill in the form myself", which opens an empty card and works with an empty box. Under the buttons, **client-facing**: "You can leave the box empty, fill in the form yourself, and post that."
 
@@ -176,7 +176,7 @@ Replaces Screen 1. The two paragraphs about the shared record and the reading se
 
 > **{SITE_NAME}**
 >
-> A closed test of a shared record of what people are claiming, proposing and citing.
+> An invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, and submitting.
 >
 > *(the two paragraphs from the passphrase page)*
 >
@@ -186,7 +186,7 @@ Replaces Screen 1. The two paragraphs about the shared record and the reading se
 >
 > Forgot your password?
 >
-> New here? Someone already taking part enters you, and you get an email from John Kintree with a link to choose your password.
+> New here? Someone already taking part must enter you, and you get an email from John Kintree with a link to choose your password.
 
 Messages:
 
@@ -284,7 +284,7 @@ After either button:
 >
 > Hello {name},
 >
-> Thank you for agreeing to take part in {SITE_NAME}, a closed test of a shared record of what people are claiming, proposing and citing.
+> Thank you for agreeing to take part in {SITE_NAME}, an invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, and submitting.
 >
 > Entered by: {inviter}
 > How you know each other: {relationship}

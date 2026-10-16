@@ -7,10 +7,11 @@ from app import accounts, emails
 TECHNICAL = re.compile(r"\b(node|edge|graph|cypher|model|extraction|entity|token|database)s?\b", re.I)
 
 
-def assert_plain(text):
-    """Client-facing rules: no dashes, no technical words."""
+def assert_plain(text, allowed=()):
+    """Client-facing rules: no dashes, no technical words, except words John chose himself."""
     assert "–" not in text and "—" not in text and " - " not in text
-    assert not TECHNICAL.search(text), TECHNICAL.search(text)
+    found = [word for word in TECHNICAL.findall(text) if word.lower() not in allowed]
+    assert not found, found
 
 
 def test_invitation_email_word_for_word():
@@ -19,8 +20,8 @@ def test_invitation_email_word_for_word():
     assert subject == "Your invitation to Open Collective Intelligence"
     assert text == (
         "Hello Bob Smith,\n\n"
-        "Thank you for agreeing to take part in Open Collective Intelligence, a closed test of a shared record "
-        "of what people are claiming, proposing and citing.\n\n"
+        "Thank you for agreeing to take part in Open Collective Intelligence, an invitation-only test of a shared database "
+        "of issues, solutions, and evidence people are claiming, proposing, and submitting.\n\n"
         "Entered by: Ada Tester\n"
         "How you know each other: Neighbor\n\n"
         "To accept and choose your own password, open this link:\n"
@@ -29,7 +30,7 @@ def test_invitation_email_word_for_word():
         "If you were not expecting this email, you can ignore it.\n\n"
         "If you have a question, reply to this email.\n\n"
         "John Kintree\n")
-    assert_plain(subject + text)
+    assert_plain(subject + text, allowed=("database",))  # John's wording, 16 Oct 2026, as on the sign in page
     assert "password:" not in text.lower()  # never a password, only the link
 
 

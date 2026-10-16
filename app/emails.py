@@ -6,8 +6,8 @@ def invitation(site_name: str, name: str, inviter_name: str, relationship: str, 
     subject = f"Your invitation to {site_name}"
     text = (
         f"Hello {name},\n\n"
-        f"Thank you for agreeing to take part in {site_name}, a closed test of a shared record "
-        "of what people are claiming, proposing and citing.\n\n"
+        f"Thank you for agreeing to take part in {site_name}, an invitation-only test of a shared database "
+        "of issues, solutions, and evidence people are claiming, proposing, and submitting.\n\n"
         f"Entered by: {inviter_name}\n"
         f"How you know each other: {relationship.capitalize()}\n\n"
         "To accept and choose your own password, open this link:\n"
