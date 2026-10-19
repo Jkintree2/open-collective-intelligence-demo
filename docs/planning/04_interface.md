@@ -46,9 +46,9 @@ Top to bottom:
 
 **Name row.** Label "Your name", text input, placeholder "optional". Beside it a checkbox "Post anonymously". Ticking it clears and greys the name field, and the post is stored with no name at all. The name is remembered in a cookie only when a post is made under it, and prefilled next time; anonymous is never remembered, it is a choice per post.
 
-**Issues people are writing about.** One line of up to five chips, the most discussed issues, each linking to its page (Session 2) and, from Session 3, pre-filling the card's issue row so a tester adds to a conversation instead of starting a new one. Label **client-facing**: "People are writing about:".
+**Issues people are writing about.** Removed from the write page in the Phase 1 revision round (John and Beth, 17 and 18 October 2026). Testers see what others write about in the recent statements below the form and on the Issues page.
 
-**Already on record.** When the page is opened from an issue chip or link (`/?issue=<key>`), a panel appears between the chips row and the text box, showing what the record already holds for that issue, so a tester adds to it instead of repeating it. It is absent when there is no `issue` in the address or the issue is unknown. All **client-facing**:
+**Already on record.** When the page is opened from an issue chip or link (`/?issue=<key>`), a panel appears between the sentence and the text box, showing what the record already holds for that issue, so a tester adds to it instead of repeating it. It is absent when there is no `issue` in the address or the issue is unknown. All **client-facing**:
 
 > Already on record for <issue name>
 > Part of <parent issue name>
@@ -72,9 +72,9 @@ When the choice cannot be taken the panel puts the solution back to "no position
 > The form already holds five solutions. Remove one from the form to add this.
 > Please wait for the reading to finish, then choose a position.
 
-**Text box.** Label **client-facing**: "Write your statement in this text box. Recently entered statements are displayed below." (John's wording, 16 October 2026.) Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500. Placeholder **client-facing**: "For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs."
+**Text box.** Label **client-facing**: "Write or dictate your statement in the box." (John's wording, 17 October 2026), with the Dictate button on the same line. The box is empty, with no example text, and the cursor is in it when the write page opens (not on the edit page). Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500.
 
-**Buttons.** "Dictate" with a microphone glyph (hidden when the browser has no speech recognition). "Read my statement" as the primary button, disabled until the box has text. A third, quieter link: "Skip the reading and fill in the form myself", which opens an empty card and works with an empty box. Under the buttons, **client-facing**: "You can leave the box empty, fill in the form yourself, and post that."
+**Buttons.** "Dictate" with a microphone glyph, beside the label (hidden when the browser has no speech recognition). With an account, the "Post anonymously" box and its line sit between the text box and "Read my statement". "Read my statement" is the primary button, disabled until the box has text. There is no button to skip the reading: when the reading service is slow or down, the card opens empty to fill in by hand.
 
 **Dictation.** Press Dictate, the button turns red and reads "Listening… press to stop". Recognised text is appended to the box as it arrives. Press again to stop. The tester edits the text as normal before pressing Read my statement. Nothing is sent anywhere until they do.
 
@@ -208,7 +208,7 @@ The same "did not match" line answers a wrong password, an unknown email, an inv
 
 ### Writing with an account
 
-The "Your name" field goes; posts are credited to the account's name. The "Post anonymously" box stays, with a line under it:
+The "Your name" field goes; posts are credited to the account's name. The "Post anonymously" box moves to just above "Read my statement", with a line under it:
 
 > Your name is not shown to others. The record still knows the post is yours, so you can edit or delete it later.
 
@@ -461,7 +461,7 @@ Delete asks first:
 
 > Your post is deleted.
 
-Edit opens the write page with the statement and the card filled from the post as the record holds it now (an issue renamed or merged since shows under its new name). "Read my statement" and "Skip the reading" are hidden while editing. Without JavaScript the page shows the statement and a "Save changes" button, which saves the new words with the post's card as it is. The card's heading reads "Edit your post", its buttons "Save changes" and "Cancel", and a line at the top says:
+Edit opens the write page with the statement and the card filled from the post as the record holds it now (an issue renamed or merged since shows under its new name). "Read my statement" is hidden while editing, and the page leaves out the sentence at the top (John, 16 October 2026). Without JavaScript the page shows the statement and a "Save changes" button, which saves the new words with the post's card as it is. The card's heading reads "Edit your post", its buttons "Save changes" and "Cancel", and a line at the top says:
 
 > Saving replaces what this post added. It keeps the name or Anonymous it was first posted with. Removing a position here does not withdraw it; use the buttons on the issue page.
 

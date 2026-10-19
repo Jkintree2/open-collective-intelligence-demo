@@ -1,15 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
-<p class="sentence">{{ site_sentence }}</p>
+{% if not editing %}<p class="sentence">{{ site_sentence }}</p>{% endif %}
 
 <form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% else %}/posts{% endif %}" class="write" id="compose"{% if member %} data-member="{{ member.name }}"{% endif %}>
-  {% if member %}
-  <div class="name-row">
-    <label class="check"><input id="anonymous" name="anonymous" type="checkbox"{% if editing %}{% if editing.anonymous %} checked{% endif %} disabled{% endif %}> Post anonymously</label>
-    <p class="counts">Your name is not shown to others. The record still knows the post is yours, so you can edit or delete it later.</p>
-  </div>
-  {% else %}
+  {% if not member %}
   <div class="name-row">
     <div class="field">
       <label for="display_name">Your name</label>
@@ -18,23 +13,26 @@
     <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
   </div>
   {% endif %}
-  {% if chips %}
-  <p class="writing-about">People are writing about: {% for chip in chips %}<a class="chip chip-issue" href="/?issue={{ chip.key|urlencode }}">{{ chip.name }}</a>{% endfor %}</p>
-  {% endif %}
   {% if about %}{% include "_about_issue.html" %}{% endif %}
-  <label for="text">Write your statement in this text box. Recently entered statements are displayed below.</label>
-  <textarea id="text" name="text" rows="4" maxlength="4000" required placeholder="For example: The problem of drug dealing could be reduced by decriminalizing the sale of those drugs.">{{ text }}</textarea>
+  <div class="text-label">
+    <label for="text">Write or dictate your statement in the box.</label>
+    <button type="button" id="dictate" class="quiet" aria-pressed="false" hidden>🎙 Dictate</button>
+  </div>
+  <textarea id="text" name="text" rows="4" maxlength="4000" required{% if not editing %} autofocus{% endif %}>{{ text }}</textarea>
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
   <p id="counter" hidden></p>
   <p id="compose-message" class="notice" role="status" aria-live="polite"></p>
+  {% if member %}
+  <div class="anonymous-row">
+    <label class="check"><input id="anonymous" name="anonymous" type="checkbox"{% if editing %}{% if editing.anonymous %} checked{% endif %} disabled{% endif %}> Post anonymously</label>
+    <p class="counts">Your name is not shown to others. The record still knows the post is yours, so you can edit or delete it later.</p>
+  </div>
+  {% endif %}
   <div class="compose-actions">
-    <button type="button" id="dictate" class="quiet" aria-pressed="false" hidden>🎙 Dictate</button>
     <button type="submit" class="primary" id="read">{% if editing %}Save changes{% else %}Post{% endif %}</button>
-    <button type="button" id="skip" class="quiet" hidden>Skip the reading and fill in the form myself</button>
     <button type="button" id="stop" class="quiet" hidden>Stop and fill it in myself</button>
     <button type="button" id="retry" class="quiet" hidden>Try again</button>
   </div>
-  <p id="skip-help" class="counts" hidden>You can leave the box empty, fill in the form yourself, and post that.</p>
   <section id="card" class="card" hidden aria-labelledby="card-title">
     <h2 id="card-title">Here is what we found</h2>
     <p id="card-message" class="notice" role="status"></p>

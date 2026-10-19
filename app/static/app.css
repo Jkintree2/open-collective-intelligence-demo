@@ -118,6 +118,12 @@ input:disabled {
 
 .name-row .field { flex: 1 1 200px; }
 
+/* The write page: the label and Dictate share a line; Post anonymously sits just above Read my statement. */
+.text-label { display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; margin-bottom: 2px; }
+.text-label label { margin: 0; }
+.anonymous-row { margin: 8px 0 12px; }
+.anonymous-row .counts { margin: 0; }
+
 .check {
   display: inline-flex;
   align-items: center;
@@ -260,12 +266,6 @@ h3 {
 .chip-person { color: var(--person); }
 
 .chips { margin: 8px 0 0; }
-
-.writing-about {
-  font-size: 0.95rem;
-  color: var(--ink-soft);
-  margin: 0 0 12px;
-}
 
 .tag {
   font-size: 0.75rem;

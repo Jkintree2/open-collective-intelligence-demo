@@ -1,3 +1,6 @@
+import re
+
+
 def card(**extra):
     return {"text": "Flooding is getting worse", "issues": [{"name": "Flooding"}], **extra}
 
@@ -40,3 +43,18 @@ def test_the_write_page_has_no_name_field_and_explains_anonymous(member_app):
     assert 'data-member="Ada Tester"' in page
     assert ("Your name is not shown to others. The record still knows the post is yours, "
             "so you can edit or delete it later.") in page
+
+
+def test_the_write_page_is_the_sentence_then_the_box_then_anonymous_then_read(member_app, monkeypatch):
+    # John and Beth, 17 and 18 Oct: no popular issues, no skip button, an empty box with the cursor in it.
+    monkeypatch.setattr(member_app.main.graph, "top_issues", lambda limit: [{"key": "flooding", "name": "Flooding"}])
+    member_app.sign_in()
+    page = member_app.client.get("/").text
+    assert "People are writing about" not in page and 'class="chip chip-issue"' not in page
+    assert 'id="skip"' not in page and "fill in the form myself, and post that" not in page
+    textarea = re.search(r"<textarea id=\"text\"[^>]*>", page).group(0)
+    assert "placeholder" not in textarea and "autofocus" in textarea
+    order = [page.index(marker) for marker in (
+        'class="sentence"', "Write or dictate your statement in the box.", 'id="dictate"', '<textarea id="text"',
+        'id="anonymous"', "Your name is not shown to others.", 'id="read"', 'id="feed"')]
+    assert order == sorted(order)

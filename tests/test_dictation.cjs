@@ -97,19 +97,19 @@ test('speech respects the Unicode character cap and clears listening on errors o
 });
 
 test('read, manual form and post stop recognition before capturing text', async () => {
-  for (const action of ['read', 'skip', 'post']) {
+  for (const action of ['read', 'stop', 'post']) {
     const {get, type, recognizers, requests, flush} = await setup();
     await type('Initial statement'); await get('dictate').emit('click');
     recognizers[0].result('spoken');
     if (action === 'read') await get('compose').emit('submit');
     else if (action === 'post') { get('post').disabled = false; get('post').emit('click'); }
-    else await get('skip').emit('click');
+    else await get('stop').emit('click');
     // A tap on Post waits for any preview, so its request lands a microtask later.
     await flush();
     assert.equal(recognizers[0].aborted, true, action);
     recognizers[0].result('late text');
     assert.equal(get('text').value, 'Initial statement spoken');
-    if (action !== 'skip') assert.equal(JSON.parse(requests[0].options.body).text, 'Initial statement spoken');
+    if (action !== 'stop') assert.equal(JSON.parse(requests[0].options.body).text, 'Initial statement spoken');
   }
 });
 
@@ -153,7 +153,7 @@ test('an expired passphrase sends the writer back to the gate', async () => {
 
 test('card name fields are wrapping text areas capped at 300 characters', async () => {
   const {get} = await setup();
-  await get('skip').emit('click');
+  await get('stop').emit('click');
   const control = get('issue-rows').children.at(-1).children[1];
   assert.equal(control.tag, 'textarea');
   assert.equal(control.maxLength, 300);
@@ -190,7 +190,7 @@ test('part of offers a new top level issue from this card and lists are grouped'
     'downtown': {name: 'Downtown', parent_key: null},
     'parking': {name: 'Parking', parent_key: 'downtown'}}});
   location.search = '?issue=parking';
-  await get('skip').emit('click'); await flush();
+  await get('stop').emit('click'); await flush();
   await get('add-issue').emit('click');
   const rows = get('issue-rows').children;
   rows[1].children[1].value = 'Riverfront'; await rows[1].emit('input');
@@ -207,7 +207,7 @@ test('part of offers a new top level issue from this card and lists are grouped'
 
 test('part of says an existing top level issue is already one, and a new one is new', async () => {
   const {get, flush} = await setup({issues: {'climate change': {name: 'Climate change', parent_key: null}}});
-  await get('skip').emit('click'); await flush();
+  await get('stop').emit('click'); await flush();
   const row = get('issue-rows').children.at(-1);
   const parent = () => row.children.find(c => c.tag === 'select');
   row.children[1].value = 'Climate change'; await row.emit('input');
@@ -218,7 +218,7 @@ test('part of says an existing top level issue is already one, and a new one is 
 
 test('a filled card previews and posts with an empty text box', async () => {
   const {get, requests, runTimer, flush} = await setup();
-  await get('skip').emit('click');
+  await get('stop').emit('click');
   const row = get('issue-rows').children.at(-1);
   row.children[1].value = 'Downtown'; await row.emit('input');
   await runTimer(200);
@@ -232,7 +232,7 @@ test('a filled card previews and posts with an empty text box', async () => {
 
 test('a tap on Post during a pending preview waits for it and posts once', async () => {
   const {get, type, requests, runTimer, flush} = await setup();
-  await type('Statement'); await get('skip').emit('click');
+  await type('Statement'); await get('stop').emit('click');
   const row = get('issue-rows').children.at(-1);
   row.children[1].value = 'Downtown'; await row.emit('input'); await runTimer(200);
   requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
@@ -255,7 +255,7 @@ test('a tap while the preview is still running does not post when it comes back 
   // Once while the request is in flight, once inside the 200 ms wait before it is sent.
   for (const duringTheWait of [false, true]) {
     const {get, requests, runTimer, flush} = await setup();
-    await get('skip').emit('click');
+    await get('stop').emit('click');
     const row = get('issue-rows').children.at(-1);
     row.children[1].value = 'Downtown'; await row.emit('input');
     let clicking;
@@ -273,7 +273,7 @@ test('a change that lands after the tap hands it to the next preview instead of 
   // On an Android phone the keyboard commits the last word ("I approve") as focus leaves the
   // box, so its input event can arrive after the tap on Post has started waiting.
   const {get, type, requests, runTimer, flush} = await setup();
-  await get('skip').emit('click');
+  await get('stop').emit('click');
   const row = get('issue-rows').children.at(-1);
   row.children[1].value = 'Downtown'; await row.emit('input'); await runTimer(200);
   requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
@@ -293,7 +293,7 @@ test('a change that lands after the tap hands it to the next preview instead of 
 
 test('two taps on Post in a row add the record once', async () => {
   const {get, requests, runTimer, flush} = await setup();
-  await get('skip').emit('click');
+  await get('stop').emit('click');
   const row = get('issue-rows').children.at(-1);
   row.children[1].value = 'Downtown'; await row.emit('input'); await runTimer(200);
   requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();

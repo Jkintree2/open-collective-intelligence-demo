@@ -5,7 +5,7 @@ const {setup} = require('./page_harness.js');
 
 test('a signed-in card is credited to the account', async () => {
   const {get, type, requests, runTimer} = await setup(undefined, undefined, {member: 'Ada Tester'});
-  await type('Flooding'); await get('skip').emit('click');
+  await type('Flooding'); await get('stop').emit('click');
   assert.equal(get('credit').textContent, 'Posting adds this to the shared record, credited to Ada Tester.');
   await runTimer(200);
   const body = JSON.parse(requests.at(-1).options.body);
@@ -16,6 +16,6 @@ test('a signed-in card is credited to the account', async () => {
 test('a signed-in anonymous card is listed as Anonymous', async () => {
   const {get, type} = await setup(undefined, undefined, {member: 'Ada Tester'});
   get('anonymous').checked = true;
-  await type('Flooding'); await get('skip').emit('click');
+  await type('Flooding'); await get('stop').emit('click');
   assert.equal(get('credit').textContent, 'Posting adds this to the shared record, listed as Anonymous.');
 });

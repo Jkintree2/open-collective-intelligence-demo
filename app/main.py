@@ -75,7 +75,6 @@ templates.env.filters["anchor"] = solution_anchor
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
 FEED_LIMIT = 60
-CHIP_LIMIT = 5
 SORTS = (("people", "Most people"), ("recent", "Most recent"), ("evidence", "Most evidence"))
 # Display verbs from docs/planning/03_schema.md; PART_OF has no sentence.
 VERBS = {
@@ -245,7 +244,6 @@ def _render_index(
     editing: dict | None = None,
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
-    chips = graph.top_issues(CHIP_LIMIT)
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
     return templates.TemplateResponse(
         request,
@@ -253,7 +251,6 @@ def _render_index(
         {
             "site_sentence": settings.site_sentence,
             "posts": posts,
-            "chips": chips,
             "name": name,
             "message": message,
             "notice": notice,

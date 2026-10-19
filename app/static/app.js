@@ -60,7 +60,6 @@
     const size = [...text.value].length;
     dictate.disabled = state.reading || state.posting || (!dictation.listening && size >= 4000);
     find('read').disabled = !text.value.trim() || size > 4000 || state.reading || state.posting;
-    find('skip').disabled = size > 4000 || state.posting;
     find('counter').hidden = size < 3500; find('counter').textContent = `${size} / 4000`;
     card.grow(text);
   }
@@ -73,7 +72,6 @@
   });
   find('anonymous').addEventListener('change', card.changed);
   find('display_name')?.addEventListener('input', card.changed);
-  find('skip').hidden = false; find('skip-help').hidden = false; find('skip').addEventListener('click', () => { card.openCard(); if (!state.candidatesReady) card.loadCandidates(); });
   find('stop').addEventListener('click', () => card.openCard());
   find('retry').addEventListener('click', read);
   find('add-issue').addEventListener('click', () => card.addRow('issues'));
