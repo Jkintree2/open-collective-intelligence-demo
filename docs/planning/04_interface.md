@@ -438,6 +438,8 @@ The same length and "not the same" messages as accepting, and the same page when
 
 > Please fill in your name and country.
 
+The email on this page, on accepting and on choosing a new password is plain text, not a box, so it does not look as if it could be changed there (John, 17 October 2026). Not client-facing: it stays a read-only username field so a phone's password manager saves the password under it. Changing the email is Phase 2.
+
 The postal code is optional everywhere: entering a person, accepting and Your account (John, 18 October 2026: the site does not check postal codes). Everyone can change their own name, country and postal code at any time (revision round, promised 8 October 2026).
 
 John's account leaves out the "Entered by" line. "Sign out" sits right under the heading (John, 17 October 2026).

@@ -34,6 +34,8 @@ def test_account_page_offers_a_new_password(signed_in):
     username = re.search(r'<input[^>]*autocomplete="username"[^>]*>', page.text).group(0)
     assert 'value="ada@example.org"' in username and "readonly" in username
     assert "hidden" not in username
+    # R12: it reads as plain text, not a box to type in, and the Tab key passes over it.
+    assert 'class="read-only"' in username and 'tabindex="-1"' in username
     assert page.headers["cache-control"] == "no-store"
     assert page.headers["referrer-policy"] == "same-origin"
     # John, 17 Oct: Sign out right under the heading, once.

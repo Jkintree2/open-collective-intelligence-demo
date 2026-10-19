@@ -42,7 +42,7 @@ def test_the_acceptance_page_lets_a_phone_suggest_and_save_a_password(invited):
     assert "Welcome to Open Collective Intelligence" in text
     assert "Ada Tester entered you. Please check your details and choose a password." in text
     assert "How you know Ada Tester: Neighbor" in text
-    assert re.search(r'name="username" type="email" value="bob@example.org" autocomplete="username" readonly', text)
+    assert re.search(r'name="username" type="email" value="bob@example.org" autocomplete="username" class="read-only" tabindex="-1" readonly', text)
     assert text.count('autocomplete="new-password"') == 2
     assert 'autocomplete="country-name"' in text and 'autocomplete="postal-code"' in text
     assert "At least 10 characters. Your browser may offer a strong password and remember it for you." in text

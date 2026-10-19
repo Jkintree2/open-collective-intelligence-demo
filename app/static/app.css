@@ -103,6 +103,9 @@ textarea {
   resize: vertical;
 }
 
+/* An email shown for the browser's password manager, not to be typed in (R12): plain text, no box. */
+input.read-only, input.read-only:focus { border: 0; background: transparent; padding: 0; height: auto; color: var(--ink); outline: none; }
+
 input:disabled {
   background: var(--paper-2);
   color: var(--ink-soft);
