@@ -399,3 +399,6 @@ form.search button { min-height: 44px; }
 .account-row details[open] { display: block; }
 .account-row summary { color: var(--accent); cursor: pointer; min-height: 44px; display: flex; align-items: center; }
 .account-row button.quiet { font: inherit; }
+/* Your account: Sign out right under the heading (R10). */
+.sign-out { margin: -8px 0 8px; }
+.sign-out .quiet { padding: 0; font: inherit; }

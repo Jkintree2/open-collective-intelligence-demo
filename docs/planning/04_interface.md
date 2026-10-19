@@ -411,6 +411,7 @@ The same length and "not the same" messages as accepting, and the same page when
 ### Your account (`/account`)
 
 > **Your account**
+> [ Sign out ]
 >
 > {name} · {email}
 > Entered by {inviter} ({relationship}) on {4 October 2026}.
@@ -421,14 +422,12 @@ The same length and "not the same" messages as accepting, and the same page when
 > New password: [ input ]
 > Type it again: [ input ]
 > [ Change password ]
->
-> [ Sign out ]
 
 > That is not your current password.
 
 > Your password is changed. You are signed out everywhere else.
 
-John's account leaves out the "Entered by" line.
+John's account leaves out the "Entered by" line. "Sign out" sits right under the heading (John, 17 October 2026).
 
 ### Approve and oppose on the issue page
 

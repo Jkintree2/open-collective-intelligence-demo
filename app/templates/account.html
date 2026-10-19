@@ -2,6 +2,7 @@
 {% block title %}Your account · {{ site_name }}{% endblock %}
 {% block content %}
 <h1>Your account</h1>
+<form method="post" action="/sign-out" class="sign-out"><button type="submit" class="quiet">Sign out</button></form>
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 <p>{{ member.name }} · {{ member.email }}</p>
 {% if entered %}<p class="counts">Entered by {{ entered.inviter_name }} ({{ entered.relationship }}){% if entered.entered_at %} on {{ entered.entered_at.strftime("%-d %B %Y") }}{% endif %}.</p>{% endif %}
@@ -18,5 +19,4 @@
   <input id="again" name="again" type="password" autocomplete="new-password" minlength="10" required>
   <button type="submit" class="primary">Change password</button>
 </form>
-<form method="post" action="/sign-out"><button type="submit" class="quiet">Sign out</button></form>
 {% endblock %}

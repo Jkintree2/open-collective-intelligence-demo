@@ -36,6 +36,9 @@ def test_account_page_offers_a_new_password(signed_in):
     assert "hidden" not in username
     assert page.headers["cache-control"] == "no-store"
     assert page.headers["referrer-policy"] == "same-origin"
+    # John, 17 Oct: Sign out right under the heading, once.
+    assert page.text.count('action="/sign-out"') == 1
+    assert page.text.index("<h1>Your account</h1>") < page.text.index('action="/sign-out"') < page.text.index("Ada Tester ·")
 
 
 @pytest.mark.parametrize("current, new, again, message", [
