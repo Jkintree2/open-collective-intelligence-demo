@@ -23,10 +23,10 @@ Everyone taking part has their own account and their own password. Nobody can si
 Only enter someone who has already agreed to take part.
 
 1. Sign in and click **Enter a person** at the top of the page.
-2. Fill in their name, email address, country and postal code, and choose how you know them: family, neighbor, friend, work, school, health or organization.
+2. Fill in their name, email address and country, and their postal code if you have it (it is optional), and choose how you know them: family, neighbor, friend, work, school, health or organization.
 3. Tick **This person has agreed to be entered**, then press **Enter and send the invitation**.
 
-The site emails them from your Gmail address. The email thanks them for taking part, says who entered them and holds a link to accept. The link works once, for 14 days.
+The site emails them from your Gmail address. The email thanks them for taking part, says who entered them and holds a link to accept. The link works once, for 14 days. Invitations sometimes land in the spam or junk folder, so the page reminds whoever enters someone to tell them to look there.
 
 Under the form you see everyone you have entered and whether they have joined. If the email did not go, or the link has expired, press **Send the invitation again**. A fresh link goes out and the earlier one stops working. If an email address was mistyped, press **Withdraw** and enter the person again. Withdraw only works for someone who has not accepted yet.
 
@@ -34,7 +34,7 @@ Everyone who joins can enter other people in the same way, and you can see every
 
 ### Accepting an invitation
 
-The new person opens the link and sees who entered them and the details that were entered. They can correct their own name, country and postal code. How they know the person who entered them stays as it was entered. They choose a password of at least 10 characters. Their phone or browser may offer a strong password and remember it, which is the easiest way. Then they are signed in.
+The new person opens the link and sees who entered them and the details that were entered. They can correct their own name, country and postal code; the postal code is optional. How they know the person who entered them stays as it was entered. They choose a password of at least 10 characters. Their phone or browser may offer a strong password and remember it, which is the easiest way. Then they are signed in.
 
 If the link has expired, they can ask for a new one, or use **Forgot your password?** on the sign in page with the address they were entered with. That sends them a fresh invitation.
 
@@ -43,7 +43,7 @@ If the link has expired, they can ask for a new one, or use **Forgot your passwo
 People sign in with their email address and password, and stay signed in on that phone or computer for thirty days.
 
 * **Forgot your password?** on the sign in page emails a link to choose a new password. The link works once, for one hour. The page says the same thing whatever address is typed, so it never tells a stranger who is taking part.
-* **Your account**, at the top of the page, is where people change their password. Changing it signs them out on every other phone or computer.
+* **Your account**, at the top of the page, is where people sign out (right under the heading), change their name, country and postal code at any time, and change their password. Posts they already made keep the name they were posted with. Changing the password signs them out on every other phone or computer. The email address is shown there but cannot be changed yet.
 
 No password is ever sent by email, and nobody, you included, can see anyone's password.
 
@@ -80,7 +80,7 @@ A developer can put a downloaded copy back into an empty record. There is no but
 
 ### People
 
-Every account is listed with its email address, who entered it and how they know each other, the date it was entered, and where it stands: joined, invited but not accepted yet, invitation expired, or switched off. Your own account says **first account** in their place, because nobody entered you.
+Every account is listed with its email address, who entered it (with that person's email address, since two people can share a name) and how they know each other, the date it was entered, and where it stands: joined, invited but not accepted yet, invitation expired, or switched off. Your own account says **first account** in their place, because nobody entered you.
 
 Next to each person are the buttons that fit:
 
@@ -115,7 +115,7 @@ Only your account can tidy the list of issues. At the foot of each issue page yo
 
 * **Rename** changes the issue's name. If another issue already has that name, the page suggests a merge instead.
 * **Move** makes the issue part of a top level issue, or makes it a top level issue again. An issue that has issues of its own stays at the top level.
-* **Merge** brings another issue into this one. Its claims, solutions, evidence and the issues that are part of it move here, and the other issue is removed. The page asks first, because a merge cannot be undone.
+* **Merge** starts from the issue you want to keep. Open that issue's page and choose the other one under **Merge this issue with**. Everything from the other issue, its claims, solutions, evidence and the issues that are part of it, moves to the one you kept, and the other is removed. The page asks first, naming the issue it keeps, because a merge cannot be undone.
 
 Every rename, move and merge is listed, newest first, on **Changes to the issues**, linked at the foot of the Issues page. Everyone taking part can read it, so tidying always happens in the open. After a merge, older posts show the issue they now belong to; their own words are not changed.
 
@@ -210,13 +210,13 @@ If your browser offers Dictate, press it and speak. The button says "Listeningâ€
 
 The site asks each person to wait twenty seconds between posts, so nobody can flood the record. A tester who posts twice quickly sees a short message asking them to wait a moment.
 
-A tester can leave the text box empty, fill in the issue, claim, evidence or solution by hand, and post that. The lines shown under "What this will add" become the statement.
+The Write page is kept simple: the introduction, the box for writing or dictating, **Post anonymously**, and **Read my statement**, with the recent statements below. **Read my statement** always opens the form: when the reading service is slow or down, the form opens empty and the tester fills it in by hand. Everything in the form can be changed before posting.
 
 Names for issues, claims, evidence and solutions can be up to three hundred characters. A long one wraps onto more lines rather than being cut off. If a tester's long name was shortened to fit, the form says so and they can edit it.
 
 On an issue page, each solution has an **Approve** and an **Oppose** button. Each person holds one position on each solution: pressing the other button switches it, and pressing the same button again withdraws it. Solutions are listed by approvals minus oppositions.
 
-People can **Edit** or **Delete** their own posts, and nobody else's. Editing a post changes only what that post says. To rename an issue, use **Tidy this issue** at the foot of the issue page. An edited post says "edited". Deleting a post removes what it claimed, proposed and cited, unless something else still uses it. Its approvals and oppositions stay; they are changed with the buttons on the issue page.
+People can **Edit** or **Delete** their own posts, and nobody else's. Editing a post changes only what that post says. While editing, a person can switch the post between their name and Anonymous at any time, either way; people who saw it before may remember who wrote it. To rename an issue, use **Tidy this issue** at the foot of the issue page. An edited post says "edited". Deleting a post removes what it claimed, proposed and cited, unless something else still uses it. Its approvals and oppositions stay; they are changed with the buttons on the issue page.
 
 The Issues page has a search box. It finds issues, solutions, evidence and posts that hold every word typed, or words that start with it. Searching by meaning comes in a later phase.
 
