@@ -58,7 +58,7 @@ def test_an_edit_is_one_transaction_in_the_agreed_order(monkeypatch):
     assert len(transactions) == 1
     assert calls[0] == graph_own_posts.OWN_POST and calls[1] == graph_own_posts.DELETE_POST_EDGES
     assert graph.MERGE_ISSUE_CLAIM in calls
-    assert calls[-2:] == [graph.DELETE_POST_ORPHANS, graph_own_posts.UPDATE_POST]
+    assert calls[-3:] == [graph.DELETE_POST_ORPHANS, graph_own_posts.UPDATE_POST, graph_own_posts.RESTAMP_STANCES]
     assert calls.index(graph.MERGE_ISSUE_CLAIM) < calls.index(graph.DELETE_POST_ORPHANS)
     assert switches == [{"one_stance": True}]  # an edit is always an account's (D7)
 
@@ -265,11 +265,11 @@ def test_the_edit_page_carries_the_post_and_its_card(owned, monkeypatch):
     # John, 16 Oct: the edit page shows the statement, not the introduction or the popular issues.
     assert 'class="sentence"' not in page.text and "People are writing about" not in page.text
     assert "autofocus" not in page.text
-    # Without JavaScript too, the box shows the post's own choice and cannot be changed.
-    assert '<input id="anonymous" name="anonymous" type="checkbox" disabled> Post anonymously' in page.text
+    # Without JavaScript too, the box starts at the post's own choice and can be changed (R4).
+    assert '<input id="anonymous" name="anonymous" type="checkbox"> Post anonymously' in page.text
     owned.record["mine-1"]["anonymous"] = True
     anonymous = owned.client.get("/posts/mine-1/edit").text
-    assert '<input id="anonymous" name="anonymous" type="checkbox" checked disabled> Post anonymously' in anonymous
+    assert '<input id="anonymous" name="anonymous" type="checkbox" checked> Post anonymously' in anonymous
     home = owned.client.get("/").text
     assert home.count("edit_post.js") == 0 and 'action="/posts"' in home
     assert '<input id="anonymous" name="anonymous" type="checkbox"> Post anonymously' in home
@@ -298,7 +298,12 @@ def test_saving_an_edit_keeps_the_name_and_replaces_the_card(saving):
     assert (me, pid) == ("acct:ada", "mine-1")
     assert [issue["name"] for issue in payload.issues] == ["Coastal flooding"]
     assert kw["text"] == "Coastal flooding matters" and kw["source"] == "manual"
+    assert (kw["anonymous"], kw["display_name"]) == (True, None)
     assert "Your post is updated." in saving.client.get("/?done=edited").text
+    # R4: the switch goes the other way too, and the name is the account's, never the request's.
+    saving.client.post("/api/posts/mine-1", json={"text": "Coastal flooding matters", "anonymous": False,
+                                                  "display_name": "Somebody Else", "issues": [{"name": "Coastal flooding"}]})
+    assert (saving.saved[1][3]["anonymous"], saving.saved[1][3]["display_name"]) == (False, "Ada Tester")
 
 
 def test_saving_without_javascript_keeps_the_card_and_never_posts_anew(saving):
@@ -308,6 +313,10 @@ def test_saving_without_javascript_keeps_the_card_and_never_posts_anew(saving):
     me, pid, payload, kw = saving.saved[0]
     assert (me, pid) == ("acct:ada", "mine-1") and [issue["name"] for issue in payload.issues] == ["Flooding"]
     assert kw["text"] == "My statement, typo fixed" and kw["source"] == "manual"
+    assert (kw["anonymous"], kw["display_name"]) == (False, "Ada Tester")  # the box was left unticked
+    saving.client.post("/posts/mine-1/edit", data={"text": "My statement", "anonymous": "on"})
+    assert (saving.saved[1][3]["anonymous"], saving.saved[1][3]["display_name"]) == (True, None)
+    saving.saved.pop()
     assert saving.writes == []  # merge_post never ran: no new post
     refused = saving.client.post("/posts/theirs-1/edit", data={"text": "Hijack"})
     assert refused.status_code == 403 and len(saving.saved) == 1
@@ -339,9 +348,11 @@ def test_the_edit_preview_answers_like_the_preview_under_the_posts_own_name(savi
     assert edit.status_code == 200
     assert edit.json() == saving.client.post("/api/preview", json=body).json()
     assert edit.json()["sentences"] == ["Ada Tester claims Coastal flooding"] and edit.json()["valid"] is True
-    # The post keeps the name or Anonymous it was first posted with, whatever the request says.
+    # R4: the preview speaks under the choice on the edit page, whatever the post was before.
     saving.record["mine-1"]["anonymous"] = True
     assert saving.client.post("/api/posts/mine-1/preview", json=body).json()["sentences"] == [
+        "Ada Tester claims Coastal flooding"]
+    assert saving.client.post("/api/posts/mine-1/preview", json={**body, "anonymous": True}).json()["sentences"] == [
         "Anonymous claims Coastal flooding"]
     # An empty card is valid only as a plain statement with words, as on the save.
     empty = {"text": "Just some words", "issues": []}

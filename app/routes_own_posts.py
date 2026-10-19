@@ -127,13 +127,14 @@ def resolve_edit(data: CardPayload, own: dict[str, set[str]]) -> tuple[ResolvedP
 
 
 def _save(member: Member, row: dict, post_id: str, text: str, resolved: ResolvedPayload, card: CardPayload,
-          **reading_fields) -> bool:
+          anonymous: bool, **reading_fields) -> bool:
     from app import main as site
-    # Q25: an edited post keeps the name or Anonymous it was first posted with (D2's one rule).
-    _, _, _, shown = posting_identity(member, bool(row["anonymous"]))
+    # Q25 and R4: the edit takes the name or Anonymous chosen on the edit page, at any time (D2's one rule).
+    _, _, hidden, shown = posting_identity(member, anonymous)
     statement = text or (". ".join(sentences(card, shown or "Anonymous")) + ".")[:site.TEXT_MAX]
     return graph_own_posts.edit_own_post(member.key, post_id, resolved, text=statement,
-                                         now=datetime.now(timezone.utc), **reading_fields)
+                                         now=datetime.now(timezone.utc), anonymous=hidden, display_name=shown,
+                                         **reading_fields)
 
 
 @router.get("/posts/{post_id}/edit")
@@ -148,7 +149,7 @@ def edit_page(request: Request, post_id: str, member: Member = Depends(require_m
 
 
 @router.post("/posts/{post_id}/edit", dependencies=[Depends(require_same_origin)])
-def save_plain_edit(request: Request, post_id: str, text: str = Form(""),
+def save_plain_edit(request: Request, post_id: str, text: str = Form(""), anonymous: str | None = Form(None),
                     member: Member = Depends(require_member)) -> Response:
     """Save changes without JavaScript: the new text with the post's card as it is now. Never a new
     post: while editing, the write form posts here, not to /posts."""
@@ -163,7 +164,7 @@ def save_plain_edit(request: Request, post_id: str, text: str = Form(""),
     if not text.strip():
         return RedirectResponse(f"/posts/{quote(post_id, safe='')}/edit", status_code=303)
     resolved, prepared = resolve_edit(CardPayload.model_validate(card), own)
-    if not _save(member, row, post_id, text.strip(), resolved, prepared, source="manual",
+    if not _save(member, row, post_id, text.strip(), resolved, prepared, source="manual", anonymous=bool(anonymous),
                  extraction_raw=None, model=None, latency_ms=None):
         return _write_page(request, GONE, 404)
     return RedirectResponse("/?done=edited", status_code=303)
@@ -193,8 +194,9 @@ def _checked_edit(post_id: str, body: dict, member: Member):
 
 def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, card: CardPayload) -> dict:
     """What main.preview_card answers, for the edit card: resolved as the save is (resolve_edit), so the
-    preview and the save always agree, and under the name or Anonymous the post keeps."""
-    _, _, _, shown = posting_identity(member, bool(row["anonymous"]))
+    preview and the save always agree, under the name or Anonymous the edit page chose (R4). A card
+    with no choice of its own (the record's card, as built for the page) keeps the post's."""
+    _, _, _, shown = posting_identity(member, getattr(data, "anonymous", bool(row["anonymous"])))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     return {"sentences": sentences(card, shown or "Anonymous"), "valid": valid, "dropped": resolved.dropped,
             "corrected": resolved.corrected, "payload": card.model_dump()}
@@ -219,7 +221,7 @@ def save_edit(request: Request, post_id: str, body: dict = Body(...),
     if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": CHECK_THE_FORM, "dropped": resolved.dropped}, status_code=422)
     source = data.source if data.text.strip() and not resolved.is_empty else "manual"
-    if not _save(member, row, post_id, data.text.strip(), resolved, card, source=source,
+    if not _save(member, row, post_id, data.text.strip(), resolved, card, source=source, anonymous=data.anonymous,
                  extraction_raw=data.extraction_raw, model=data.model, latency_ms=data.latency_ms):
         return JSONResponse({"message": GONE}, status_code=404)
     return JSONResponse({"id": post_id, "message": UPDATED})

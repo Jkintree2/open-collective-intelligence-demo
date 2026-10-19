@@ -14,7 +14,7 @@ test('the edit page opens the card from the post and saves under its id', async 
   p.load('edit_post.js'); await p.flush();
   assert.equal(p.get('text').value, 'Flooding matters');
   assert.equal(p.get('anonymous').checked, true);
-  assert.equal(p.get('anonymous').disabled, true);
+  assert.equal(p.get('anonymous').disabled, false);  // R4: switch at any time, either way
   assert.equal(p.get('card').hidden, false);
   // "Read my statement" would clear the intro line.
   assert.equal(p.get('read').hidden, true);

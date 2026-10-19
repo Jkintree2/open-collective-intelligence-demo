@@ -463,7 +463,9 @@ Delete asks first:
 
 Edit opens the write page with the statement and the card filled from the post as the record holds it now (an issue renamed or merged since shows under its new name). "Read my statement" is hidden while editing, and the page leaves out the sentence at the top (John, 16 October 2026). Without JavaScript the page shows the statement and a "Save changes" button, which saves the new words with the post's card as it is. The card's heading reads "Edit your post", its buttons "Save changes" and "Cancel", and a line at the top says:
 
-> Saving replaces what this post added. It keeps the name or Anonymous it was first posted with. Removing a position here does not withdraw it; use the buttons on the issue page.
+> Saving replaces what this post added. Removing a position here does not withdraw it; use the buttons on the issue page.
+
+The "Post anonymously" box starts at the post's own choice and can be changed at any time, either way (John, 16 October 2026). Saving shows the post under the new choice from then on.
 
 Note for the builder: while editing, the reading buttons and the "post it as a plain statement anyway" button are hidden; the card is the edit.
 

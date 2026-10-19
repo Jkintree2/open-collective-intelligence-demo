@@ -213,3 +213,37 @@ def test_the_edit_preview_shows_what_an_unchanged_save_keeps(live_graph):
     assert edit_unchanged(live_graph, pid)
     assert [t for t, _, _ in edges(live_graph, pid)] == ["APPROVE", "CLAIM", "HAVE_PROPOSED", "PROPOSE"]
     assert edges(live_graph, pid) == before
+
+
+def person_edges(graph, post_id):
+    return sorted((r["t"], r["a"]) for r in graph.driver().execute_query(
+        "MATCH (:Person)-[r]->() WHERE r.post_id = $id RETURN type(r) AS t, r.anonymous AS a",
+        id=post_id, database_=graph.database()).records)
+
+
+def test_an_edit_switches_named_and_anonymous_on_the_post_and_every_edge(live_graph):
+    """R4 (John, 16 Oct): switch at any time, either way. The post and every edge it holds agree, and the
+    public counts keep the account's named and anonymous claims apart."""
+    fields = dict(issues=[{"name": "Flooding"}], solutions=[{"name": "Seawalls", "for_issue": "Flooding", "stance": "approve"}])
+    pid = post(live_graph, "acct:ada", "Flooding needs seawalls", **fields)
+    from app.routes_own_posts import current_card, resolve_edit
+
+    def edited(anonymous, name):
+        stored = live_graph.driver().execute_query("MATCH (p:Post {id: $id}) RETURN p.payload AS payload", id=pid,
+                                                   database_=live_graph.database()).records[0]["payload"]
+        card_now, own = current_card(pid, stored)
+        resolved, _ = resolve_edit(CardPayload.model_validate(card_now), own)
+        return graph_own_posts.edit_own_post("acct:ada", pid, resolved, text="Flooding needs seawalls", source="manual",
+                                             extraction_raw=None, model=None, latency_ms=None, now=NOW,
+                                             anonymous=anonymous, display_name=name)
+    shown = lambda: live_graph.driver().execute_query("MATCH (p:Post {id: $id}) RETURN p.anonymous AS a, p.display_name AS n",
+                                                      id=pid, database_=live_graph.database()).records[0]
+    assert {a for _, a in person_edges(live_graph, pid)} == {False}
+    assert edited(True, None)
+    assert (shown()["a"], shown()["n"]) == (True, None)
+    assert person_edges(live_graph, pid) == [("APPROVE", True), ("CLAIM", True), ("PROPOSE", True)]
+    assert live_graph.issue_claimants("flooding")["names"] == ["Anonymous"]
+    assert edited(False, "Ada")
+    assert (shown()["a"], shown()["n"]) == (False, "Ada")
+    assert person_edges(live_graph, pid) == [("APPROVE", False), ("CLAIM", False), ("PROPOSE", False)]
+    assert live_graph.issue_claimants("flooding")["names"] == ["Ada"]

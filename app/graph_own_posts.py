@@ -16,7 +16,7 @@ OWN_POST = """
 MATCH (:Person {key: $me})-[:POSTED]->(post:Post {id: $id})
 WHERE coalesce(post.seed, false) = false
 SET post.id = post.id
-RETURN post.id AS id, post.text AS text, post.anonymous AS anonymous,
+RETURN post.id AS id, post.text AS text, post.anonymous AS anonymous, post.display_name AS display_name,
        post.payload AS payload, post.created_at AS created_at
 """
 
@@ -47,12 +47,21 @@ FOREACH (x IN rels | DELETE x)
 RETURN touched
 """
 
-# Q25 step 4. created_at stays, so the post keeps its place in the feed.
+# Q25 step 4. created_at stays, so the post keeps its place in the feed. The name or Anonymous is the
+# one the writer chose on the edit page (R4: switch at any time, either way).
 UPDATE_POST = """
 MATCH (post:Post {id: $id})
 SET post.text = $text, post.payload = $payload, post.source = $source,
     post.extraction_raw = $extraction_raw, post.model = $model, post.latency_ms = $latency_ms,
-    post.edited_at = $now
+    post.edited_at = $now, post.anonymous = $anonymous, post.display_name = $display_name
+"""
+
+# Q25 step 5. A stance this post made stays through an edit (MERGE keeps the first edge), so it takes
+# the post's new choice here; with the edges written in step 2 every edge of the post then agrees.
+RESTAMP_STANCES = """
+MATCH (:Person {key: $me})-[r:APPROVE|OPPOSE]->(:Solution)
+WHERE r.post_id = $id
+SET r.anonymous = $anonymous
 """
 
 
@@ -95,10 +104,12 @@ def delete_own_post(me: str, post_id: str) -> bool:
 
 
 def edit_own_post(me: str, post_id: str, payload: ResolvedPayload, *, text: str, source: str,
-                  extraction_raw: str | None, model: str | None, latency_ms: int | None, now: datetime) -> bool:
+                  extraction_raw: str | None, model: str | None, latency_ms: int | None, now: datetime,
+                  anonymous: bool | None = None, display_name: str | None = None) -> bool:
     """Q25, in one transaction: the check, the post's own edges out, the edited card in under the
     same post id, orphans out (after, so a record the new version still uses stays), the post updated.
-    An edit is always an account's, so its stances take the one-stance rule (D7)."""
+    An edit is always an account's, so its stances take the one-stance rule (D7). `anonymous` None
+    keeps the post's choice; otherwise the post and all its edges take it, with `display_name`."""
     def work(tx: Any) -> bool:
         row = tx.run(OWN_POST, me=me, id=post_id).single()
         if row is None:
@@ -107,11 +118,14 @@ def edit_own_post(me: str, post_id: str, payload: ResolvedPayload, *, text: str,
         if edges is None:  # deleted while this transaction waited for Q24's lock
             return False
         touched = edges["touched"]
-        common = {"person_key": me, "post_id": post_id, "anonymous": bool(row["anonymous"]),
-                  "now": now, "seed": False}
+        hidden = bool(row["anonymous"]) if anonymous is None else anonymous
+        shown = None if hidden else (display_name if anonymous is not None else row["display_name"])
+        common = {"person_key": me, "post_id": post_id, "anonymous": hidden, "now": now, "seed": False}
         graph_posts.write_payload(tx, payload, common, one_stance=True)
         tx.run(graph.DELETE_POST_ORPHANS, touched=touched).consume()
         tx.run(UPDATE_POST, id=post_id, text=text, payload=payload.as_json(), source=source,
-               extraction_raw=extraction_raw, model=model, latency_ms=latency_ms, now=now).consume()
+               extraction_raw=extraction_raw, model=model, latency_ms=latency_ms, now=now,
+               anonymous=hidden, display_name=shown).consume()
+        tx.run(RESTAMP_STANCES, me=me, id=post_id, anonymous=hidden).consume()
         return True
     return _write(me, post_id, work)

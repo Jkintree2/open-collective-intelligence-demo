@@ -6,12 +6,12 @@
   const card = window.oci && window.oci.card;
   if (!data || !data.textContent || !card) return;
   const post = JSON.parse(data.textContent);
-  const intro = 'Saving replaces what this post added. It keeps the name or Anonymous it was first posted with. '
+  // The name or Anonymous can change at any time, either way (R4); the box starts at the post's choice.
+  const intro = 'Saving replaces what this post added. '
     + 'Removing a position here does not withdraw it; use the buttons on the issue page.';
   card.state.editing = post.id;
   find('text').value = post.text;
   find('anonymous').checked = post.anonymous;
-  find('anonymous').disabled = true;
   // A reading would clear the intro line and a plain statement would drop every claim the post makes:
   // the card is the edit.
   for (const id of ['read', 'plain']) find(id).hidden = true;

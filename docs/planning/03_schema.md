@@ -683,16 +683,24 @@ RETURN post.id AS id, post.text AS text, post.anonymous AS anonymous,
 
 **Delete** is Q11 unchanged, after Q24.
 
-**Q25. Edit.** One write transaction, under the same post id, in this order: (1) Q11 statement 1 without the final `DETACH DELETE post`, so the post's `CLAIM`, `SUBMIT`, `PROPOSE`, `SUPPORTS` and `REFUTES` edges go and their touched element ids are kept; (2) write path statements 3 to 5b from the edited card with the same `post_id`, person and `anonymous`; (3) Q11 statement 2 on the touched ids, so only what the new version no longer uses is removed; (4) the post itself:
+**Q25. Edit.** One write transaction, under the same post id, in this order: (1) Q11 statement 1 without the final `DETACH DELETE post`, so the post's `CLAIM`, `SUBMIT`, `PROPOSE`, `SUPPORTS` and `REFUTES` edges go and their touched element ids are kept; (2) write path statements 3 to 5b from the edited card with the same `post_id` and person, and the `anonymous` chosen on the edit page; (3) Q11 statement 2 on the touched ids, so only what the new version no longer uses is removed; (4) the post itself:
 
 ```cypher
 MATCH (post:Post {id: $id})
 SET post.text = $text, post.payload = $payload, post.source = $source,
     post.extraction_raw = $extraction_raw, post.model = $model, post.latency_ms = $latency_ms,
-    post.edited_at = $now
+    post.edited_at = $now, post.anonymous = $anonymous, post.display_name = $display_name
 ```
 
-`created_at` stays, so the post keeps its place in the feed. An edited post keeps the name or Anonymous it was first posted with.
+and (5) the stances this post made, which MERGE kept through step 2:
+
+```cypher
+MATCH (:Person {key: $me})-[r:APPROVE|OPPOSE]->(:Solution)
+WHERE r.post_id = $id
+SET r.anonymous = $anonymous
+```
+
+`created_at` stays, so the post keeps its place in the feed. Since the revision round (R4, John, 16 October 2026) the writer may switch between their name and Anonymous at any time, either way: the post and every edge carrying its `post_id` take the new choice, so the public counts keep named and anonymous apart as before.
 
 The edit card is built from the post's current edges (Q7's structure query for this one post, with issue names and parents from Q2), not from its stored `payload`, so an issue renamed or merged since shows as it is now and is never made again; the stored payload gives only evidence links. A solution's position on the card is the stance edge this post still holds, so a stance a click has since replaced shows as no position. When the card is resolved for saving, a solution this post itself proposes is proposed again (its own `HAVE_PROPOSED` link is left out of the candidates), never read as a position on a solution already listed (GitHub issue 4's rule); so an unchanged edit leaves the post's edges as they were. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
 
