@@ -518,11 +518,12 @@ At the foot of an issue page, seen only by an admin account:
 > Make it part of: [ none, make it a top level issue / top level issues ] [ Move ]
 > *or, when other issues are part of it:* Other issues are part of this one, so it stays at the top level.
 >
-> Merge another issue into this one: [ Choose an issue / every other issue ] [ Merge ]
+> Merge this issue with: [ Choose an issue / every other issue ] [ Merge ]
+> Start from the issue you want to keep.
 
-Merge asks first:
+Merge asks first (wording from the revision round, R1: the issue whose page you are on is the one kept):
 
-> Merge {other} into {this}? Its claims, solutions, evidence and the issues that are part of it move here, and {other} is removed. This cannot be undone. It is recorded in the list of changes.
+> Keep {this}. Move everything from {other} into it, then remove {other}. This cannot be undone. It is recorded in the list of changes.
 > [ Merge ] [ Cancel ]
 
 Messages:

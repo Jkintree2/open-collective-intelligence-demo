@@ -21,7 +21,8 @@
   </form>
   {% endif %}
   <form method="get" action="/issues/{{ issue.key|urlencode }}/merge">
-    <label for="other">Merge another issue into this one:</label>
+    <label for="other">Merge this issue with:</label>
+    <p class="counts">Start from the issue you want to keep.</p>
     <select id="other" name="other" required>
       <option value="">Choose an issue</option>
       {% for option in tidy.others %}<option value="{{ option.key }}">{{ option.name }}</option>{% endfor %}

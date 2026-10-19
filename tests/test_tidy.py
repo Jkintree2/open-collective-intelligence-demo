@@ -112,9 +112,11 @@ def test_tidy_answers_land_back_on_the_issue_page(tidying):
 def test_merge_asks_first_then_says_what_happened(tidying):
     tidying.sign_in(admin=True)
     question = tidying.client.get("/issues/platform/merge?other=online%20platform").text
-    assert ("Merge Online platform into Platform for digital democracy? Its claims, solutions, evidence and the issues "
-            "that are part of it move here, and Online platform is removed. This cannot be undone. It is recorded in "
-            "the list of changes.") in question.replace("\n", " ")
+    # R1 (call, 15 Oct): the words start from the issue you keep.
+    assert ("Keep Platform for digital democracy. Move everything from Online platform into it, then remove Online "
+            "platform. This cannot be undone. It is recorded in the list of changes.") in question.replace("\n", " ")
+    page = tidying.client.get("/issues/platform").text
+    assert "Merge this issue with:" in page and "Start from the issue you want to keep." in page
     assert '<div class="row-actions">' in question
     assert '<a class="quiet" href="/issues/platform">Cancel</a>' in question
     result = tidying.client.post("/issues/platform/merge", data={"other": "online platform"}, follow_redirects=False)

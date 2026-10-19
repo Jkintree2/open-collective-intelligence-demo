@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Merge · {{ site_name }}{% endblock %}
 {% block content %}
-<p>Merge {{ merged.name }} into {{ kept.name }}? Its claims, solutions, evidence and the issues that are part of it move here, and {{ merged.name }} is removed. This cannot be undone. It is recorded in the list of changes.</p>
+<p>Keep {{ kept.name }}. Move everything from {{ merged.name }} into it, then remove {{ merged.name }}. This cannot be undone. It is recorded in the list of changes.</p>
 <div class="row-actions">
   <form method="post" action="/issues/{{ kept.key|urlencode }}/merge">
     <input type="hidden" name="other" value="{{ merged.key }}">
