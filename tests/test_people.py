@@ -115,6 +115,13 @@ def test_an_incomplete_entry_says_what_is_missing_and_keeps_what_was_typed(peopl
     assert 'value="Germany"' in result.text or change.get("country")
 
 
+def test_the_page_asks_the_inviter_to_mention_the_spam_folder(people):
+    """R13: John's sister's invitation landed in her spam folder (forwarded 17 Oct)."""
+    page = people.client.get("/people").text
+    assert "Invitations sometimes land in the spam or junk folder. Please ask the person to look there if it has not arrived within a few minutes." in page
+    assert page.index("Invitations sometimes land in the spam or junk folder. Please ask the person to look there if it has not arrived within a few minutes.") < page.index('action="/people"')
+
+
 def test_the_postal_code_is_optional(people):
     """John, 18 Oct: the site does not check postal codes, so nobody has to give one."""
     page = people.client.get("/people").text

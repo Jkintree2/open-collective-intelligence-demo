@@ -220,6 +220,8 @@ The card's footnote is unchanged ("credited to {name}" or "listed as Anonymous")
 >
 > Enter someone who has already agreed to take part. We will email them from John Kintree's address with a link to accept and choose their own password. They will see your name as the person who entered them.
 >
+> Invitations sometimes land in the spam or junk folder. Please ask the person to look there if it has not arrived within a few minutes.
+>
 > Name: [ input ]
 > Email: [ input ]
 > Country: [ input ]
