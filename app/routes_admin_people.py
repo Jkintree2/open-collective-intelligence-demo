@@ -37,7 +37,7 @@ BUTTONS = {
     "password_link": ("password-link", "Send a password link"),
     "switch_on": ("switch-on", "Switch on"),
 }
-SHOWN = ("key", "name", "email", "inviter_name", "relationship", "entered_at", "accepted_at")
+SHOWN = ("key", "name", "email", "inviter_name", "inviter_email", "relationship", "entered_at", "accepted_at")
 
 
 def _actions(state: str, first: bool, admin: bool) -> list[str]:

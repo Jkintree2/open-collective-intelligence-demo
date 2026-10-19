@@ -59,6 +59,7 @@ def test_the_back_room_lists_every_account_and_who_entered_it(live_graph):
     assert (bob["inviter_name"], bob["relationship"], bob["accepted_at"]) == ("Ada Lovelace", "neighbor", None)
     assert (bob["purpose"], bob["expires_at"]) == ("invite", LATER)
     assert ada["inviter_name"] == "John Kintree" and ada["entered_at"] == NOW + timedelta(hours=1)
+    assert (john["inviter_email"], bob["inviter_email"]) == (None, "ada@example.org")  # R5
     assert ada["active"] is True and ada["admin"] is False and ada["email"] == "ada@example.org"
 
 

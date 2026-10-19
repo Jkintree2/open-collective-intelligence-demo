@@ -27,7 +27,8 @@ def row(key, name, *, inviter="Ada Lovelace", relationship="friend", accepted=Tr
     return {"key": key, "name": name, "email": f"{key[5:]}@example.org",
             "relationship": relationship if inviter else None, "entered_at": ENTERED if inviter else None,
             "accepted_at": JOINED if accepted else None, "active": active, "purpose": purpose,
-            "expires_at": expires, "inviter_name": inviter, "admin": admin}
+            "expires_at": expires, "inviter_name": inviter,
+            "inviter_email": "ada@example.org" if inviter else None, "admin": admin}
 
 
 PEOPLE = [
@@ -116,10 +117,10 @@ def test_people_lists_every_account_with_who_entered_it(back_room):
     entered, joined = ENTERED.strftime("%-d %B %Y"), JOINED.strftime("%-d %B %Y")
     assert '<h2 id="people">People</h2>' in page
     assert f"John Kintree · john@example.org · first account · joined {joined}" in page
-    assert f"Joined Person · joined@example.org · entered by Ada Lovelace (neighbor) on {entered} · joined {joined}" in page
-    assert f"Waiting Person · waiting@example.org · entered by Ada Lovelace (work) on {entered} · invited, not accepted yet" in page
-    assert f"Late Person · late@example.org · entered by Ada Lovelace (school) on {entered} · invitation expired" in page
-    assert f"Off Person · off@example.org · entered by Ada Lovelace (friend) on {entered} · switched off" in page
+    assert f"Joined Person · joined@example.org · entered by Ada Lovelace (ada@example.org, neighbor) on {entered} · joined {joined}" in page
+    assert f"Waiting Person · waiting@example.org · entered by Ada Lovelace (ada@example.org, work) on {entered} · invited, not accepted yet" in page
+    assert f"Late Person · late@example.org · entered by Ada Lovelace (ada@example.org, school) on {entered} · invitation expired" in page
+    assert f"Off Person · off@example.org · entered by Ada Lovelace (ada@example.org, friend) on {entered} · switched off" in page
     assert page.index("John Kintree ·") < page.index("Waiting Person ·")   # the record's order, John first
 
 
@@ -153,7 +154,7 @@ def test_each_row_offers_only_the_buttons_that_apply(back_room):
 def test_the_page_never_receives_link_fields(back_room):
     from app import routes_admin_people
     for shown in routes_admin_people.page_rows():
-        assert set(shown) == {"key", "name", "email", "inviter_name", "relationship", "entered_at",
+        assert set(shown) == {"key", "name", "email", "inviter_name", "inviter_email", "relationship", "entered_at",
                               "accepted_at", "state", "first", "actions"}
 
 

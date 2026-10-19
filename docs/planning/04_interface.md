@@ -563,7 +563,7 @@ Linked at the foot of the Issues page as "Changes to the issues"; every member c
 
 A "People" section listing every account:
 
-> {name} · {email} · entered by {inviter} ({relationship}) on {date} · joined {date}
+> {name} · {email} · entered by {inviter} ({inviter's email}, {relationship}) on {date} · joined {date}
 > *or* invited, not accepted yet *or* invitation expired *or* switched off
 > *or, for John's own account:* first account
 

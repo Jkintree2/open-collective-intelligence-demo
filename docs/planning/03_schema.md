@@ -604,7 +604,7 @@ RETURN p.key AS key, p.name AS name, p.email AS email, e.relationship AS relatio
 ORDER BY e.created_at DESC
 ```
 
-The back room version starts `MATCH (p:Person) WHERE p.email IS NOT NULL OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)` and also returns `inviter.name`.
+The back room version starts `MATCH (p:Person) WHERE p.email IS NOT NULL OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)` and also returns `inviter.name` and `inviter.email` (R5: two people can share a name; back room only).
 
 **Q21. Withdraw an entry never accepted.** Only while the person has nothing but the `ENTERED` edge; an accepted account is switched off instead.
 
