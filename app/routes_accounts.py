@@ -13,6 +13,7 @@ from app.auth import TOO_MANY_TRIES, WRONG_PASSPHRASE_DELAY
 from app.members import (Member, clear_member_cookie, current_member, require_member, require_same_origin,
                          safe_next, set_member_cookie)
 from app.pages import link_problem, page
+from app.text import make_key
 
 log = logging.getLogger("oci")
 router = APIRouter()
@@ -22,6 +23,8 @@ NOT_MATCHED = "That email and password did not match. Check them and try again."
 SIGNED_OUT = "You are signed out."
 NOT_CURRENT = "That is not your current password."
 PASSWORD_CHANGED = "Your password is changed. You are signed out everywhere else."
+DETAILS_SAVED = "Your details are saved."
+FILL_IN_NAME_AND_COUNTRY = "Please fill in your name and country."
 FORGOT_SENT = "If that address belongs to someone taking part, an email with a link is on its way."
 
 # Checked when the address is unknown, so a stranger's address takes as long as a wrong password.
@@ -78,16 +81,35 @@ def sign_out(next: str = Form("")) -> Response:
     return response
 
 
-def _account_page(request: Request, member: Member, *, message: str | None = None,
-                  notice: str | None = None, status_code: int = 200) -> Response:
+def _account_page(request: Request, member: Member, *, message: str | None = None, notice: str | None = None,
+                  details: dict | None = None, details_message: str | None = None,
+                  status_code: int = 200) -> Response:
+    details = details or graph_accounts.own_details(member.key) or {"name": member.name}
     return page(request, "account.html", {"entered": graph_accounts.who_entered(member.key),
-                                          "message": message, "notice": notice},
+                                          "message": message, "notice": notice, "details": details,
+                                          "details_message": details_message},
                 status_code=status_code, private=True)
+
+
+DONE = {"password": PASSWORD_CHANGED, "details": DETAILS_SAVED}
 
 
 @router.get("/account")
 def account(request: Request, done: str | None = None, member: Member = Depends(require_member)) -> Response:
-    return _account_page(request, member, notice=PASSWORD_CHANGED if done == "password" else None)
+    return _account_page(request, member, notice=DONE.get(done or ""))
+
+
+@router.post("/account/details", dependencies=[Depends(require_same_origin)])
+def change_details(request: Request, name: str = Form(""), country: str = Form(""), postal_code: str = Form(""),
+                   member: Member = Depends(require_member)) -> Response:
+    """R11, promised 8 Oct: one's own name, country and postal code, at any time. The key comes from
+    the cookie only; the postal code is optional (John, 18 Oct)."""
+    details = {"name": accounts.person_name(name), "country": accounts.clean_field(country, 80),
+               "postal_code": accounts.clean_field(postal_code, 20)}
+    if make_key(details["name"]) is None or not details["country"]:
+        return _account_page(request, member, details=details, details_message=FILL_IN_NAME_AND_COUNTRY)
+    graph_accounts.set_details(member.key, **details)
+    return RedirectResponse("/account?done=details", status_code=303)
 
 
 @router.post("/account/password", dependencies=[Depends(require_same_origin)])

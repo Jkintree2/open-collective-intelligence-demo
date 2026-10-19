@@ -579,6 +579,21 @@ MATCH (inviter:Person)-[e:ENTERED]->(:Person {key: $key})
 RETURN inviter.name AS inviter_name, e.relationship AS relationship, e.created_at AS entered_at
 ```
 
+**Q19b. One's own details** (`OWN_DETAILS`), for the form on the account page.
+
+```cypher
+MATCH (p:Person {key: $key})
+RETURN p.name AS name, p.country AS country, p.postal_code AS postal_code
+```
+
+**Q19c. Change one's own details** (`SET_DETAILS`, revision round R11). The key comes from the cookie only; Python has cleaned the name as on acceptance and needs a name and a country. The postal code may be empty (John, 18 October 2026). Posts keep the `display_name` they were posted with.
+
+```cypher
+MATCH (p:Person {key: $key})
+WHERE p.active AND p.accepted_at IS NOT NULL
+SET p.name = $name, p.country = $country, p.postal_code = $postal_code
+```
+
 **Q20. People one has entered**, and, without the first `MATCH`, the back room list of every account:
 
 ```cypher

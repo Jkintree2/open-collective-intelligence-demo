@@ -292,3 +292,51 @@ def test_the_forgot_form_is_sent_once_per_tap(forgot):
     assert re.search(r'<form method="post" action="/forgot-password"[^>]*data-once', page)
     from app import main
     assert f'/static/once.js?v={main.templates.env.globals["asset_version"]}' in page
+
+
+@pytest.fixture
+def details(signed_in, monkeypatch):
+    signed_in.accounts["acct:ada"].update(country="Germany", postal_code="10115")
+    changed = []
+    monkeypatch.setattr("app.graph_accounts.set_details", lambda key, **fields: changed.append((key, fields))
+                        or signed_in.accounts[key].update(fields))
+    signed_in.changed = changed
+    return signed_in
+
+
+def test_the_account_page_shows_ones_own_details_to_change(details):
+    page = details.client.get("/account").text
+    assert 'action="/account/details"' in page
+    assert 'id="name" name="name" type="text" maxlength="120" autocomplete="name" required value="Ada Tester"' in page
+    assert 'value="Germany"' in page and 'value="10115"' in page
+    assert "Postal code (optional):" in page and "Posts you have already made keep the name they were posted with." in page
+    assert page.index("Your details") < page.index("Change your password")
+
+
+def test_details_change_at_any_time_and_the_postal_code_may_be_empty(details):
+    """R11 (promised 8 Oct), and John, 18 Oct: the postal code is optional for everyone."""
+    result = details.client.post("/account/details", data={"name": "  ada   lovelace ", "country": " United  Kingdom",
+                                                          "postal_code": ""}, follow_redirects=False)
+    assert result.status_code == 303 and result.headers["location"] == "/account?done=details"
+    assert details.changed == [("acct:ada", {"name": "Ada lovelace", "country": "United Kingdom", "postal_code": ""})]
+    page = details.client.get("/account?done=details").text
+    assert "Your details are saved." in page and "Ada lovelace · ada@example.org" in page
+
+
+@pytest.mark.parametrize("name, country", [("", "Germany"), ("...", "Germany"), ("Ada", "  ")])
+def test_details_need_a_name_and_a_country(details, name, country):
+    result = details.client.post("/account/details", data={"name": name, "country": country, "postal_code": "1"})
+    assert "Please fill in your name and country." in result.text and details.changed == []
+    assert f'value="{country.strip()}"' in result.text  # what was typed comes back to correct
+
+
+def test_details_are_only_ones_own_and_only_from_this_site(details, member_app):
+    refused = details.client.post("/account/details", data={"name": "X", "country": "Y"},
+                                  headers={"Origin": "https://elsewhere.example"})
+    assert "Please reload the page and try again." in refused.text and details.changed == []
+    # The key is the cookie's; a key in the form is ignored.
+    details.client.post("/account/details", data={"name": "Ada", "country": "UK", "key": "acct:bob"})
+    assert [key for key, _ in details.changed] == ["acct:ada"]
+    details.client.cookies.clear()
+    assert details.client.post("/account/details", data={"name": "X", "country": "Y"},
+                               follow_redirects=False).status_code == 303 and len(details.changed) == 1

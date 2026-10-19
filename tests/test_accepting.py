@@ -80,6 +80,13 @@ def test_accepting_takes_corrected_details_signs_in_and_welcomes(invited):
     assert "Welcome" not in invited.client.get("/?done=nonsense").text
 
 
+def test_an_emptied_postal_code_stays_empty(invited):
+    """John, 18 Oct: the postal code is optional, so emptying the box on purpose is kept."""
+    invited.client.post("/accept/goodlink", data={"name": "Bob", "country": "", "postal_code": " ",
+                                                  "password": "a good long password", "again": "a good long password"})
+    assert (invited.accepted[0]["country"], invited.accepted[0]["postal_code"]) == ("Germany", "")
+
+
 def test_a_link_works_once(invited):
     data = {"name": "Bob", "country": "G", "postal_code": "1", "password": "a good long password", "again": "a good long password"}
     invited.client.post("/accept/goodlink", data=data)

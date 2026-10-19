@@ -6,6 +6,18 @@
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 <p>{{ member.name }} · {{ member.email }}</p>
 {% if entered %}<p class="counts">Entered by {{ entered.inviter_name }} ({{ entered.relationship }}){% if entered.entered_at %} on {{ entered.entered_at.strftime("%-d %B %Y") }}{% endif %}.</p>{% endif %}
+<h2>Your details</h2>
+{% if details_message %}<p class="notice" role="alert">{{ details_message }}</p>{% endif %}
+<form method="post" action="/account/details" class="account-details" data-once>
+  <label for="name">Name:</label>
+  <input id="name" name="name" type="text" maxlength="120" autocomplete="name" required value="{{ details.name or '' }}">
+  <label for="country">Country:</label>
+  <input id="country" name="country" type="text" maxlength="80" autocomplete="country-name" required value="{{ details.country or '' }}">
+  <label for="postal_code">Postal code (optional):</label>
+  <input id="postal_code" name="postal_code" type="text" maxlength="20" autocomplete="postal-code" value="{{ details.postal_code or '' }}">
+  <p class="counts">Posts you have already made keep the name they were posted with.</p>
+  <button type="submit" class="primary">Save your details</button>
+</form>
 <h2>Change your password</h2>
 {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
 <form method="post" action="/account/password">

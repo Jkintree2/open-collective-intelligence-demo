@@ -115,6 +115,15 @@ def test_an_incomplete_entry_says_what_is_missing_and_keeps_what_was_typed(peopl
     assert 'value="Germany"' in result.text or change.get("country")
 
 
+def test_the_postal_code_is_optional(people):
+    """John, 18 Oct: the site does not check postal codes, so nobody has to give one."""
+    page = people.client.get("/people").text
+    assert "Postal code (optional):" in page
+    assert re.search(r'<input id="postal_code"[^>]*>', page).group(0).count("required") == 0
+    people.client.post("/people", data={**FORM, "postal_code": ""})
+    assert people.entries[0]["postal_code"] == "" and len(people.sent) == 1
+
+
 def test_entering_an_address_twice_is_refused_without_an_email(people):
     people.state["taken"].add("bob@example.org")
     result = people.client.post("/people", data=FORM)

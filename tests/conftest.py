@@ -88,6 +88,9 @@ def member_app(monkeypatch):
     monkeypatch.setattr(main.graph, "merge_post", lambda *args, **kwargs: writes.append((args, kwargs)) or "post-id")
     record = {}
     monkeypatch.setattr("app.graph_accounts.member", lambda key: record.get(key), raising=False)
+    monkeypatch.setattr("app.graph_accounts.own_details", lambda key: key in record and {
+        "name": record[key]["name"], "country": record[key].get("country", ""),
+        "postal_code": record[key].get("postal_code", "")})
     client = TestClient(main.app, raise_server_exceptions=False)
 
     def set_cookie(value):

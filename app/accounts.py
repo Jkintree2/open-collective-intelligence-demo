@@ -181,6 +181,11 @@ def person_name(value: str) -> str:
     return clean_name(" ".join(value.split()))[:NAME_MAX].strip()
 
 
+def clean_field(value: str, limit: int) -> str:
+    """A country or postal code as the record keeps it: spaces collapsed, at most `limit` characters."""
+    return " ".join(value.split())[:limit]
+
+
 def entry_state(row: dict, now: datetime) -> str:
     """How an entry reads in a list (04_interface.md): a switched off account says so even after it
     joined; then joined; then whether the invitation link is still live. The back room uses it too."""

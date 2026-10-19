@@ -223,7 +223,7 @@ The card's footnote is unchanged ("credited to {name}" or "listed as Anonymous")
 > Name: [ input ]
 > Email: [ input ]
 > Country: [ input ]
-> Postal code: [ input ]
+> Postal code (optional): [ input ]
 > How do you know them? [ Choose one / Family / Neighbor / Friend / Work / School / Health / Organization ]
 > [ ] This person has agreed to be entered
 > [ Enter and send the invitation ]
@@ -320,7 +320,7 @@ John's own first email has no "Entered by" lines. `make_admin.py` makes his acco
 > Name: [ {name} ]
 > Email: {email}
 > Country: [ {country} ]
-> Postal code: [ {postal code} ]
+> Postal code (optional): [ {postal code} ]
 > How you know {inviter}: {relationship}
 >
 > Choose a password: [ input ]
@@ -416,6 +416,13 @@ The same length and "not the same" messages as accepting, and the same page when
 > {name} · {email}
 > Entered by {inviter} ({relationship}) on {4 October 2026}.
 >
+> **Your details**
+> Name: [ {name} ]
+> Country: [ {country} ]
+> Postal code (optional): [ {postal code} ]
+> Posts you have already made keep the name they were posted with.
+> [ Save your details ]
+>
 > **Change your password**
 > Email: {email}
 > Current password: [ input ]
@@ -426,6 +433,12 @@ The same length and "not the same" messages as accepting, and the same page when
 > That is not your current password.
 
 > Your password is changed. You are signed out everywhere else.
+
+> Your details are saved.
+
+> Please fill in your name and country.
+
+The postal code is optional everywhere: entering a person, accepting and Your account (John, 18 October 2026: the site does not check postal codes). Everyone can change their own name, country and postal code at any time (revision round, promised 8 October 2026).
 
 John's account leaves out the "Entered by" line. "Sign out" sits right under the heading (John, 17 October 2026).
 

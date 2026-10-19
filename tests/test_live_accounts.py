@@ -4,6 +4,7 @@ import pytest
 from neo4j.exceptions import ConstraintError
 
 from app import graph_accounts
+from app.extract import ResolvedPayload
 
 pytestmark = pytest.mark.live
 NOW = datetime(2026, 10, 6, 12, 0, tzinfo=timezone.utc)
@@ -167,3 +168,18 @@ def test_an_expired_or_unaccepted_link_does_not_reset(live_graph):
     graph_accounts.forgot("ada@example.org", "h1", NOW + timedelta(days=14), NOW + timedelta(hours=1))
     assert graph_accounts.reset_password("h1", "scrypt$late", NOW + timedelta(hours=2)) is None
     assert graph_accounts.reset_password("h1", "scrypt$ok", NOW + timedelta(minutes=30)) == "acct:ada"
+
+
+def test_ones_own_details_change_and_old_posts_keep_their_name(live_graph):
+    """R11: Q19b and Q19c. A switched off account changes nothing; a post keeps its display name."""
+    make_account(live_graph)
+    make_account(live_graph, "acct:cy", "cy@example.org", active=False)
+    live_graph.merge_post("acct:ada", "Ada Tester", False, "Ada Tester", "Before the change",
+                          ResolvedPayload())
+    graph_accounts.set_details("acct:ada", name="Ada Lovelace", country="UK", postal_code="")
+    graph_accounts.set_details("acct:cy", name="Someone", country="X", postal_code="1")
+    assert graph_accounts.own_details("acct:ada") == {"name": "Ada Lovelace", "country": "UK", "postal_code": ""}
+    assert graph_accounts.member("acct:ada")["name"] == "Ada Lovelace"
+    assert graph_accounts.own_details("acct:cy")["name"] == "Ada Tester"
+    shown = live_graph.driver().execute_query("MATCH (p:Post) RETURN p.display_name AS n", database_=live_graph.database())
+    assert [r["n"] for r in shown.records] == ["Ada Tester"]

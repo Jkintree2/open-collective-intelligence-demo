@@ -172,6 +172,20 @@ MATCH (inviter:Person)-[e:ENTERED]->(:Person {key: $key})
 RETURN inviter.name AS inviter_name, e.relationship AS relationship, e.created_at AS entered_at
 """
 
+# Q19b. One's own details, for the form on the account page.
+OWN_DETAILS = """
+MATCH (p:Person {key: $key})
+RETURN p.name AS name, p.country AS country, p.postal_code AS postal_code
+"""
+
+# Q19c. Change one's own name, country and postal code (R11). Posts keep the display name they were
+# posted with; the new name is used from the next post, edit or stance on.
+SET_DETAILS = """
+MATCH (p:Person {key: $key})
+WHERE p.active AND p.accepted_at IS NOT NULL
+SET p.name = $name, p.country = $country, p.postal_code = $postal_code
+"""
+
 # Q20. People one has entered.
 ENTERED_BY = """
 MATCH (me:Person {key: $key})-[e:ENTERED]->(p:Person)
@@ -308,6 +322,15 @@ def reset_password(token_hash: str, password_hash: str, now) -> str | None:
 
 def set_password(key: str, password_hash: str) -> None:
     _write_rows(SET_PASSWORD, key=key, password_hash=password_hash)
+
+
+def own_details(key: str) -> dict[str, Any] | None:
+    rows = _read(OWN_DETAILS, key=key)
+    return rows[0] if rows else None
+
+
+def set_details(key: str, *, name: str, country: str, postal_code: str) -> None:
+    _write_rows(SET_DETAILS, key=key, name=name, country=country, postal_code=postal_code)
 
 
 def who_entered(key: str) -> dict[str, Any] | None:

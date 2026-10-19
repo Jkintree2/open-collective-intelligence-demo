@@ -36,10 +36,6 @@ FILL_IN_NAME = "Please fill in your name."
 DOUBLE_TAP_SECONDS = 60
 
 
-def _field(value: str, limit: int) -> str:
-    return " ".join(value.split())[:limit]
-
-
 def _people_page(request: Request, member: Member, *, notice: str | None = None, message: str | None = None,
                  form: dict | None = None, failed_key: str | None = None, rows: list[dict] | None = None,
                  status_code: int = 200) -> Response:
@@ -89,8 +85,10 @@ def enter(request: Request, name: str = Form(""), email: str = Form(""), country
           postal_code: str = Form(""), relationship: str = Form(""), agreed: str = Form(""),
           member: Member = Depends(require_member)) -> Response:
     form = {"name": accounts.person_name(name), "email": accounts.normalise_email(email),
-            "country": _field(country, 80), "postal_code": _field(postal_code, 20), "relationship": relationship}
-    if (not all(form.values()) or make_key(form["name"]) is None
+            "country": accounts.clean_field(country, 80), "postal_code": accounts.clean_field(postal_code, 20),
+            "relationship": relationship}
+    # The postal code is optional for everyone (John, 18 Oct); every other field is needed.
+    if (not all(value for field, value in form.items() if field != "postal_code") or make_key(form["name"]) is None
             or relationship not in accounts.RELATIONSHIPS):
         return _people_page(request, member, message=FILL_EVERY_FIELD, form=form)
     if not agreed:
@@ -198,8 +196,9 @@ def accept(request: Request, secret: str, name: str = Form(""), country: str = F
     if problem:
         return problem
     # The person may correct their own name, country and postal code; the relationship stays (D8).
-    details = {"name": accounts.person_name(name), "country": _field(country, 80) or row["country"],
-               "postal_code": _field(postal_code, 20) or row["postal_code"]}
+    # The postal code is optional (John, 18 Oct), so a box emptied on purpose stays empty.
+    details = {"name": accounts.person_name(name), "country": accounts.clean_field(country, 80) or row["country"],
+               "postal_code": accounts.clean_field(postal_code, 20)}
     if make_key(details["name"]) is None:
         return _accept_page(request, secret, row, message=FILL_IN_NAME, details=details)
     message = accounts.password_problem(password, again)

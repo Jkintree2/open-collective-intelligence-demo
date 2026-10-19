@@ -24,7 +24,7 @@
       <input id="country" name="country" type="text" maxlength="80" autocomplete="country-name" value="{{ country }}">
     </div>
     <div class="field">
-      <label for="postal_code">Postal code:</label>
+      <label for="postal_code">Postal code (optional):</label>
       <input id="postal_code" name="postal_code" type="text" maxlength="20" autocomplete="postal-code" value="{{ postal_code }}">
     </div>
     {% if inviter_name %}<p class="counts">How you know {{ inviter_name }}: {{ relationship|capitalize }}</p>{% endif %}

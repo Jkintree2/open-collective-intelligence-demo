@@ -15,8 +15,8 @@
   <input id="email" name="email" type="email" maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false" required value="{{ form.email }}">
   <label for="country">Country:</label>
   <input id="country" name="country" type="text" maxlength="80" autocomplete="off" required value="{{ form.country }}">
-  <label for="postal_code">Postal code:</label>
-  <input id="postal_code" name="postal_code" type="text" maxlength="20" autocomplete="off" required value="{{ form.postal_code }}">
+  <label for="postal_code">Postal code (optional):</label>
+  <input id="postal_code" name="postal_code" type="text" maxlength="20" autocomplete="off" value="{{ form.postal_code }}">
   <label for="relationship">How do you know them?</label>
   <select id="relationship" name="relationship" autocomplete="off" required>
     <option value="">Choose one</option>
