@@ -127,6 +127,17 @@ input:disabled {
 .anonymous-row { margin: 8px 0 12px; }
 .anonymous-row .counts { margin: 0; }
 
+/* An empty message line takes no room, but stays in the page so a message put in it is still read out. */
+.notice:empty { padding: 0; margin: 0; border: 0; background: none; }
+
+/* R2: forms with each label above its field (Enter a person, Your account): room after each field,
+   the tick box on its own line, and room above the green button. */
+.stacked-form > input:not([type="hidden"]), .stacked-form > select { margin-bottom: 14px; }
+.stacked-form > .check { display: flex; margin-bottom: 4px; }
+.stacked-form > .counts { margin: -6px 0 4px; }
+.stacked-form > button.primary { margin-top: 12px; }
+.counts.spaced { margin: 0 0 16px; }
+
 .check {
   display: inline-flex;
   align-items: center;

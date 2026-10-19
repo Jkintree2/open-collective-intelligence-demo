@@ -3,13 +3,13 @@
 {% block content %}
 <h1>Enter a person</h1>
 <p>Enter someone who has already agreed to take part. We will email them from John Kintree's address with a link to accept and choose their own password. They will see your name as the person who entered them.</p>
-<p class="counts">Invitations sometimes land in the spam or junk folder. Please ask the person to look there if it has not arrived within a few minutes.</p>
+<p class="counts spaced">Invitations sometimes land in the spam or junk folder. Please ask the person to look there if it has not arrived within a few minutes.</p>
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
 {% if failed_key %}
 <form method="post" action="/people/{{ failed_key }}/resend" data-once><button type="submit" class="primary">Send the invitation again</button></form>
 {% endif %}
-<form method="post" action="/people" class="enter-person" data-once>
+<form method="post" action="/people" class="enter-person stacked-form" data-once>
   <label for="name">Name:</label>
   <input id="name" name="name" type="text" maxlength="120" autocomplete="off" required value="{{ form.name }}">
   <label for="email">Email:</label>

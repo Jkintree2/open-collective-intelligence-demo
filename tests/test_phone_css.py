@@ -34,3 +34,11 @@ def test_the_header_links_wrap_on_a_narrow_phone():
     nav = " ".join(body for selectors, body in re.findall(r"([^{}]+)\{([^}]*)\}", CSS)
                    if selectors.strip() == ".site-header nav")
     assert "flex-wrap: wrap" in nav and "nowrap" not in nav
+
+
+def test_the_green_button_has_room_above_it_on_the_stacked_forms():
+    """R2 (call, 15 Oct): one shared rule for Enter a person and Your account, not a fix per page."""
+    assert "margin-top: 12px" in rule(".stacked-form > button.primary")
+    assert "margin-bottom: 14px" in rule(".stacked-form > select")
+    for template, count in (("people.html", 1), ("account.html", 2)):
+        assert Path(f"app/templates/{template}").read_text(encoding="utf-8").count("stacked-form") == count
