@@ -13,7 +13,7 @@ Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kic
 | `Person` | `key` (unique), `name` (string or null), `anonymous` (bool), `created_at` | `key` is `name:<normalised name>` for a named tester, `anon:<uuid>` for an anonymous one. An anonymous Person has `name = null` and is displayed as "Anonymous". A browser gets one anonymous key, held in a cookie, so an anonymous tester's posts count as one person. |
 | `Issue` | `key` (unique), `name`, `created_at`, `seed` (bool) | Top level or sub-issue. A sub-issue has exactly one outgoing `PART_OF`; the write path's guards keep it that way (first parent wins, and a sub-issue can never be a parent). |
 | `Solution` | `key` (unique), `name`, `created_at`, `seed` | |
-| `Evidence` | `key` (unique), `name`, `url` (string or null), `created_at`, `seed` | `name` is the citation as a short title ("2024 NOAA flooding survey"). `url` optional, never fetched. |
+| `Evidence` | `key` (unique), `name`, `url` (string or null), `created_at`, `seed` | `name` is the citation as a short title ("2024 NOAA flooding survey"). `url` optional. Never fetched in 0.1 and Phase 1; from Phase 2, read once when a writer asks for a check (see "Phase 2: evidence that checks itself"). |
 | `Post` | `id` (unique uuid), `text`, `created_at`, `anonymous`, `display_name` (null when `anonymous`; the name is never stored for an anonymous post), `seed`, `source` (`model`, `manual`, `seed`), `extraction_raw` (string, the model's JSON as returned, or null), `model`, `latency_ms` | The audit record. Every relationship created by a post carries `post_id`, so the feed, the "posts about this issue" list, and "it did something weird" debugging all start here. |
 
 `key` for Issue, Solution and Evidence is the normalised name: Unicode NFKC, lowercase, non-alphanumerics collapsed to single spaces, trimmed, a leading "the", "a" or "an" removed only when it is followed by a space (so "A/B testing" keeps its A). A key shorter than two characters after normalisation is rejected, so "The" or "!!!" can never become a node. "The need for world government" and "Need for world government" share a key. The displayed `name` is whatever the first poster wrote, cleaned: newlines to spaces, trimmed, capped at 300 characters, the first character upper-cased only when it is lower-case and the second is not upper-case ("iPhone" and "eBay" survive), and a trailing `.,;:!?` removed.
@@ -872,3 +872,81 @@ ORDER BY c.created_at, c.id
 ```
 
 **Q33. Export, version 2.** `Change` (identity `id`) joins the labels; `ENTERED` (Person to Person), `MADE` (Person to Change) and `CHANGED` (Change to Issue) join the types. `password_hash`, `token_hash`, `token_purpose` and `token_expires_at` are left out of every node. Restore accepts versions 1 and 2. A restored account keeps `accepted_at` but has no password, and its owner uses "Forgot your password?".
+
+## Phase 2: evidence that checks itself
+
+Added 20 October 2026, before any Phase 2 code. Properties only: no new label, no new relationship type, no new constraint or index. Everything here is written only when `EVIDENCE_CHECK_ENABLED` is set; unset, the write path is exactly the Phase 1 one and these properties stay absent (read queries treat absent as null).
+
+### The check on the evidence edge
+
+A post's `SUPPORTS` or `REFUTES` edge (Evidence to Issue, Solution or Evidence) gains three properties, set in the same CREATE as the edge, from the card:
+
+| Property | Type | Meaning |
+|---|---|---|
+| `check` | string or null | How the page behind the evidence's link was read for this claim: `supports`, `refutes`, `unclear` (read, but the page does not clearly say either way, or the quote was not found on the page), `unread` (the page could not be opened or read), or null (not checked: no link, no reading service, flag off, or the writer posted before the check came back). |
+| `check_quote` | string or null | The sentence from the page the reading rests on, at most 500 characters. Null unless `check` is `supports` or `refutes`. Checked in Python to appear on the fetched page (whitespace normalised) before it is ever stored. |
+| `checked_at` | datetime or null | When the page was read. |
+
+The edge type stays the writer's choice. "The writer disagreed with the reading" is `(type(r) = 'SUPPORTS' AND r.check = 'refutes') OR (type(r) = 'REFUTES' AND r.check = 'supports')`. Nothing is blocked or deleted because of it (flag, never delete).
+
+The card sends the check with each evidence row; the server does not trust it blindly. A row's `check` is kept only when the server's own cache (below) holds a reading of the same URL, for the same target, with the same verdict and quote; otherwise the row is stored with `check = null`. So a tester cannot write a reading the site never made.
+
+### Source facts on Evidence
+
+`Evidence` is shared (MERGE by key, like `url`), so what the page says about itself is stored once, when it is first read:
+
+| Property | Type | Meaning |
+|---|---|---|
+| `source_type` | string or null | One of `news`, `research`, `government`, `reference`, `organisation`, `blog`, `other`. |
+| `source_primary` | bool or null | True for a primary source (the original study, record, data or first hand account), false for a report about one, null when it cannot be told. |
+| `source_published` | string or null | `YYYY-MM-DD`, `YYYY-MM` or `YYYY` as the page gives it; null when the page gives no date. |
+| `source_checked_at` | datetime or null | When these were set. |
+
+Written with `coalesce` so the first reading wins and a later post never overwrites them, and only when the post's evidence row carries a kept check of the same URL as `e.url`:
+
+```cypher
+// 5, extended. $source is null unless the row's check was kept and its url is the evidence's url.
+MERGE (e:Evidence {key: $evidence_key})
+ON CREATE SET e.name = $evidence_name, e.url = $url, e.created_at = datetime(), e.seed = false
+ON MATCH  SET e.url = coalesce(e.url, $url)
+WITH e
+FOREACH (_ IN CASE WHEN $source IS NOT NULL AND e.url = $url AND e.source_checked_at IS NULL THEN [1] ELSE [] END |
+  SET e.source_type = $source.type, e.source_primary = $source.primary,
+      e.source_published = $source.published, e.source_checked_at = datetime())
+WITH e
+MATCH (p:Person {key: $person_key})
+CREATE (p)-[:SUBMIT {post_id: $post_id, anonymous: $anonymous, created_at: datetime()}]->(e);
+
+// 5b, extended.
+MATCH (e:Evidence {key: $evidence_key}), (t:Issue {key: $target_key})
+CREATE (e)-[:SUPPORTS {post_id: $post_id, created_at: datetime(),
+                       check: $check, check_quote: $check_quote, checked_at: $checked_at}]->(t);
+```
+
+Editing one's own post (Q24, Q25) recreates the post's evidence edges from the card, so a check travels the same way: kept when the edited row still carries a kept check, null otherwise.
+
+### Agreement with other evidence (computed, never stored)
+
+Source confidence's fourth part is counted when a page is shown, not stored, so it is always current. For one evidence item `e` and the thing `t` it is about:
+
+```cypher
+// Q34. Agreement on one target. $keys: the evidence keys shown for t.
+MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(t {key: $target_key})
+WHERE other.key IN $keys
+WITH other.key AS key, collect(DISTINCT type(r)) AS stances
+RETURN key, stances
+```
+
+Python then says, for each item, how many other items on the same target take the same side and how many the other side.
+
+### What is never stored
+
+The page text, the raw response of the reading service, and the suggestions the page prompted. Suggestions the writer ticks become ordinary card rows and are written like any other row. The raw response goes to DEBUG logs only.
+
+### The check cache (process memory, not the database)
+
+`app/check.py` keeps, for the life of the process, the last 500 readings keyed by (URL, target name, statement hash), each with its verdict, quote and source facts. It lets the write path confirm a check (above) and keeps the same link from being read twice in a session. A restart empties it; a post made across a restart is stored with `check = null`.
+
+### Export and restore
+
+Export version 2 already carries every node and edge property not on the account deny list, so these properties travel with no format change. Restore's validator accepts them (strings, booleans, datetimes, nulls).

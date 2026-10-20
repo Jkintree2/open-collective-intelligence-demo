@@ -617,3 +617,57 @@ When the time of the failure is not known:
 * Email links are built from `SITE_URL`, never from the request's host.
 * New scripts and styles sit in `app/static/`, so the `?v=` hash from fe88bd4 covers them.
 * Every form works without JavaScript; a mutation is a POST, refused unless it comes from this site.
+
+## Phase 2: evidence that checks itself
+
+Added 20 October 2026, before any Phase 2 code. Everything here shows only when `EVIDENCE_CHECK_ENABLED` is set and the reading service is configured; otherwise the card is exactly the Phase 1 card. Everything in a quote is **client-facing** and a **draft**: it goes to John with the source confidence note, and his wording replaces it before anything ships. No dashes, none of the forbidden words.
+
+### On the card, under each evidence row with a link
+
+Shown as soon as the card opens (for links found in the statement) or when the writer leaves the link field (for a link typed or changed by hand). One line, replaced by the result:
+
+> Reading the page…
+
+Then one of:
+
+> The page seems to support this: "{quote}"
+
+> The page seems to argue against this: "{quote}"
+
+> The page does not clearly say either way.
+
+> Could not open this page.
+
+> This kind of link cannot be read yet.
+
+The last one is for PDFs, videos and other links that are not web pages. Under a result with a page, one line of what the page says about itself (the same words as source confidence, below, without the agreement part), for example:
+
+> A news report from March 2024. Secondary source.
+
+The supports or refutes choice on the row is set from the reading only while the writer has not touched it, and stays theirs to change. When the writer's choice and the reading differ, one more line:
+
+> You chose differently from the reading. That is fine; others will see both.
+
+**Suggestions.** When the page mentions issues, solutions or evidence not yet on the card, up to three of each appear under the row, unticked, under the heading:
+
+> The page also mentions
+
+Each is one line with a tick box and its kind ("Issue: …", "Solution: …", "Evidence: …"). Ticking one adds it to the card as an ordinary row the writer can edit; unticking removes that row again.
+
+Post is never held back by a reading still under way. A post sent before the reading came back is stored without it.
+
+### Source confidence, on the issue page
+
+Under each piece of evidence in "Supported by" and "Refuted by", one line in plain words, never a number or a colour scale. Four parts, in this order, each left out when it is not known:
+
+> A {type} from {Month YYYY}. {Primary source | Secondary source}. {N other pieces of evidence here say the same; M disagree.}
+
+Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date: "date not given". Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
+
+> The page was read as arguing against this.
+
+(or "as supporting this"). Whether this line shows to everyone or only the writer, and whether an age should be said ("more than five years old"), are questions for John in the note.
+
+### Not client-facing
+
+The reading takes a few seconds per link; rows fill in as they arrive. A link is read once per session. With the reading service unset, no line appears at all.
