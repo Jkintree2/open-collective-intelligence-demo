@@ -47,3 +47,18 @@ def test_fifty_at_a_time_with_show_more(member_app):
     assert "Statement 119<" in page and "Show more" not in page
     # Odd values are kept within bounds rather than refused.
     assert "Statement 49<" in member_app.client.get("/account?shown=-5").text
+
+
+def test_a_shown_that_is_not_a_number_is_the_first_page(member_app):
+    member_app.sign_in()
+    member_app.own_posts.extend(own(60))
+    response = member_app.client.get("/account?shown=abc")
+    assert response.status_code == 200 and "Statement 49<" in response.text and "Statement 50<" not in response.text
+
+
+def test_show_more_stops_at_the_most_the_page_holds(member_app, monkeypatch):
+    monkeypatch.setattr("app.routes_accounts.STATEMENTS_MAX", 100)
+    member_app.sign_in()
+    member_app.own_posts.extend(own(130))
+    page = member_app.client.get("/account?shown=100").text
+    assert "Statement 99<" in page and "Show more" not in page

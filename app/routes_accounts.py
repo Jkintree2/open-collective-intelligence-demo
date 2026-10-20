@@ -99,7 +99,7 @@ def _account_page(request: Request, member: Member, *, message: str | None = Non
                                           "details_message": details_message, "email_message": email_message,
                                           "email_change": config.get_settings().email_change_enabled,
                                           "posts": site._decorate_posts(posts[:shown], me=member.key),
-                                          "more": shown + STATEMENTS_PAGE if len(posts) > shown else None},
+                                          "more": shown + STATEMENTS_PAGE if len(posts) > shown and shown < STATEMENTS_MAX else None},
                 status_code=status_code, private=True)
 
 
@@ -107,9 +107,11 @@ DONE = {"password": PASSWORD_CHANGED, "details": DETAILS_SAVED}
 
 
 @router.get("/account")
-def account(request: Request, done: str | None = None, shown: int = STATEMENTS_PAGE,
+def account(request: Request, done: str | None = None, shown: str = "",
             member: Member = Depends(require_member)) -> Response:
-    return _account_page(request, member, notice=DONE.get(done or ""), shown=shown)
+    # A hand-typed "shown" that is not a number is the first page, not an error.
+    return _account_page(request, member, notice=DONE.get(done or ""),
+                         shown=int(shown) if shown.lstrip("-").isdigit() and len(shown) < 8 else STATEMENTS_PAGE)
 
 
 @router.post("/account/details", dependencies=[Depends(require_same_origin)])
