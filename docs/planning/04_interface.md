@@ -666,7 +666,7 @@ Under each piece of evidence in "Supported by" and "Refuted by", one line in pla
 
 > A {type} from {Month YYYY}. {Primary source | Secondary source}. {N other pieces of evidence here say the same; M disagree.}
 
-Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date: "date not given". Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
+For a reference work (an encyclopedia or dictionary page) the date is when the page was last updated, since such pages are kept up to date; Wikipedia's first date is when the article was started, which says nothing about what it says now. Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date: "date not given". Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
 
 > The page was read as arguing against this.
 

@@ -17,8 +17,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def fixture_fetcher(name: str):
     def fetcher(url, about="", **kwargs):
-        text, title, description, published = html_text((ROOT / "tests" / "fixtures" / "pages" / name).read_text())
-        return Page("ok", url, cut(text, about), title, description, published)
+        text, title, description, published, modified = html_text((ROOT / "tests" / "fixtures" / "pages" / name).read_text())
+        return Page("ok", url, cut(text, about), title, description, published, modified=modified)
     return fetcher
 
 

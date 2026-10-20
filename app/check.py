@@ -161,6 +161,10 @@ def _source(raw: Any, page: Page) -> dict[str, Any]:
     kind = raw.get("type") if raw.get("type") in SOURCE_TYPES else "other"
     primary = raw.get("primary") if isinstance(raw.get("primary"), bool) else None
     published = page.published or iso_date(raw.get("published") if isinstance(raw.get("published"), str) else None)
+    # A reference work (an encyclopedia or dictionary page) is kept up to date, so its date is the
+    # last update, not the day the page was first written (Wikipedia gives both).
+    if kind == "reference" and page.modified:
+        published = page.modified
     return {"type": kind, "primary": primary, "published": published}
 
 

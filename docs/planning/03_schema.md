@@ -899,7 +899,7 @@ The card sends the check with each evidence row; the server does not trust it bl
 |---|---|---|
 | `source_type` | string or null | One of `news`, `research`, `government`, `reference`, `organisation`, `blog`, `other`. |
 | `source_primary` | bool or null | True for a primary source (the original study, record, data or first hand account), false for a report about one, null when it cannot be told. |
-| `source_published` | string or null | `YYYY-MM-DD`, `YYYY-MM` or `YYYY` as the page gives it; null when the page gives no date. |
+| `source_published` | string or null | `YYYY-MM-DD`, `YYYY-MM` or `YYYY` as the page gives it; null when the page gives no date. For a reference work (an encyclopedia or dictionary page), which is kept up to date, the date it was last updated rather than first written. |
 | `source_checked_at` | datetime or null | When these were set. |
 
 Written with `coalesce` so the first reading wins and a later post never overwrites them, and only when the post's evidence row carries a kept check of the same URL as `e.url`:

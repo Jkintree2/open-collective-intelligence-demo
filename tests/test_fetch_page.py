@@ -72,7 +72,7 @@ def test_reads_an_article_and_drops_scripts_menus_and_footers():
 
 
 def test_date_from_structured_data():
-    text, title, _, published = html_text((PAGES / "research_ld.html").read_text())
+    text, title, _, published, _ = html_text((PAGES / "research_ld.html").read_text())
     assert published == "2021-07" and title == "Sea level rise and urban flooding"
     assert "tide gauge records" in text and "ScholarlyArticle" not in text
 
@@ -222,3 +222,11 @@ def test_backup_is_never_asked_about_a_refused_address():
     for reason in ("address", "scheme", "malformed", "dns"):
         assert not backup_allowed(Page("unread", "u", reason=reason), settings)
     assert not backup_allowed(Page("unsupported", "u", reason="type"), settings)
+
+
+def test_last_updated_date_is_kept_beside_the_first_published_one():
+    page = ('<script type="application/ld+json">{"datePublished":"2001-12-06T15:55:52Z",'
+            '"dateModified":"2026-10-17T13:53:58Z"}</script><p>Flat Earth is a disproven idea about the shape of Earth.</p>')
+    assert html_text(page)[3:] == ("2001-12-06", "2026-10-17")
+    meta = '<meta property="article:modified_time" content="2025-02-01"><p>text</p>'
+    assert html_text(meta)[4] == "2025-02-01"

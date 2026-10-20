@@ -45,6 +45,7 @@ class Page:
     description: str | None = None
     published: str | None = None
     reason: str = ""
+    modified: str | None = None
 
 
 class Refused(Exception):
@@ -109,6 +110,7 @@ class _Text(HTMLParser):
              "blockquote", "pre", "dd", "dt", "figcaption", "table", "ul", "ol", "main"}
     DATE_META = {"article:published_time", "datepublished", "date", "dc.date", "dc.date.issued",
                  "citation_publication_date", "citation_date", "pubdate", "publish-date", "og:published_time"}
+    MODIFIED_META = {"article:modified_time", "og:updated_time", "datemodified", "last-modified", "dc.date.modified"}
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -120,6 +122,7 @@ class _Text(HTMLParser):
         self.title = ""
         self.description: str | None = None
         self.published: str | None = None
+        self.modified: str | None = None
         self.ld = ""
 
     def handle_starttag(self, tag, attrs):
@@ -131,6 +134,8 @@ class _Text(HTMLParser):
                 self.description = content
             elif name in self.DATE_META and content and not self.published:
                 self.published = content
+            elif name in self.MODIFIED_META and content and not self.modified:
+                self.modified = content
         elif tag == "time" and a.get("datetime") and not self.published:
             self.published = a["datetime"]
         elif tag == "title":
@@ -171,16 +176,19 @@ class _Text(HTMLParser):
             self.parts.append(data)
 
 
-def html_text(html: str) -> tuple[str, str | None, str | None, str | None]:
-    """(text, title, description, published) from an HTML page; scripts, menus and footers dropped."""
+def html_text(html: str) -> tuple[str, str | None, str | None, str | None, str | None]:
+    """(text, title, description, published, modified) from an HTML page; scripts, menus and footers dropped."""
     parser = _Text()
     parser.feed(html)
     parser.close()
-    published = parser.published
-    if not published and parser.ld:
-        match = re.search(r'"datePublished"\s*:\s*"([^"]+)"', parser.ld)
-        published = match.group(1) if match else None
-    return tidy("".join(parser.parts)), (tidy(parser.title) or None), parser.description, iso_date(published)
+    published, modified = parser.published, parser.modified
+    if parser.ld:
+        if not published and (match := re.search(r'"datePublished"\s*:\s*"([^"]+)"', parser.ld)):
+            published = match.group(1)
+        if not modified and (match := re.search(r'"dateModified"\s*:\s*"([^"]+)"', parser.ld)):
+            modified = match.group(1)
+    return (tidy("".join(parser.parts)), (tidy(parser.title) or None), parser.description,
+            iso_date(published), iso_date(modified))
 
 
 def tidy(text: str) -> str:
@@ -297,12 +305,12 @@ def _fetch(url, about, resolver, transport, entry, started) -> Page:
             entry["bytes"] = len(body)
             raw = bytes(body[:MAX_BYTES]).decode(_charset(content_type, bytes(body[:4096])), "replace")
             if content_type.startswith("text/plain"):
-                text, title, description, published = tidy(raw), None, None, None
+                text, title, description, published, modified = tidy(raw), None, None, None, None
             else:
-                text, title, description, published = html_text(raw)
+                text, title, description, published, modified = html_text(raw)
             if len(text) < 40:
                 return Page("unread", current, reason="empty", title=title)
-            return Page("ok", current, cut(text, about), title, description, published)
+            return Page("ok", current, cut(text, about), title, description, published, modified=modified)
     return Page("unread", current, reason="redirects")
 
 

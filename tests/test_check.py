@@ -174,3 +174,11 @@ def test_the_backup_reader_is_off_with_its_switch_or_another_provider(change):
     result = check_evidence(URL, "s", "Coastal flooding", "x", replace(SETTINGS, **change),
                             fetcher=page_of(Page("unread", URL, reason="http")), backup=no_backup, transport=reply(GOOD))
     assert result.verdict == "unread"
+
+
+def test_a_reference_work_is_dated_by_its_last_update():
+    page = Page("ok", URL, TEXT, "Flat Earth", None, "2001-12-06", modified="2026-10-17")
+    reference = {**GOOD, "source": {"type": "reference", "primary": False, "published": "2001"}}
+    assert run(reference, page=page).source["published"] == "2026-10-17"
+    check.cache.clear()
+    assert run(GOOD, page=page).source["published"] == "2001-12-06"   # a news report keeps its first date
