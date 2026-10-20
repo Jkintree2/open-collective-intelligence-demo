@@ -670,7 +670,11 @@ For a reference work (an encyclopedia or dictionary page) the date is when the p
 
 > The page was read as arguing against this.
 
-(or "as supporting this"). This line shows to everyone, as the note proposed.
+or, under "Refuted by", when the page was read as supporting:
+
+> The page was read as supporting this.
+
+This line shows to everyone, as the note proposed.
 
 When the date is more than five years before the day the page is shown, one more sentence follows the date (John, 20 October 2026: "Indicating the age of the resource is good"; five years was the note's example and he named no other number):
 

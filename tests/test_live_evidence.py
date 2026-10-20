@@ -122,3 +122,34 @@ def test_export_then_restore_keeps_readings_and_source_facts(live_graph):
     live_graph.restore_record(exported)
     assert edge(live_graph, post_id) == before_edge
     assert evidence(live_graph) == before_evidence
+
+
+def test_the_issue_page_reads_each_edge_with_its_reading_and_the_source_facts(live_graph):
+    """Q39 (days 7 and 8): one row per evidence edge into the issue and its solutions, then the lines."""
+    from app import confidence
+    read()
+    post(live_graph, "acct:ada", card())
+    check.cache.clear()
+    read(verdict="refutes", statement="Floods are not worse.")
+    post(live_graph, "acct:bob", card(check={"verdict": "refutes", "quote": QUOTE}), statement="Floods are not worse.")
+    sent = CardPayload.model_validate({
+        "issues": [{"name": "Coastal flooding"}],
+        "solutions": [{"name": "Build seawalls", "for_issue": "Coastal flooding", "stance": "propose"}],
+        "evidence": [{"name": "Tide gauge records", "stance": "supports", "about": "Coastal flooding"},
+                     {"name": "Seawall audit", "stance": "refutes", "about": "Build seawalls"}]})
+    post(live_graph, "acct:cy", sent, statement="Seawalls fail.")
+    rows = graph_evidence.issue_confidence("coastal flooding")
+    seen = sorted((r["target_kind"], r["target_key"], r["evidence_key"], r["stance"], r["check"]) for r in rows)
+    assert seen == [("issue", "coastal flooding", "forty town survey", "SUPPORTS", "refutes"),
+                    ("issue", "coastal flooding", "forty town survey", "SUPPORTS", "supports"),
+                    ("issue", "coastal flooding", "tide gauge records", "SUPPORTS", None),
+                    ("solution", "build seawalls", "seawall audit", "REFUTES", None)]
+    survey = next(r for r in rows if r["evidence_key"] == "forty town survey")
+    assert survey["source_known"] is True and survey["source_type"] == "news"
+    assert next(r for r in rows if r["evidence_key"] == "seawall audit")["source_known"] is False
+    lines = confidence.lines(rows, today=NOW.date())
+    assert lines[("issue", "coastal flooding", "forty town survey", "SUPPORTS")] == {
+        "words": "A news report from March 2024. Secondary source. One other piece of evidence here says the same.",
+        "differs": "The page was read as arguing against this."}
+    assert lines[("solution", "build seawalls", "seawall audit", "REFUTES")] is None
+    assert graph_evidence.issue_confidence("no such issue") == []

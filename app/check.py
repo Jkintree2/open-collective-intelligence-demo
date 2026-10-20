@@ -14,7 +14,8 @@ import re
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+import calendar
+from datetime import date, datetime, timezone
 from typing import Any, Callable
 
 import httpx
@@ -326,15 +327,34 @@ def when(published: str | None) -> str | None:
     return parts[0]
 
 
-def source_words(source: dict[str, Any] | None) -> str | None:
-    """What a page says about itself, in words (04_interface.md, Phase 2; draft copy for John):
-    'A news report from March 2024. Secondary source.' Agreement is added on the issue page."""
+def more_than_five_years(published: str | None, today: date) -> bool:
+    """True when the date given ends more than five years before `today`. A year alone counts from
+    the end of that year and a month from the end of that month (04_interface.md, John 20 October)."""
+    parts = (published or "").split("-")
+    try:
+        year = int(parts[0])
+        month = int(parts[1]) if len(parts) >= 2 else 12
+        day = int(parts[2]) if len(parts) >= 3 else calendar.monthrange(year, month)[1]
+        end = date(year, month, day)
+    except (ValueError, IndexError):
+        return False
+    years_ago = today.year - 5
+    limit = date(years_ago, today.month, min(today.day, calendar.monthrange(years_ago, today.month)[1]))
+    return end < limit
+
+
+def source_words(source: dict[str, Any] | None, today: date | None = None) -> str | None:
+    """What a page says about itself, in words (04_interface.md, Phase 2, as John approved it):
+    'A news report from March 2018. More than five years old. Secondary source.' The date is counted
+    against `today` (the day the line is shown). Agreement is added on the issue page."""
     if not source:
         return None
     kind = SOURCE_WORDS.get(source.get("type") or "other", "page")
     article = "An" if kind[0] in "aeiou" else "A"
-    date = when(source.get("published"))
-    first = f"{article} {kind} from {date}." if date else f"{article} {kind}. Date not given."
+    date_words = when(source.get("published"))
+    first = f"{article} {kind} from {date_words}." if date_words else f"{article} {kind}. Date not given."
+    if date_words and more_than_five_years(source.get("published"), today or date.today()):
+        first += " More than five years old."
     primary = source.get("primary")
     second = " Primary source." if primary is True else " Secondary source." if primary is False else ""
     return first + second

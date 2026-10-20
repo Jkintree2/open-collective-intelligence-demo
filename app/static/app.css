@@ -428,3 +428,7 @@ form.search button { min-height: 44px; }
 /* X1: My Statements on Your account. */
 #my-statements { margin-top: 32px; }
 .show-more a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* Phase 2, days 7 and 8: source confidence under each piece of evidence on the issue page. */
+.evidence .confidence { display: block; font-size: 0.85rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+.evidence .confidence.differs { color: var(--solution); }

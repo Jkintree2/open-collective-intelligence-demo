@@ -37,7 +37,7 @@ app/graph_stances.py one stance per person and solution (Q23)
 app/graph_own_posts.py own posts: Q24, Q25 and the feed's yes or no flags (Q7)
 app/graph_search.py keyword search (Q26, Q27)
 app/graph_tidy.py  move, rename, merge and their change record (Q28 to Q32)
-app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts, and one post's stored readings
+app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts, one post's stored readings (Q35), and the issue page's source confidence read (Q39)
 app/backup.py      portable export format version 2 (version 1 still restores), typed values and validation; passwords and links never in a copy
 app/admin.py       Basic-auth back room routes, the reading service and sending email lines
 app/routes_accounts.py /sign-in, /sign-out, /account (with My Statements, X1), /forgot-password, /reset/{link}
@@ -55,8 +55,9 @@ app/payload.py     card models, cleaning, reference resolution
 app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text), and the DeepSeek Fetch backup for pages it cannot open (X3); no Cypher
 app/check.py       Phase 2: one reading per evidence link (supports, refutes or unclear, with a quote that must be on the page), source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
+app/confidence.py  Phase 2: source confidence on the issue page (Q39's rows to one line per piece of evidence: type, date, age, primary or secondary, agreement, and the disagreement line); no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
-app/templates/     base, enter, sign_in, account, forgot, reset, email_change, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people
+app/templates/     base, enter, sign_in, account, forgot, reset, email_change, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people, _confidence (Phase 2)
 app/static/        app.css (one anchor per Phase 1 sub-plan); card.js (card, preview, Post), dictation.js (speech input), app.js (page wiring; loads last), about_issue.js (the summary above the write form), stances.js (approve and oppose in place), edit_post.js (opens the card on a post being edited), once.js (submit once guard for forms marked data-once; loaded from base.html); evidence_check.js (Phase 2: reads each evidence link on the card, row by row; loads before card.js, only with EVIDENCE_CHECK_ENABLED and a reading service)
 seed/seed.json     the seed record, same shape as the card payload
 scripts/__init__.py

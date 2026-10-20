@@ -54,7 +54,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app import graph_own_posts
 from app.text import clean_name, count_line, make_key, relative_time, sentences
-from app import check, search, tidy
+from app import check, confidence, graph_evidence, search, tidy
 
 settings = get_settings()
 
@@ -286,14 +286,18 @@ def issue_page(request: Request, key: str) -> Response:
     header = graph.issue_header(key)
     if header is None:
         return RedirectResponse("/issues", status_code=303)
+    solutions = graph.issue_solutions(key, me=member_key(request), ranked=settings.accounts_enabled)
+    evidence = graph.issue_evidence(key)
+    if settings.evidence_check_enabled:
+        confidence.annotate(key, evidence, solutions, graph_evidence.issue_confidence(key))
     return templates.TemplateResponse(
         request,
         "issue.html",
         {
             "issue": header,
             "claimants": graph.issue_claimants(key),
-            "solutions": graph.issue_solutions(key, me=member_key(request), ranked=settings.accounts_enabled),
-            "evidence": graph.issue_evidence(key),
+            "solutions": solutions,
+            "evidence": evidence,
             "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
             "tidy": tidy.page_context(request, header),
         },

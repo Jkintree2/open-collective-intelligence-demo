@@ -2,6 +2,7 @@
 
 import importlib
 from dataclasses import replace
+from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
@@ -104,13 +105,13 @@ def test_oversized_fields_are_refused(api):
 
 @pytest.mark.parametrize("source,words", [
     ({"type": "news", "primary": False, "published": "2024-03-14"}, "A news report from March 2024. Secondary source."),
-    ({"type": "organisation", "primary": True, "published": "2019"}, "An organisation's page from 2019. Primary source."),
+    ({"type": "organisation", "primary": True, "published": "2019"}, "An organisation's page from 2019. More than five years old. Primary source."),
     ({"type": "government", "primary": None, "published": None}, "A government source. Date not given."),
     ({"type": "other", "primary": None, "published": "2021-13"}, "A page from 2021."),
     (None, None),
 ])
 def test_source_words(source, words):
-    assert source_words(source) == words
+    assert source_words(source, today=date(2026, 10, 21)) == words
 
 
 def test_route_copy_is_in_the_interface_doc():

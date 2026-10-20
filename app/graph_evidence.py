@@ -44,3 +44,24 @@ RETURN e.key AS evidence_key, t.key AS target_key, e.url AS url, r.check AS chec
 def post_checks(post_id: str) -> dict[tuple[str, str], dict[str, Any]]:
     """This post's stored readings, keyed by (evidence key, target key)."""
     return {(row["evidence_key"], row["target_key"]): row for row in _read(POST_CHECKS, post_id=post_id)}
+
+
+# Q39. Source confidence on one issue page: one row per evidence edge into the issue or one of its
+# proposed solutions, with the edge's reading and the evidence's source facts. Q4 and Q5 stay as they
+# are; app/confidence.py counts agreement (Q34) and the disagreement line from these rows.
+ISSUE_CONFIDENCE = """
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (i)-[:HAVE_PROPOSED]->(s:Solution)
+WITH i, collect(s) AS solutions
+UNWIND [i] + solutions AS t
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+RETURN CASE WHEN t:Issue THEN 'issue' ELSE 'solution' END AS target_kind, t.key AS target_key,
+       e.key AS evidence_key, type(r) AS stance, r.check AS check,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published
+"""
+
+
+def issue_confidence(key: str) -> list[dict[str, Any]]:
+    """Q39's rows for the issue page. Asked only with EVIDENCE_CHECK_ENABLED set."""
+    return _read(ISSUE_CONFIDENCE, key=key)
