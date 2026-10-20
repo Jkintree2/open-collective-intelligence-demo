@@ -17,7 +17,8 @@ FORMAT = "oci-record"
 VERSION = 2
 VERSIONS = (1, 2)
 # Never in a copy (03_schema.md Q33): a restored account chooses a new password by link.
-SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at"})
+# X2's pending_email belongs to the link and goes with it.
+SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at", "pending_email"})
 LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id", "Change": "id"}
 DIRECTIONS = {
     "POSTED": ("Person", {"Post"}), "CLAIM": ("Person", {"Issue"}),
@@ -30,6 +31,8 @@ DIRECTIONS = {
     "MADE": ("Person", {"Change"}), "CHANGED": ("Change", {"Issue"}),
 }
 TEMPORALS = {"DateTime": DateTime, "Date": Date, "Time": Time, "Duration": Duration}
+# Phase 2 (03_schema.md): how a page was read, on a post's SUPPORTS or REFUTES edge.
+CHECKS = frozenset({"supports", "refutes", "unclear", "unread"})
 
 
 class InvalidBackup(ValueError):
@@ -127,14 +130,25 @@ def properties(value):
     for key, item in decoded.items():
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
                    "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
-                   "relationship", "kind", "details"} and not isinstance(item, str):
+                   "relationship", "kind", "details", "check_quote", "source_type",
+                   "source_published"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
-        if key in {"seed", "anonymous", "admin", "active", "agreed"} and type(item) is not bool:
+        if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary"} and type(item) is not bool:
             raise InvalidBackup("A boolean property has the wrong type.")
         if key == "latency_ms" and (type(item) is not int or item < 0):
             raise InvalidBackup("A latency property has the wrong type.")
-        if key in {"created_at", "accepted_at", "edited_at"} and not isinstance(item, DateTime):
+        if key in {"created_at", "accepted_at", "edited_at", "checked_at", "source_checked_at"} \
+                and not isinstance(item, DateTime):
             raise InvalidBackup("A timestamp property has the wrong type.")
+        if key == "check" and item not in CHECKS:
+            raise InvalidBackup("A reading of a page has an unknown value.")
+    # X2: every earlier address with the time it stopped being used, as two lists of one length.
+    if "previous_emails" in decoded or "previous_emails_until" in decoded:
+        addresses, untils = decoded.get("previous_emails"), decoded.get("previous_emails_until")
+        if (not isinstance(addresses, list) or not isinstance(untils, list) or len(addresses) != len(untils)
+                or not all(isinstance(item, str) for item in addresses)
+                or not all(isinstance(item, DateTime) for item in untils)):
+            raise InvalidBackup("Earlier email addresses have the wrong shape.")
     return decoded
 
 

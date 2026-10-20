@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
-from app import extract as reading, graph, graph_own_posts
+from app import check, extract as reading, graph, graph_evidence, graph_own_posts
 from app.extract import CardPayload, ResolvedPayload, resolve_payload
 from app.members import Member, posting_identity, require_member, require_same_origin
 from app.pages import page
@@ -53,13 +53,15 @@ def delete(request: Request, post_id: str, member: Member = Depends(require_memb
     return RedirectResponse("/?done=deleted", status_code=303)
 
 
-def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]) -> dict:
+def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict],
+              checks: dict[tuple[str, str], dict] | None = None) -> dict:
     """The card for editing a post, built from the edges the post holds now (Q7's structure query), so
     an issue renamed or merged since shows under its current name and nothing comes back. `issues`
     maps issue keys to their Q2 header (`name`, `parent_name`). The stored payload gives only each
     evidence link's address. A solution's position is the stance edge this post still holds: one a
     click has since replaced, or one the person already held before the post, shows as no position, so
-    an unchanged edit never undoes a later click (Q25: a position left off the card is not withdrawn)."""
+    an unchanged edit never undoes a later click (Q25: a position left off the card is not withdrawn).
+    `checks` (Phase 2, post_checks) puts each row's stored reading on it, for the card to show."""
     stored = json.loads(stored_json or "{}")
     urls = {row["key"]: row.get("url") for row in stored.get("evidence", [])}
     stored_homes = {row["key"]: row.get("for_issue_key") for row in stored.get("solutions", [])}
@@ -91,13 +93,31 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
             item = evidence.setdefault(row["from_key"], {"name": row["from_name"], "url": urls.get(row["from_key"]),
                                                          "stance": "supports", "about": None})
             item["stance"], item["about"] = rel.lower(), row["to_name"]
+            if (stored := (checks or {}).get((row["from_key"], row["to_key"]))) is not None:
+                item["check"] = {"verdict": stored["check"], "quote": stored["check_quote"],
+                                 "line": check.source_words(_source(stored)) if stored["check"] != "unread" else None}
     return {"issues": list(claimed.values()), "solutions": list(solutions.values()),
             "evidence": list(evidence.values())}
 
 
-def current_card(post_id: str, stored_json: str | None) -> tuple[dict, dict[str, set[str]]]:
+def _source(stored: dict) -> dict | None:
+    if stored.get("source_type") is None:
+        return None
+    return {"type": stored["source_type"], "primary": stored.get("source_primary"),
+            "published": stored.get("source_published")}
+
+
+def stored_checks(post_id: str, stored_json: str | None) -> dict[tuple[str, str], dict]:
+    """Phase 2: the readings this post holds, each with the link the post gave (not the Evidence's own,
+    which may be an earlier post's). Callers ask only with EVIDENCE_CHECK_ENABLED set."""
+    urls = {row["key"]: row.get("url") for row in json.loads(stored_json or "{}").get("evidence", [])}
+    return {key: {**row, "url": urls.get(key[0])} for key, row in graph_evidence.post_checks(post_id).items()}
+
+
+def current_card(post_id: str, stored_json: str | None, *, readings: bool = False) -> tuple[dict, dict[str, set[str]]]:
     """The edit card from the record as it is now, and this post's own proposal links: each solution
-    key mapped to the keys of the issues whose HAVE_PROPOSED link to it this post made."""
+    key mapped to the keys of the issues whose HAVE_PROPOSED link to it this post made. `readings`
+    (EVIDENCE_CHECK_ENABLED) puts each evidence row's stored reading on the card."""
     rows = graph.post_structure([post_id]).get(post_id, [])
     stored = json.loads(stored_json or "{}")
     keys = {row["to_key"] for row in rows if row["rel"] == "CLAIM"}
@@ -109,7 +129,7 @@ def current_card(post_id: str, stored_json: str | None) -> tuple[dict, dict[str,
     for row in rows:
         if row["rel"] == "HAVE_PROPOSED":
             own.setdefault(row["to_key"], set()).add(row["from_key"])
-    return edit_card(rows, stored_json, issues), own
+    return edit_card(rows, stored_json, issues, stored_checks(post_id, stored_json) if readings else None), own
 
 
 def resolve_edit(data: CardPayload, own: dict[str, set[str]]) -> tuple[ResolvedPayload, CardPayload]:
@@ -127,14 +147,19 @@ def resolve_edit(data: CardPayload, own: dict[str, set[str]]) -> tuple[ResolvedP
 
 
 def _save(member: Member, row: dict, post_id: str, text: str, resolved: ResolvedPayload, card: CardPayload,
-          anonymous: bool, **reading_fields) -> bool:
+          anonymous: bool, items: list, **reading_fields) -> bool:
     from app import main as site
     # Q25 and R4: the edit takes the name or Anonymous chosen on the edit page, at any time (D2's one rule).
     _, _, hidden, shown = posting_identity(member, anonymous)
     statement = text or (". ".join(sentences(card, shown or "Anonymous")) + ".")[:site.TEXT_MAX]
+    # Phase 2: a row keeps its reading when the card still carries one the site made (now, or stored on
+    # this post's edge for the same evidence, target and link); otherwise it is saved without one.
+    checks = None
+    if site.settings.evidence_check_enabled:
+        checks = check.kept_checks(items, resolved.evidence, text, stored_checks(post_id, row["payload"]))
     return graph_own_posts.edit_own_post(member.key, post_id, resolved, text=statement,
                                          now=datetime.now(timezone.utc), anonymous=hidden, display_name=shown,
-                                         **reading_fields)
+                                         checks=checks, **reading_fields)
 
 
 @router.get("/posts/{post_id}/edit")
@@ -143,7 +168,7 @@ def edit_page(request: Request, post_id: str, member: Member = Depends(require_m
     row, problem = _own(request, member, post_id)
     if problem:
         return problem
-    card, _ = current_card(post_id, row["payload"])
+    card, _ = current_card(post_id, row["payload"], readings=site.settings.evidence_check_enabled)
     editing = {"id": row["id"], "text": row["text"], "anonymous": bool(row["anonymous"]), "card": card}
     return site._render_index(request, text=row["text"], editing=editing)
 
@@ -157,15 +182,16 @@ def save_plain_edit(request: Request, post_id: str, text: str = Form(""), anonym
     row, problem = _own(request, member, post_id)
     if problem:
         return problem
-    card, own = current_card(post_id, row["payload"])
+    card, own = current_card(post_id, row["payload"], readings=site.settings.evidence_check_enabled)
     if len(text) > site.TEXT_MAX:
         editing = {"id": row["id"], "text": row["text"], "anonymous": bool(row["anonymous"]), "card": card}
         return site._render_index(request, message=site.TOO_LONG, text=text, status_code=413, editing=editing)
     if not text.strip():
         return RedirectResponse(f"/posts/{quote(post_id, safe='')}/edit", status_code=303)
-    resolved, prepared = resolve_edit(CardPayload.model_validate(card), own)
+    sent = CardPayload.model_validate(card)
+    resolved, prepared = resolve_edit(sent, own)
     if not _save(member, row, post_id, text.strip(), resolved, prepared, source="manual", anonymous=bool(anonymous),
-                 extraction_raw=None, model=None, latency_ms=None):
+                 items=sent.evidence, extraction_raw=None, model=None, latency_ms=None):
         return _write_page(request, GONE, 404)
     return RedirectResponse("/?done=edited", status_code=303)
 
@@ -222,6 +248,6 @@ def save_edit(request: Request, post_id: str, body: dict = Body(...),
         return JSONResponse({"message": CHECK_THE_FORM, "dropped": resolved.dropped}, status_code=422)
     source = data.source if data.text.strip() and not resolved.is_empty else "manual"
     if not _save(member, row, post_id, data.text.strip(), resolved, card, source=source, anonymous=data.anonymous,
-                 extraction_raw=data.extraction_raw, model=data.model, latency_ms=data.latency_ms):
+                 items=data.evidence, extraction_raw=data.extraction_raw, model=data.model, latency_ms=data.latency_ms):
         return JSONResponse({"message": GONE}, status_code=404)
     return JSONResponse({"id": post_id, "message": UPDATED})

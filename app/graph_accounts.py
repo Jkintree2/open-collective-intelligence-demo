@@ -58,12 +58,15 @@ def sign_in_row(email: str) -> dict[str, Any] | None:
 ENTER_PERSON = """
 MATCH (inviter:Person {key: $inviter_key})
 WHERE inviter.active AND inviter.accepted_at IS NOT NULL
-CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
-                  email: $email, country: $country, postal_code: $postal_code,
-                  admin: false, active: true, created_at: $now,
-                  token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
-CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p)
-RETURN p.key AS key
+OPTIONAL MATCH (earlier:Person) WHERE $email IN coalesce(earlier.previous_emails, [])
+WITH inviter, count(earlier) > 0 AS used
+FOREACH (_ IN CASE WHEN used THEN [] ELSE [1] END |
+  CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
+                    email: $email, country: $country, postal_code: $postal_code,
+                    admin: false, active: true, created_at: $now,
+                    token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
+  CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p))
+RETURN used
 """
 
 # The same inviter entering the same address moments ago: a double tap, not a duplicate.
@@ -87,7 +90,7 @@ MATCH (p:Person {token_hash: $token_hash})
 OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
 RETURN p.key AS key, p.name AS name, p.email AS email, p.country AS country,
        p.postal_code AS postal_code, p.active AS active, p.accepted_at AS accepted_at,
-       p.token_purpose AS purpose, p.token_expires_at AS expires_at,
+       p.token_purpose AS purpose, p.token_expires_at AS expires_at, p.pending_email AS pending_email,
        inviter.name AS inviter_name, e.relationship AS relationship
 """
 
@@ -217,9 +220,13 @@ RETURN count(*) AS withdrawn
 
 def enter_person(*, inviter_key: str, key: str, name: str, email: str, country: str, postal_code: str,
                  relationship: str, token_hash: str, expires_at, now) -> bool:
-    return bool(_write_rows(ENTER_PERSON, inviter_key=inviter_key, key=key, name=name, email=email,
-                            country=country, postal_code=postal_code, relationship=relationship,
-                            token_hash=token_hash, expires_at=expires_at, now=now))
+    rows = _write_rows(ENTER_PERSON, inviter_key=inviter_key, key=key, name=name, email=email,
+                       country=country, postal_code=postal_code, relationship=relationship,
+                       token_hash=token_hash, expires_at=expires_at, now=now)
+    # X2: an address someone used before is never given to another person; the same answer as taken.
+    if rows and rows[0]["used"]:
+        raise EmailTaken()
+    return bool(rows)
 
 
 def recent_entry(inviter_key: str, email: str, since) -> dict | None:
@@ -266,7 +273,8 @@ OPTIONAL MATCH (inviter:Person)-[e:ENTERED]->(p)
 RETURN p.key AS key, p.name AS name, p.email AS email, e.relationship AS relationship,
        e.created_at AS entered_at, p.accepted_at AS accepted_at, p.active AS active,
        p.token_purpose AS purpose, p.token_expires_at AS expires_at,
-       inviter.name AS inviter_name, inviter.email AS inviter_email, p.admin AS admin
+       inviter.name AS inviter_name, inviter.email AS inviter_email, p.admin AS admin,
+       p.previous_emails AS previous_emails, p.previous_emails_until AS previous_emails_until
 ORDER BY e.created_at DESC, p.created_at DESC
 """
 
@@ -335,4 +343,50 @@ def set_details(key: str, *, name: str, country: str, postal_code: str) -> None:
 
 def who_entered(key: str) -> dict[str, Any] | None:
     rows = _read(WHO_ENTERED, key=key)
+    return rows[0] if rows else None
+
+
+# X2, change of email (03_schema.md, "Change of email"). Q37: ask, after the password is checked.
+ASK_EMAIL_CHANGE = """
+MATCH (p:Person {key: $key})
+SET p.key = p.key
+WITH p
+WHERE p.active AND p.accepted_at IS NOT NULL AND p.email <> $email
+  AND NOT EXISTS { MATCH (other:Person) WHERE other.key <> p.key
+                   AND (other.email = $email OR $email IN coalesce(other.previous_emails, [])) }
+SET p.token_hash = $token_hash, p.token_purpose = 'email', p.token_expires_at = $expires_at,
+    p.pending_email = $email
+RETURN p.name AS name, p.email AS email
+"""
+
+# Q38: confirm through the link. The link is used either way; the address moves only while still free.
+CONFIRM_EMAIL_CHANGE = """
+MATCH (p:Person {token_hash: $token_hash})
+SET p.key = p.key
+WITH p
+WHERE p.token_hash = $token_hash AND p.token_purpose = 'email' AND p.token_expires_at > $now
+  AND p.active AND p.pending_email IS NOT NULL
+OPTIONAL MATCH (other:Person)
+WHERE other.key <> p.key AND (other.email = p.pending_email OR p.pending_email IN coalesce(other.previous_emails, []))
+WITH p, count(other) = 0 AS free, p.email AS old, p.pending_email AS new
+SET p.previous_emails = CASE WHEN free THEN coalesce(p.previous_emails, []) + old ELSE p.previous_emails END,
+    p.previous_emails_until = CASE WHEN free THEN coalesce(p.previous_emails_until, []) + $now ELSE p.previous_emails_until END,
+    p.email = CASE WHEN free THEN new ELSE old END,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null, p.pending_email = null
+RETURN p.key AS key, free, old, new
+"""
+
+def ask_email_change(key: str, email: str, token_hash: str, expires_at) -> dict[str, Any] | None:
+    """The account's name and current email when the link was made; None when the address cannot be used."""
+    rows = _write_rows(ASK_EMAIL_CHANGE, key=key, email=email, token_hash=token_hash, expires_at=expires_at)
+    return rows[0] if rows else None
+
+
+def confirm_email_change(token_hash: str, now) -> dict[str, Any] | None:
+    """{key, free, old, new}, or None for a link that no longer works. A clash with an account
+    entered meanwhile (the email constraint) reads as not free."""
+    try:
+        rows = _write_rows(CONFIRM_EMAIL_CHANGE, token_hash=token_hash, now=now)
+    except EmailTaken:
+        return {"key": None, "free": False, "old": None, "new": None}
     return rows[0] if rows else None

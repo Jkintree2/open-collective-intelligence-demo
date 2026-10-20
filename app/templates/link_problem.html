@@ -8,6 +8,9 @@
   {% elif problem in ("expired_invite", "expired_reset") %}
   <p>This link has expired. You can ask for a new one.</p>
   <p><a href="/forgot-password">Forgot your password?</a></p>
+  {% elif problem == "expired_email" %}
+  <p>This link has expired. You can ask for a new one on Your account.</p>
+  <p><a href="/account">Your account</a></p>
   {% elif problem == "someone_else" %}
   <p>You are signed in as {{ member_name }}. This link is for someone else.</p>
   <form method="post" action="/sign-out"><input type="hidden" name="next" value="{{ here }}"><button type="submit" class="primary">Sign out and continue</button></form>

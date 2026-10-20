@@ -10,7 +10,7 @@ PRIVATE_HEADERS = {"Cache-Control": "no-store", "Referrer-Policy": "same-origin"
 
 
 # Emailed links never reach a log (03_schema.md): the secret part of the path is cut.
-LINK_PATHS = ("/accept/", "/reset/")
+LINK_PATHS = ("/accept/", "/reset/", "/email/")
 
 
 def loggable_path(path: str) -> str:

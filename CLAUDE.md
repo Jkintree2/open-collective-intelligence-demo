@@ -27,7 +27,7 @@ app/accounts.py    emails, scrypt passwords (two at a time), link secrets and li
 app/members.py     who is reading: Member, current_member, member_key, require_access, require_member, require_same_origin and CrossSite, wants_json, member cookies, safe_next, posting_identity
 app/pages.py       page() and link_problem() for router modules; loggable_path() for the request log; WRITE_NOTICES and write_notice() for the write page
 app/mailer.py      send(): Gmail API with the send permission only, over httpx (MAIL_CONSOLE prints instead, locally); last_mail_error for the back room
-app/emails.py      the invitation, first account and password emails, word for word from 04_interface.md
+app/emails.py      the invitation, first account, password and change of email emails, word for word from 04_interface.md
 app/graph.py       constraints and full-text indexes, the 0.1 Cypher as constants (Q1, Q3 and Q10 revised for Phase 1; the one-stance statement and ranked Q4 beside the 0.1 ones, chosen by ACCOUNTS_ENABLED), merge_post(), group_issues(), read queries
 app/graph_runtime.py process driver, query execution, RecordAsleep; no Cypher
 app/graph_posts.py post and seed write orchestration; write_payload() is shared by posting and editing, with the one_stance switch; no Cypher of its own (it runs the statements in graph.py)
@@ -37,27 +37,34 @@ app/graph_stances.py one stance per person and solution (Q23)
 app/graph_own_posts.py own posts: Q24, Q25 and the feed's yes or no flags (Q7)
 app/graph_search.py keyword search (Q26, Q27)
 app/graph_tidy.py  move, rename, merge and their change record (Q28 to Q32)
+app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts, one post's stored readings (Q35), and the issue page's source confidence read (Q39)
 app/backup.py      portable export format version 2 (version 1 still restores), typed values and validation; passwords and links never in a copy
 app/admin.py       Basic-auth back room routes, the reading service and sending email lines
-app/routes_accounts.py /sign-in, /sign-out, /account, /forgot-password, /reset/{link}
+app/routes_accounts.py /sign-in, /sign-out, /account (with My Statements, X1), /forgot-password, /reset/{link}
 app/routes_people.py   /people (enter, send again, withdraw) and /accept/{link}
 app/routes_stances.py  approve and oppose on the issue page
 app/routes_own_posts.py editing (with or without JavaScript, the card built from the post's current edges) and deleting one's own post
 app/routes_tidy.py     rename, move and merge an issue; /changes
 app/routes_admin_people.py the back room's People section (/admin/people)
+app/routes_email.py    X2: change one's email (/account/email, /email/{link}), only with EMAIL_CHANGE_ENABLED; every earlier address kept with its date
+app/routes_evidence.py Phase 2: POST /api/check-evidence (behind EVIDENCE_CHECK_ENABLED; per person and site limits, cached links free)
 app/search.py      the safe keyword query and grouped results
 app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names() for reloading the seed
 app/extract.py     prompt, model call with one retry, last_model_error, Extraction; re-exports CardPayload and resolution
 app/payload.py     card models, cleaning, reference resolution
+app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text), and the DeepSeek Fetch backup for pages it cannot open (X3); no Cypher
+app/check.py       Phase 2: one reading per evidence link (supports, refutes or unclear, with a quote that must be on the page), source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
+app/confidence.py  Phase 2: source confidence on the issue page (Q39's rows to one line per piece of evidence: type, date, age, primary or secondary, agreement, and the disagreement line); no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
-app/templates/     base, enter, sign_in, account, forgot, reset, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people
-app/static/        app.css (one anchor per Phase 1 sub-plan); card.js (card, preview, Post), dictation.js (speech input), app.js (page wiring; loads last), about_issue.js (the summary above the write form), stances.js (approve and oppose in place), edit_post.js (opens the card on a post being edited), once.js (submit once guard for forms marked data-once; loaded from base.html)
+app/templates/     base, enter, sign_in, account, forgot, reset, email_change, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people, _confidence (Phase 2)
+app/static/        app.css (one anchor per Phase 1 sub-plan); card.js (card, preview, Post), dictation.js (speech input), app.js (page wiring; loads last), about_issue.js (the summary above the write form), stances.js (approve and oppose in place), edit_post.js (opens the card on a post being edited), once.js (submit once guard for forms marked data-once; loaded from base.html); evidence_check.js (Phase 2: reads each evidence link on the card, row by row; loads before card.js, only with EVIDENCE_CHECK_ENABLED and a reading service)
 seed/seed.json     the seed record, same shape as the card payload
 scripts/__init__.py
 scripts/seed.py    python -m scripts.seed [--counts] [--reset --yes [--force]]; reset keeps accounts and refuses a database holding non-seed nodes; reload writes nothing when complete and reads tidied seed issues as they are now
 scripts/make_admin.py John's own account, the root of who entered whom: NEO4J_* from the shell only (never .env), prints the database host and name, needs --yes, refuses a database on this machine unless --local, sends nothing; his first link comes from "Forgot your password?"
 scripts/cards.py   prints the card the live model produces for each case in tests/extraction_cases.json (needs LLM_API_KEY)
+scripts/checks.py  prints the evidence check for each case in tests/check_cases.json, with tokens used (needs LLM_API_KEY)
 scripts/probe_reading.py one reading service preflight call; prints capability results, never credentials
 scripts/restore.py loads an admin export into an empty database
 tests/             offline by default (no network, no database); conftest.py (live_graph, member_app), page_harness.js (the fake page every *.cjs test drives); test_live_*.py are marked live and run only against the disposable Neo4j on port 7688; extraction_cases.json, fixtures/
@@ -89,7 +96,7 @@ The local `.env` points at the development database, a local Neo4j 5 in Docker (
 
 Every push to `main` deploys to Render. There is no staging. So: run `pytest` and open the local site before every push, and push small. If a deploy breaks the live site, revert the commit and push again; do not fix forward on a broken site. Environment variables live in the Render dashboard, never in the repo. `render.yaml` describes the service so it can be recreated in another Render account by "New Blueprint".
 
-Phase 1 runs behind `ACCOUNTS_ENABLED`; unset, the site keeps the passphrase and the 0.1 rules for posts, stances and the order of solutions (decision X1), and keyword search on the Issues page works too. Its variables (`SITE_URL`, `MAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `ACCOUNTS_ENABLED`) live in the Render dashboard. The Gmail values come from John's own Google project, with the send permission only, and only John types them in.
+Phase 2 (evidence that checks itself) runs behind `EVIDENCE_CHECK_ENABLED`, set in the Render dashboard; unset, the card is the Phase 1 card and nothing is fetched. `DEEPSEEK_FETCH=0` stops the backup reader. Change your email (X2) has its own switch, `EMAIL_CHANGE_ENABLED`, also in the dashboard; unset, Your account has no change of email form and its pages answer not found. Phase 1 runs behind `ACCOUNTS_ENABLED`; unset, the site keeps the passphrase and the 0.1 rules for posts, stances and the order of solutions (decision X1), and keyword search on the Issues page works too. Its variables (`SITE_URL`, `MAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `ACCOUNTS_ENABLED`) live in the Render dashboard. The Gmail values come from John's own Google project, with the send permission only, and only John types them in.
 
 ## Schema in brief
 
@@ -106,7 +113,7 @@ Display verbs: claims, submits, proposes, has proposed, supports, refutes, appro
 3. **Every push deploys, so every push must work.** Tests green, local site opened, then push.
 4. **The model is optional.** Any change to compose must be checked once with `LLM_API_KEY` unset.
 5. **Copy is John's.** Interface words come from `04_interface.md`. Never write node, edge, graph, Cypher, model, extraction or entity where a tester can read it. No dashes in client-facing text.
-6. **Cypher lives in the `graph*.py` modules only** (`graph.py`, and since Phase 1 `graph_accounts.py`, `graph_stances.py`, `graph_own_posts.py`, `graph_search.py`, `graph_tidy.py`). Relationship types and labels are substituted from whitelists, never from user input.
+6. **Cypher lives in the `graph*.py` modules only** (`graph.py`, and since Phase 1 `graph_accounts.py`, `graph_stances.py`, `graph_own_posts.py`, `graph_search.py`, `graph_tidy.py`, and since Phase 2 `graph_evidence.py`). Relationship types and labels are substituted from whitelists, never from user input.
 7. **Secrets never touch the repo, logs or templates.** Log the request id, sizes, latencies and counts; log text only at DEBUG.
 8. **Nothing personal to the builder in the repo.** No URLs, emails or account names. LICENSE and README name John.
 9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.** The first account is made once, by `scripts/make_admin.py`, never at startup.

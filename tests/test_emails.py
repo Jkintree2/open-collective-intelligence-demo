@@ -21,7 +21,7 @@ def test_invitation_email_word_for_word():
     assert text == (
         "Hello Bob Smith,\n\n"
         "Thank you for agreeing to take part in Open Collective Intelligence, an invitation-only test of a shared database "
-        "of issues, solutions, and evidence people are claiming, proposing, and submitting.\n\n"
+        "of issues, solutions, and evidence that people are claiming, proposing, and submitting.\n\n"
         "Entered by: Ada Tester\n"
         "How you know each other: Neighbor\n\n"
         "To accept and choose your own password, open this link:\n"
@@ -74,3 +74,30 @@ def test_password_email_word_for_word():
         "John Kintree\n")
     assert_plain(subject + text)
     assert "password:" not in text.lower()  # never a password, only the link
+
+
+def test_new_email_link_word_for_word():
+    subject, text = emails.email_change_link("Open Collective Intelligence", "Ada Tester",
+                                             "https://record.example/email/abc")
+    assert subject == "Confirm your new email for Open Collective Intelligence"
+    assert text == (
+        "Hello Ada Tester,\n\n"
+        "You asked to use this address for your account on Open Collective Intelligence. To confirm, open this link:\n"
+        "https://record.example/email/abc\n\n"
+        "The link works once, for 24 hours. Until you open it, sign in with your old address.\n\n"
+        "If it was not you, you can ignore this email.\n\n"
+        "John Kintree\n")
+    assert_plain(subject + text)
+
+
+def test_note_to_the_old_address_word_for_word():
+    subject, text = emails.email_change_notice("Open Collective Intelligence", "Ada Tester", "ada.new@example.org")
+    assert subject == "Your email on Open Collective Intelligence is being changed"
+    assert text == (
+        "Hello Ada Tester,\n\n"
+        "Someone signed in to your account on Open Collective Intelligence asked to change its email to "
+        "ada.new@example.org. Nothing changes until the link sent to that address is opened.\n\n"
+        "If it was not you, please change your password and reply to this email.\n\n"
+        "John Kintree\n")
+    assert_plain(subject + text)
+    assert "/email/" not in text

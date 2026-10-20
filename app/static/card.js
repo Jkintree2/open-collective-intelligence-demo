@@ -93,6 +93,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         }
         if (row.stance) item.stance = row.stance.value;
         if (row.radios) item.stance = row.radios.find(radio => radio.checked).value;
+        if (row.check) item.check = row.check;
         return item;
       });
     }
@@ -208,9 +209,10 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       ['supports', 'refutes'].forEach(value => row.stance.add(new Option(value, value)));
       row.stance.value = item.stance || 'supports';
       field(row, 'about', 'about', 'select');
+      evidence?.watch(row, item);
     }
     const remove = node('button', 'remove from this form', 'quiet'); remove.type = 'button';
-    remove.addEventListener('click', () => { release(row); state.groups[group] = state.groups[group].filter(other => other !== row); row.element.remove(); changed(); });
+    remove.addEventListener('click', () => removeRow(group, row));
     row.element.append(remove);
     row.element.addEventListener('input', () => { release(row); suggest(row, group); changed(); });
     row.element.addEventListener('change', () => { release(row); changed(); });
@@ -219,6 +221,10 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     refresh();
     for (const name of ['parent', 'for_issue', 'about']) if (row[name] && item[name]) row[name].value = item[name];
     changed();
+    return row;
+  }
+  function removeRow(group, row) {
+    release(row); state.groups[group] = state.groups[group].filter(other => other !== row); row.element.remove(); changed();
   }
   function openCard(payload = {}, message = '', meta = {source: 'manual'}, reapply = true) {
     stopDictation(); stopReading(); state.metadata = meta; state.plain = false;
@@ -282,6 +288,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         const response = await fetch('/feed');
         if (!response.ok || response.redirected) throw new Error();
         find('feed').innerHTML = await response.text();
+        showNewest();
       } catch { find('compose-message').textContent = 'Added to the record. Reload the page to see the updated record.'; }
       loadCandidates();
     } catch (error) { find('card-errors').textContent = error.message; failed = true; }
@@ -290,6 +297,13 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       // A failed save keeps its message until the writer changes something; a preview now would clear it.
       if (failed) find('post').disabled = false; else changed();
     }
+  }
+  // After a post the card closes and the page would sit several posts down; bring the write box and the
+  // statement just posted, the first in the feed, into view (John, 19 October 2026).
+  function showNewest() {
+    form.scrollIntoView?.({block: 'start'});
+    const newest = find('feed').querySelector?.('article.post');
+    if (newest && newest.getBoundingClientRect().bottom > window.innerHeight) newest.scrollIntoView({block: 'end'});
   }
   // The summary above the form (about_issue.js) sets a position on a solution the record already holds.
   // The answer lets the panel undo the choice and say why: 'reading', 'full' or true.
@@ -309,5 +323,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     row.radios.forEach(r => { r.checked = r.value === stance; });
     changed(); return true;
   }
+  // Phase 2: the page behind each evidence link is read when the form asks for it (evidence_check.js).
+  const evidence = form.dataset?.evidenceCheck !== undefined && window.ociEvidenceCheck
+    ? window.ociEvidenceCheck({find, request, node, text, changed, addRow, removeRow}) : null;
   return {state, grow, identity, changed, addRow, openCard, openPlain, noteShortened, loadCandidates, post, setPositionOnExisting};
 };

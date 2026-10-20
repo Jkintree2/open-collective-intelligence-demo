@@ -13,7 +13,7 @@ Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kic
 | `Person` | `key` (unique), `name` (string or null), `anonymous` (bool), `created_at` | `key` is `name:<normalised name>` for a named tester, `anon:<uuid>` for an anonymous one. An anonymous Person has `name = null` and is displayed as "Anonymous". A browser gets one anonymous key, held in a cookie, so an anonymous tester's posts count as one person. |
 | `Issue` | `key` (unique), `name`, `created_at`, `seed` (bool) | Top level or sub-issue. A sub-issue has exactly one outgoing `PART_OF`; the write path's guards keep it that way (first parent wins, and a sub-issue can never be a parent). |
 | `Solution` | `key` (unique), `name`, `created_at`, `seed` | |
-| `Evidence` | `key` (unique), `name`, `url` (string or null), `created_at`, `seed` | `name` is the citation as a short title ("2024 NOAA flooding survey"). `url` optional, never fetched. |
+| `Evidence` | `key` (unique), `name`, `url` (string or null), `created_at`, `seed` | `name` is the citation as a short title ("2024 NOAA flooding survey"). `url` optional. Never fetched in 0.1 and Phase 1; from Phase 2, read once when a writer asks for a check (see "Phase 2: evidence that checks itself"). |
 | `Post` | `id` (unique uuid), `text`, `created_at`, `anonymous`, `display_name` (null when `anonymous`; the name is never stored for an anonymous post), `seed`, `source` (`model`, `manual`, `seed`), `extraction_raw` (string, the model's JSON as returned, or null), `model`, `latency_ms` | The audit record. Every relationship created by a post carries `post_id`, so the feed, the "posts about this issue" list, and "it did something weird" debugging all start here. |
 
 `key` for Issue, Solution and Evidence is the normalised name: Unicode NFKC, lowercase, non-alphanumerics collapsed to single spaces, trimmed, a leading "the", "a" or "an" removed only when it is followed by a space (so "A/B testing" keeps its A). A key shorter than two characters after normalisation is rejected, so "The" or "!!!" can never become a node. "The need for world government" and "Need for world government" share a key. The displayed `name` is whatever the first poster wrote, cleaned: newlines to spaces, trimmed, capped at 300 characters, the first character upper-cased only when it is lower-case and the second is not upper-case ("iPhone" and "eBay" survive), and a trailing `.,;:!?` removed.
@@ -438,17 +438,20 @@ The token constraint doubles as the index for looking a link up.
 
 ### Accounts
 
-**Q12. Enter a person.** One write transaction. Python has already cleaned every field, lower-cased the email, checked the relationship against the list and the tick, and made the link (`token`, `token_hash`). An email that is already taken fails on the constraint, and Python answers that it has been entered already; a double-submitted form takes that path too, so it can never make two accounts. The email is sent only after this commits.
+**Q12. Enter a person.** One write transaction. Python has already cleaned every field, lower-cased the email, checked the relationship against the list and the tick, and made the link (`token`, `token_hash`). An email that is already taken fails on the constraint, and Python answers that it has been entered already; a double-submitted form takes that path too, so it can never make two accounts. The email is sent only after this commits. An address in anyone's `previous_emails` (change of email, X2) makes nothing and answers `used`, which Python treats as taken; the check sits in the same transaction as the write.
 
 ```cypher
 MATCH (inviter:Person {key: $inviter_key})
 WHERE inviter.active AND inviter.accepted_at IS NOT NULL
-CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
-                  email: $email, country: $country, postal_code: $postal_code,
-                  admin: false, active: true, created_at: $now,
-                  token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
-CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p)
-RETURN p.key AS key
+OPTIONAL MATCH (earlier:Person) WHERE $email IN coalesce(earlier.previous_emails, [])
+WITH inviter, count(earlier) > 0 AS used
+FOREACH (_ IN CASE WHEN used THEN [] ELSE [1] END |
+  CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
+                    email: $email, country: $country, postal_code: $postal_code,
+                    admin: false, active: true, created_at: $now,
+                    token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
+  CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p))
+RETURN used
 ```
 
 **Entered moments ago (the double tap check).** Read after Q12 fails on the email constraint: the same inviter entering the same address that has not accepted, since a given time, is a form sent twice, not a duplicate. It answers the key of the person already entered.
@@ -719,6 +722,17 @@ SET r.anonymous = $anonymous
 
 The edit card is built from the post's current edges (Q7's structure query for this one post, with issue names and parents from Q2), not from its stored `payload`, so an issue renamed or merged since shows as it is now and is never made again; the stored payload gives only evidence links. A solution's position on the card is the stance edge this post still holds, so a stance a click has since replaced shows as no position. When the card is resolved for saving, a solution this post itself proposes is proposed again (its own `HAVE_PROPOSED` link is left out of the candidates), never read as a position on a solution already listed (GitHub issue 4's rule); so an unchanged edit leaves the post's edges as they were. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
 
+**Q36. My Statements** (no-cost extra X1, added 20 October 2026; read only, no schema change). Your account lists the member's own posts, anonymous ones included, newest first, 50 at a time (`$limit` is one more than shown, to know whether to offer more). The feed's Q7 flags and structure query then decorate them as on the Write page.
+
+```cypher
+MATCH (:Person {key: $me})-[:POSTED]->(post:Post)
+WHERE coalesce(post.seed, false) = false
+RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
+       post.anonymous AS anonymous, post.created_at AS created_at, post.seed AS seed
+ORDER BY post.created_at DESC
+LIMIT $limit
+```
+
 ### Search
 
 Search does not need accounts: it works behind the passphrase too. It ships with the rest of Phase 1, since its pages build on the Phase 1 access code. The query is cut to 200 characters and ten words, lower-cased, and every Lucene special character (`+ - & | ! ( ) { } [ ] ^ " ~ * ? : \ /`) is escaped with a backslash; every word must then match, as written or as the start of a word (`+(housing housing*) +(costs costs*)`), so a second word narrows the results, as the page's "Try another word, or fewer words" says. An empty query shows the normal Issues list. Search by meaning (embeddings, GitHub issue 2) and event dates belong to Phase 3.
@@ -872,3 +886,163 @@ ORDER BY c.created_at, c.id
 ```
 
 **Q33. Export, version 2.** `Change` (identity `id`) joins the labels; `ENTERED` (Person to Person), `MADE` (Person to Change) and `CHANGED` (Change to Issue) join the types. `password_hash`, `token_hash`, `token_purpose` and `token_expires_at` are left out of every node. Restore accepts versions 1 and 2. A restored account keeps `accepted_at` but has no password, and its owner uses "Forgot your password?".
+
+## Phase 2: evidence that checks itself
+
+Added 20 October 2026, before any Phase 2 code. Properties only: no new label, no new relationship type, no new constraint or index. Everything here is written only when `EVIDENCE_CHECK_ENABLED` is set; unset, the write path is exactly the Phase 1 one and these properties stay absent (read queries treat absent as null).
+
+### The check on the evidence edge
+
+A post's `SUPPORTS` or `REFUTES` edge (Evidence to Issue, Solution or Evidence) gains three properties, set in the same CREATE as the edge, from the card:
+
+| Property | Type | Meaning |
+|---|---|---|
+| `check` | string or null | How the page behind the evidence's link was read for this claim: `supports`, `refutes`, `unclear` (read, but the page does not clearly say either way, or the quote was not found on the page), `unread` (the page could not be opened or read), or null (not checked: no link, no reading service, flag off, the writer posted before the check came back, or a link that is not a web page and "cannot be read yet"). |
+| `check_quote` | string or null | The sentence from the page the reading rests on, at most 500 characters. Null unless `check` is `supports` or `refutes`. Checked in Python to appear on the fetched page (whitespace normalised) before it is ever stored. |
+| `checked_at` | datetime or null | When the page was read. |
+
+The edge type stays the writer's choice. "The writer disagreed with the reading" is `(type(r) = 'SUPPORTS' AND r.check = 'refutes') OR (type(r) = 'REFUTES' AND r.check = 'supports')`. Nothing is blocked or deleted because of it (flag, never delete).
+
+The card sends the check with each evidence row; the server does not trust it blindly. A row's `check` is kept only when the server's own cache (below) holds a reading of the same URL, for the same target, with the same verdict and quote; otherwise the row is stored with `check = null`. So a tester cannot write a reading the site never made. The statement the reading was made with does not have to match: a writer who tidies the statement after the link was read keeps the reading, since it was of the same page for the same claim (`check.confirmed`, decided 20 October 2026). "The same target" is the one the row lands on: a row whose `about` names nothing on the card or in the record, and so falls back to the card's first issue, keeps no reading, and of two rows with the same evidence name only the first, the one written, can carry one (`check.kept_checks`, 20 October 2026).
+
+### Source facts on Evidence
+
+`Evidence` is shared (MERGE by key, like `url`), so what the page says about itself is stored once, when it is first read:
+
+| Property | Type | Meaning |
+|---|---|---|
+| `source_type` | string or null | One of `news`, `research`, `government`, `reference`, `organisation`, `blog`, `other`. |
+| `source_primary` | bool or null | True for a primary source (the original study, record, data or first hand account), false for a report about one, null when it cannot be told. |
+| `source_published` | string or null | `YYYY-MM-DD`, `YYYY-MM` or `YYYY` as the page gives it; null when the page gives no date. For a reference work (an encyclopedia or dictionary page), which is kept up to date, the date it was last updated rather than first written. |
+| `source_checked_at` | datetime or null | When these were set. |
+
+Written with `coalesce` so the first reading wins and a later post never overwrites them, and only when the post's evidence row carries a kept check of the same URL as `e.url`:
+
+```cypher
+// 5, extended. $source is null unless the row's check was kept and its url is the evidence's url.
+MERGE (e:Evidence {key: $evidence_key})
+ON CREATE SET e.name = $evidence_name, e.url = $url, e.created_at = datetime(), e.seed = false
+ON MATCH  SET e.url = coalesce(e.url, $url)
+WITH e
+FOREACH (_ IN CASE WHEN $source IS NOT NULL AND e.url = $url AND e.source_checked_at IS NULL THEN [1] ELSE [] END |
+  SET e.source_type = $source.type, e.source_primary = $source.primary,
+      e.source_published = $source.published, e.source_checked_at = datetime())
+WITH e
+MATCH (p:Person {key: $person_key})
+CREATE (p)-[:SUBMIT {post_id: $post_id, anonymous: $anonymous, created_at: datetime()}]->(e);
+
+// 5b, extended.
+MATCH (e:Evidence {key: $evidence_key}), (t:Issue {key: $target_key})
+CREATE (e)-[:SUPPORTS {post_id: $post_id, created_at: datetime(),
+                       check: $check, check_quote: $check_quote, checked_at: $checked_at}]->(t);
+```
+
+Editing one's own post (Q24, Q25) recreates the post's evidence edges from the card, so a check travels the same way: kept when the edited row still carries a kept check, null otherwise. On an edit a check is also kept when it is the one the record already holds on this post's edge for the same evidence, target and link (Q35 below), so an edit after a restart does not lose it; a kept stored check keeps its `checked_at` and leaves the source facts alone. The edit card shows each row's stored check and does not read the page again unless the link or what it is about changes.
+
+The extended statements 5 and 5b live in `app/graph_evidence.py` (graph.py is near its 500 line limit); they use the transaction's `$now`, like every other write statement, where the sketch above says `datetime()`, and `e.seed = $seed` where it says `false`, as the Phase 1 statement 5 does.
+
+```cypher
+// Q35. The checks one post holds, for the edit card and the edit's save.
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WHERE r.post_id = $post_id AND r.check IS NOT NULL
+RETURN e.key AS evidence_key, t.key AS target_key, e.url AS url, r.check AS check,
+       r.check_quote AS check_quote, r.checked_at AS checked_at,
+       e.source_type AS source_type, e.source_primary AS source_primary, e.source_published AS source_published
+```
+
+The link compared on an edit is the one in the post's stored payload, not `e.url`, which may be an earlier post's.
+
+### Agreement with other evidence (computed, never stored)
+
+Source confidence's fourth part is counted when a page is shown, not stored, so it is always current. For one evidence item `e` and the thing `t` it is about:
+
+```cypher
+// Q34. Agreement on one target. $keys: the evidence keys shown for t.
+// Not run as written: Q39 below answers it for a whole issue page in one read.
+MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(t {key: $target_key})
+WHERE other.key IN $keys
+WITH other.key AS key, collect(DISTINCT type(r)) AS stances
+RETURN key, stances
+```
+
+Python then says, for each item, how many other items on the same target take the same side and how many the other side.
+
+**Q39. Source confidence on one issue page** (days 7 and 8, added 20 October 2026; read only). With `EVIDENCE_CHECK_ENABLED` set, the issue page makes this one extra read and leaves Q4 (either form) and Q5 exactly as they are; unset, it is never run and the page is Phase 1's. It answers Q34 for the issue and all its solutions in one round trip: one row per evidence edge into the issue or one of its proposed solutions, with the edge's reading and the evidence's source facts. It lives in `app/graph_evidence.py`.
+
+```cypher
+// Q39. $key: the issue shown.
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (i)-[:HAVE_PROPOSED]->(s:Solution)
+WITH i, collect(s) AS solutions
+UNWIND [i] + solutions AS t
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+RETURN CASE WHEN t:Issue THEN 'issue' ELSE 'solution' END AS target_kind, t.key AS target_key,
+       e.key AS evidence_key, type(r) AS stance, r.check AS check,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published
+```
+
+Python (`app/confidence.py`, no Cypher) groups the rows by target (kind and key, since an issue and a solution may share a key). For an item `e` shown under one side on `t`, "say the same" counts the other evidence items with an edge of that side into `t`, and "disagree" those with an edge of the other side; an item never counts itself, and an item cited on both sides of `t` counts once on each. Type, date and primary or secondary come from the source facts only when `source_known`.
+
+**The disagreement line, when one evidence item is cited about the same target by several posts** (decided 20 October 2026). Each post's edge carries its own reading. Under "Supported by", "The page was read as arguing against this." shows when **any** post's `SUPPORTS` edge from `e` to `t` has `check = 'refutes'`; under "Refuted by", "The page was read as supporting this." shows when any `REFUTES` edge from `e` to `t` has `check = 'supports'`. Edges that agree with their reading, or have none, do not cancel it. Why any rather than most: every reading is of the same page for the same claim, so readings rarely differ, and when one does, the reader should hear it (flag, never delete). Readings on other targets never count.
+
+### What is never stored
+
+The page text, the raw response of the reading service, and the suggestions the page prompted. Suggestions the writer ticks become ordinary card rows and are written like any other row. The raw response goes to DEBUG logs only.
+
+### The check cache (process memory, not the database)
+
+`app/check.py` keeps, for the life of the process, the last 500 readings keyed by (URL, target name, statement hash), each with its verdict, quote and source facts. It lets the write path confirm a check (above) and keeps the same link from being read twice in a session. A restart empties it; a post made across a restart is stored with `check = null`.
+
+### Export and restore
+
+Export version 2 already carries every node and edge property not on the account deny list, so these properties travel with no format change. Restore's validator accepts them (strings, booleans, datetimes, nulls).
+
+## Change of email (no-cost extra X2, added 20 October 2026)
+
+John's "chain of custody" note, 17 October 2026. Properties only, on account `Person`s; no new label, type or constraint (`person_email` stays on `email` alone). Not behind `EVIDENCE_CHECK_ENABLED`: it is part of Your account, so it needs `ACCOUNTS_ENABLED` like the rest of it, and its own switch, `EMAIL_CHANGE_ENABLED` (added 20 October 2026, so Phase 2 can go live before John approves the wording). Unset, Your account has no change of email form, `/account/email` and `/email/{link}` answer not found, and nothing here is written; the properties below stay absent, and the back room and export show only what is there.
+
+| Property | Value | Notes |
+|---|---|---|
+| `token_purpose` | gains `email` | The one live link may now also be a change of email. |
+| `pending_email` | string or null | The address the `email` link would move the account to. Set with the link; a link field like the `token_*` ones: never in a template, a log or a copy. |
+| `previous_emails` | list of strings or absent | Every address the account used before, oldest first. |
+| `previous_emails_until` | list of datetimes or absent | When each address in `previous_emails` stopped being used, in the same order. Two parallel lists rather than `address|date` strings, so the dates stay datetimes and restore checks them as such. |
+
+An address is never used by two people over time: a new address is refused when it is another account's `email` or in another account's `previous_emails` (both at asking and again at confirming), and entering a person (Q12) refuses an address in anyone's `previous_emails` with the same answer as an address already taken. Changing back to one's own earlier address is allowed. Sign in reads `email` only; earlier addresses are history. They show to the account's owner nowhere and in the back room's People list.
+
+**Q37. Ask to change the email.** After the current password is checked in Python. Lock first, then check, as Q16 to Q18. No row: nothing is sent (the page says the same either way).
+
+```cypher
+MATCH (p:Person {key: $key})
+SET p.key = p.key
+WITH p
+WHERE p.active AND p.accepted_at IS NOT NULL AND p.email <> $email
+  AND NOT EXISTS { MATCH (other:Person) WHERE other.key <> p.key
+                   AND (other.email = $email OR $email IN coalesce(other.previous_emails, [])) }
+SET p.token_hash = $token_hash, p.token_purpose = 'email', p.token_expires_at = $expires_at,
+    p.pending_email = $email
+RETURN p.name AS name, p.email AS email
+```
+
+**Q38. Confirm through the link.** The link is used either way; the address moves only when it is still free.
+
+```cypher
+MATCH (p:Person {token_hash: $token_hash})
+SET p.key = p.key
+WITH p
+WHERE p.token_hash = $token_hash AND p.token_purpose = 'email' AND p.token_expires_at > $now
+  AND p.active AND p.pending_email IS NOT NULL
+OPTIONAL MATCH (other:Person)
+WHERE other.key <> p.key AND (other.email = p.pending_email OR p.pending_email IN coalesce(other.previous_emails, []))
+WITH p, count(other) = 0 AS free, p.email AS old, p.pending_email AS new
+SET p.previous_emails = CASE WHEN free THEN coalesce(p.previous_emails, []) + old ELSE p.previous_emails END,
+    p.previous_emails_until = CASE WHEN free THEN coalesce(p.previous_emails_until, []) + $now ELSE p.previous_emails_until END,
+    p.email = CASE WHEN free THEN new ELSE old END,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null, p.pending_email = null
+RETURN p.key AS key, free, old, new
+```
+
+Q15 (open a link) also returns `pending_email`; the back room's account list (Q20) also returns `previous_emails` and `previous_emails_until`.
+
+**Export and restore.** `pending_email` joins the properties never in a copy (with the link it belongs to). `previous_emails` and `previous_emails_until` travel; restore checks they are a list of strings and a list of datetimes of the same length. No new format version: version 2 already carries any other property.

@@ -20,6 +20,7 @@ from app.text import clean_name
 MIN_PASSWORD = 10
 INVITE_DAYS = 14
 RESET_HOURS = 1
+EMAIL_HOURS = 24
 MEMBER_COOKIE = "oci_member"
 MEMBER_DAYS = 30
 MEMBER_SECONDS = MEMBER_DAYS * 86400
@@ -101,7 +102,9 @@ def new_link() -> tuple[str, str]:
 
 
 def link_expiry(purpose: str, now: datetime) -> datetime:
-    return now + (timedelta(days=INVITE_DAYS) if purpose == "invite" else timedelta(hours=RESET_HOURS))
+    if purpose == "invite":
+        return now + timedelta(days=INVITE_DAYS)
+    return now + timedelta(hours=EMAIL_HOURS if purpose == "email" else RESET_HOURS)
 
 
 def link_state(row: dict | None, purpose: str, now: datetime) -> str:
@@ -149,7 +152,7 @@ def member_cookie_valid(cookie: str, password_hash: str | None, secret_key: str)
     return hmac.compare_digest(signature, _member_signature(key, int(expiry), password_hash, secret_key))
 
 
-LINK_KINDS = ("accept", "reset")
+LINK_KINDS = ("accept", "reset", "email")
 
 
 def link_url(site_url: str, kind: str, secret: str) -> str:
@@ -173,6 +176,10 @@ link_per_address = KeyedLimit(3, 3600)
 forgot_per_minute = MinuteBucket(capacity=6, period=60)
 # Entries and re-sends by one member: a stop for a runaway script, not for people.
 entering_limit = KeyedLimit(20, 3600)
+# X2: links asked for by one account on Your account, whatever the new address. Each mails two people
+# through John's Gmail, so a day's worth is small; past it the page answers the same and sends nothing,
+# as with a busy address.
+email_change_per_account = KeyedLimit(3, 86400)
 
 
 def person_name(value: str) -> str:

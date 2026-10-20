@@ -43,7 +43,9 @@ If the link has expired, they can ask for a new one, or use **Forgot your passwo
 People sign in with their email address and password, and stay signed in on that phone or computer for thirty days.
 
 * **Forgot your password?** on the sign in page emails a link to choose a new password. The link works once, for one hour. The page says the same thing whatever address is typed, so it never tells a stranger who is taking part.
-* **Your account**, at the top of the page, is where people sign out (right under the heading), change their name, country and postal code at any time, and change their password. Posts they already made keep the name they were posted with. Changing the password signs them out on every other phone or computer. The email address is shown there but cannot be changed yet.
+* **Your account**, at the top of the page, is where people sign out (right under the heading), change their name, country and postal code at any time, and change their password. Posts they already made keep the name they were posted with. Changing the password signs them out on every other phone or computer.
+* **Change your email**, also on Your account, takes the new address and the current password. The site sends a link to the new address and a short note to the old one; nothing changes until the link is opened, within 24 hours. Until then the person signs in with their old address. An address that belongs to another account, now or before, is never used, and the page says the same thing either way. Every earlier address stays on the account's record with the date it stopped being used, and the back room lists them under People, so each address can only ever point at one person. This part is switched on in Render, under Environment, as `EMAIL_CHANGE_ENABLED` set to true; until then Your account has no Change your email form.
+* **My Statements**, at the foot of Your account, lists everything that person has posted, newest first, including posts made anonymously, with **Edit** and **Delete** beside each. Only they see this list. Fifty show at first, and **Show more** brings the next fifty.
 
 No password is ever sent by email, and nobody, you included, can see anyone's password.
 
@@ -189,7 +191,7 @@ The site was built for a small, trusted group. Before you let many more people i
 Nothing, by default.
 
 * **Render** is free. The Starter plan, about 7 US dollars a month, removes the slow first visit. You can change the plan on the service page in Render at any time.
-* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit.
+* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs about a tenth of a US cent each time, about one US dollar per thousand links; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read.
 * **Neo4j Aura** is free. Never upgrade to Aura Professional for this site. It is far more than a test needs and it costs real money every month.
 * **UptimeRobot** and **GitHub** are free.
 
@@ -201,6 +203,29 @@ If Aura deletes your instance, the site shows an error and your record is gone f
 2. In Render, under Environment, fill in `NEO4J_URI`, `NEO4J_PASSWORD` and `NEO4J_DATABASE` from that file. The database name is the instance id, a short code, not the word neo4j. Save.
 3. Ask whoever helps you with the site to put your last downloaded copy into the new, empty instance. They need the file and about ten minutes. A copy holds no passwords, so afterwards everyone, you included, chooses a new password with **Forgot your password?**.
 4. If you have no copy, the accounts are gone too. Ask whoever helps you to make your first account again, as on the setup call. Then open the back room, press **Reload seed** to start again from the starting statements, and enter people again.
+
+## When you add a link
+
+A piece of evidence can carry a link to a web page. When the form opens, the site reads the page behind each link and says, under that link, what it found:
+
+* "The page seems to support this", or "seems to argue against this", followed by the sentence from the page it rests on;
+* "The page does not clearly say either way";
+* "Could not open this page";
+* "This kind of link cannot be read yet".
+
+Under a page it could read, one more line says what kind of page it is, when it was written and whether it is a primary source, for example "A news report from March 2024. Secondary source." The supports or refutes choice is set from the reading only while the writer has not touched it. **The writer always decides.** If they choose differently, the form says that is fine and that others will see both. Nothing is ever blocked or removed because of a reading, and Post never waits for one. The page may also mention other issues, solutions or evidence; up to three of each appear under **The page also mentions**, unticked, and ticking one adds it to the form.
+
+Some pages cannot be read well:
+
+* A page that is mostly menus and links, like the starting statements' United Nations document page, says "does not clearly say either way", because there is almost no text on it.
+* Some news sites, Reuters among them, turn away anything that is not a person in a browser. Their pages say "Could not open this page". When that happens the site asks DeepSeek's own page reader to try instead, which sometimes works. To stop it asking, add `DEEPSEEK_FETCH` with the value `0` in Render under Environment and save; those pages then simply say "Could not open this page".
+* PDF files and videos say "This kind of link cannot be read yet".
+
+In each case the form works as before and the writer chooses supports or refutes themselves.
+
+On the issue page, each piece of evidence then carries one line in plain words: the kind of page and its date, "More than five years old." when it is, primary or secondary, and how many other pieces of evidence on the same issue or solution say the same or disagree. For a reference work such as Wikipedia, the date is when the page was last updated. Anything not known is left out. When the writer kept "supports" but the page was read as arguing against, everyone sees "The page was read as arguing against this." (and the other way round). Five years is easy to change; ask whoever helps you with the site.
+
+Reading links is switched on in Render, under Environment, as `EVIDENCE_CHECK_ENABLED` set to true. To switch it off, set it to false and save. The form and the issue page then look as they did before, and nothing in the record is lost.
 
 ## Dictation
 

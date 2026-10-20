@@ -54,7 +54,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app import graph_own_posts
 from app.text import clean_name, count_line, make_key, relative_time, sentences
-from app import search, tidy
+from app import check, confidence, graph_evidence, search, tidy
 
 settings = get_settings()
 
@@ -257,6 +257,8 @@ def _render_index(
             "text": text,
             "about": about,
             "editing": editing,
+            # Phase 2: the card reads evidence links only with the flag and a reading service.
+            "evidence_check": settings.evidence_check_enabled and bool(settings.llm_api_key),
         },
         status_code=status_code,
     )
@@ -284,14 +286,18 @@ def issue_page(request: Request, key: str) -> Response:
     header = graph.issue_header(key)
     if header is None:
         return RedirectResponse("/issues", status_code=303)
+    solutions = graph.issue_solutions(key, me=member_key(request), ranked=settings.accounts_enabled)
+    evidence = graph.issue_evidence(key)
+    if settings.evidence_check_enabled:
+        confidence.annotate(key, evidence, solutions, graph_evidence.issue_confidence(key))
     return templates.TemplateResponse(
         request,
         "issue.html",
         {
             "issue": header,
             "claimants": graph.issue_claimants(key),
-            "solutions": graph.issue_solutions(key, me=member_key(request), ranked=settings.accounts_enabled),
-            "evidence": graph.issue_evidence(key),
+            "solutions": solutions,
+            "evidence": evidence,
             "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
             "tidy": tidy.page_context(request, header),
         },
@@ -508,6 +514,8 @@ def post_card(request: Request, data: PostRequest) -> Response:
             edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
         except ValueError:
             edited = True
+    # Phase 2: each evidence row's reading is kept only when this site made it (03_schema.md).
+    checks = check.kept_checks(data.evidence, resolved.evidence, data.text) if settings.evidence_check_enabled else None
     # What the reading service returned is kept whenever it returned something, even when the tester
     # emptied the card or the box, so "it did something weird" can be answered from the one post.
     post_id = graph.merge_post(person_key, name, anonymous, name,
@@ -515,7 +523,7 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 extraction_raw=data.extraction_raw, model=data.model,
                                 latency_ms=data.latency_ms,
                                 request_id=_request_id(request), edited=edited,
-                                one_stance=settings.accounts_enabled)
+                                one_stance=settings.accounts_enabled, checks=checks)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
     if member is None:
         if anonymous:

@@ -36,6 +36,17 @@ RETURN post.id AS id, post.edited_at AS edited_at,
        EXISTS { MATCH (:Person {key: $me})-[:POSTED]->(post) } AS mine
 """
 
+# Q36 (X1), My Statements on Your account: the member's own posts, newest first, in the feed's shape (Q7).
+# Anonymous ones are theirs too; the page is seen only by its owner. Seed posts are nobody's.
+MY_POSTS = """
+MATCH (:Person {key: $me})-[:POSTED]->(post:Post)
+WHERE coalesce(post.seed, false) = false
+RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
+       post.anonymous AS anonymous, post.created_at AS created_at, post.seed AS seed
+ORDER BY post.created_at DESC
+LIMIT $limit
+"""
+
 # Q25 step 1: Q11 statement 1 without deleting the post itself.
 DELETE_POST_EDGES = """
 MATCH (post:Post {id: $id})
@@ -69,6 +80,10 @@ def post_flags(me: str | None, ids: list[str]) -> dict[str, dict[str, Any]]:
     if not ids:
         return {}
     return {row["id"]: row for row in _read(POST_FLAGS, me=me, ids=ids)}
+
+
+def my_posts(me: str, limit: int) -> list[dict[str, Any]]:
+    return _read(MY_POSTS, me=me, limit=limit)
 
 
 def post_owner(me: str | None, post_id: str) -> dict[str, Any] | None:
@@ -105,11 +120,13 @@ def delete_own_post(me: str, post_id: str) -> bool:
 
 def edit_own_post(me: str, post_id: str, payload: ResolvedPayload, *, text: str, source: str,
                   extraction_raw: str | None, model: str | None, latency_ms: int | None, now: datetime,
-                  anonymous: bool | None = None, display_name: str | None = None) -> bool:
+                  anonymous: bool | None = None, display_name: str | None = None,
+                  checks: dict[str, dict[str, Any]] | None = None) -> bool:
     """Q25, in one transaction: the check, the post's own edges out, the edited card in under the
     same post id, orphans out (after, so a record the new version still uses stays), the post updated.
     An edit is always an account's, so its stances take the one-stance rule (D7). `anonymous` None
-    keeps the post's choice; otherwise the post and all its edges take it, with `display_name`."""
+    keeps the post's choice; otherwise the post and all its edges take it, with `display_name`.
+    `checks` is Phase 2's (write_payload): None writes the evidence edges as Phase 1 does."""
     def work(tx: Any) -> bool:
         row = tx.run(OWN_POST, me=me, id=post_id).single()
         if row is None:
@@ -121,7 +138,7 @@ def edit_own_post(me: str, post_id: str, payload: ResolvedPayload, *, text: str,
         hidden = bool(row["anonymous"]) if anonymous is None else anonymous
         shown = None if hidden else (display_name if anonymous is not None else row["display_name"])
         common = {"person_key": me, "post_id": post_id, "anonymous": hidden, "now": now, "seed": False}
-        graph_posts.write_payload(tx, payload, common, one_stance=True)
+        graph_posts.write_payload(tx, payload, common, one_stance=True, checks=checks)
         tx.run(graph.DELETE_POST_ORPHANS, touched=touched).consume()
         tx.run(UPDATE_POST, id=post_id, text=text, payload=payload.as_json(), source=source,
                extraction_raw=extraction_raw, model=model, latency_ms=latency_ms, now=now,

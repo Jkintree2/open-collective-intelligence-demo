@@ -24,7 +24,7 @@ Shown for any URL when the passphrase cookie is missing or stale. One card, cent
 
 > **Open Collective Intelligence**
 >
-> An invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, submitting.
+> An invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, submitting.
 >
 > Everything written here is merged into a free instance of the Neo4j Aura graph database that other testers can read. It is not a private conversation. Use it for things you are happy to say in public.
 >
@@ -176,7 +176,7 @@ Replaces Screen 1. The two paragraphs about the shared record and the reading se
 
 > **{SITE_NAME}**
 >
-> An invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, and submitting.
+> An invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, and submitting.
 >
 > *(the two paragraphs from the passphrase page)*
 >
@@ -286,7 +286,7 @@ After either button:
 >
 > Hello {name},
 >
-> Thank you for agreeing to take part in {SITE_NAME}, an invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, and submitting.
+> Thank you for agreeing to take part in {SITE_NAME}, an invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, and submitting.
 >
 > Entered by: {inviter}
 > How you know each other: {relationship}
@@ -440,7 +440,7 @@ The same length and "not the same" messages as accepting, and the same page when
 
 > Please fill in your name and country.
 
-The email on this page, on accepting and on choosing a new password is plain text, not a box, so it does not look as if it could be changed there (John, 17 October 2026). Not client-facing: it stays a read-only username field so a phone's password manager saves the password under it. Changing the email is Phase 2.
+The email on this page, on accepting and on choosing a new password is plain text, not a box, so it does not look as if it could be changed there (John, 17 October 2026). Not client-facing: it stays a read-only username field so a phone's password manager saves the password under it. Changing the email is its own form below (X2, in the Phase 2 section).
 
 The postal code is optional everywhere: entering a person, accepting and Your account (John, 18 October 2026: the site does not check postal codes). Everyone can change their own name, country and postal code at any time (revision round, promised 8 October 2026).
 
@@ -617,3 +617,181 @@ When the time of the failure is not known:
 * Email links are built from `SITE_URL`, never from the request's host.
 * New scripts and styles sit in `app/static/`, so the `?v=` hash from fe88bd4 covers them.
 * Every form works without JavaScript; a mutation is a POST, refused unless it comes from this site.
+
+## Phase 2: evidence that checks itself
+
+Added 20 October 2026, before any Phase 2 code. Everything here shows only when `EVIDENCE_CHECK_ENABLED` is set and the reading service is configured; otherwise the card is exactly the Phase 1 card. Everything in a quote is **client-facing**. John approved the card and source confidence wording as proposed in the source confidence note (20 October 2026, 14:16 UTC: "Please proceed with building the display as you described it"); the change of email copy (X2) has not been shown to him yet. No dashes, none of the forbidden words.
+
+### On the card, under each evidence row with a link
+
+Shown as soon as the card opens (for links found in the statement) or when the writer leaves the link field (for a link typed or changed by hand). One line, replaced by the result:
+
+> Reading the page…
+
+Then one of:
+
+> The page seems to support this: "{quote}"
+
+> The page seems to argue against this: "{quote}"
+
+> The page does not clearly say either way.
+
+> Could not open this page.
+
+> This kind of link cannot be read yet.
+
+The last one is for PDFs, videos and other links that are not web pages. "Could not open this page." is also what shows when the reading itself fails (the site does not answer, or the request is refused), apart from the busy reader below, which has its own line. Under a result with a page, one line of what the page says about itself (the same words as source confidence, below, without the agreement part), for example:
+
+> A news report from March 2024. Secondary source.
+
+The supports or refutes choice on the row is set from the reading only while the writer has not touched it, and stays theirs to change. When the writer's choice and the reading differ, one more line:
+
+> You chose differently from the reading. That is fine; others will see both.
+
+**Suggestions.** When the page mentions issues, solutions or evidence not yet on the card, up to three of each appear under the row, unticked, under the heading:
+
+> The page also mentions
+
+Each is one line with a tick box and its kind ("Issue: …", "Solution: …", "Evidence: …"). Ticking one adds it to the card as an ordinary row the writer can edit; unticking removes that row again.
+
+When too many links are read in a short time, the line under the link says, **client-facing**:
+
+> Too many links read just now. Please wait a minute; you can still post.
+
+Post is never held back by a reading still under way. A post sent before the reading came back is stored without it.
+
+### Source confidence, on the issue page
+
+Under each piece of evidence in "Supported by" and "Refuted by", one line in plain words, never a number or a colour scale. Four parts, in this order, each left out when it is not known:
+
+> A {type} from {Month YYYY}. {Primary source | Secondary source}. {N other pieces of evidence here say the same; M disagree.}
+
+For a reference work (an encyclopedia or dictionary page) the date is when the page was last updated, since such pages are kept up to date; Wikipedia's first date is when the article was started, which says nothing about what it says now. Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date, the first sentence ends after the type and "Date not given." follows: "A news report. Date not given. Secondary source." Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
+
+> The page was read as arguing against this.
+
+or, under "Refuted by", when the page was read as supporting:
+
+> The page was read as supporting this.
+
+This line shows to everyone, as the note proposed.
+
+When the date is more than five years before the day the page is shown, one more sentence follows the date (John, 20 October 2026: "Indicating the age of the resource is good"; five years was the note's example and he named no other number):
+
+> More than five years old.
+
+For example: "A news report from March 2018. More than five years old. Secondary source. Two other pieces of evidence here say the same; one disagrees." A date given only as a year counts from the end of that year, and a month and year from the end of that month. Nothing is said about age when the date is not given. The card's line under a link says the age the same way.
+
+The agreement part, word for word, counted in words from one to ten and in figures above (added 20 October 2026, following the note's example):
+
+> One other piece of evidence here says the same.
+
+> Two other pieces of evidence here say the same.
+
+> One other piece of evidence here disagrees.
+
+> Two other pieces of evidence here disagree.
+
+> One other piece of evidence here says the same; two disagree.
+
+> Two other pieces of evidence here say the same; one disagrees.
+
+When no other evidence is on the same issue or solution, the agreement part is left out. When a page was never read, its type, date and primary or secondary are left out and only the agreement part shows, if any. When several statements cite the same evidence for the same claim, the "read as arguing against" line shows when any one of their readings went the other way.
+
+### Your account: My Statements (no-cost extra, John 17 October 2026)
+
+Below "Change your password", **client-facing**:
+
+> **My Statements**
+
+Then the member's own posts, newest first, each as in the feed: byline, statement, what it added, and "Edit" and "Delete". Posts made anonymously are included and say "Anonymous" as in the feed; this page is seen only by its owner. At most 50 at first; with more, under the last one:
+
+> [ Show more ]
+
+which shows 50 more each time. With none yet:
+
+> You have not posted anything yet.
+
+### Your account: Change your email (no-cost extra, John 17 October 2026)
+
+Shown only with `EMAIL_CHANGE_ENABLED` set (not client-facing), which waits for John's yes on the wording below; unset, Your account goes straight from "Change your password" to "My Statements".
+
+Between "Change your password" and "My Statements", **client-facing**:
+
+> **Change your email**
+> New email: [ input ]
+> Current password: [ input ]
+> [ Send a link to the new email ]
+
+Then, at the top of Your account, the same words whether or not the new address can be used (as on "Forgot your password?"):
+
+> We have sent a link to {new email}. Open it to finish the change. If it does not arrive in a few minutes, please check your spam folder. Until then, sign in with {current email}.
+
+Under the form, when it cannot go ahead:
+
+> That is not your current password.
+
+> Please enter an email address.
+
+> That is already your email.
+
+Nothing changes until the link is opened. A new address is not used when it belongs to another account, now or before (it then gets no email; the page says the same as above). Not client-facing: one account sends at most three change links a day, and one address gets at most three links an hour; past either, the page says the same as above and nothing is sent. Too many tries in a minute shows the sign in limit's "Too many tries. Please wait a minute and try again." Every earlier address stays on the account's record with the date it stopped being used, so an address never points at two people.
+
+### The new email link
+
+> **Subject:** Confirm your new email for {SITE_NAME}
+>
+> Hello {name},
+>
+> You asked to use this address for your account on {SITE_NAME}. To confirm, open this link:
+> {SITE_URL}/email/{link}
+>
+> The link works once, for 24 hours. Until you open it, sign in with your old address.
+>
+> If it was not you, you can ignore this email.
+>
+> John Kintree
+
+### The note to the old address
+
+> **Subject:** Your email on {SITE_NAME} is being changed
+>
+> Hello {name},
+>
+> Someone signed in to your account on {SITE_NAME} asked to change its email to {new email}. Nothing changes until the link sent to that address is opened.
+>
+> If it was not you, please change your password and reply to this email.
+>
+> John Kintree
+
+### Confirm your new email (`/email/{link}`)
+
+> **Confirm your new email**
+>
+> From now on, sign in with {new email}. Your old address, {old email}, stays on your account's record as an earlier one.
+> [ Confirm the new email ]
+
+Then:
+
+> Your email is changed. From now on, sign in with {new email}.
+> [ Your account ] (signed in) or [ Sign in ]
+
+When the address was taken by another account meanwhile:
+
+> That address is now used by another account. Your email has not changed.
+
+An expired link:
+
+> This link has expired. You can ask for a new one on Your account.
+
+A used or replaced link reads as for the other links ("This link no longer works...").
+
+### Back room: earlier addresses
+
+On each person's line in People, after the email, for each earlier one:
+
+> earlier {address} until {20 October 2026}
+
+### Not client-facing
+
+The reading takes a few seconds per link; rows fill in as they arrive. A link is read once for the same claim and statement; the reading is kept for the life of the running site (up to 500 readings), so reading it again costs nothing until the site restarts. With the reading service unset, no line appears at all.

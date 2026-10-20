@@ -77,6 +77,17 @@ class EvidenceItem(BaseModel):
     url: str | None = None
     stance: str = "supports"
     about: str | None = None
+    # Phase 2: the reading the card showed for this row's link, as {verdict, quote}. Only a claim:
+    # the write path keeps it only when the site made that reading itself (check.kept_checks).
+    check: dict[str, str | None] | None = None
+
+    @field_validator("check", mode="before")
+    @classmethod
+    def _check(cls, value: Any) -> dict[str, str | None] | None:
+        if not isinstance(value, dict) or not isinstance(value.get("verdict"), str):
+            return None
+        quote = value.get("quote")
+        return {"verdict": value["verdict"], "quote": quote if isinstance(quote, str) else None}
 
     @field_validator("name", "about", mode="before")
     @classmethod

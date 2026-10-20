@@ -16,6 +16,7 @@
     // A reply that is not ours, such as a gateway page while the site restarts, reads as offline.
     const failure = new Error(data ? (data.message || 'Please check the form and try again.') : unavailable);
     failure.offline = !data;
+    failure.status = response.status;
     if (response.status === 401 && data && data.redirect) location.href = data.redirect;
     throw failure;
   }

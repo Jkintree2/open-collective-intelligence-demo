@@ -155,7 +155,7 @@ def test_the_page_never_receives_link_fields(back_room):
     from app import routes_admin_people
     for shown in routes_admin_people.page_rows():
         assert set(shown) == {"key", "name", "email", "inviter_name", "inviter_email", "relationship", "entered_at",
-                              "accepted_at", "state", "first", "actions"}
+                              "accepted_at", "state", "first", "actions", "earlier"}  # X2: earlier addresses
 
 
 def test_the_sending_email_line_sits_beside_the_reading_service_line(back_room, monkeypatch):

@@ -57,6 +57,7 @@ ACCOUNT_LIMITS = {
     "forgot_per_minute": lambda: MinuteBucket(capacity=1000, period=60),
     "link_per_address": lambda: KeyedLimit(1000, 3600),
     "entering_limit": lambda: KeyedLimit(1000, 3600),
+    "email_change_per_account": lambda: KeyedLimit(1000, 86400),
 }
 
 
@@ -84,6 +85,11 @@ def member_app(monkeypatch):
     # `/?issue=` reads the issue's summary; with no driver open that read would be a 500.
     monkeypatch.setattr(main.graph, "issue_header", lambda key: None)
     monkeypatch.setattr(main.graph, "candidates", Candidates.empty)
+    # X1: My Statements on Your account; a test that needs posts there puts them in `own_posts`.
+    own_posts = []
+    monkeypatch.setattr("app.graph_own_posts.my_posts", lambda me, limit: own_posts[:limit])
+    monkeypatch.setattr("app.graph_own_posts.post_flags", lambda me, ids: {i: {"id": i, "mine": True, "edited_at": None}
+                                                                         for i in ids})
     writes = []
     monkeypatch.setattr(main.graph, "merge_post", lambda *args, **kwargs: writes.append((args, kwargs)) or "post-id")
     record = {}
@@ -103,5 +109,5 @@ def member_app(monkeypatch):
         return record[key]
 
     yield SimpleNamespace(client=client, main=main, settings=settings, sign_in=sign_in, set_cookie=set_cookie,
-                          accounts=record, writes=writes)
+                          accounts=record, writes=writes, own_posts=own_posts)
     client.close()

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 from neo4j.exceptions import ServiceUnavailable
-from app import graph
+from app import graph, graph_evidence
 from app.extract import ResolvedPayload
 from app.graph_runtime import RecordAsleep
 from app.text import make_key
@@ -14,11 +14,14 @@ from app.text import make_key
 log = logging.getLogger("oci")
 
 
-def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, one_stance: bool = False) -> None:
+def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, one_stance: bool = False,
+                  checks: dict[str, dict[str, Any]] | None = None) -> None:
     """Write path statements 3 to 5b for one post (03_schema.md). Posting and editing a post
     (sub-plan D) both write a post's edges through here, so the rules live in one place.
     `one_stance` is the D7 switch: it picks the statement that replaces the person's
-    opposite stance; callers that post as an account pass True."""
+    opposite stance; callers that post as an account pass True. `checks` is Phase 2's, from
+    check.kept_checks and only with EVIDENCE_CHECK_ENABLED set: None writes evidence exactly as
+    Phase 1 does; a dict writes each row's kept reading (or nulls) with statements 5 and 5b extended."""
     for issue in payload.issues:
         tx.run(graph.MERGE_ISSUE_CLAIM, issue_key=issue["key"], issue_name=issue["name"], **common)
     for issue in payload.issues:
@@ -39,21 +42,31 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
                          if one_stance else graph.MERGE_STANCE)
             tx.run(statement.replace("{stance}", stance), solution_key=solution["key"], **common)
     for item in payload.evidence:
-        tx.run(
-            graph.MERGE_EVIDENCE_SUBMIT,
-            evidence_key=item["key"],
-            evidence_name=item["name"],
-            url=item.get("url"),
-            **common,
-        )
         rel = graph.EVIDENCE_TYPES[item["stance"]]
         label = item["target_label"]
         if label not in graph.TARGET_LABELS:
             raise ValueError(f"unknown target label {label!r}")
+        if checks is None:
+            submit, stance, extra, source = graph.MERGE_EVIDENCE_SUBMIT, graph.CREATE_EVIDENCE_STANCE, {}, {}
+        else:
+            kept = checks.get(item["key"]) or {}
+            submit, stance = graph_evidence.MERGE_EVIDENCE_SUBMIT_CHECKED, graph_evidence.CREATE_EVIDENCE_STANCE_CHECKED
+            extra = {"check": kept.get("check"), "check_quote": kept.get("check_quote"),
+                     "checked_at": kept.get("checked_at")}
+            source = {"source": kept.get("source")}
         tx.run(
-            graph.CREATE_EVIDENCE_STANCE.replace("{label}", label).replace("{rel}", rel),
+            submit,
+            evidence_key=item["key"],
+            evidence_name=item["name"],
+            url=item.get("url"),
+            **source,
+            **common,
+        )
+        tx.run(
+            stance.replace("{label}", label).replace("{rel}", rel),
             evidence_key=item["key"],
             target_key=item["target_key"],
+            **extra,
             **common,
         )
 
@@ -76,6 +89,7 @@ def merge_post(
     request_id: str | None = None,
     edited: bool = False,
     one_stance: bool = False,
+    checks: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """Merge one post and everything it adds, in one write transaction. Returns the post id.
 
@@ -108,7 +122,7 @@ def merge_post(
             payload=payload.as_json(),
             **common,
         )
-        write_payload(tx, payload, common, one_stance=one_stance)
+        write_payload(tx, payload, common, one_stance=one_stance, checks=checks)
 
     try:
         with graph.driver().session(database=graph.database()) as session:
@@ -128,6 +142,7 @@ def merge_post(
                 "issues": len(payload.issues),
                 "solutions": len(payload.solutions),
                 "evidence": len(payload.evidence),
+                **({"checks_kept": sum(1 for row in checks.values() if row.get("check"))} if checks is not None else {}),
             }
         )
     )
