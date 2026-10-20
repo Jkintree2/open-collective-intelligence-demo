@@ -191,7 +191,7 @@ The site was built for a small, trusted group. Before you let many more people i
 Nothing, by default.
 
 * **Render** is free. The Starter plan, about 7 US dollars a month, removes the slow first visit. You can change the plan on the service page in Render at any time.
-* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs under a tenth of a US cent each time; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read.
+* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs about a tenth of a US cent each time, about one US dollar per thousand links; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read.
 * **Neo4j Aura** is free. Never upgrade to Aura Professional for this site. It is far more than a test needs and it costs real money every month.
 * **UptimeRobot** and **GitHub** are free.
 
@@ -218,7 +218,7 @@ Under a page it could read, one more line says what kind of page it is, when it 
 Some pages cannot be read well:
 
 * A page that is mostly menus and links, like the starting statements' United Nations document page, says "does not clearly say either way", because there is almost no text on it.
-* Some news sites, Reuters among them, turn away anything that is not a person in a browser. Their pages say "Could not open this page". When that happens the site asks DeepSeek's own page reader to try instead, which sometimes works.
+* Some news sites, Reuters among them, turn away anything that is not a person in a browser. Their pages say "Could not open this page". When that happens the site asks DeepSeek's own page reader to try instead, which sometimes works. To stop it asking, add `DEEPSEEK_FETCH` with the value `0` in Render under Environment and save; those pages then simply say "Could not open this page".
 * PDF files and videos say "This kind of link cannot be read yet".
 
 In each case the form works as before and the writer chooses supports or refutes themselves.

@@ -640,7 +640,7 @@ Then one of:
 
 > This kind of link cannot be read yet.
 
-The last one is for PDFs, videos and other links that are not web pages. Under a result with a page, one line of what the page says about itself (the same words as source confidence, below, without the agreement part), for example:
+The last one is for PDFs, videos and other links that are not web pages. "Could not open this page." is also what shows when the reading itself fails (the site does not answer, or the request is refused), apart from the busy reader below, which has its own line. Under a result with a page, one line of what the page says about itself (the same words as source confidence, below, without the agreement part), for example:
 
 > A news report from March 2024. Secondary source.
 
@@ -666,7 +666,7 @@ Under each piece of evidence in "Supported by" and "Refuted by", one line in pla
 
 > A {type} from {Month YYYY}. {Primary source | Secondary source}. {N other pieces of evidence here say the same; M disagree.}
 
-For a reference work (an encyclopedia or dictionary page) the date is when the page was last updated, since such pages are kept up to date; Wikipedia's first date is when the article was started, which says nothing about what it says now. Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date: "date not given". Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
+For a reference work (an encyclopedia or dictionary page) the date is when the page was last updated, since such pages are kept up to date; Wikipedia's first date is when the article was started, which says nothing about what it says now. Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date, the first sentence ends after the type and "Date not given." follows: "A news report. Date not given. Secondary source." Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
 
 > The page was read as arguing against this.
 

@@ -93,6 +93,17 @@ test('a page that cannot be read, and a busy reader, say so and keep no check', 
   assert.deepEqual(preview.evidence.map(e => e.check), [{verdict: 'unread', quote: null}, undefined]);
 });
 
+test('a reading that fails says only that the page could not be opened', async () => {
+  const p = await setup(undefined, undefined, {evidenceCheck: true}); await p.flush();
+  const [first, second] = await readWith(p, [{name: 'A', url: URL, about: 'Coastal flooding'},
+                                             {name: 'B', url: 'https://y.example.org/', about: 'Coastal flooding'}]);
+  checks(p)[0].fail(502); checks(p)[1].fail(403, {message: 'Please check the form and try again.'}); await p.flush();
+  assert.equal(lines(first)[0], 'Could not open this page.');
+  assert.equal(lines(second)[0], 'Could not open this page.');
+  await p.runTimer(200);
+  assert.deepEqual(JSON.parse(p.requests.at(-1).options.body).evidence.map(e => e.check), [undefined, undefined]);
+});
+
 test('without the flag nothing is read and the card is the Phase 1 card', async () => {
   const p = await setup(); await p.flush();
   const [row] = await readWith(p, [{name: 'Survey', url: URL, about: 'Coastal flooding'}]);

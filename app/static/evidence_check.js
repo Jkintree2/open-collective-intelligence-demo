@@ -67,7 +67,8 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
       const result = await request('/api/check-evidence', {url, evidence: row.name.value, about, text: text.value, stance: row.stance.value});
       if (serial === row.checkSerial) show(row, result);
     } catch (error) {
-      if (serial === row.checkSerial) say(row, error.message);
+      // Only the busy reader has words of its own; anything else under a link is that the page was not opened.
+      if (serial === row.checkSerial) say(row, error.status === 429 ? error.message : SAYS.unread());
     }
   }
   function watch(row, item = {}) {
