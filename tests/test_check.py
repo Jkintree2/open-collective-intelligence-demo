@@ -42,8 +42,13 @@ def page_of(page, seen=None):
     return fetcher
 
 
+def no_backup(url, settings, **kwargs):
+    raise AssertionError("the backup reader was not expected here")
+
+
 def run(data, page=PAGE, **kwargs):
     kwargs.setdefault("transport", reply(data))
+    kwargs.setdefault("backup", no_backup)
     return check_evidence(URL, "Forty town flooding survey", "Coastal flooding", "Floods are getting worse.",
                           SETTINGS, fetcher=page_of(page), **kwargs)
 
@@ -88,10 +93,10 @@ def test_without_a_reading_service_nothing_is_fetched():
     assert result.verdict == "unchecked" and seen == []
 
 
-@pytest.mark.parametrize("status,verdict", [("unread", "unread"), ("unsupported", "unsupported")])
-def test_a_page_that_cannot_be_read_is_not_sent_for_reading(status, verdict):
+@pytest.mark.parametrize("status,reason,verdict", [("unread", "address", "unread"), ("unsupported", "type", "unsupported")])
+def test_a_page_that_cannot_be_read_is_not_sent_for_reading(status, reason, verdict):
     calls = []
-    result = run(GOOD, page=Page(status, URL, reason="x"), transport=reply(GOOD, calls))
+    result = run(GOOD, page=Page(status, URL, reason=reason), transport=reply(GOOD, calls))
     assert result.verdict == verdict and calls == []
 
 
@@ -150,3 +155,22 @@ def test_the_cache_forgets_the_oldest():
     assert small.get(("0", "", "")) is None and small.get(("2", "", "")) is not None
 
 
+
+
+def test_a_page_our_reader_could_not_open_goes_to_the_backup_reader():
+    asked = []
+
+    def backup(url, settings, **kwargs):
+        asked.append(url)
+        return PAGE
+
+    result = run(GOOD, page=Page("unread", URL, reason="http"), backup=backup)
+    assert asked == [URL] and result.verdict == "supports"
+
+
+@pytest.mark.parametrize("change", [{"deepseek_fetch": False}, {"llm_base_url": "https://api.other.example"}])
+def test_the_backup_reader_is_off_with_its_switch_or_another_provider(change):
+    from dataclasses import replace
+    result = check_evidence(URL, "s", "Coastal flooding", "x", replace(SETTINGS, **change),
+                            fetcher=page_of(Page("unread", URL, reason="http")), backup=no_backup, transport=reply(GOOD))
+    assert result.verdict == "unread"

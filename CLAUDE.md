@@ -50,7 +50,7 @@ app/search.py      the safe keyword query and grouped results
 app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names() for reloading the seed
 app/extract.py     prompt, model call with one retry, last_model_error, Extraction; re-exports CardPayload and resolution
 app/payload.py     card models, cleaning, reference resolution
-app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text); no Cypher
+app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text), and the DeepSeek Fetch backup for pages it cannot open (X3); no Cypher
 app/check.py       Phase 2: one reading per evidence link (supports, refutes or unclear, with a quote that must be on the page), source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)

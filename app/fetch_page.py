@@ -304,3 +304,50 @@ def _fetch(url, about, resolver, transport, entry, started) -> Page:
                 return Page("unread", current, reason="empty", title=title)
             return Page("ok", current, cut(text, about), title, description, published)
     return Page("unread", current, reason="redirects")
+
+
+# X3: DeepSeek Fetch, the backup reader (api-docs.deepseek.com/guides/search; 0.75 USD per 1,000
+# pages it returns, failures not billed). Only for a page our own reader could not open; never for
+# an address the guard refused, which goes nowhere.
+FETCH_PATH = "/v1/tools/fetch"
+BACKUP_REASONS = {"timeout", "network", "http", "empty", "redirects"}
+
+
+def markdown_text(markdown: str) -> str:
+    """Plain sentences from Markdown: images dropped, links kept as their words, marks removed."""
+    text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", markdown)
+    text = re.sub(r"\\([\\`*_{}\[\]()#+\-.!|;:~<>\"'])", r"\1", text)  # Fetch escapes punctuation
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+", "", text, flags=re.M)
+    text = re.sub(r"(\*\*|__|`)", "", text)
+    return tidy(text)
+
+
+def backup_allowed(page: Page, settings) -> bool:
+    return (page.status == "unread" and page.reason in BACKUP_REASONS and settings.deepseek_fetch
+            and bool(settings.llm_api_key) and "deepseek" in settings.llm_base_url.lower())
+
+
+def backup_fetch(url: str, settings, *, about: str = "", request_id: str | None = None,
+                 transport: httpx.BaseTransport | None = None) -> Page:
+    started = time.perf_counter()
+    entry = {"event": "fetch", "request_id": request_id, "reader": "deepseek", "host": urlsplit(url).hostname}
+    page = Page("unread", url, reason="backup")
+    try:
+        with httpx.Client(timeout=httpx.Timeout(15, connect=4), transport=transport) as client:
+            response = client.post(settings.llm_base_url.rstrip("/") + FETCH_PATH, json={"url": url},
+                                   headers={"Authorization": f"Bearer {settings.llm_api_key}"})
+        entry["http"] = response.status_code
+        if response.status_code == 200:
+            data = response.json()
+            text = markdown_text(data.get("content") or "") if isinstance(data, dict) else ""
+            title = (data.get("title") or "").strip() or None if isinstance(data, dict) else None
+            if len(text) >= 40:
+                page = Page("ok", url, cut(text, about), title)
+            else:
+                page = Page("unread", url, reason="empty")
+    except (httpx.HTTPError, ValueError):
+        page = Page("unread", url, reason="backup")
+    entry.update(status=page.status, chars=len(page.text), ms=round((time.perf_counter() - started) * 1000))
+    log.info(json.dumps(entry))
+    return page

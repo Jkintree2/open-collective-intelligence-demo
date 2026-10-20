@@ -182,3 +182,43 @@ def test_cut_keeps_the_opening_of_a_long_page():
                      + ["sea walls fail against rising flooding"])
     kept = cut(text, "Sea walls and flooding", limit=3000)
     assert kept.startswith("The page opens") and "sea walls fail" in kept and len(kept) <= 3000
+
+
+def test_backup_reader_turns_markdown_into_a_page_and_keeps_the_key_out_of_logs(caplog):
+    from app.config import Settings
+    from app.fetch_page import backup_fetch
+    caplog.set_level("INFO", logger="oci")
+    settings = Settings("t", "t", "t", "neo4j://x", "n", "p", llm_api_key="private-test-key")
+    seen = []
+
+    def respond(request):
+        seen.append(request)
+        return httpx.Response(200, json={"title": "Story", "content":
+            "# Story\n\n![chart](https://x/c.png)\nA [survey](https://x/s) of **forty** towns found flooding days doubled\\. Not a service\\; really\\."})
+
+    page = backup_fetch("https://blocked.example.org/a", settings, transport=httpx.MockTransport(respond))
+    assert page.status == "ok" and page.title == "Story"
+    assert "A survey of forty towns found flooding days doubled. Not a service; really." in page.text and "chart" not in page.text
+    assert str(seen[0].url) == "https://api.deepseek.com/v1/tools/fetch"
+    assert seen[0].headers["authorization"] == "Bearer private-test-key"
+    assert "private-test-key" not in caplog.text and '"reader": "deepseek"' in caplog.text
+
+
+@pytest.mark.parametrize("status", [404, 403, 429, 500])
+def test_backup_reader_failures_are_unread(status):
+    from app.config import Settings
+    from app.fetch_page import backup_fetch
+    settings = Settings("t", "t", "t", "neo4j://x", "n", "p", llm_api_key="k")
+    page = backup_fetch("https://x.example.org/", settings,
+                        transport=httpx.MockTransport(lambda request: httpx.Response(status, json={"error": {}})))
+    assert page.status == "unread"
+
+
+def test_backup_is_never_asked_about_a_refused_address():
+    from app.config import Settings
+    from app.fetch_page import Page, backup_allowed
+    settings = Settings("t", "t", "t", "neo4j://x", "n", "p", llm_api_key="k")
+    assert backup_allowed(Page("unread", "u", reason="http"), settings)
+    for reason in ("address", "scheme", "malformed", "dns"):
+        assert not backup_allowed(Page("unread", "u", reason=reason), settings)
+    assert not backup_allowed(Page("unsupported", "u", reason="type"), settings)

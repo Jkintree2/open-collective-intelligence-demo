@@ -21,7 +21,7 @@ import httpx
 
 from app.config import Settings
 from app.extract import call_model
-from app.fetch_page import Page, fetch, iso_date
+from app.fetch_page import Page, backup_allowed, backup_fetch, fetch, iso_date
 from app.payload import Candidates
 from app.text import clean_name, make_key
 
@@ -199,6 +199,7 @@ def build_messages(page: Page, evidence_name: str, about: str, statement: str, w
 def check_evidence(url: str, evidence_name: str, about: str, statement: str, settings: Settings, *,
                    writer_says: str = "supports", candidates: Candidates | None = None,
                    request_id: str | None = None, fetcher: Callable[..., Page] = fetch,
+                   backup: Callable[..., Page] = backup_fetch,
                    transport: httpx.BaseTransport | None = None) -> Check:
     """Read the page behind `url` and say whether it supports `about`. Never raises for a bad page
     or a bad reply; without a reading service the answer is unchecked and nothing is fetched."""
@@ -209,6 +210,8 @@ def check_evidence(url: str, evidence_name: str, about: str, statement: str, set
     if (hit := cache.get(key)) is not None:
         return hit
     page = fetcher(url, about=f"{evidence_name} {about}", request_id=request_id)
+    if backup_allowed(page, settings):
+        page = backup(url, settings, about=f"{evidence_name} {about}", request_id=request_id)
     now = datetime.now(timezone.utc).isoformat()
     if page.status != "ok":
         result = Check("unsupported" if page.status == "unsupported" else "unread", url, checked_at=now)
