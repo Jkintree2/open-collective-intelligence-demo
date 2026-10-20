@@ -100,15 +100,20 @@ def checked_target(url: str, resolver: Resolver) -> tuple[str, str, str]:
 
 
 class _Text(HTMLParser):
-    SKIP = {"script", "style", "noscript", "nav", "header", "footer", "aside", "form", "svg", "template", "iframe"}
+    SKIP = {"script", "style", "noscript", "nav", "header", "footer", "aside", "form", "svg", "template",
+            "iframe", "button", "select"}
+    SKIP_ROLES = {"navigation", "banner", "contentinfo", "complementary", "search", "menu", "dialog"}
+    SKIP_CLASSES = re.compile(r"\b(navbox|sidebar|catlinks|mw-jump|cookie|share|related|comments?)\b", re.I)
+    VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
     BLOCK = {"p", "div", "br", "li", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "section", "article",
-             "blockquote", "pre", "dd", "dt", "figcaption", "table", "ul", "ol"}
+             "blockquote", "pre", "dd", "dt", "figcaption", "table", "ul", "ol", "main"}
     DATE_META = {"article:published_time", "datepublished", "date", "dc.date", "dc.date.issued",
                  "citation_publication_date", "citation_date", "pubdate", "publish-date", "og:published_time"}
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.parts: list[str] = []
+        self.stack: list[tuple[str, bool]] = []
         self.skip = 0
         self.in_title = False
         self.in_ld = False
@@ -132,20 +137,30 @@ class _Text(HTMLParser):
             self.in_title = True
         elif tag == "script" and "ld+json" in a.get("type", ""):
             self.in_ld = True
-        if tag in self.SKIP:
-            self.skip += 1
-        elif tag in self.BLOCK:
+        if tag in self.BLOCK:
             self.parts.append("\n")
+        if tag in self.VOID:
+            return
+        hidden = (tag in self.SKIP or a.get("role", "").lower() in self.SKIP_ROLES
+                  or "hidden" in a or a.get("aria-hidden") == "true"
+                  or bool(self.SKIP_CLASSES.search(a.get("class", "") + " " + a.get("id", ""))))
+        self.stack.append((tag, hidden))
+        self.skip += hidden
 
     def handle_endtag(self, tag):
         if tag == "title":
             self.in_title = False
         if tag == "script":
             self.in_ld = False
-        if tag in self.SKIP and self.skip:
-            self.skip -= 1
-        elif tag in self.BLOCK:
+        if tag in self.BLOCK:
             self.parts.append("\n")
+        if not any(open_tag == tag for open_tag, _ in self.stack):
+            return
+        while self.stack:
+            open_tag, hidden = self.stack.pop()
+            self.skip -= hidden
+            if open_tag == tag:
+                break
 
     def handle_data(self, data):
         if self.in_title:
@@ -186,19 +201,26 @@ def words(text: str) -> set[str]:
 
 
 def cut(text: str, about: str = "", limit: int = MAX_CHARS) -> str:
-    """At most `limit` characters; for a long page, the stretch that shares most words with `about`."""
+    """At most `limit` characters. A long page keeps its opening (a third) and then the stretch
+    that shares most words with `about`, so both the page's own summary and the part about the
+    claim reach the reading."""
     if len(text) <= limit:
         return text
-    wanted = words(about)
     paragraphs = [p for p in text.split("\n") if p.strip()]
+    lead, size = [], 0
+    while paragraphs and size + len(paragraphs[0]) + 1 <= limit // 3:
+        size += len(paragraphs[0]) + 1
+        lead.append(paragraphs.pop(0))
+    rest_limit = limit - size - 2
+    wanted = words(about)
     if not wanted or not paragraphs:
-        return text[:limit]
+        return ("\n".join(lead) + "\n\n" + "\n".join(paragraphs))[:limit]
     scores = [len(words(p) & wanted) for p in paragraphs]
     best = max(range(len(paragraphs)), key=lambda i: (scores[i], -i))
     start = best
-    while start > 0 and sum(len(p) + 1 for p in paragraphs[start - 1:best + 1]) < limit // 3:
+    while start > 0 and sum(len(p) + 1 for p in paragraphs[start - 1:best + 1]) < rest_limit // 3:
         start -= 1
-    return "\n".join(paragraphs[start:])[:limit]
+    return ("\n".join(lead) + "\n\n" + "\n".join(paragraphs[start:])[:rest_limit]).strip()[:limit]
 
 
 def _charset(content_type: str, head: bytes) -> str:

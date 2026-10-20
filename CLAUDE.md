@@ -50,6 +50,7 @@ app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names
 app/extract.py     prompt, model call with one retry, last_model_error, Extraction; re-exports CardPayload and resolution
 app/payload.py     card models, cleaning, reference resolution
 app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text); no Cypher
+app/check.py       Phase 2: one reading per evidence link (supports, refutes or unclear, with a quote that must be on the page), source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
 app/templates/     base, enter, sign_in, account, forgot, reset, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people
@@ -59,6 +60,7 @@ scripts/__init__.py
 scripts/seed.py    python -m scripts.seed [--counts] [--reset --yes [--force]]; reset keeps accounts and refuses a database holding non-seed nodes; reload writes nothing when complete and reads tidied seed issues as they are now
 scripts/make_admin.py John's own account, the root of who entered whom: NEO4J_* from the shell only (never .env), prints the database host and name, needs --yes, refuses a database on this machine unless --local, sends nothing; his first link comes from "Forgot your password?"
 scripts/cards.py   prints the card the live model produces for each case in tests/extraction_cases.json (needs LLM_API_KEY)
+scripts/checks.py  prints the evidence check for each case in tests/check_cases.json, with tokens used (needs LLM_API_KEY)
 scripts/probe_reading.py one reading service preflight call; prints capability results, never credentials
 scripts/restore.py loads an admin export into an empty database
 tests/             offline by default (no network, no database); conftest.py (live_graph, member_app), page_harness.js (the fake page every *.cjs test drives); test_live_*.py are marked live and run only against the disposable Neo4j on port 7688; extraction_cases.json, fixtures/

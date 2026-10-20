@@ -164,3 +164,21 @@ def test_the_log_line_holds_no_page_text(caplog):
     fetch("https://news.example.org/story", request_id="r1", resolver=resolver({}),
           transport=serving({("news.example.org", "/story"): html("news_article.html")}))
     assert "flooding days" not in caplog.text and '"host": "news.example.org"' in caplog.text
+
+
+def test_navigation_blocks_marked_by_role_or_class_are_dropped():
+    page = ('<div id="content"><p>The Earth is an oblate spheroid, as measured since antiquity.</p>'
+            '<div role="navigation"><ul><li>Flat Earth</li><li><br>Pseudoscience</li></ul></div>'
+            '<div class="navbox"><table><tr><td>Flat Earth societies</td></tr></table></div>'
+            '<p hidden>secret</p><img src="x"><p>Closing remark.</p></div>')
+    text = html_text(page)[0]
+    assert "oblate spheroid" in text and "Closing remark" in text
+    for gone in ("Pseudoscience", "societies", "secret"):
+        assert gone not in text
+
+
+def test_cut_keeps_the_opening_of_a_long_page():
+    text = "\n".join(["The page opens with its own summary of the matter."] + ["filler about sport"] * 2000
+                     + ["sea walls fail against rising flooding"])
+    kept = cut(text, "Sea walls and flooding", limit=3000)
+    assert kept.startswith("The page opens") and "sea walls fail" in kept and len(kept) <= 3000

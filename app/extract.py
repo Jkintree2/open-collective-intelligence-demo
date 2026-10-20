@@ -8,7 +8,7 @@ import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 from pydantic import ValidationError
@@ -485,6 +485,7 @@ class Extraction:
     model: str
     latency_ms: int
     shortened: bool = False
+    usage: dict[str, Any] | None = None
 
 
 def build_messages(text: str, display_name: str, candidates: Candidates,
@@ -559,19 +560,23 @@ def _remember_error(response: httpx.Response, settings: Settings) -> None:
 
 def call_model(messages: list[dict[str, str]], settings: Settings, *,
                request_id: str | None = None, chars: int = 0,
-               transport: httpx.BaseTransport | None = None) -> Extraction | None:
+               transport: httpx.BaseTransport | None = None,
+               parse: Callable[[str], Any] = parse_payload, event: str = "extract",
+               max_tokens: int = 1200) -> Extraction | None:
+    """One reading with one bounded retry. `parse` turns the reply into the result's payload
+    (the card by default; the evidence check passes its own) and raises ValueError when it cannot."""
     if not settings.llm_api_key:
-        log.info(json.dumps({"event": "extract", "request_id": request_id, "status": "unconfigured",
+        log.info(json.dumps({"event": event, "request_id": request_id, "status": "unconfigured",
                              "latency_ms": 0, "chars": chars}))
         return None
     body = {"model": settings.llm_model, "messages": messages,
-            "response_format": {"type": "json_object"}, "temperature": 0.1, "max_tokens": 1200}
+            "response_format": {"type": "json_object"}, "temperature": 0.1, "max_tokens": max_tokens}
     if "deepseek" in settings.llm_base_url.lower():
         body["thinking"] = {"type": "disabled"}
     started = time.perf_counter()
     with httpx.Client(timeout=httpx.Timeout(25, connect=5), transport=transport) as client:
         for attempt in (1, 2):
-            entry = {"event": "extract", "request_id": request_id, "chars": chars,
+            entry = {"event": event, "request_id": request_id, "chars": chars,
                      "model": settings.llm_model, "attempt": attempt}
             retry = True
             result = None
@@ -588,12 +593,16 @@ def call_model(messages: list[dict[str, str]], settings: Settings, *,
                     content = response.json()["choices"][0]["message"]["content"]
                     if not isinstance(content, str) or not content.strip():
                         raise ValueError("empty content")
-                    payload = parse_payload(content)
+                    payload = parse(content)
                     result = Extraction(payload, content, settings.llm_model,
                                         round((time.perf_counter() - started) * 1000))
-                    entry.update(status="ok", found=payload.found, issues=len(payload.issues),
-                                 solutions=len(payload.solutions), evidence=len(payload.evidence),
-                                 stances=sum(item.stance != "none" for item in payload.solutions))
+                    usage = response.json().get("usage")
+                    result.usage = usage if isinstance(usage, dict) else None
+                    entry["status"] = "ok"
+                    if isinstance(payload, CardPayload):
+                        entry.update(found=payload.found, issues=len(payload.issues),
+                                     solutions=len(payload.solutions), evidence=len(payload.evidence),
+                                     stances=sum(item.stance != "none" for item in payload.solutions))
             except httpx.TimeoutException as exc:
                 entry["status"] = "timeout"
                 # A read timeout means the provider already has the statement, and the browser
