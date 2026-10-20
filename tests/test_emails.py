@@ -21,7 +21,7 @@ def test_invitation_email_word_for_word():
     assert text == (
         "Hello Bob Smith,\n\n"
         "Thank you for agreeing to take part in Open Collective Intelligence, an invitation-only test of a shared database "
-        "of issues, solutions, and evidence people are claiming, proposing, and submitting.\n\n"
+        "of issues, solutions, and evidence that people are claiming, proposing, and submitting.\n\n"
         "Entered by: Ada Tester\n"
         "How you know each other: Neighbor\n\n"
         "To accept and choose your own password, open this link:\n"

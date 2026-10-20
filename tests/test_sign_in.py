@@ -24,7 +24,7 @@ def test_sign_in_page_lets_a_phone_fill_and_save_the_password(door):
     assert page.status_code == 200
     assert re.search(r'<input id="email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false"', page.text)
     assert 'autocomplete="current-password"' in page.text
-    assert "An invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, and submitting." in page.text
+    assert "An invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, and submitting." in page.text
     assert page.headers["cache-control"] == "no-store" and page.headers["referrer-policy"] == "same-origin"
 
 

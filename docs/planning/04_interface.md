@@ -24,7 +24,7 @@ Shown for any URL when the passphrase cookie is missing or stale. One card, cent
 
 > **Open Collective Intelligence**
 >
-> An invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, submitting.
+> An invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, submitting.
 >
 > Everything written here is merged into a free instance of the Neo4j Aura graph database that other testers can read. It is not a private conversation. Use it for things you are happy to say in public.
 >
@@ -176,7 +176,7 @@ Replaces Screen 1. The two paragraphs about the shared record and the reading se
 
 > **{SITE_NAME}**
 >
-> An invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, and submitting.
+> An invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, and submitting.
 >
 > *(the two paragraphs from the passphrase page)*
 >
@@ -286,7 +286,7 @@ After either button:
 >
 > Hello {name},
 >
-> Thank you for agreeing to take part in {SITE_NAME}, an invitation-only test of a shared database of issues, solutions, and evidence people are claiming, proposing, and submitting.
+> Thank you for agreeing to take part in {SITE_NAME}, an invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, and submitting.
 >
 > Entered by: {inviter}
 > How you know each other: {relationship}
