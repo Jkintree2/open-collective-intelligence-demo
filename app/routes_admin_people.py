@@ -57,8 +57,14 @@ def page_rows() -> list[dict]:
         state = accounts.entry_state(row, now)
         first = row["inviter_name"] is None
         rows.append({**{key: row[key] for key in SHOWN}, "state": state, "first": first,
-                     "actions": _actions(state, first, bool(row["admin"]))})
+                     "actions": _actions(state, first, bool(row["admin"])), "earlier": earlier(row)})
     return rows
+
+
+def earlier(row: dict) -> list[tuple[str, datetime]]:
+    """X2: every address the account used before, with the day it stopped, oldest first."""
+    untils = [getattr(until, "to_native", lambda: until)() for until in row.get("previous_emails_until") or []]
+    return list(zip(row.get("previous_emails") or [], untils))
 
 
 def _account(key: str, action: str) -> dict | None:

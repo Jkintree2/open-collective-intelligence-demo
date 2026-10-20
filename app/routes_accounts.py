@@ -87,7 +87,8 @@ STATEMENTS_MAX = 1000
 
 def _account_page(request: Request, member: Member, *, message: str | None = None, notice: str | None = None,
                   details: dict | None = None, details_message: str | None = None,
-                  status_code: int = 200, shown: int = STATEMENTS_PAGE) -> Response:
+                  email_message: str | None = None, status_code: int = 200,
+                  shown: int = STATEMENTS_PAGE) -> Response:
     from app import main as site
     details = details or graph_accounts.own_details(member.key) or {"name": member.name}
     # X1: My Statements, 50 at a time; one more is asked for to know whether to offer "Show more".
@@ -95,7 +96,7 @@ def _account_page(request: Request, member: Member, *, message: str | None = Non
     posts = graph_own_posts.my_posts(member.key, shown + 1)
     return page(request, "account.html", {"entered": graph_accounts.who_entered(member.key),
                                           "message": message, "notice": notice, "details": details,
-                                          "details_message": details_message,
+                                          "details_message": details_message, "email_message": email_message,
                                           "posts": site._decorate_posts(posts[:shown], me=member.key),
                                           "more": shown + STATEMENTS_PAGE if len(posts) > shown else None},
                 status_code=status_code, private=True)

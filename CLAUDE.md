@@ -27,7 +27,7 @@ app/accounts.py    emails, scrypt passwords (two at a time), link secrets and li
 app/members.py     who is reading: Member, current_member, member_key, require_access, require_member, require_same_origin and CrossSite, wants_json, member cookies, safe_next, posting_identity
 app/pages.py       page() and link_problem() for router modules; loggable_path() for the request log; WRITE_NOTICES and write_notice() for the write page
 app/mailer.py      send(): Gmail API with the send permission only, over httpx (MAIL_CONSOLE prints instead, locally); last_mail_error for the back room
-app/emails.py      the invitation, first account and password emails, word for word from 04_interface.md
+app/emails.py      the invitation, first account, password and change of email emails, word for word from 04_interface.md
 app/graph.py       constraints and full-text indexes, the 0.1 Cypher as constants (Q1, Q3 and Q10 revised for Phase 1; the one-stance statement and ranked Q4 beside the 0.1 ones, chosen by ACCOUNTS_ENABLED), merge_post(), group_issues(), read queries
 app/graph_runtime.py process driver, query execution, RecordAsleep; no Cypher
 app/graph_posts.py post and seed write orchestration; write_payload() is shared by posting and editing, with the one_stance switch; no Cypher of its own (it runs the statements in graph.py)
@@ -40,12 +40,13 @@ app/graph_tidy.py  move, rename, merge and their change record (Q28 to Q32)
 app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts, and one post's stored readings
 app/backup.py      portable export format version 2 (version 1 still restores), typed values and validation; passwords and links never in a copy
 app/admin.py       Basic-auth back room routes, the reading service and sending email lines
-app/routes_accounts.py /sign-in, /sign-out, /account, /forgot-password, /reset/{link}
+app/routes_accounts.py /sign-in, /sign-out, /account (with My Statements, X1), /forgot-password, /reset/{link}
 app/routes_people.py   /people (enter, send again, withdraw) and /accept/{link}
 app/routes_stances.py  approve and oppose on the issue page
 app/routes_own_posts.py editing (with or without JavaScript, the card built from the post's current edges) and deleting one's own post
 app/routes_tidy.py     rename, move and merge an issue; /changes
 app/routes_admin_people.py the back room's People section (/admin/people)
+app/routes_email.py    X2: change one's email (/account/email, /email/{link}); every earlier address kept with its date
 app/routes_evidence.py Phase 2: POST /api/check-evidence (behind EVIDENCE_CHECK_ENABLED; per person and site limits, cached links free)
 app/search.py      the safe keyword query and grouped results
 app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names() for reloading the seed
@@ -55,7 +56,7 @@ app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addre
 app/check.py       Phase 2: one reading per evidence link (supports, refutes or unclear, with a quote that must be on the page), source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
-app/templates/     base, enter, sign_in, account, forgot, reset, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people
+app/templates/     base, enter, sign_in, account, forgot, reset, email_change, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people
 app/static/        app.css (one anchor per Phase 1 sub-plan); card.js (card, preview, Post), dictation.js (speech input), app.js (page wiring; loads last), about_issue.js (the summary above the write form), stances.js (approve and oppose in place), edit_post.js (opens the card on a post being edited), once.js (submit once guard for forms marked data-once; loaded from base.html); evidence_check.js (Phase 2: reads each evidence link on the card, row by row; loads before card.js, only with EVIDENCE_CHECK_ENABLED and a reading service)
 seed/seed.json     the seed record, same shape as the card payload
 scripts/__init__.py

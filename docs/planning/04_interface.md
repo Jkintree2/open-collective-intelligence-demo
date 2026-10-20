@@ -440,7 +440,7 @@ The same length and "not the same" messages as accepting, and the same page when
 
 > Please fill in your name and country.
 
-The email on this page, on accepting and on choosing a new password is plain text, not a box, so it does not look as if it could be changed there (John, 17 October 2026). Not client-facing: it stays a read-only username field so a phone's password manager saves the password under it. Changing the email is Phase 2.
+The email on this page, on accepting and on choosing a new password is plain text, not a box, so it does not look as if it could be changed there (John, 17 October 2026). Not client-facing: it stays a read-only username field so a phone's password manager saves the password under it. Changing the email is its own form below (X2, in the Phase 2 section).
 
 The postal code is optional everywhere: entering a person, accepting and Your account (John, 18 October 2026: the site does not check postal codes). Everyone can change their own name, country and postal code at any time (revision round, promised 8 October 2026).
 
@@ -685,6 +685,84 @@ Then the member's own posts, newest first, each as in the feed: byline, statemen
 which shows 50 more each time. With none yet:
 
 > You have not posted anything yet.
+
+### Your account: Change your email (no-cost extra, John 17 October 2026)
+
+Between "Change your password" and "My Statements", **client-facing**:
+
+> **Change your email**
+> New email: [ input ]
+> Current password: [ input ]
+> [ Send a link to the new email ]
+
+Then, at the top of Your account, the same words whether or not the new address can be used (as on "Forgot your password?"):
+
+> We have sent a link to {new email}. Open it to finish the change. If it does not arrive in a few minutes, please check your spam folder. Until then, sign in with {current email}.
+
+Under the form, when it cannot go ahead:
+
+> That is not your current password.
+
+> Please enter an email address.
+
+> That is already your email.
+
+Nothing changes until the link is opened. A new address is not used when it belongs to another account, now or before (it then gets no email; the page says the same as above). Every earlier address stays on the account's record with the date it stopped being used, so an address never points at two people.
+
+### The new email link
+
+> **Subject:** Confirm your new email for {SITE_NAME}
+>
+> Hello {name},
+>
+> You asked to use this address for your account on {SITE_NAME}. To confirm, open this link:
+> {SITE_URL}/email/{link}
+>
+> The link works once, for 24 hours. Until you open it, sign in with your old address.
+>
+> If it was not you, you can ignore this email.
+>
+> John Kintree
+
+### The note to the old address
+
+> **Subject:** Your email on {SITE_NAME} is being changed
+>
+> Hello {name},
+>
+> Someone signed in to your account on {SITE_NAME} asked to change its email to {new email}. Nothing changes until the link sent to that address is opened.
+>
+> If it was not you, please change your password and reply to this email.
+>
+> John Kintree
+
+### Confirm your new email (`/email/{link}`)
+
+> **Confirm your new email**
+>
+> From now on, sign in with {new email}. Your old address, {old email}, stays on your account's record as an earlier one.
+> [ Confirm the new email ]
+
+Then:
+
+> Your email is changed. From now on, sign in with {new email}.
+> [ Your account ] (signed in) or [ Sign in ]
+
+When the address was taken by another account meanwhile:
+
+> That address is now used by another account. Your email has not changed.
+
+An expired link:
+
+> This link has expired. You can ask for a new one on Your account.
+
+A used or replaced link reads as for the other links ("This link no longer works...").
+
+### Back room: earlier addresses
+
+On each person's line in People, after the email, for each earlier one:
+
+> earlier {address} until {21 October 2026}
 
 ### Not client-facing
 

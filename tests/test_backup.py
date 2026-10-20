@@ -193,17 +193,17 @@ def test_cli_rejects_file_before_connection_and_never_prints_failure_details(tmp
 def test_export_leaves_out_passwords_and_links(monkeypatch):
     memory = Memory()
     memory.nodes["Person", "acct:ada"] = {"key": "acct:ada", "name": "Ada", "email": "ada@example.org",
-        "password_hash": "scrypt$secret", "token_hash": "abc", "token_purpose": "reset",
-        "token_expires_at": DateTime(2026, 10, 6, 12, 0, 0, 0)}
+        "password_hash": "scrypt$secret", "token_hash": "abc", "token_purpose": "email",
+        "token_expires_at": DateTime(2026, 10, 6, 12, 0, 0, 0), "pending_email": "ada.new@example.org"}
     monkeypatch.setattr(graph, "driver", lambda: memory)
     exported = graph.export_record()
     person = next(n for n in exported["nodes"] if n["identity"] == "acct:ada")
     assert set(person["properties"]) == {"key", "name", "email"}
     assert exported["version"] == 2
-    assert "scrypt$secret" not in json.dumps(exported)
+    assert "scrypt$secret" not in json.dumps(exported) and "ada.new" not in json.dumps(exported)
 
 
-@pytest.mark.parametrize("secret", ["password_hash", "token_hash", "token_purpose", "token_expires_at"])
+@pytest.mark.parametrize("secret", ["password_hash", "token_hash", "token_purpose", "token_expires_at", "pending_email"])
 def test_restore_refuses_a_file_with_password_or_link_fields(secret):
     data = sample()
     data["nodes"][0]["properties"][secret] = "anything"
@@ -276,5 +276,22 @@ def test_phase_2_values_of_the_wrong_kind_are_refused(field, bad):
     node, edge = _phase_2(data)
     validate_record(data)
     (edge if field.startswith("check") else node)[field] = bad
+    with pytest.raises(InvalidBackup):
+        validate_record(data)
+
+
+def test_earlier_email_addresses_travel_as_two_lists_of_one_length():
+    data = sample()
+    person = data["nodes"][0]["properties"]
+    until = encode_value(DateTime(2026, 10, 21, 9, 0, 0, 0))
+    person.update(previous_emails=["ada@old.example.org"], previous_emails_until=[until])
+    validate_record(data)
+    for addresses, untils in ((["a@example.org", "b@example.org"], [until]), ([3], [until]),
+                              (["a@example.org"], ["2026-10-21"]), ("a@example.org", [until])):
+        person.update(previous_emails=addresses, previous_emails_until=untils)
+        with pytest.raises(InvalidBackup):
+            validate_record(data)
+    del person["previous_emails_until"]
+    person["previous_emails"] = ["ada@old.example.org"]
     with pytest.raises(InvalidBackup):
         validate_record(data)

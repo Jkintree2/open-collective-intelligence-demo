@@ -17,7 +17,8 @@ FORMAT = "oci-record"
 VERSION = 2
 VERSIONS = (1, 2)
 # Never in a copy (03_schema.md Q33): a restored account chooses a new password by link.
-SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at"})
+# X2's pending_email belongs to the link and goes with it.
+SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at", "pending_email"})
 LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id", "Change": "id"}
 DIRECTIONS = {
     "POSTED": ("Person", {"Post"}), "CLAIM": ("Person", {"Issue"}),
@@ -141,6 +142,13 @@ def properties(value):
             raise InvalidBackup("A timestamp property has the wrong type.")
         if key == "check" and item not in CHECKS:
             raise InvalidBackup("A reading of a page has an unknown value.")
+    # X2: every earlier address with the time it stopped being used, as two lists of one length.
+    if "previous_emails" in decoded or "previous_emails_until" in decoded:
+        addresses, untils = decoded.get("previous_emails"), decoded.get("previous_emails_until")
+        if (not isinstance(addresses, list) or not isinstance(untils, list) or len(addresses) != len(untils)
+                or not all(isinstance(item, str) for item in addresses)
+                or not all(isinstance(item, DateTime) for item in untils)):
+            raise InvalidBackup("Earlier email addresses have the wrong shape.")
     return decoded
 
 

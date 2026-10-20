@@ -40,5 +40,5 @@ def test_the_green_button_has_room_above_it_on_the_stacked_forms():
     """R2 (call, 15 Oct): one shared rule for Enter a person and Your account, not a fix per page."""
     assert "margin-top: 12px" in rule(".stacked-form > button.primary")
     assert "margin-bottom: 14px" in rule(".stacked-form > select")
-    for template, count in (("people.html", 1), ("account.html", 2)):
+    for template, count in (("people.html", 1), ("account.html", 3)):  # X2 adds Change your email
         assert Path(f"app/templates/{template}").read_text(encoding="utf-8").count("stacked-form") == count

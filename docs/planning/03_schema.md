@@ -974,3 +974,52 @@ The page text, the raw response of the reading service, and the suggestions the 
 ### Export and restore
 
 Export version 2 already carries every node and edge property not on the account deny list, so these properties travel with no format change. Restore's validator accepts them (strings, booleans, datetimes, nulls).
+
+## Change of email (no-cost extra X2, added 21 October 2026)
+
+John's "chain of custody" note, 17 October 2026. Properties only, on account `Person`s; no new label, type or constraint (`person_email` stays on `email` alone). Not behind `EVIDENCE_CHECK_ENABLED`: it is part of Your account, so it needs `ACCOUNTS_ENABLED` like the rest of it.
+
+| Property | Value | Notes |
+|---|---|---|
+| `token_purpose` | gains `email` | The one live link may now also be a change of email. |
+| `pending_email` | string or null | The address the `email` link would move the account to. Set with the link; a link field like the `token_*` ones: never in a template, a log or a copy. |
+| `previous_emails` | list of strings or absent | Every address the account used before, oldest first. |
+| `previous_emails_until` | list of datetimes or absent | When each address in `previous_emails` stopped being used, in the same order. Two parallel lists rather than `address|date` strings, so the dates stay datetimes and restore checks them as such. |
+
+An address is never used by two people over time: a new address is refused when it is another account's `email` or in another account's `previous_emails` (both at asking and again at confirming), and entering a person (Q12) refuses an address in anyone's `previous_emails` with the same answer as an address already taken. Changing back to one's own earlier address is allowed. Sign in reads `email` only; earlier addresses are history. They show to the account's owner nowhere and in the back room's People list.
+
+**Q37. Ask to change the email.** After the current password is checked in Python. Lock first, then check, as Q16 to Q18. No row: nothing is sent (the page says the same either way).
+
+```cypher
+MATCH (p:Person {key: $key})
+SET p.key = p.key
+WITH p
+WHERE p.active AND p.accepted_at IS NOT NULL AND p.email <> $email
+  AND NOT EXISTS { MATCH (other:Person) WHERE other.key <> p.key
+                   AND (other.email = $email OR $email IN coalesce(other.previous_emails, [])) }
+SET p.token_hash = $token_hash, p.token_purpose = 'email', p.token_expires_at = $expires_at,
+    p.pending_email = $email
+RETURN p.name AS name, p.email AS email
+```
+
+**Q38. Confirm through the link.** The link is used either way; the address moves only when it is still free.
+
+```cypher
+MATCH (p:Person {token_hash: $token_hash})
+SET p.key = p.key
+WITH p
+WHERE p.token_hash = $token_hash AND p.token_purpose = 'email' AND p.token_expires_at > $now
+  AND p.active AND p.pending_email IS NOT NULL
+OPTIONAL MATCH (other:Person)
+WHERE other.key <> p.key AND (other.email = p.pending_email OR p.pending_email IN coalesce(other.previous_emails, []))
+WITH p, count(other) = 0 AS free, p.email AS old, p.pending_email AS new
+SET p.previous_emails = CASE WHEN free THEN coalesce(p.previous_emails, []) + old ELSE p.previous_emails END,
+    p.previous_emails_until = CASE WHEN free THEN coalesce(p.previous_emails_until, []) + $now ELSE p.previous_emails_until END,
+    p.email = CASE WHEN free THEN new ELSE old END,
+    p.token_hash = null, p.token_purpose = null, p.token_expires_at = null, p.pending_email = null
+RETURN p.key AS key, free, old, new
+```
+
+Q15 (open a link) also returns `pending_email`; the back room's account list (Q20) also returns `previous_emails` and `previous_emails_until`.
+
+**Export and restore.** `pending_email` joins the properties never in a copy (with the link it belongs to). `previous_emails` and `previous_emails_until` travel; restore checks they are a list of strings and a list of datetimes of the same length. No new format version: version 2 already carries any other property.
