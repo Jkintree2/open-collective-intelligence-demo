@@ -182,3 +182,23 @@ def test_posting_with_the_flag_off_passes_no_checks(poster, monkeypatch):
     remember(statement="Floods are worse.")
     assert client.post("/api/posts", json={**CARD, "text": "Floods are worse.", "name": "Ada"}).status_code == 201
     assert seen[-1]["checks"] is None
+
+
+def test_a_reading_for_another_claim_is_not_kept_when_the_row_falls_back_to_the_first_issue():
+    # The row's "about" names nothing on the card or in the record, so the evidence lands on the
+    # card's first issue; the reading was of a different claim and must not go with it.
+    remember(about="Something the page plainly says")
+    stray = {**CARD, "evidence": [dict(CARD["evidence"][0], about="Something the page plainly says")]}
+    card, payload = resolved(stray)
+    assert payload.evidence[0]["target_key"] == "coastal flooding"
+    assert kept_checks(card.evidence, payload.evidence, "Floods are worse.") == {"forty town survey": NO_CHECK}
+
+
+def test_a_second_row_with_the_same_name_cannot_lend_its_reading_to_the_first():
+    remember(about="Rising sea levels")
+    first = dict(CARD["evidence"][0], check=None)
+    second = dict(CARD["evidence"][0], about="Rising sea levels")
+    card, payload = resolved({"issues": [{"name": "Coastal flooding"}, {"name": "Rising sea levels"}],
+                              "evidence": [first, second]})
+    assert [row["target_key"] for row in payload.evidence] == ["coastal flooding"]
+    assert kept_checks(card.evidence, payload.evidence, "Floods are worse.") == {"forty town survey": NO_CHECK}

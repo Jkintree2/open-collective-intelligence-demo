@@ -300,13 +300,18 @@ def kept_checks(items: list[Any], evidence: list[dict[str, Any]], statement: str
     whose `check` is only a claim: it is kept when this process made that reading (confirmed), or,
     for an edited post, when it is the reading the record already holds on this post's edge for the
     same evidence, target and link (`stored`, keyed by evidence key and target key). A kept stored
-    reading leaves the source facts alone; they were set when it was made."""
-    claimed = {make_key(item.name): item for item in items if getattr(item, "check", None)}
+    reading leaves the source facts alone; they were set when it was made. A reading is only of the
+    claim the row was read against, so it is kept only when the row landed on that claim (not on the
+    card's first issue as a fallback), and only from the first row of that name, the one resolved."""
+    claimed: dict[str | None, Any] = {}
+    for item in items:
+        claimed.setdefault(make_key(clean_name(item.name)), item)
     out: dict[str, dict[str, Any]] = {}
     for row in evidence:
         out[row["key"]] = dict(NO_CHECK)
         item = claimed.get(row["key"])
-        if item is None or not row.get("url"):
+        if (item is None or not getattr(item, "check", None) or not row.get("url")
+                or make_key(clean_name(item.about or "")) != row["target_key"]):
             continue
         verdict, quote = item.check.get("verdict"), item.check.get("quote") or None
         before = (stored or {}).get((row["key"], row["target_key"]))
