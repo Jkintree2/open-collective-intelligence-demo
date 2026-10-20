@@ -151,3 +151,13 @@ def test_with_the_switch_off_there_is_no_form_and_no_pages(change, monkeypatch):
     assert change.client.get(f"/email/{secret}").status_code == 404
     assert change.client.post(f"/email/{secret}").status_code == 404
     assert len(change.asked) == 1  # the second ask never reached the record
+
+
+def test_one_account_sends_at_most_three_change_links_a_day(change, monkeypatch):
+    """Each try mails two people through John's Gmail; past three a day the page answers the same and
+    nothing more goes out."""
+    monkeypatch.setattr(accounts, "email_change_per_account", accounts.KeyedLimit(3, 86400))
+    for n in range(5):
+        page = change.client.post("/account/email", data=form(email=f"ada.{n}@example.org")).text
+        assert link_sent(f"ada.{n}@example.org", "ada@example.org") in page
+    assert [to for to, _, _ in change.sent if to != "ada@example.org"] == [f"ada.{n}@example.org" for n in range(3)]

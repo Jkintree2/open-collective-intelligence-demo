@@ -54,7 +54,7 @@ def ask(request: Request, background: BackgroundTasks, email: str = Form(""), cu
         return _account_page(request, member, email_message=ALREADY_YOURS)
     # Every address gets the same answer: whether it can be used is decided after the answer has gone,
     # and a busy address is quietly skipped, as on "Forgot your password?".
-    if accounts.link_per_address.take(new):
+    if accounts.email_change_per_account.take(member.key) and accounts.link_per_address.take(new):
         background.add_task(_send_link, getattr(request.state, "request_id", None), member.key, new)
     return _account_page(request, member, notice=link_sent(new, member.email))
 

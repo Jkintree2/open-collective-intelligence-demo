@@ -735,7 +735,7 @@ Under the form, when it cannot go ahead:
 
 > That is already your email.
 
-Nothing changes until the link is opened. A new address is not used when it belongs to another account, now or before (it then gets no email; the page says the same as above). Every earlier address stays on the account's record with the date it stopped being used, so an address never points at two people.
+Nothing changes until the link is opened. A new address is not used when it belongs to another account, now or before (it then gets no email; the page says the same as above). Not client-facing: one account sends at most three change links a day, and one address gets at most three links an hour; past either, the page says the same as above and nothing is sent. Too many tries in a minute shows the sign in limit's "Too many tries. Please wait a minute and try again." Every earlier address stays on the account's record with the date it stopped being used, so an address never points at two people.
 
 ### The new email link
 

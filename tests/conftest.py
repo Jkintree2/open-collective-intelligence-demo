@@ -57,6 +57,7 @@ ACCOUNT_LIMITS = {
     "forgot_per_minute": lambda: MinuteBucket(capacity=1000, period=60),
     "link_per_address": lambda: KeyedLimit(1000, 3600),
     "entering_limit": lambda: KeyedLimit(1000, 3600),
+    "email_change_per_account": lambda: KeyedLimit(1000, 86400),
 }
 
 

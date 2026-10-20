@@ -176,6 +176,10 @@ link_per_address = KeyedLimit(3, 3600)
 forgot_per_minute = MinuteBucket(capacity=6, period=60)
 # Entries and re-sends by one member: a stop for a runaway script, not for people.
 entering_limit = KeyedLimit(20, 3600)
+# X2: links asked for by one account on Your account, whatever the new address. Each mails two people
+# through John's Gmail, so a day's worth is small; past it the page answers the same and sends nothing,
+# as with a busy address.
+email_change_per_account = KeyedLimit(3, 86400)
 
 
 def person_name(value: str) -> str:
