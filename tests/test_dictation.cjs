@@ -361,3 +361,24 @@ test('emptying the box after a reading still sends the reading it came from', as
   assert.equal(body.model, 'reader');
   assert.equal(body.source, 'manual');
 });
+
+test('after a post the write box and the statement just posted are brought into view (X4)', async () => {
+  const {get, requests, runTimer, flush} = await setup();
+  const newest = Object.assign(new (require('./page_harness.js').Element)(), {rect: {top: 900, bottom: 1000}});
+  get('feed').queried = {'article.post': newest};
+  await get('stop').emit('click');
+  const row = get('issue-rows').children.at(-1);
+  row.children[1].value = 'Downtown'; await row.emit('input'); await runTimer(200);
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
+  const clicking = get('post').emit('click'); await flush();
+  requests.at(-1).resolve({id: 'p1'}); await clicking; await flush();
+  assert.equal(JSON.stringify(get('compose').scrolled), '[{"block":"start"}]');
+  assert.equal(JSON.stringify(newest.scrolled), '[{"block":"end"}]');           // below the fold, so it is scrolled up to the bottom edge
+  newest.rect = {top: 300, bottom: 400}; newest.scrolled = [];
+  await get('stop').emit('click');
+  row.children[1].value = 'Uptown'; await row.emit('input'); await runTimer(200);
+  requests.at(-1).resolve({sentences: ['x'], valid: true, dropped: [], corrected: []}); await flush();
+  const again = get('post').emit('click'); await flush();
+  requests.at(-1).resolve({id: 'p2'}); await again; await flush();
+  assert.equal(newest.scrolled.length, 0);                         // already on screen under the write box
+});

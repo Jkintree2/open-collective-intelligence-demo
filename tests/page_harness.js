@@ -17,6 +17,9 @@ class Element {
   after() {}
   focus() {}
   querySelectorAll() { return []; }
+  querySelector(selector) { return (this.queried ||= {})[selector] || null; }
+  scrollIntoView(options) { (this.scrolled ||= []).push(options); }
+  getBoundingClientRect() { return this.rect || {top: 0, bottom: 0}; }
 }
 async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, solutions: {}, evidence: {}}, options = {}) {
   // Candidates may be passed alone, as the only thing a card test cares about.
@@ -34,7 +37,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
     abort() { this.aborted = true; this.onend?.(); }
     result(...values) { this.onresult({results: values.map(value => [{transcript: value}])}); }
   }
-  const win = new Element(); if (speech) win[speech] = Recognition;
+  const win = new Element(); win.innerHeight = 800; if (speech) win[speech] = Recognition;
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
     // The feed fragment after a post is read as text, as the page reads it.
