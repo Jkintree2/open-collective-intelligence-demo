@@ -58,12 +58,15 @@ def sign_in_row(email: str) -> dict[str, Any] | None:
 ENTER_PERSON = """
 MATCH (inviter:Person {key: $inviter_key})
 WHERE inviter.active AND inviter.accepted_at IS NOT NULL
-CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
-                  email: $email, country: $country, postal_code: $postal_code,
-                  admin: false, active: true, created_at: $now,
-                  token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
-CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p)
-RETURN p.key AS key
+OPTIONAL MATCH (earlier:Person) WHERE $email IN coalesce(earlier.previous_emails, [])
+WITH inviter, count(earlier) > 0 AS used
+FOREACH (_ IN CASE WHEN used THEN [] ELSE [1] END |
+  CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
+                    email: $email, country: $country, postal_code: $postal_code,
+                    admin: false, active: true, created_at: $now,
+                    token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
+  CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p))
+RETURN used
 """
 
 # The same inviter entering the same address moments ago: a double tap, not a duplicate.
@@ -217,12 +220,13 @@ RETURN count(*) AS withdrawn
 
 def enter_person(*, inviter_key: str, key: str, name: str, email: str, country: str, postal_code: str,
                  relationship: str, token_hash: str, expires_at, now) -> bool:
+    rows = _write_rows(ENTER_PERSON, inviter_key=inviter_key, key=key, name=name, email=email,
+                       country=country, postal_code=postal_code, relationship=relationship,
+                       token_hash=token_hash, expires_at=expires_at, now=now)
     # X2: an address someone used before is never given to another person; the same answer as taken.
-    if _read(EARLIER_EMAIL, email=email)[0]["used"]:
+    if rows and rows[0]["used"]:
         raise EmailTaken()
-    return bool(_write_rows(ENTER_PERSON, inviter_key=inviter_key, key=key, name=name, email=email,
-                            country=country, postal_code=postal_code, relationship=relationship,
-                            token_hash=token_hash, expires_at=expires_at, now=now))
+    return bool(rows)
 
 
 def recent_entry(inviter_key: str, email: str, since) -> dict | None:
@@ -371,12 +375,6 @@ SET p.previous_emails = CASE WHEN free THEN coalesce(p.previous_emails, []) + ol
     p.token_hash = null, p.token_purpose = null, p.token_expires_at = null, p.pending_email = null
 RETURN p.key AS key, free, old, new
 """
-
-EARLIER_EMAIL = """
-MATCH (p:Person) WHERE $email IN coalesce(p.previous_emails, [])
-RETURN count(p) > 0 AS used
-"""
-
 
 def ask_email_change(key: str, email: str, token_hash: str, expires_at) -> dict[str, Any] | None:
     """The account's name and current email when the link was made; None when the address cannot be used."""

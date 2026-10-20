@@ -438,17 +438,20 @@ The token constraint doubles as the index for looking a link up.
 
 ### Accounts
 
-**Q12. Enter a person.** One write transaction. Python has already cleaned every field, lower-cased the email, checked the relationship against the list and the tick, and made the link (`token`, `token_hash`). An email that is already taken fails on the constraint, and Python answers that it has been entered already; a double-submitted form takes that path too, so it can never make two accounts. The email is sent only after this commits.
+**Q12. Enter a person.** One write transaction. Python has already cleaned every field, lower-cased the email, checked the relationship against the list and the tick, and made the link (`token`, `token_hash`). An email that is already taken fails on the constraint, and Python answers that it has been entered already; a double-submitted form takes that path too, so it can never make two accounts. The email is sent only after this commits. An address in anyone's `previous_emails` (change of email, X2) makes nothing and answers `used`, which Python treats as taken; the check sits in the same transaction as the write.
 
 ```cypher
 MATCH (inviter:Person {key: $inviter_key})
 WHERE inviter.active AND inviter.accepted_at IS NOT NULL
-CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
-                  email: $email, country: $country, postal_code: $postal_code,
-                  admin: false, active: true, created_at: $now,
-                  token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
-CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p)
-RETURN p.key AS key
+OPTIONAL MATCH (earlier:Person) WHERE $email IN coalesce(earlier.previous_emails, [])
+WITH inviter, count(earlier) > 0 AS used
+FOREACH (_ IN CASE WHEN used THEN [] ELSE [1] END |
+  CREATE (p:Person {key: $key, name: $name, anonymous: false, seed: false,
+                    email: $email, country: $country, postal_code: $postal_code,
+                    admin: false, active: true, created_at: $now,
+                    token_hash: $token_hash, token_purpose: 'invite', token_expires_at: $expires_at})
+  CREATE (inviter)-[:ENTERED {relationship: $relationship, agreed: true, created_at: $now}]->(p))
+RETURN used
 ```
 
 **Entered moments ago (the double tap check).** Read after Q12 fails on the email constraint: the same inviter entering the same address that has not accepted, since a given time, is a form sent twice, not a duplicate. It answers the key of the person already entered.
