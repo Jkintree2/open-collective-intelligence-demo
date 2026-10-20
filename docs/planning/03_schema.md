@@ -722,7 +722,7 @@ SET r.anonymous = $anonymous
 
 The edit card is built from the post's current edges (Q7's structure query for this one post, with issue names and parents from Q2), not from its stored `payload`, so an issue renamed or merged since shows as it is now and is never made again; the stored payload gives only evidence links. A solution's position on the card is the stance edge this post still holds, so a stance a click has since replaced shows as no position. When the card is resolved for saving, a solution this post itself proposes is proposed again (its own `HAVE_PROPOSED` link is left out of the candidates), never read as a position on a solution already listed (GitHub issue 4's rule); so an unchanged edit leaves the post's edges as they were. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
 
-**Q36. My Statements** (no-cost extra X1, added 21 October 2026; read only, no schema change). Your account lists the member's own posts, anonymous ones included, newest first, 50 at a time (`$limit` is one more than shown, to know whether to offer more). The feed's Q7 flags and structure query then decorate them as on the Write page.
+**Q36. My Statements** (no-cost extra X1, added 20 October 2026; read only, no schema change). Your account lists the member's own posts, anonymous ones included, newest first, 50 at a time (`$limit` is one more than shown, to know whether to offer more). The feed's Q7 flags and structure query then decorate them as on the Write page.
 
 ```cypher
 MATCH (:Person {key: $me})-[:POSTED]->(post:Post)
@@ -897,13 +897,13 @@ A post's `SUPPORTS` or `REFUTES` edge (Evidence to Issue, Solution or Evidence) 
 
 | Property | Type | Meaning |
 |---|---|---|
-| `check` | string or null | How the page behind the evidence's link was read for this claim: `supports`, `refutes`, `unclear` (read, but the page does not clearly say either way, or the quote was not found on the page), `unread` (the page could not be opened or read), or null (not checked: no link, no reading service, flag off, or the writer posted before the check came back). |
+| `check` | string or null | How the page behind the evidence's link was read for this claim: `supports`, `refutes`, `unclear` (read, but the page does not clearly say either way, or the quote was not found on the page), `unread` (the page could not be opened or read), or null (not checked: no link, no reading service, flag off, the writer posted before the check came back, or a link that is not a web page and "cannot be read yet"). |
 | `check_quote` | string or null | The sentence from the page the reading rests on, at most 500 characters. Null unless `check` is `supports` or `refutes`. Checked in Python to appear on the fetched page (whitespace normalised) before it is ever stored. |
 | `checked_at` | datetime or null | When the page was read. |
 
 The edge type stays the writer's choice. "The writer disagreed with the reading" is `(type(r) = 'SUPPORTS' AND r.check = 'refutes') OR (type(r) = 'REFUTES' AND r.check = 'supports')`. Nothing is blocked or deleted because of it (flag, never delete).
 
-The card sends the check with each evidence row; the server does not trust it blindly. A row's `check` is kept only when the server's own cache (below) holds a reading of the same URL, for the same target, with the same verdict and quote; otherwise the row is stored with `check = null`. So a tester cannot write a reading the site never made. The statement the reading was made with does not have to match: a writer who tidies the statement after the link was read keeps the reading, since it was of the same page for the same claim (`check.confirmed`, decided 20 October 2026). "The same target" is the one the row lands on: a row whose `about` names nothing on the card or in the record, and so falls back to the card's first issue, keeps no reading, and of two rows with the same evidence name only the first, the one written, can carry one (`check.kept_checks`, 21 October 2026).
+The card sends the check with each evidence row; the server does not trust it blindly. A row's `check` is kept only when the server's own cache (below) holds a reading of the same URL, for the same target, with the same verdict and quote; otherwise the row is stored with `check = null`. So a tester cannot write a reading the site never made. The statement the reading was made with does not have to match: a writer who tidies the statement after the link was read keeps the reading, since it was of the same page for the same claim (`check.confirmed`, decided 20 October 2026). "The same target" is the one the row lands on: a row whose `about` names nothing on the card or in the record, and so falls back to the card's first issue, keeps no reading, and of two rows with the same evidence name only the first, the one written, can carry one (`check.kept_checks`, 20 October 2026).
 
 ### Source facts on Evidence
 
@@ -939,7 +939,7 @@ CREATE (e)-[:SUPPORTS {post_id: $post_id, created_at: datetime(),
 
 Editing one's own post (Q24, Q25) recreates the post's evidence edges from the card, so a check travels the same way: kept when the edited row still carries a kept check, null otherwise. On an edit a check is also kept when it is the one the record already holds on this post's edge for the same evidence, target and link (Q35 below), so an edit after a restart does not lose it; a kept stored check keeps its `checked_at` and leaves the source facts alone. The edit card shows each row's stored check and does not read the page again unless the link or what it is about changes.
 
-The extended statements 5 and 5b live in `app/graph_evidence.py` (graph.py is near its 500 line limit); they use the transaction's `$now`, like every other write statement, where the sketch above says `datetime()`.
+The extended statements 5 and 5b live in `app/graph_evidence.py` (graph.py is near its 500 line limit); they use the transaction's `$now`, like every other write statement, where the sketch above says `datetime()`, and `e.seed = $seed` where it says `false`, as the Phase 1 statement 5 does.
 
 ```cypher
 // Q35. The checks one post holds, for the edit card and the edit's save.
@@ -958,6 +958,7 @@ Source confidence's fourth part is counted when a page is shown, not stored, so 
 
 ```cypher
 // Q34. Agreement on one target. $keys: the evidence keys shown for t.
+// Not run as written: Q39 below answers it for a whole issue page in one read.
 MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(t {key: $target_key})
 WHERE other.key IN $keys
 WITH other.key AS key, collect(DISTINCT type(r)) AS stances
@@ -997,7 +998,7 @@ The page text, the raw response of the reading service, and the suggestions the 
 
 Export version 2 already carries every node and edge property not on the account deny list, so these properties travel with no format change. Restore's validator accepts them (strings, booleans, datetimes, nulls).
 
-## Change of email (no-cost extra X2, added 21 October 2026)
+## Change of email (no-cost extra X2, added 20 October 2026)
 
 John's "chain of custody" note, 17 October 2026. Properties only, on account `Person`s; no new label, type or constraint (`person_email` stays on `email` alone). Not behind `EVIDENCE_CHECK_ENABLED`: it is part of Your account, so it needs `ACCOUNTS_ENABLED` like the rest of it, and its own switch, `EMAIL_CHANGE_ENABLED` (added 20 October 2026, so Phase 2 can go live before John approves the wording). Unset, Your account has no change of email form, `/account/email` and `/email/{link}` answer not found, and nothing here is written; the properties below stay absent, and the back room and export show only what is there.
 

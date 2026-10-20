@@ -790,8 +790,8 @@ A used or replaced link reads as for the other links ("This link no longer works
 
 On each person's line in People, after the email, for each earlier one:
 
-> earlier {address} until {21 October 2026}
+> earlier {address} until {20 October 2026}
 
 ### Not client-facing
 
-The reading takes a few seconds per link; rows fill in as they arrive. A link is read once per session. With the reading service unset, no line appears at all.
+The reading takes a few seconds per link; rows fill in as they arrive. A link is read once for the same claim and statement; the reading is kept for the life of the running site (up to 500 readings), so reading it again costs nothing until the site restarts. With the reading service unset, no line appears at all.
