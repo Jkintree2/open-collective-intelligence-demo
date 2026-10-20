@@ -676,7 +676,23 @@ When the date is more than five years before the day the page is shown, one more
 
 > More than five years old.
 
-For example: "A news report from March 2018. More than five years old. Secondary source. Two other pieces of evidence here say the same; one disagrees." A date given only as a year counts from the end of that year. Nothing is said about age when the date is not given.
+For example: "A news report from March 2018. More than five years old. Secondary source. Two other pieces of evidence here say the same; one disagrees." A date given only as a year counts from the end of that year, and a month and year from the end of that month. Nothing is said about age when the date is not given. The card's line under a link says the age the same way.
+
+The agreement part, word for word, counted in words from one to ten and in figures above (added 21 October 2026, following the note's example):
+
+> One other piece of evidence here says the same.
+
+> Two other pieces of evidence here say the same.
+
+> One other piece of evidence here disagrees.
+
+> Two other pieces of evidence here disagree.
+
+> One other piece of evidence here says the same; two disagree.
+
+> Two other pieces of evidence here say the same; one disagrees.
+
+When no other evidence is on the same issue or solution, the agreement part is left out. When a page was never read, its type, date and primary or secondary are left out and only the agreement part shows, if any. When several statements cite the same evidence for the same claim, the "read as arguing against" line shows when any one of their readings went the other way.
 
 ### Your account: My Statements (no-cost extra, John 17 October 2026)
 
