@@ -9,7 +9,7 @@ const QUOTE = 'A survey of forty coastal towns found flooding days doubled since
 const reading = evidence => ({payload: {found: true, language_ok: true, issues: [{name: 'Coastal flooding'}], solutions: [],
   evidence}, source: 'model', extraction_raw: '{}', model: 'reader', latency_ms: 5});
 const fields = row => ({name: row.children[1], url: row.children[4], stance: row.children[6], about: row.children[8]});
-const box = row => fields(row).url.afterNodes[0];
+const box = row => fields(row).about.afterNodes[0];
 const lines = row => box(row).children.filter(c => c.tag === 'p').map(c => c.textContent);
 const checks = p => p.requests.filter(r => r.url === '/api/check-evidence');
 
@@ -98,5 +98,5 @@ test('without the flag nothing is read and the card is the Phase 1 card', async 
   const [row] = await readWith(p, [{name: 'Survey', url: URL, about: 'Coastal flooding'}]);
   await p.flush();
   assert.equal(checks(p).length, 0);
-  assert.equal(fields(row).url.afterNodes, undefined);
+  assert.equal(fields(row).about.afterNodes, undefined);
 });

@@ -73,7 +73,7 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
   function watch(row) {
     row.checkBox = node('div', '', 'evidence-check');
     row.checkBox.setAttribute('aria-live', 'polite');
-    row.url.after(row.checkBox);
+    row.about.after(row.checkBox);  // under the choice it speaks to, after supports or refutes and about
     row.lastAsked = '';
     const ask = () => { const asked = `${row.url.value.trim()}\n${row.about.value}`; if (asked !== row.lastAsked) { row.lastAsked = asked; run(row); } };
     row.url.addEventListener('change', ask);
