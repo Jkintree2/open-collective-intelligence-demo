@@ -1,5 +1,9 @@
 """The page reader: public addresses only (checked on every redirect), small, text only. No network."""
 
+import gzip
+import json
+import logging
+import zlib
 from pathlib import Path
 
 import httpx
@@ -25,7 +29,8 @@ def serving(routes, seen=None):
             seen.append(request)
         key = (request.headers["host"], request.url.path)
         status, headers, body = routes.get(key, (404, {}, b""))
-        return httpx.Response(status, headers=headers, content=body)
+        # A stream, as from the network: the reader takes the bytes as they were sent.
+        return httpx.Response(status, headers=headers, stream=httpx.ByteStream(body))
     return httpx.MockTransport(respond)
 
 
@@ -116,6 +121,38 @@ def test_a_large_page_is_cut_and_never_read_past_two_megabytes(monkeypatch):
     routes = {("big.example.org", "/"): (200, {"content-type": "text/html"}, body.encode())}
     page = fetch("https://big.example.org/", resolver=resolver({}), transport=serving(routes))
     assert page.status == "ok" and len(page.text) <= 5000
+
+
+def test_a_compressed_page_is_read(monkeypatch):
+    words = ("<p>" + "The harbour wall kept the old town dry all winter. " * 20 + "</p>").encode()
+    for encoding, body in (("gzip", gzip.compress(words)), ("deflate", zlib.compress(words)),
+                           ("deflate", zlib.compress(words)[2:-4])):
+        routes = {("z.example.org", "/"): (200, {"content-type": "text/html", "content-encoding": encoding}, body)}
+        page = fetch("https://z.example.org/", resolver=resolver({}), transport=serving(routes))
+        assert page.status == "ok" and "harbour wall" in page.text, encoding
+
+
+def test_a_compressed_page_is_never_unpacked_past_two_megabytes(monkeypatch, caplog):
+    monkeypatch.setattr(fetch_page, "MAX_BYTES", 5000)
+    bomb = gzip.compress(b"flood " * 4_000_000)  # 24 MB unpacked, about 25 KB sent
+    routes = {("bomb.example.org", "/"): (200, {"content-type": "text/plain", "content-encoding": "gzip"}, bomb)}
+    with caplog.at_level(logging.INFO, logger="oci"):
+        page = fetch("https://bomb.example.org/", resolver=resolver({}), transport=serving(routes))
+    assert page.status == "ok" and len(page.text) <= 5000
+    entry = json.loads(next(r.message for r in caplog.records if '"event": "fetch"' in r.message))
+    assert entry["bytes"] <= 5001  # one byte past the limit says the page was longer; never the 24 MB
+
+
+def test_an_encoding_the_reader_cannot_unpack_is_unread():
+    routes = {("br.example.org", "/"): (200, {"content-type": "text/html", "content-encoding": "br"}, b"\x1b\x00")}
+    page = fetch("https://br.example.org/", resolver=resolver({}), transport=serving(routes))
+    assert (page.status, page.reason) == ("unread", "encoding")
+
+
+def test_the_reader_asks_only_for_encodings_it_can_unpack():
+    seen = []
+    fetch("https://x.example.org/", resolver=resolver({}), transport=serving({}, seen))
+    assert seen[0].headers["accept-encoding"] == "gzip, deflate"
 
 
 @pytest.mark.parametrize("status,reason", [(404, "http"), (500, "http")])

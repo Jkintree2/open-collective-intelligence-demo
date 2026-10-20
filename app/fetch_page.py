@@ -13,6 +13,7 @@ import logging
 import re
 import socket
 import time
+import zlib
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Callable
@@ -242,6 +243,45 @@ def _charset(content_type: str, head: bytes) -> str:
         return "utf-8"
 
 
+class _Encoding(Exception):
+    pass
+
+
+class _Body:
+    """The page's bytes, unpacked here rather than by httpx so that a small compressed reply can never
+    grow past MAX_BYTES in memory: each piece is unpacked only up to what is still allowed."""
+
+    def __init__(self, encoding: str) -> None:
+        encoding = encoding.strip().lower()
+        if encoding in ("", "identity"):
+            self.unpack = None
+        elif encoding in ("gzip", "x-gzip"):
+            self.unpack = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        elif encoding == "deflate":
+            self.unpack = zlib.decompressobj()
+            self.raw_deflate = True  # some servers send deflate without its zlib header
+        else:
+            raise _Encoding(encoding)
+        self.data = bytearray()
+
+    def add(self, chunk: bytes) -> bool:
+        """Adds a piece; False once MAX_BYTES is reached."""
+        if self.unpack is None:
+            self.data += chunk[:MAX_BYTES + 1 - len(self.data)]
+            return len(self.data) <= MAX_BYTES
+        while chunk and len(self.data) <= MAX_BYTES:
+            try:
+                self.data += self.unpack.decompress(chunk, MAX_BYTES + 1 - len(self.data))
+            except zlib.error as exc:
+                if getattr(self, "raw_deflate", False) and not self.data:
+                    self.raw_deflate = False
+                    self.unpack = zlib.decompressobj(-zlib.MAX_WBITS)
+                    continue
+                raise _Encoding("bad data") from exc
+            chunk = self.unpack.unconsumed_tail
+        return len(self.data) <= MAX_BYTES
+
+
 def fetch(url: str, *, about: str = "", request_id: str | None = None,
           resolver: Resolver = resolve, transport: httpx.BaseTransport | None = None) -> Page:
     """The page behind `url`, cut to MAX_CHARS around `about`. Never raises for a bad page."""
@@ -261,7 +301,7 @@ def _fetch(url, about, resolver, transport, entry, started) -> Page:
         return Page("unsupported", url, reason="type")
     current = url
     with httpx.Client(timeout=httpx.Timeout(TIMEOUT_S, connect=4), transport=transport,
-                      follow_redirects=False, verify=True) as client:
+                      follow_redirects=False, verify=True, trust_env=False) as client:
         for hop in range(MAX_REDIRECTS + 1):
             try:
                 target, host_header, tls_name = checked_target(current, resolver)
@@ -270,7 +310,7 @@ def _fetch(url, about, resolver, transport, entry, started) -> Page:
             entry["host"] = tls_name
             request = client.build_request("GET", target, headers={
                 "Host": host_header, "User-Agent": USER_AGENT,
-                "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9"},
+                "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9", "Accept-Encoding": "gzip, deflate"},
                 extensions={"sni_hostname": tls_name})
             try:
                 response = client.send(request, stream=True)
@@ -293,16 +333,18 @@ def _fetch(url, about, resolver, transport, entry, started) -> Page:
                 content_type = response.headers.get("content-type", "").lower()
                 if not content_type.startswith(TEXT_TYPES):
                     return Page("unsupported", current, reason="type")
-                body = bytearray()
-                for chunk in response.iter_bytes():
-                    body += chunk
-                    if len(body) > MAX_BYTES or time.perf_counter() - started > TIMEOUT_S * 2:
+                body = _Body(response.headers.get("content-encoding", ""))
+                for chunk in response.iter_raw():
+                    if not body.add(chunk) or time.perf_counter() - started > TIMEOUT_S * 2:
                         break
+            except _Encoding:
+                return Page("unread", current, reason="encoding")
             except httpx.HTTPError:
                 return Page("unread", current, reason="network")
             finally:
                 response.close()
-            entry["bytes"] = len(body)
+            entry["bytes"] = len(body.data)
+            body = body.data
             raw = bytes(body[:MAX_BYTES]).decode(_charset(content_type, bytes(body[:4096])), "replace")
             if content_type.startswith("text/plain"):
                 text, title, description, published, modified = tidy(raw), None, None, None, None
