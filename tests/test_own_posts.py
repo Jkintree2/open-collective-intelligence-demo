@@ -60,7 +60,7 @@ def test_an_edit_is_one_transaction_in_the_agreed_order(monkeypatch):
     assert graph.MERGE_ISSUE_CLAIM in calls
     assert calls[-3:] == [graph.DELETE_POST_ORPHANS, graph_own_posts.UPDATE_POST, graph_own_posts.RESTAMP_STANCES]
     assert calls.index(graph.MERGE_ISSUE_CLAIM) < calls.index(graph.DELETE_POST_ORPHANS)
-    assert switches == [{"one_stance": True}]  # an edit is always an account's (D7)
+    assert switches == [{"one_stance": True, "checks": None}]  # an edit is always an account's (D7)
 
 
 def test_the_check_locks_the_post():
@@ -229,6 +229,13 @@ def test_the_edit_card_comes_from_the_posts_edges_as_they_are_now():
     clicked = [row for row in rows if row["rel"] != "APPROVE"]
     assert edit_card(clicked, stored, issues)["solutions"][0]["stance"] == "none"
     assert edit_card([], None, {}) == {"issues": [], "solutions": [], "evidence": []}
+    # Phase 2: a row the post holds a reading for carries it, in words, for the card to show.
+    checks = {("report", "seawalls"): {"check": "supports", "check_quote": "Seawalls failed twice.",
+                                       "source_type": "news", "source_primary": False, "source_published": "2024-03"}}
+    assert edit_card(rows, stored, issues, checks)["evidence"][0]["check"] == {
+        "verdict": "supports", "quote": "Seawalls failed twice.", "line": "A news report from March 2024. Secondary source."}
+    unread = {key: dict(value, check="unread", check_quote=None, source_type=None) for key, value in checks.items()}
+    assert edit_card(rows, stored, issues, unread)["evidence"][0]["check"] == {"verdict": "unread", "quote": None, "line": None}
 
 
 def test_an_edit_leaves_out_only_the_posts_own_proposal_links(monkeypatch):

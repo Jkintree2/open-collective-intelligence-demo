@@ -70,17 +70,22 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
       if (serial === row.checkSerial) say(row, error.message);
     }
   }
-  function watch(row) {
+  function watch(row, item = {}) {
     row.checkBox = node('div', '', 'evidence-check');
     row.checkBox.setAttribute('aria-live', 'polite');
     row.about.after(row.checkBox);  // under the choice it speaks to, after supports or refutes and about
     row.lastAsked = '';
-    const ask = () => { const asked = `${row.url.value.trim()}\n${row.about.value}`; if (asked !== row.lastAsked) { row.lastAsked = asked; run(row); } };
+    const asked = () => `${row.url.value.trim()}\n${row.about.value}`;
+    const ask = () => { if (asked() !== row.lastAsked) { row.lastAsked = asked(); run(row); } };
     row.url.addEventListener('change', ask);
     row.about.addEventListener('change', ask);
     row.stance.addEventListener('change', () => { row.stanceChosen = true; different(row); });
-    // A link the reading found is read as soon as its row exists, once the row has its "about".
-    Promise.resolve().then(() => { if (row.url.value.trim()) ask(); });
+    // A link the reading found is read as soon as its row exists, once the row has its "about". A row of a
+    // post being edited shows the reading the post holds instead, and its supports or refutes stays the writer's.
+    Promise.resolve().then(() => {
+      if (!row.url.value.trim()) return;
+      if (item.check && SAYS[item.check.verdict]) { row.lastAsked = asked(); row.stanceChosen = true; show(row, item.check); } else ask();
+    });
   }
   return {watch};
 };
