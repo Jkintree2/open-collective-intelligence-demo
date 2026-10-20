@@ -47,7 +47,18 @@ You get JSON with:
 - "page": the title, description, date and text of the page behind the evidence's link.
 
 Decide, from the page text alone, whether the page supports the claim, argues against it
-(refutes), or does not clearly say either way (unclear). Rules:
+(refutes), or does not clearly say either way (unclear). The verdict is about the claim, never
+about the writer's statement or the writer's position. First read the claim as something that
+can be true or false:
+- An issue is often named as a topic, a belief or a claim rather than a sentence ("Flat Earth
+  claim", "Belief in astrology", "Vaccine injury theory", "Rising sea levels"). Read it as "the
+  belief, claim or problem it names is true or real". Supports means the page says it is true or
+  real; refutes means the page says it is false, wrong, disproved or not real. A page that
+  disproves a belief refutes an issue named after that belief.
+- A solution supports when the page says it would work or should be done, and refutes when the
+  page says it would not work or should not be done.
+- When you cannot tell which way the claim points, answer unclear.
+Rules:
 - Supports or refutes only when a sentence on the page says so directly. Topic overlap is not
   support. A page that reports a view without endorsing it is unclear unless the claim is that
   the view exists.

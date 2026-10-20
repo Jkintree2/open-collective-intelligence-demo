@@ -63,5 +63,10 @@
    "url": "https://www.ipcc.ch/report/ar6/syr/downloads/report/IPCC_AR6_SYR_SPM.pdf", "evidence": "IPCC AR6 summary",
    "about": "Global climate coordination", "writer_says": "supports",
    "statement": "The IPCC says we must act together.",
-   "expect": ["unsupported"]}
+   "expect": ["unsupported"]},
+  {"id": "C14", "name": "An issue named as a topic: the page disproves the flat Earth claim",
+   "url": "https://en.wikipedia.org/wiki/Spherical_Earth", "evidence": "Wikipedia, Spherical Earth",
+   "about": "Flat Earth claim", "writer_says": "refutes",
+   "statement": "The flat Earth claim is wrong. The Earth is a sphere, as measurements since ancient Greece show.",
+   "expect": ["refutes", "unclear"], "note": "Found in the 20 October walk-through: read as supports whichever way the writer chose. Must never come back as supports."}
 ]
