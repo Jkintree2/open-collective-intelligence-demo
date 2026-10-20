@@ -14,7 +14,7 @@ class Element {
   replaceChildren(...children) { this.children = children; }
   add(child) { this.children.push(child); }
   remove() { if (this.parent) this.parent.children = this.parent.children.filter(c => c !== this); }
-  after() {}
+  after(...nodes) { this.afterNodes = nodes; }  // what the page put right after this element
   focus() {}
   querySelectorAll() { return []; }
   querySelector(selector) { return (this.queried ||= {})[selector] || null; }
@@ -29,6 +29,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   get('card').hidden = true;
   // A signed-in write page carries the account's name on the form (sub-plan A, members.posting_identity).
   if (options.member) get('compose').dataset = {member: options.member};
+  // Phase 2: the write form asks for evidence links to be read (index.html, evidence_check.js).
+  if (options.evidenceCheck) get('compose').dataset = {...get('compose').dataset, evidenceCheck: ''};
   const recognizers = [], requests = [], timers = new Map();
   let timerId = 0;
   class Recognition {
@@ -58,7 +60,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
     clearTimeout: id => timers.delete(id)};
   // The page loads these in this order (index.html); app.js wires up what the first two define.
   vm.createContext(context);
-  for (const file of ['card.js', 'dictation.js', 'app.js']) {
+  for (const file of [...(options.evidenceCheck ? ['evidence_check.js'] : []), 'card.js', 'dictation.js', 'app.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
   }
   const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };

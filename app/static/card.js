@@ -93,6 +93,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         }
         if (row.stance) item.stance = row.stance.value;
         if (row.radios) item.stance = row.radios.find(radio => radio.checked).value;
+        if (row.check) item.check = row.check;
         return item;
       });
     }
@@ -208,9 +209,10 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       ['supports', 'refutes'].forEach(value => row.stance.add(new Option(value, value)));
       row.stance.value = item.stance || 'supports';
       field(row, 'about', 'about', 'select');
+      evidence?.watch(row);
     }
     const remove = node('button', 'remove from this form', 'quiet'); remove.type = 'button';
-    remove.addEventListener('click', () => { release(row); state.groups[group] = state.groups[group].filter(other => other !== row); row.element.remove(); changed(); });
+    remove.addEventListener('click', () => removeRow(group, row));
     row.element.append(remove);
     row.element.addEventListener('input', () => { release(row); suggest(row, group); changed(); });
     row.element.addEventListener('change', () => { release(row); changed(); });
@@ -219,6 +221,10 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     refresh();
     for (const name of ['parent', 'for_issue', 'about']) if (row[name] && item[name]) row[name].value = item[name];
     changed();
+    return row;
+  }
+  function removeRow(group, row) {
+    release(row); state.groups[group] = state.groups[group].filter(other => other !== row); row.element.remove(); changed();
   }
   function openCard(payload = {}, message = '', meta = {source: 'manual'}, reapply = true) {
     stopDictation(); stopReading(); state.metadata = meta; state.plain = false;
@@ -317,5 +323,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     row.radios.forEach(r => { r.checked = r.value === stance; });
     changed(); return true;
   }
+  // Phase 2: the page behind each evidence link is read when the form asks for it (evidence_check.js).
+  const evidence = form.dataset?.evidenceCheck !== undefined && window.ociEvidenceCheck
+    ? window.ociEvidenceCheck({find, request, node, text, changed, addRow, removeRow}) : null;
   return {state, grow, identity, changed, addRow, openCard, openPlain, noteShortened, loadCandidates, post, setPositionOnExisting};
 };

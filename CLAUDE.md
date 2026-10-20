@@ -55,7 +55,7 @@ app/check.py       Phase 2: one reading per evidence link (supports, refutes or 
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
 app/templates/     base, enter, sign_in, account, forgot, reset, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people
-app/static/        app.css (one anchor per Phase 1 sub-plan); card.js (card, preview, Post), dictation.js (speech input), app.js (page wiring; loads last), about_issue.js (the summary above the write form), stances.js (approve and oppose in place), edit_post.js (opens the card on a post being edited), once.js (submit once guard for forms marked data-once; loaded from base.html)
+app/static/        app.css (one anchor per Phase 1 sub-plan); card.js (card, preview, Post), dictation.js (speech input), app.js (page wiring; loads last), about_issue.js (the summary above the write form), stances.js (approve and oppose in place), edit_post.js (opens the card on a post being edited), once.js (submit once guard for forms marked data-once; loaded from base.html); evidence_check.js (Phase 2: reads each evidence link on the card, row by row; loads before card.js, only with EVIDENCE_CHECK_ENABLED and a reading service)
 seed/seed.json     the seed record, same shape as the card payload
 scripts/__init__.py
 scripts/seed.py    python -m scripts.seed [--counts] [--reset --yes [--force]]; reset keeps accounts and refuses a database holding non-seed nodes; reload writes nothing when complete and reads tidied seed issues as they are now

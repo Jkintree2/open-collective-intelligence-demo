@@ -416,3 +416,12 @@ form.search button { min-height: 44px; }
 /* Your account: Sign out right under the heading (R10). */
 .sign-out { margin: -8px 0 8px; }
 .sign-out .quiet { padding: 0; font: inherit; }
+
+/* Phase 2: evidence that checks itself, under each evidence link on the card. */
+.evidence-check p { margin: 4px 0; font-size: 0.94rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+.evidence-check p.check-result { color: var(--ink); }
+.evidence-check p.check-different { color: var(--solution); }
+.evidence-check p:empty { display: none; }
+.check-also { border: 1px solid var(--rule); border-radius: 6px; margin: 6px 0; padding: 4px 10px 8px; }
+.check-also legend { font-size: 0.94rem; color: var(--ink-soft); padding: 0 4px; }
+.check-also label.check { display: flex; gap: 8px; align-items: center; min-height: 44px; }
