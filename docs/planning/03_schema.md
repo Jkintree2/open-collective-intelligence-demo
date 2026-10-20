@@ -889,7 +889,7 @@ A post's `SUPPORTS` or `REFUTES` edge (Evidence to Issue, Solution or Evidence) 
 
 The edge type stays the writer's choice. "The writer disagreed with the reading" is `(type(r) = 'SUPPORTS' AND r.check = 'refutes') OR (type(r) = 'REFUTES' AND r.check = 'supports')`. Nothing is blocked or deleted because of it (flag, never delete).
 
-The card sends the check with each evidence row; the server does not trust it blindly. A row's `check` is kept only when the server's own cache (below) holds a reading of the same URL, for the same target, with the same verdict and quote; otherwise the row is stored with `check = null`. So a tester cannot write a reading the site never made.
+The card sends the check with each evidence row; the server does not trust it blindly. A row's `check` is kept only when the server's own cache (below) holds a reading of the same URL, for the same target, with the same verdict and quote; otherwise the row is stored with `check = null`. So a tester cannot write a reading the site never made. The statement the reading was made with does not have to match: a writer who tidies the statement after the link was read keeps the reading, since it was of the same page for the same claim (`check.confirmed`, decided 21 October 2026).
 
 ### Source facts on Evidence
 
@@ -923,7 +923,20 @@ CREATE (e)-[:SUPPORTS {post_id: $post_id, created_at: datetime(),
                        check: $check, check_quote: $check_quote, checked_at: $checked_at}]->(t);
 ```
 
-Editing one's own post (Q24, Q25) recreates the post's evidence edges from the card, so a check travels the same way: kept when the edited row still carries a kept check, null otherwise.
+Editing one's own post (Q24, Q25) recreates the post's evidence edges from the card, so a check travels the same way: kept when the edited row still carries a kept check, null otherwise. On an edit a check is also kept when it is the one the record already holds on this post's edge for the same evidence, target and link (Q35 below), so an edit after a restart does not lose it; a kept stored check keeps its `checked_at` and leaves the source facts alone. The edit card shows each row's stored check and does not read the page again unless the link or what it is about changes.
+
+The extended statements 5 and 5b live in `app/graph_evidence.py` (graph.py is near its 500 line limit); they use the transaction's `$now`, like every other write statement, where the sketch above says `datetime()`.
+
+```cypher
+// Q35. The checks one post holds, for the edit card and the edit's save.
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WHERE r.post_id = $post_id AND r.check IS NOT NULL
+RETURN e.key AS evidence_key, t.key AS target_key, e.url AS url, r.check AS check,
+       r.check_quote AS check_quote, r.checked_at AS checked_at,
+       e.source_type AS source_type, e.source_primary AS source_primary, e.source_published AS source_published
+```
+
+The link compared on an edit is the one in the post's stored payload, not `e.url`, which may be an earlier post's.
 
 ### Agreement with other evidence (computed, never stored)
 

@@ -37,6 +37,7 @@ app/graph_stances.py one stance per person and solution (Q23)
 app/graph_own_posts.py own posts: Q24, Q25 and the feed's yes or no flags (Q7)
 app/graph_search.py keyword search (Q26, Q27)
 app/graph_tidy.py  move, rename, merge and their change record (Q28 to Q32)
+app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts, and one post's stored readings
 app/backup.py      portable export format version 2 (version 1 still restores), typed values and validation; passwords and links never in a copy
 app/admin.py       Basic-auth back room routes, the reading service and sending email lines
 app/routes_accounts.py /sign-in, /sign-out, /account, /forgot-password, /reset/{link}
@@ -110,7 +111,7 @@ Display verbs: claims, submits, proposes, has proposed, supports, refutes, appro
 3. **Every push deploys, so every push must work.** Tests green, local site opened, then push.
 4. **The model is optional.** Any change to compose must be checked once with `LLM_API_KEY` unset.
 5. **Copy is John's.** Interface words come from `04_interface.md`. Never write node, edge, graph, Cypher, model, extraction or entity where a tester can read it. No dashes in client-facing text.
-6. **Cypher lives in the `graph*.py` modules only** (`graph.py`, and since Phase 1 `graph_accounts.py`, `graph_stances.py`, `graph_own_posts.py`, `graph_search.py`, `graph_tidy.py`). Relationship types and labels are substituted from whitelists, never from user input.
+6. **Cypher lives in the `graph*.py` modules only** (`graph.py`, and since Phase 1 `graph_accounts.py`, `graph_stances.py`, `graph_own_posts.py`, `graph_search.py`, `graph_tidy.py`, and since Phase 2 `graph_evidence.py`). Relationship types and labels are substituted from whitelists, never from user input.
 7. **Secrets never touch the repo, logs or templates.** Log the request id, sizes, latencies and counts; log text only at DEBUG.
 8. **Nothing personal to the builder in the repo.** No URLs, emails or account names. LICENSE and README name John.
 9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.** The first account is made once, by `scripts/make_admin.py`, never at startup.

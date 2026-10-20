@@ -54,7 +54,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app import graph_own_posts
 from app.text import clean_name, count_line, make_key, relative_time, sentences
-from app import search, tidy
+from app import check, search, tidy
 
 settings = get_settings()
 
@@ -510,6 +510,8 @@ def post_card(request: Request, data: PostRequest) -> Response:
             edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
         except ValueError:
             edited = True
+    # Phase 2: each evidence row's reading is kept only when this site made it (03_schema.md).
+    checks = check.kept_checks(data.evidence, resolved.evidence, data.text) if settings.evidence_check_enabled else None
     # What the reading service returned is kept whenever it returned something, even when the tester
     # emptied the card or the box, so "it did something weird" can be answered from the one post.
     post_id = graph.merge_post(person_key, name, anonymous, name,
@@ -517,7 +519,7 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 extraction_raw=data.extraction_raw, model=data.model,
                                 latency_ms=data.latency_ms,
                                 request_id=_request_id(request), edited=edited,
-                                one_stance=settings.accounts_enabled)
+                                one_stance=settings.accounts_enabled, checks=checks)
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
     if member is None:
         if anonymous:

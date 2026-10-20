@@ -28,7 +28,7 @@ def test_posting_writes_its_edges_through_write_payload(monkeypatch):
     graph.merge_post("anon:test", None, True, None, "Flooding matters", payload, post_id="p1")
     assert len(seen) == 1
     assert seen[0][1]["post_id"] == "p1" and seen[0][1]["person_key"] == "anon:test"
-    assert seen[0][2] == {"one_stance": False}  # today's stance statement unless a caller asks (C2)
+    assert seen[0][2] == {"one_stance": False, "checks": None}  # today's statements unless a caller asks (C2, Phase 2)
 
 
 def _main(monkeypatch):

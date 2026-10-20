@@ -122,6 +122,11 @@ class _Cache:
         with self.lock:
             self.items.clear()
 
+    def same_claim(self, url: str, about_key: str) -> list[Check]:
+        """Every reading of `url` for the same claim, whatever the statement was when it was read."""
+        with self.lock:
+            return [value for (u, a, _), value in self.items.items() if u == url and a == about_key]
+
 
 cache = _Cache()
 
@@ -253,10 +258,56 @@ def confirmed(url: str, about: str, statement: str, verdict: str | None, quote: 
     The write path keeps a row's check only through this (03_schema.md, Phase 2)."""
     if not url or verdict not in VERDICTS + ("unread",):
         return None
-    hit = cache.get(cache_key(url, about, statement))
-    if hit is None or hit.verdict != verdict or (hit.quote or None) != (quote or None):
+    key = cache_key(url, about, statement)
+
+    def matches(hit: Check | None) -> bool:
+        return hit is not None and hit.verdict == verdict and (hit.quote or None) == (quote or None)
+
+    hit = cache.get(key)
+    if matches(hit):
+        return hit
+    # The writer may tidy the statement after the link was read; the reading was of the same page for
+    # the same claim, so it still holds.
+    return next((other for other in cache.same_claim(key[0], key[1]) if matches(other)), None)
+
+
+NO_CHECK = {"check": None, "check_quote": None, "checked_at": None, "source": None}
+
+
+def _when(value: str | None) -> datetime | None:
+    try:
+        return datetime.fromisoformat(value) if value else None
+    except ValueError:
         return None
-    return hit
+
+
+def kept_checks(items: list[Any], evidence: list[dict[str, Any]], statement: str,
+                stored: dict[tuple[str, str], dict[str, Any]] | None = None) -> dict[str, dict[str, Any]]:
+    """For each resolved evidence row (`evidence`, keyed), what its post edge and Evidence node take:
+    `check`, `check_quote`, `checked_at` and `source`, or NO_CHECK. `items` are the card's own rows,
+    whose `check` is only a claim: it is kept when this process made that reading (confirmed), or,
+    for an edited post, when it is the reading the record already holds on this post's edge for the
+    same evidence, target and link (`stored`, keyed by evidence key and target key). A kept stored
+    reading leaves the source facts alone; they were set when it was made."""
+    claimed = {make_key(item.name): item for item in items if getattr(item, "check", None)}
+    out: dict[str, dict[str, Any]] = {}
+    for row in evidence:
+        out[row["key"]] = dict(NO_CHECK)
+        item = claimed.get(row["key"])
+        if item is None or not row.get("url"):
+            continue
+        verdict, quote = item.check.get("verdict"), item.check.get("quote") or None
+        before = (stored or {}).get((row["key"], row["target_key"]))
+        if (before and before.get("url") == row["url"] and before.get("check") == verdict
+                and (before.get("check_quote") or None) == quote):
+            out[row["key"]] = {"check": verdict, "check_quote": quote,
+                               "checked_at": before.get("checked_at"), "source": None}
+            continue
+        hit = confirmed(row["url"], item.about or "", statement, verdict, quote)
+        if hit is not None:
+            out[row["key"]] = {"check": hit.verdict, "check_quote": hit.quote, "checked_at": _when(hit.checked_at),
+                               "source": hit.source if hit.verdict in ("supports", "refutes", "unclear") else None}
+    return out
 
 
 SOURCE_WORDS = {"news": "news report", "research": "research paper", "government": "government source",

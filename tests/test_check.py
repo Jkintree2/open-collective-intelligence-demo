@@ -144,7 +144,9 @@ def test_confirmed_only_matches_a_reading_the_site_made():
     assert confirmed(URL, "Coastal flooding", statement, "refutes", result.quote) is None
     assert confirmed(URL, "Coastal flooding", statement, "supports", "Something else entirely here.") is None
     assert confirmed(URL, "Sea walls", statement, "supports", result.quote) is None
-    assert confirmed(URL, "Coastal flooding", "A different statement.", "supports", result.quote) is None
+    # The writer may tidy the statement after the link was read: the same page, read for the same claim.
+    assert confirmed(URL, "Coastal flooding", "A different statement.", "supports", result.quote) is result
+    assert confirmed("https://other.example.org/", "Coastal flooding", statement, "supports", result.quote) is None
     assert confirmed("", "Coastal flooding", statement, "supports", result.quote) is None
 
 
