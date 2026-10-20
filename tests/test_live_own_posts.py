@@ -247,3 +247,17 @@ def test_an_edit_switches_named_and_anonymous_on_the_post_and_every_edge(live_gr
     assert (shown()["a"], shown()["n"]) == (False, "Ada")
     assert person_edges(live_graph, pid) == [("APPROVE", False), ("CLAIM", False), ("PROPOSE", False)]
     assert live_graph.issue_claimants("flooding")["names"] == ["Ada"]
+
+
+def test_my_statements_lists_only_ones_own_posts_newest_first(live_graph):
+    """X1: anonymous posts are the member's own too; someone else's and the seed's are not."""
+    first = post(live_graph, "acct:ada", "Flooding first", issues=[{"name": "Flooding"}])
+    quiet = post(live_graph, "acct:ada", "Said quietly", anonymous=True, issues=[{"name": "Drought"}])
+    post(live_graph, "acct:bob", "Bob's own", issues=[{"name": "Flooding"}])
+    live_graph.driver().execute_query("MATCH (p:Post {id: $id}) SET p.created_at = p.created_at + duration('PT1M')",
+                                      id=quiet, database_=live_graph.database())
+    assert [row["id"] for row in graph_own_posts.my_posts("acct:ada", 10)] == [quiet, first]
+    assert [row["id"] for row in graph_own_posts.my_posts("acct:ada", 1)] == [quiet]
+    live_graph.driver().execute_query("MATCH (p:Post {id: $id}) SET p.seed = true", id=first,
+                                      database_=live_graph.database())
+    assert [row["id"] for row in graph_own_posts.my_posts("acct:ada", 10)] == [quiet]

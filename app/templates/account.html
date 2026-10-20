@@ -31,4 +31,7 @@
   <input id="again" name="again" type="password" autocomplete="new-password" minlength="10" required>
   <button type="submit" class="primary">Change password</button>
 </form>
+<h2 id="my-statements">My Statements</h2>
+{% for post in posts %}{% include "_post.html" %}{% else %}<p>You have not posted anything yet.</p>{% endfor %}
+{% if more %}<p class="show-more"><a href="/account?shown={{ more }}#my-statements">Show more</a></p>{% endif %}
 {% endblock %}

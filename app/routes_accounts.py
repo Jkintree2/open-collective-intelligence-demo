@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 
-from app import accounts, config, emails, graph_accounts, mailer
+from app import accounts, config, emails, graph_accounts, graph_own_posts, mailer
 from app.auth import TOO_MANY_TRIES, WRONG_PASSPHRASE_DELAY
 from app.members import (Member, clear_member_cookie, current_member, require_member, require_same_origin,
                          safe_next, set_member_cookie)
@@ -81,13 +81,23 @@ def sign_out(next: str = Form("")) -> Response:
     return response
 
 
+STATEMENTS_PAGE = 50
+STATEMENTS_MAX = 1000
+
+
 def _account_page(request: Request, member: Member, *, message: str | None = None, notice: str | None = None,
                   details: dict | None = None, details_message: str | None = None,
-                  status_code: int = 200) -> Response:
+                  status_code: int = 200, shown: int = STATEMENTS_PAGE) -> Response:
+    from app import main as site
     details = details or graph_accounts.own_details(member.key) or {"name": member.name}
+    # X1: My Statements, 50 at a time; one more is asked for to know whether to offer "Show more".
+    shown = min(max(shown, STATEMENTS_PAGE), STATEMENTS_MAX)
+    posts = graph_own_posts.my_posts(member.key, shown + 1)
     return page(request, "account.html", {"entered": graph_accounts.who_entered(member.key),
                                           "message": message, "notice": notice, "details": details,
-                                          "details_message": details_message},
+                                          "details_message": details_message,
+                                          "posts": site._decorate_posts(posts[:shown], me=member.key),
+                                          "more": shown + STATEMENTS_PAGE if len(posts) > shown else None},
                 status_code=status_code, private=True)
 
 
@@ -95,8 +105,9 @@ DONE = {"password": PASSWORD_CHANGED, "details": DETAILS_SAVED}
 
 
 @router.get("/account")
-def account(request: Request, done: str | None = None, member: Member = Depends(require_member)) -> Response:
-    return _account_page(request, member, notice=DONE.get(done or ""))
+def account(request: Request, done: str | None = None, shown: int = STATEMENTS_PAGE,
+            member: Member = Depends(require_member)) -> Response:
+    return _account_page(request, member, notice=DONE.get(done or ""), shown=shown)
 
 
 @router.post("/account/details", dependencies=[Depends(require_same_origin)])

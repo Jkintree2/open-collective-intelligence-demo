@@ -672,6 +672,20 @@ For a reference work (an encyclopedia or dictionary page) the date is when the p
 
 (or "as supporting this"). Whether this line shows to everyone or only the writer, and whether an age should be said ("more than five years old"), are questions for John in the note.
 
+### Your account: My Statements (no-cost extra, John 17 October 2026)
+
+Below "Change your password", **client-facing**:
+
+> **My Statements**
+
+Then the member's own posts, newest first, each as in the feed: byline, statement, what it added, and "Edit" and "Delete". Posts made anonymously are included and say "Anonymous" as in the feed; this page is seen only by its owner. At most 50 at first; with more, under the last one:
+
+> [ Show more ]
+
+which shows 50 more each time. With none yet:
+
+> You have not posted anything yet.
+
 ### Not client-facing
 
 The reading takes a few seconds per link; rows fill in as they arrive. A link is read once per session. With the reading service unset, no line appears at all.

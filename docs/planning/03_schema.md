@@ -719,6 +719,17 @@ SET r.anonymous = $anonymous
 
 The edit card is built from the post's current edges (Q7's structure query for this one post, with issue names and parents from Q2), not from its stored `payload`, so an issue renamed or merged since shows as it is now and is never made again; the stored payload gives only evidence links. A solution's position on the card is the stance edge this post still holds, so a stance a click has since replaced shows as no position. When the card is resolved for saving, a solution this post itself proposes is proposed again (its own `HAVE_PROPOSED` link is left out of the candidates), never read as a position on a solution already listed (GitHub issue 4's rule); so an unchanged edit leaves the post's edges as they were. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
 
+**Q36. My Statements** (no-cost extra X1, added 21 October 2026; read only, no schema change). Your account lists the member's own posts, anonymous ones included, newest first, 50 at a time (`$limit` is one more than shown, to know whether to offer more). The feed's Q7 flags and structure query then decorate them as on the Write page.
+
+```cypher
+MATCH (:Person {key: $me})-[:POSTED]->(post:Post)
+WHERE coalesce(post.seed, false) = false
+RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
+       post.anonymous AS anonymous, post.created_at AS created_at, post.seed AS seed
+ORDER BY post.created_at DESC
+LIMIT $limit
+```
+
 ### Search
 
 Search does not need accounts: it works behind the passphrase too. It ships with the rest of Phase 1, since its pages build on the Phase 1 access code. The query is cut to 200 characters and ten words, lower-cased, and every Lucene special character (`+ - & | ! ( ) { } [ ] ^ " ~ * ? : \ /`) is escaped with a backslash; every word must then match, as written or as the start of a word (`+(housing housing*) +(costs costs*)`), so a second word narrows the results, as the page's "Try another word, or fewer words" says. An empty query shows the normal Issues list. Search by meaning (embeddings, GitHub issue 2) and event dates belong to Phase 3.

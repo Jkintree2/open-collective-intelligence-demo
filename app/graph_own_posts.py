@@ -36,6 +36,17 @@ RETURN post.id AS id, post.edited_at AS edited_at,
        EXISTS { MATCH (:Person {key: $me})-[:POSTED]->(post) } AS mine
 """
 
+# Q36 (X1), My Statements on Your account: the member's own posts, newest first, in the feed's shape (Q7).
+# Anonymous ones are theirs too; the page is seen only by its owner. Seed posts are nobody's.
+MY_POSTS = """
+MATCH (:Person {key: $me})-[:POSTED]->(post:Post)
+WHERE coalesce(post.seed, false) = false
+RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
+       post.anonymous AS anonymous, post.created_at AS created_at, post.seed AS seed
+ORDER BY post.created_at DESC
+LIMIT $limit
+"""
+
 # Q25 step 1: Q11 statement 1 without deleting the post itself.
 DELETE_POST_EDGES = """
 MATCH (post:Post {id: $id})
@@ -69,6 +80,10 @@ def post_flags(me: str | None, ids: list[str]) -> dict[str, dict[str, Any]]:
     if not ids:
         return {}
     return {row["id"]: row for row in _read(POST_FLAGS, me=me, ids=ids)}
+
+
+def my_posts(me: str, limit: int) -> list[dict[str, Any]]:
+    return _read(MY_POSTS, me=me, limit=limit)
 
 
 def post_owner(me: str | None, post_id: str) -> dict[str, Any] | None:
