@@ -620,7 +620,7 @@ When the time of the failure is not known:
 
 ## Phase 2: evidence that checks itself
 
-Added 20 October 2026, before any Phase 2 code. Everything here shows only when `EVIDENCE_CHECK_ENABLED` is set and the reading service is configured; otherwise the card is exactly the Phase 1 card. Everything in a quote is **client-facing** and a **draft**: it goes to John with the source confidence note, and his wording replaces it before anything ships. No dashes, none of the forbidden words.
+Added 20 October 2026, before any Phase 2 code. Everything here shows only when `EVIDENCE_CHECK_ENABLED` is set and the reading service is configured; otherwise the card is exactly the Phase 1 card. Everything in a quote is **client-facing**. John approved the card and source confidence wording as proposed in the source confidence note (20 October 2026, 14:16 UTC: "Please proceed with building the display as you described it"); the change of email copy (X2) has not been shown to him yet. No dashes, none of the forbidden words.
 
 ### On the card, under each evidence row with a link
 
@@ -670,7 +670,13 @@ For a reference work (an encyclopedia or dictionary page) the date is when the p
 
 > The page was read as arguing against this.
 
-(or "as supporting this"). Whether this line shows to everyone or only the writer, and whether an age should be said ("more than five years old"), are questions for John in the note.
+(or "as supporting this"). This line shows to everyone, as the note proposed.
+
+When the date is more than five years before the day the page is shown, one more sentence follows the date (John, 20 October 2026: "Indicating the age of the resource is good"; five years was the note's example and he named no other number):
+
+> More than five years old.
+
+For example: "A news report from March 2018. More than five years old. Secondary source. Two other pieces of evidence here say the same; one disagrees." A date given only as a year counts from the end of that year. Nothing is said about age when the date is not given.
 
 ### Your account: My Statements (no-cost extra, John 17 October 2026)
 
