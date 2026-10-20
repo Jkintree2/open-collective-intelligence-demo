@@ -682,7 +682,7 @@ When the date is more than five years before the day the page is shown, one more
 
 For example: "A news report from March 2018. More than five years old. Secondary source. Two other pieces of evidence here say the same; one disagrees." A date given only as a year counts from the end of that year, and a month and year from the end of that month. Nothing is said about age when the date is not given. The card's line under a link says the age the same way.
 
-The agreement part, word for word, counted in words from one to ten and in figures above (added 21 October 2026, following the note's example):
+The agreement part, word for word, counted in words from one to ten and in figures above (added 20 October 2026, following the note's example):
 
 > One other piece of evidence here says the same.
 

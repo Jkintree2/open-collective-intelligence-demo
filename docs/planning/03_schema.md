@@ -963,7 +963,7 @@ RETURN key, stances
 
 Python then says, for each item, how many other items on the same target take the same side and how many the other side.
 
-**Q39. Source confidence on one issue page** (days 7 and 8, added 21 October 2026; read only). With `EVIDENCE_CHECK_ENABLED` set, the issue page makes this one extra read and leaves Q4 (either form) and Q5 exactly as they are; unset, it is never run and the page is Phase 1's. It answers Q34 for the issue and all its solutions in one round trip: one row per evidence edge into the issue or one of its proposed solutions, with the edge's reading and the evidence's source facts. It lives in `app/graph_evidence.py`.
+**Q39. Source confidence on one issue page** (days 7 and 8, added 20 October 2026; read only). With `EVIDENCE_CHECK_ENABLED` set, the issue page makes this one extra read and leaves Q4 (either form) and Q5 exactly as they are; unset, it is never run and the page is Phase 1's. It answers Q34 for the issue and all its solutions in one round trip: one row per evidence edge into the issue or one of its proposed solutions, with the edge's reading and the evidence's source facts. It lives in `app/graph_evidence.py`.
 
 ```cypher
 // Q39. $key: the issue shown.
@@ -980,7 +980,7 @@ RETURN CASE WHEN t:Issue THEN 'issue' ELSE 'solution' END AS target_kind, t.key 
 
 Python (`app/confidence.py`, no Cypher) groups the rows by target (kind and key, since an issue and a solution may share a key). For an item `e` shown under one side on `t`, "say the same" counts the other evidence items with an edge of that side into `t`, and "disagree" those with an edge of the other side; an item never counts itself, and an item cited on both sides of `t` counts once on each. Type, date and primary or secondary come from the source facts only when `source_known`.
 
-**The disagreement line, when one evidence item is cited about the same target by several posts** (decided 21 October 2026). Each post's edge carries its own reading. Under "Supported by", "The page was read as arguing against this." shows when **any** post's `SUPPORTS` edge from `e` to `t` has `check = 'refutes'`; under "Refuted by", "The page was read as supporting this." shows when any `REFUTES` edge from `e` to `t` has `check = 'supports'`. Edges that agree with their reading, or have none, do not cancel it. Why any rather than most: every reading is of the same page for the same claim, so readings rarely differ, and when one does, the reader should hear it (flag, never delete). Readings on other targets never count.
+**The disagreement line, when one evidence item is cited about the same target by several posts** (decided 20 October 2026). Each post's edge carries its own reading. Under "Supported by", "The page was read as arguing against this." shows when **any** post's `SUPPORTS` edge from `e` to `t` has `check = 'refutes'`; under "Refuted by", "The page was read as supporting this." shows when any `REFUTES` edge from `e` to `t` has `check = 'supports'`. Edges that agree with their reading, or have none, do not cancel it. Why any rather than most: every reading is of the same page for the same claim, so readings rarely differ, and when one does, the reader should hear it (flag, never delete). Readings on other targets never count.
 
 ### What is never stored
 
