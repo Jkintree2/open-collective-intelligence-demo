@@ -247,3 +247,34 @@ def test_an_edited_time_must_be_a_timestamp():
     post["properties"]["edited_at"] = "2026-10-06"
     with pytest.raises(InvalidBackup):
         validate_record(data)
+
+
+def _phase_2(data):
+    timestamp = next(node for node in data["nodes"] if node["label"] == "Post")["properties"]["created_at"]
+    evidence = next(node for node in data["nodes"] if node["label"] == "Evidence")
+    edge = next(rel for rel in data["relationships"] if rel["type"] == "SUPPORTS")
+    evidence["properties"].update(source_type="news", source_primary=False, source_published="2024-03",
+                                  source_checked_at=timestamp)
+    edge["properties"].update(check="refutes", check_quote="Flooding days doubled.", checked_at=timestamp)
+    return evidence["properties"], edge["properties"]
+
+
+def test_phase_2_readings_and_source_facts_round_trip(monkeypatch):
+    data = sample()
+    _phase_2(data)
+    memory = Memory()
+    monkeypatch.setattr(graph, "driver", lambda: memory)
+    graph.restore_record(deepcopy(data))
+    assert json.loads(json.dumps(graph.export_record())) == canonical(data)
+
+
+@pytest.mark.parametrize("field, bad", [
+    ("check", "maybe"), ("check", True), ("check_quote", 3), ("checked_at", "2026-10-20"),
+    ("source_type", False), ("source_primary", "no"), ("source_published", 2024), ("source_checked_at", "today")])
+def test_phase_2_values_of_the_wrong_kind_are_refused(field, bad):
+    data = sample()
+    node, edge = _phase_2(data)
+    validate_record(data)
+    (edge if field.startswith("check") else node)[field] = bad
+    with pytest.raises(InvalidBackup):
+        validate_record(data)
