@@ -49,6 +49,7 @@ app/search.py      the safe keyword query and grouped results
 app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names() for reloading the seed
 app/extract.py     prompt, model call with one retry, last_model_error, Extraction; re-exports CardPayload and resolution
 app/payload.py     card models, cleaning, reference resolution
+app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text); no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)
 app/templates/     base, enter, sign_in, account, forgot, reset, people, withdraw, accept, link_problem, index, issues, issue, delete_post, merge_confirm, changes, admin, error, asleep; fragments _feed, _post, _about_issue, _record_notice, _stance, _tidy, _admin_people
