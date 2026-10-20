@@ -250,3 +250,33 @@ def confirmed(url: str, about: str, statement: str, verdict: str | None, quote: 
     if hit is None or hit.verdict != verdict or (hit.quote or None) != (quote or None):
         return None
     return hit
+
+
+SOURCE_WORDS = {"news": "news report", "research": "research paper", "government": "government source",
+                "reference": "reference work", "organisation": "organisation's page", "blog": "blog post", "other": "page"}
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
+          "October", "November", "December")
+
+
+def when(published: str | None) -> str | None:
+    """'March 2024', '2024', or None, from YYYY-MM-DD, YYYY-MM or YYYY."""
+    if not published:
+        return None
+    parts = published.split("-")
+    if len(parts) >= 2 and parts[1].isdigit() and 1 <= int(parts[1]) <= 12:
+        return f"{MONTHS[int(parts[1]) - 1]} {parts[0]}"
+    return parts[0]
+
+
+def source_words(source: dict[str, Any] | None) -> str | None:
+    """What a page says about itself, in words (04_interface.md, Phase 2; draft copy for John):
+    'A news report from March 2024. Secondary source.' Agreement is added on the issue page."""
+    if not source:
+        return None
+    kind = SOURCE_WORDS.get(source.get("type") or "other", "page")
+    article = "An" if kind[0] in "aeiou" else "A"
+    date = when(source.get("published"))
+    first = f"{article} {kind} from {date}." if date else f"{article} {kind}. Date not given."
+    primary = source.get("primary")
+    second = " Primary source." if primary is True else " Secondary source." if primary is False else ""
+    return first + second

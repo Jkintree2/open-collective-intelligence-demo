@@ -654,6 +654,10 @@ The supports or refutes choice on the row is set from the reading only while the
 
 Each is one line with a tick box and its kind ("Issue: …", "Solution: …", "Evidence: …"). Ticking one adds it to the card as an ordinary row the writer can edit; unticking removes that row again.
 
+When too many links are read in a short time, the line under the link says, **client-facing**:
+
+> Too many links read just now. Please wait a minute; you can still post.
+
 Post is never held back by a reading still under way. A post sent before the reading came back is stored without it.
 
 ### Source confidence, on the issue page

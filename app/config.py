@@ -51,6 +51,8 @@ class Settings:
     gmail_client_secret: str | None = None
     gmail_refresh_token: str | None = None
     mail_console: bool = False
+    evidence_check_enabled: bool = False
+    deepseek_fetch: bool = True
 
     @property
     def is_local(self) -> bool:
@@ -104,6 +106,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         gmail_client_secret=env.get("GMAIL_CLIENT_SECRET") or None,
         gmail_refresh_token=env.get("GMAIL_REFRESH_TOKEN") or None,
         mail_console=(env.get("MAIL_CONSOLE") or "") == "1",
+        evidence_check_enabled=(env.get("EVIDENCE_CHECK_ENABLED") or "").strip().lower() in ("1", "true", "yes"),
+        deepseek_fetch=(env.get("DEEPSEEK_FETCH") or "1").strip() != "0",
     )
 
 
