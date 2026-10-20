@@ -34,6 +34,8 @@ VIDEO_HOSTS = ("youtube.com", "youtu.be", "vimeo.com", "tiktok.com")
 USER_AGENT = "OpenCollectiveIntelligence/0.2 (reads one page a person cited)"
 
 Resolver = Callable[[str, int], list[str]]
+NAT64 = ipaddress.ip_network("64:ff9b::/96")
+IPV4_COMPATIBLE = ipaddress.ip_network("::/96")
 
 
 @dataclass
@@ -59,8 +61,13 @@ def resolve(host: str, port: int) -> list[str]:
 
 def public(address: str) -> bool:
     ip = ipaddress.ip_address(address.split("%", 1)[0])
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
-        ip = ip.ipv4_mapped
+    if isinstance(ip, ipaddress.IPv6Address):
+        # Forms that carry an IPv4 address inside are judged by that address: mapped, NAT64 and the
+        # old IPv4 compatible form.
+        if ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        elif ip in NAT64 or ip in IPV4_COMPATIBLE:
+            ip = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
     return ip.is_global and not ip.is_multicast
 
 
@@ -81,7 +88,11 @@ def checked_target(url: str, resolver: Resolver) -> tuple[str, str, str]:
         raise Refused("scheme")
     if parts.username is not None or parts.password is not None or port not in PORTS:
         raise Refused("address")
-    host = parts.hostname.rstrip(".").lower()
+    try:
+        # A name in other letters travels in its ASCII form, as the Host header and TLS name need.
+        host = httpx.URL(url).raw_host.decode("ascii").rstrip(".").lower()
+    except (httpx.InvalidURL, UnicodeError) as exc:
+        raise Refused("malformed") from exc
     if host == "localhost" or host.endswith((".localhost", ".local", ".internal")):
         raise Refused("address")
     try:
@@ -97,7 +108,7 @@ def checked_target(url: str, resolver: Resolver) -> tuple[str, str, str]:
     netloc = f"[{pinned}]" if ":" in pinned else pinned
     if port:
         netloc += f":{port}"
-    host_header = parts.netloc.rsplit("@", 1)[-1]
+    host_header = (f"[{host}]" if ":" in host else host) + (f":{port}" if port else "")
     return urlunsplit((parts.scheme, netloc, parts.path or "/", parts.query, "")), host_header, host
 
 

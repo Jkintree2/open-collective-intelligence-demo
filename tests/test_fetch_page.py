@@ -267,3 +267,25 @@ def test_last_updated_date_is_kept_beside_the_first_published_one():
     assert html_text(page)[3:] == ("2001-12-06", "2026-10-17")
     meta = '<meta property="article:modified_time" content="2025-02-01"><p>text</p>'
     assert html_text(meta)[4] == "2025-02-01"
+
+
+@pytest.mark.parametrize("url", ["http://[64:ff9b::a9fe:a9fe]/", "http://[64:ff9b:1::7f00:1]/", "http://[::127.0.0.1]/",
+                                 "http://[::a00:5]/"])
+def test_ipv6_forms_that_carry_a_private_address_are_refused(url):
+    with pytest.raises(Refused):
+        checked_target(url, resolver({}))
+
+
+def test_a_name_in_other_letters_is_sent_in_its_ascii_form():
+    seen = []
+    routes = {("xn--bcher-kva.example", "/"): html("news_article.html")}
+    page = fetch("https://bücher.example/", resolver=resolver({}), transport=serving(routes, seen))
+    assert page.status == "ok"
+    assert seen[0].headers["host"] == "xn--bcher-kva.example"
+    assert seen[0].extensions["sni_hostname"] == "xn--bcher-kva.example"
+
+
+def test_a_name_that_cannot_be_written_in_ascii_is_unread_not_an_error():
+    seen = []
+    page = fetch("https://" + "ü" * 70 + ".example/", resolver=resolver({}), transport=serving({}, seen))
+    assert page.status == "unread" and seen == []
