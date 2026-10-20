@@ -714,6 +714,8 @@ which shows 50 more each time. With none yet:
 
 ### Your account: Change your email (no-cost extra, John 17 October 2026)
 
+Shown only with `EMAIL_CHANGE_ENABLED` set (not client-facing), which waits for John's yes on the wording below; unset, Your account goes straight from "Change your password" to "My Statements".
+
 Between "Change your password" and "My Statements", **client-facing**:
 
 > **Change your email**

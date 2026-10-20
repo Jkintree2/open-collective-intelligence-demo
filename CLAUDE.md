@@ -46,7 +46,7 @@ app/routes_stances.py  approve and oppose on the issue page
 app/routes_own_posts.py editing (with or without JavaScript, the card built from the post's current edges) and deleting one's own post
 app/routes_tidy.py     rename, move and merge an issue; /changes
 app/routes_admin_people.py the back room's People section (/admin/people)
-app/routes_email.py    X2: change one's email (/account/email, /email/{link}); every earlier address kept with its date
+app/routes_email.py    X2: change one's email (/account/email, /email/{link}), only with EMAIL_CHANGE_ENABLED; every earlier address kept with its date
 app/routes_evidence.py Phase 2: POST /api/check-evidence (behind EVIDENCE_CHECK_ENABLED; per person and site limits, cached links free)
 app/search.py      the safe keyword query and grouped results
 app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names() for reloading the seed
@@ -96,7 +96,7 @@ The local `.env` points at the development database, a local Neo4j 5 in Docker (
 
 Every push to `main` deploys to Render. There is no staging. So: run `pytest` and open the local site before every push, and push small. If a deploy breaks the live site, revert the commit and push again; do not fix forward on a broken site. Environment variables live in the Render dashboard, never in the repo. `render.yaml` describes the service so it can be recreated in another Render account by "New Blueprint".
 
-Phase 2 (evidence that checks itself) runs behind `EVIDENCE_CHECK_ENABLED`, set in the Render dashboard; unset, the card is the Phase 1 card and nothing is fetched. `DEEPSEEK_FETCH=0` stops the backup reader. Phase 1 runs behind `ACCOUNTS_ENABLED`; unset, the site keeps the passphrase and the 0.1 rules for posts, stances and the order of solutions (decision X1), and keyword search on the Issues page works too. Its variables (`SITE_URL`, `MAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `ACCOUNTS_ENABLED`) live in the Render dashboard. The Gmail values come from John's own Google project, with the send permission only, and only John types them in.
+Phase 2 (evidence that checks itself) runs behind `EVIDENCE_CHECK_ENABLED`, set in the Render dashboard; unset, the card is the Phase 1 card and nothing is fetched. `DEEPSEEK_FETCH=0` stops the backup reader. Change your email (X2) has its own switch, `EMAIL_CHANGE_ENABLED`, also in the dashboard; unset, Your account has no change of email form and its pages answer not found. Phase 1 runs behind `ACCOUNTS_ENABLED`; unset, the site keeps the passphrase and the 0.1 rules for posts, stances and the order of solutions (decision X1), and keyword search on the Issues page works too. Its variables (`SITE_URL`, `MAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `ACCOUNTS_ENABLED`) live in the Render dashboard. The Gmail values come from John's own Google project, with the send permission only, and only John types them in.
 
 ## Schema in brief
 

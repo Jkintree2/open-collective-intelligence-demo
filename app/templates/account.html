@@ -31,7 +31,7 @@
   <input id="again" name="again" type="password" autocomplete="new-password" minlength="10" required>
   <button type="submit" class="primary">Change password</button>
 </form>
-<h2>Change your email</h2>
+{% if email_change %}<h2>Change your email</h2>
 {% if email_message %}<p class="notice" role="alert">{{ email_message }}</p>{% endif %}
 <form method="post" action="/account/email" class="stacked-form" data-once>
   <label for="new_email">New email:</label>
@@ -40,7 +40,7 @@
   <input id="email_current" name="current" type="password" autocomplete="current-password" required>
   <button type="submit" class="primary">Send a link to the new email</button>
 </form>
-<h2 id="my-statements">My Statements</h2>
+{% endif %}<h2 id="my-statements">My Statements</h2>
 {% for post in posts %}{% include "_post.html" %}{% else %}<p>You have not posted anything yet.</p>{% endfor %}
 {% if more %}<p class="show-more"><a href="/account?shown={{ more }}#my-statements">Show more</a></p>{% endif %}
 {% endblock %}

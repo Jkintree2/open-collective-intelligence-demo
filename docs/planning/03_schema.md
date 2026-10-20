@@ -996,7 +996,7 @@ Export version 2 already carries every node and edge property not on the account
 
 ## Change of email (no-cost extra X2, added 21 October 2026)
 
-John's "chain of custody" note, 17 October 2026. Properties only, on account `Person`s; no new label, type or constraint (`person_email` stays on `email` alone). Not behind `EVIDENCE_CHECK_ENABLED`: it is part of Your account, so it needs `ACCOUNTS_ENABLED` like the rest of it.
+John's "chain of custody" note, 17 October 2026. Properties only, on account `Person`s; no new label, type or constraint (`person_email` stays on `email` alone). Not behind `EVIDENCE_CHECK_ENABLED`: it is part of Your account, so it needs `ACCOUNTS_ENABLED` like the rest of it, and its own switch, `EMAIL_CHANGE_ENABLED` (added 20 October 2026, so Phase 2 can go live before John approves the wording). Unset, Your account has no change of email form, `/account/email` and `/email/{link}` answer not found, and nothing here is written; the properties below stay absent, and the back room and export show only what is there.
 
 | Property | Value | Notes |
 |---|---|---|

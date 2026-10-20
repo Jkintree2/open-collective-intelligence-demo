@@ -1,6 +1,7 @@
 """X2: changing one's email. The link goes to the new address only, the old one is told, nothing changes
 until the link is opened, and the page says the same whether or not the address can be used. No database."""
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -13,8 +14,17 @@ OLD = accounts.hash_password("the old password")
 NOW = datetime.now(timezone.utc)
 
 
+def switch(member_app, monkeypatch, on):
+    """EMAIL_CHANGE_ENABLED, X2's own switch (off unless set)."""
+    settings = replace(member_app.settings, email_change_enabled=on)
+    for target in ("app.config.get_settings", "app.auth.get_settings"):
+        monkeypatch.setattr(target, lambda: settings)
+    monkeypatch.setattr(member_app.main, "settings", settings)
+
+
 @pytest.fixture
 def change(member_app, monkeypatch):
+    switch(member_app, monkeypatch, True)
     member_app.sign_in(password_hash=OLD)
     sent, asked, links = [], [], {}
     taken = {"bob@example.org"}
@@ -118,3 +128,26 @@ def test_the_link_never_reaches_the_log():
     assert accounts.link_url("https://record.example", "email", "abc") == "https://record.example/email/abc"
     assert accounts.link_expiry("email", NOW) == NOW + timedelta(hours=24)
 
+
+
+def test_the_switch_is_off_unless_set():
+    from app.config import load_settings
+    base = {"DEMO_PASSPHRASE": "p", "SECRET_KEY": "s", "ADMIN_TOKEN": "a", "NEO4J_URI": "neo4j://x",
+            "NEO4J_USERNAME": "n", "NEO4J_PASSWORD": "w"}
+    assert load_settings(base).email_change_enabled is False
+    assert load_settings({**base, "EMAIL_CHANGE_ENABLED": "true"}).email_change_enabled is True
+
+
+def test_with_the_switch_off_there_is_no_form_and_no_pages(change, monkeypatch):
+    """EMAIL_CHANGE_ENABLED unset: Your account goes from the password form to My Statements, and the
+    change of email pages answer not found, even for a link sent while it was on."""
+    assert change.client.post("/account/email", data=form()).status_code == 200
+    secret = secret_in(change.sent[0][2])
+    switch(change, monkeypatch, False)
+    page = change.client.get("/account").text
+    assert "Change your email" not in page and "/account/email" not in page
+    assert page.index("Change password") < page.index("My Statements")
+    assert change.client.post("/account/email", data=form(email="ada.other@example.org")).status_code == 404
+    assert change.client.get(f"/email/{secret}").status_code == 404
+    assert change.client.post(f"/email/{secret}").status_code == 404
+    assert len(change.asked) == 1  # the second ask never reached the record

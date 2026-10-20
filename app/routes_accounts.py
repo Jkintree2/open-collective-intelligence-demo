@@ -97,6 +97,7 @@ def _account_page(request: Request, member: Member, *, message: str | None = Non
     return page(request, "account.html", {"entered": graph_accounts.who_entered(member.key),
                                           "message": message, "notice": notice, "details": details,
                                           "details_message": details_message, "email_message": email_message,
+                                          "email_change": config.get_settings().email_change_enabled,
                                           "posts": site._decorate_posts(posts[:shown], me=member.key),
                                           "more": shown + STATEMENTS_PAGE if len(posts) > shown else None},
                 status_code=status_code, private=True)

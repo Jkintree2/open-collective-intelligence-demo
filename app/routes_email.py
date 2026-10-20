@@ -6,7 +6,7 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import Response
 
 from app import accounts, config, emails, graph_accounts, mailer
@@ -29,7 +29,15 @@ def link_sent(new: str, current: str) -> str:
             f"please check your spam folder. Until then, sign in with {current}.")
 
 
-@router.post("/account/email", dependencies=[Depends(require_same_origin)])
+def email_change_on() -> None:
+    """X2 has its own switch, EMAIL_CHANGE_ENABLED, so it can wait for John's yes on the wording while the
+    rest goes live; unset, these pages do not exist (and they never do without accounts)."""
+    accounts_on()
+    if not config.get_settings().email_change_enabled:
+        raise HTTPException(404)
+
+
+@router.post("/account/email", dependencies=[Depends(email_change_on), Depends(require_same_origin)])
 def ask(request: Request, background: BackgroundTasks, email: str = Form(""), current: str = Form(""),
         member: Member = Depends(require_member)) -> Response:
     # The same limits and order as changing the password: no scrypt once a bucket is empty.
@@ -72,7 +80,7 @@ def _send_link(request_id: str | None, key: str, new: str) -> None:
 
 
 def _open(request: Request, secret: str) -> tuple[dict | None, Response | None]:
-    accounts_on()
+    email_change_on()
     here = f"/email/{secret}"
     # As the other link pages: a link longer than any real one is not looked up.
     row = graph_accounts.open_link(accounts.link_hash(secret)) if len(secret) <= 100 else None

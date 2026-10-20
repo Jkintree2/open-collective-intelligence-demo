@@ -53,6 +53,7 @@ class Settings:
     mail_console: bool = False
     evidence_check_enabled: bool = False
     deepseek_fetch: bool = True
+    email_change_enabled: bool = False
 
     @property
     def is_local(self) -> bool:
@@ -108,6 +109,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         mail_console=(env.get("MAIL_CONSOLE") or "") == "1",
         evidence_check_enabled=(env.get("EVIDENCE_CHECK_ENABLED") or "").strip().lower() in ("1", "true", "yes"),
         deepseek_fetch=(env.get("DEEPSEEK_FETCH") or "1").strip() != "0",
+        email_change_enabled=(env.get("EMAIL_CHANGE_ENABLED") or "").strip().lower() in ("1", "true", "yes"),
     )
 
 
