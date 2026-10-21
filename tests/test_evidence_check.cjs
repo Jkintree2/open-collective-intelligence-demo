@@ -70,12 +70,20 @@ test('what the page also mentions can be ticked onto the card and off again', as
   await p.flush();
   const also = box(row).children.find(c => c.tag === 'fieldset');
   assert.equal(also.children[0].textContent, 'The page also mentions');
-  const [issue, evidence] = also.children.slice(1);
+  assert.match(also.children[1].textContent, /^Tick any you want to add to your statement/);
+  const [issue, evidence] = also.children.slice(2);
   assert.deepEqual([issue.children[1], evidence.children[1]], ['Issue: Sea walls not keeping pace', 'Evidence: NOAA tide gauges']);
   issue.children[0].checked = true; await issue.children[0].emit('change');
   assert.deepEqual(p.get('issue-rows').children.map(r => r.children[1].value), ['Coastal flooding', 'Sea walls not keeping pace']);
-  evidence.children[0].checked = true; await evidence.children[0].emit('change');
-  assert.equal(fields(p.get('evidence-rows').children[1]).about.value, 'Coastal flooding');
+  evidence.children[0].checked = true; await evidence.children[0].emit('change'); await p.flush();
+  const added = p.get('evidence-rows').children[1];
+  assert.equal(fields(added).about.value, 'Coastal flooding');
+  assert.equal(fields(added).url.value, URL);                  // keeps the link of the page it was found on
+  assert.equal(checks(p).length, 2);
+  checks(p)[1].resolve({verdict: 'supports', quote: QUOTE, line: null,
+    suggested: {issues: [{name: 'Sea walls not keeping pace', existing: false}], solutions: [], evidence: []}});
+  await p.flush();
+  assert.equal(box(added).children.find(c => c.tag === 'fieldset'), undefined);   // and does not list the page again
   issue.children[0].checked = false; await issue.children[0].emit('change');
   assert.deepEqual(p.get('issue-rows').children.map(r => r.children[1].value), ['Coastal flooding']);
 });

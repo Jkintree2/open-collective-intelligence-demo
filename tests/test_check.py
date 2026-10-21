@@ -77,6 +77,17 @@ def test_quote_matching_forgives_case_spacing_and_curly_quotes():
     assert run({**GOOD, "quote": "the mayor said it's the worst year on record"}, page=page).verdict == "supports"
 
 
+def test_quote_matching_skips_footnote_marks():
+    # Wikipedia's text is full of "[4][5]"; the reading quotes the sentence without them, or with them.
+    page = Page("ok", URL, "The modern-day rise in global temperatures[4] is driven by human activities,[5] "
+                           "especially fossil fuel burning.[6][citation needed]")
+    for quote in ("The modern-day rise in global temperatures is driven by human activities, especially fossil fuel burning.",
+                  "The modern-day rise in global temperatures[4] is driven by human activities,[5] especially fossil fuel burning.[6]"):
+        check.cache.clear()
+        result = run({**GOOD, "quote": quote}, page=page)
+        assert result.verdict == "supports" and "[" not in result.quote
+
+
 def test_a_tiny_quote_does_not_count():
     assert run({**GOOD, "quote": "flooding"}).verdict == "unclear"
 

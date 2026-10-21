@@ -15,6 +15,7 @@ import socket
 import time
 import zlib
 from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from typing import Callable
 from urllib.parse import urljoin, urlsplit, urlunsplit
@@ -216,6 +217,14 @@ def iso_date(value: str | None) -> str | None:
     return "-".join(part for part in match.groups() if part)
 
 
+def header_date(value: str | None) -> str | None:
+    """YYYY-MM-DD from an HTTP date ("Tue, 20 Oct 2026 03:49:57 GMT"); None when there is none."""
+    try:
+        return iso_date(parsedate_to_datetime(value).date().isoformat()) if value else None
+    except (TypeError, ValueError):
+        return None
+
+
 def words(text: str) -> set[str]:
     return {w for w in re.findall(r"[a-z0-9]{4,}", text.lower())}
 
@@ -363,6 +372,9 @@ def _fetch(url, about, resolver, transport, entry, started) -> Page:
                 text, title, description, published, modified = html_text(raw)
             if len(text) < 40:
                 return Page("unread", current, reason="empty", title=title)
+            # A page cut at MAX_BYTES can lose dates given at its end (Wikipedia's structured data on a long
+            # article); the server's own last change date stands in for the page's.
+            modified = modified or header_date(response.headers.get("last-modified"))
             return Page("ok", current, cut(text, about), title, description, published, modified=modified)
     return Page("unread", current, reason="redirects")
 

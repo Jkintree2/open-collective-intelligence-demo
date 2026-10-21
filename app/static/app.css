@@ -425,6 +425,7 @@ form.search button { min-height: 44px; }
 .check-also { border: 1px solid var(--rule); border-radius: 6px; margin: 6px 0; padding: 4px 10px 8px; }
 .check-also legend { font-size: 0.94rem; color: var(--ink-soft); padding: 0 4px; }
 .check-also label.check { display: flex; gap: 8px; align-items: center; min-height: 44px; }
+.check-also .check-hint { margin: 2px 0 4px; font-size: 0.94rem; color: var(--ink-soft); }
 /* X1: My Statements on Your account. */
 #my-statements { margin-top: 32px; }
 .show-more a { display: inline-flex; align-items: center; min-height: 44px; }

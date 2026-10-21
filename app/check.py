@@ -148,9 +148,15 @@ def cache_key(url: str, about: str, statement: str) -> tuple[str, str, str]:
     return url.strip(), (make_key(about) or about.strip().lower()), digest
 
 
+# Footnote marks like Wikipedia's "[4]", "[a]", "[note 2]" or "[citation needed]": a quote copied without
+# them is still on the page.
+FOOTNOTE = re.compile(r"\[(?:\d{1,4}|[a-z]|note \d{1,3}|citation needed)\]", re.I)
+
+
 def flat(text: str) -> str:
-    """Lower case, one kind of quote mark and dash, single spaces: for finding a quote on a page."""
-    text = text.lower().translate(str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"',
+    """Lower case, no footnote marks, one kind of quote mark and dash, single spaces: for finding a
+    quote on a page."""
+    text = FOOTNOTE.sub("", text).lower().translate(str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"',
                                                  "–": "-", "—": "-", " ": " "}))
     return " ".join(text.split())
 
@@ -247,7 +253,7 @@ def check_evidence(url: str, evidence_name: str, about: str, statement: str, set
     data = reply.payload
     verdict = data["verdict"]
     quote = data.get("quote") if isinstance(data.get("quote"), str) else ""
-    quote = " ".join(quote.split())
+    quote = " ".join(FOOTNOTE.sub("", quote).split())
     if verdict in ("supports", "refutes") and not on_page(quote, page):
         log.info(json.dumps({"event": "check_quote_missing", "request_id": request_id}))
         verdict = "unclear"
