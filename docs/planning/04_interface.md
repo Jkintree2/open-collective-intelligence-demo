@@ -652,7 +652,11 @@ The supports or refutes choice on the row is set from the reading only while the
 
 > The page also mentions
 
-Each is one line with a tick box and its kind ("Issue: …", "Solution: …", "Evidence: …"). Ticking one adds it to the card as an ordinary row the writer can edit; unticking removes that row again.
+Under the heading, one line of help (added 21 October 2026 after John asked what the tick boxes do; a draft for John):
+
+> Tick any you want to add to your statement; you can edit it before you post. Evidence you tick keeps this page's link.
+
+Each is one line with a tick box and its kind ("Issue: …", "Solution: …", "Evidence: …"). Ticking one adds it to the card as an ordinary row the writer can edit; unticking removes that row again. Evidence ticked this way takes the link of the page it was found on, about the same claim, so it stays tied to its source (John, 20 October 2026: "Keeping the evidence connected with the source is important"); the writer can change the link. Its row shows the reading of that page but does not list the page's suggestions again.
 
 When too many links are read in a short time, the line under the link says, **client-facing**:
 
@@ -666,7 +670,7 @@ Under each piece of evidence in "Supported by" and "Refuted by", one line in pla
 
 > A {type} from {Month YYYY}. {Primary source | Secondary source}. {N other pieces of evidence here say the same; M disagree.}
 
-For a reference work (an encyclopedia or dictionary page) the date is when the page was last updated, since such pages are kept up to date; Wikipedia's first date is when the article was started, which says nothing about what it says now. Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date, the first sentence ends after the type and "Date not given." follows: "A news report. Date not given. Secondary source." Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
+For a reference work (an encyclopedia or dictionary page) the date is when the page was last updated, since such pages are kept up to date (when the page gives no such date, as on a long article read only in part, the date its server gives for the last change); Wikipedia's first date is when the article was started, which says nothing about what it says now. Types: "news report", "research paper", "government source", "reference work", "organisation's page", "blog post", "page". Without a date, the first sentence ends after the type and "Date not given." follows: "A news report. Date not given. Secondary source." Agreement counts only evidence on the same issue or solution. When the writer kept "supports" but the page was read as arguing against (or the other way round), one more line:
 
 > The page was read as arguing against this.
 

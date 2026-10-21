@@ -269,6 +269,18 @@ def test_last_updated_date_is_kept_beside_the_first_published_one():
     assert html_text(meta)[4] == "2025-02-01"
 
 
+def test_the_last_change_date_comes_from_the_server_when_the_page_gives_none():
+    headers = {"content-type": "text/html", "last-modified": "Tue, 20 Oct 2026 03:49:57 GMT"}
+    text = b"<p>Flat Earth is a disproven idea about the shape of Earth, long since set aside.</p>"
+    dated = b'<meta property="article:modified_time" content="2025-02-01">' + text
+    routes = {("w.example.org", "/a"): (200, headers, text), ("w.example.org", "/b"): (200, headers, dated),
+              ("w.example.org", "/c"): (200, {**headers, "last-modified": "not a date"}, text)}
+    read = lambda path: fetch(f"https://w.example.org{path}", resolver=resolver({}), transport=serving(routes))
+    assert read("/a").modified == "2026-10-20"
+    assert read("/b").modified == "2025-02-01"   # the page's own date wins
+    assert read("/c").modified is None
+
+
 @pytest.mark.parametrize("url", ["http://[64:ff9b::a9fe:a9fe]/", "http://[64:ff9b:1::7f00:1]/", "http://[::127.0.0.1]/",
                                  "http://[::a00:5]/"])
 def test_ipv6_forms_that_carry_a_private_address_are_refused(url):

@@ -10,6 +10,7 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
     unsupported: () => 'This kind of link cannot be read yet.'
   };
   const DIFFERENT = 'You chose differently from the reading. That is fine; others will see both.';
+  const ALSO_HINT = 'Tick any you want to add to your statement; you can edit it before you post. Evidence you tick keeps this page\'s link.';
   const KINDS = [['issues', 'Issue'], ['solutions', 'Solution'], ['evidence', 'Evidence']];
   // Verdicts a post may carry; the server keeps one only when it made that reading itself.
   const KEPT = ['supports', 'refutes', 'unclear', 'unread'];
@@ -27,14 +28,16 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
     const items = KINDS.flatMap(([group, label]) => (suggested[group] || []).map(item => ({group, label, name: item.name})));
     if (!items.length) return;
     const box = node('fieldset', '', 'check-also');
-    box.append(node('legend', 'The page also mentions'));
+    box.append(node('legend', 'The page also mentions'), node('p', ALSO_HINT, 'check-hint'));
     for (const item of items) {
       const label = node('label', '', 'check'), input = node('input');
       input.type = 'checkbox';
       label.append(input, document.createTextNode(`${item.label}: ${item.name}`));
       input.addEventListener('change', () => {
         if (input.checked) {
-          input.row = addRow(item.group, item.group === 'evidence' ? {name: item.name, about: row.about.value} : {name: item.name});
+          // Evidence found on the page keeps the page's link, so it stays tied to where it was found (John, 20 October).
+          input.row = addRow(item.group, item.group === 'evidence'
+            ? {name: item.name, about: row.about.value, url: row.url.value.trim(), fromPage: true} : {name: item.name});
           if (!input.row) input.checked = false;  // the card is full
         } else if (input.row) { removeRow(item.group, input.row); input.row = null; }
       });
@@ -55,7 +58,7 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
       row.stance.value = result.verdict;
     }
     different(row);
-    suggestions(row, result.suggested || {});
+    if (!row.fromPage) suggestions(row, result.suggested || {});  // a row ticked from a page does not list that page again
     changed();  // the card now carries the check, and the preview says so
   }
   async function run(row) {
@@ -73,6 +76,7 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
   }
   function watch(row, item = {}) {
     row.checkBox = node('div', '', 'evidence-check');
+    row.fromPage = Boolean(item.fromPage);
     row.checkBox.setAttribute('aria-live', 'polite');
     row.about.after(row.checkBox);  // under the choice it speaks to, after supports or refutes and about
     row.lastAsked = '';
