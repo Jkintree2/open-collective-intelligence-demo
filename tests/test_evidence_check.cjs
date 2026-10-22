@@ -28,7 +28,7 @@ test('a link the reading found is read at once and the row says what the page sa
   assert.deepEqual(lines(row), ['Reading the page…']);
   checks(p)[0].resolve({verdict: 'supports', quote: QUOTE, line: 'A news report from March 2024. Secondary source.', suggested: {}});
   await p.flush();
-  assert.deepEqual(lines(row), ['Agrees', `The page says: "${QUOTE}"`, 'A news report from March 2024. Secondary source.', '']);
+  assert.deepEqual(lines(row), [`The page seems to support this: "${QUOTE}"`, 'A news report from March 2024. Secondary source.', '']);
   assert.equal(fields(row).stance.value, 'supports');            // set from the reading: the writer had not chosen
   await p.runTimer(200);
   const preview = JSON.parse(p.requests.at(-1).options.body);
@@ -130,7 +130,7 @@ test('a post being edited shows the reading it holds, without reading the page a
   p.load('edit_post.js'); await p.flush();
   const [row] = p.get('evidence-rows').children;
   assert.equal(checks(p).length, 0);
-  assert.deepEqual(lines(row), ['Contradicts', `The page says: "${QUOTE}"`, stored.line,
+  assert.deepEqual(lines(row), [`The page seems to argue against this: "${QUOTE}"`, stored.line,
     'You chose differently from the reading. That is fine; others will see both.']);
   assert.equal(fields(row).stance.value, 'supports');  // the writer's choice stays
   await p.runTimer(200);
@@ -146,7 +146,7 @@ test('a slow page says so after ten seconds, and the line goes when the reading 
   await p.runTimer(10000);
   assert.deepEqual(lines(row), ['Reading the page…', 'Still reading. A slow page can take up to a minute.']);
   checks(p)[0].resolve({verdict: 'supports', quote: QUOTE, line: null, suggested: {}}); await p.flush();
-  assert.equal(lines(row)[0], 'Agrees');
+  assert.equal(lines(row)[0], `The page seems to support this: "${QUOTE}"`);
   assert.ok(!lines(row).includes('Still reading. A slow page can take up to a minute.'));
 });
 
@@ -156,67 +156,4 @@ test('an unclear reading says why, for example what the page does not say', asyn
   const reason = 'The page says 80% of 26 issues led to government action, not that they became law.';
   checks(p)[0].resolve({verdict: 'unclear', quote: null, reason, line: null, suggested: {}}); await p.flush();
   assert.deepEqual(lines(row).slice(0, 2), ['The page does not clearly say either way.', reason]);
-});
-
-// Revision round (04_interface.md, "Revision round: agrees, partly agrees, contradicts").
-test('partly agrees shows the writer\'s sentence beside the page\'s, says what the page does not, and sets supports', async () => {
-  const p = await setup(undefined, undefined, {evidenceCheck: true}); await p.flush();
-  const [row] = await readWith(p, [{name: 'Pol.is article', url: URL, stance: 'refutes', about: 'Coastal flooding'}]);
-  const claim = 'The survey shows flooding days tripled.';
-  const reason = 'The page says flooding days doubled, not tripled.';
-  checks(p)[0].resolve({verdict: 'partly', quote: QUOTE, claim, reason, line: 'A news report. Date not given. Names its sources.', suggested: {}});
-  await p.flush();
-  assert.deepEqual(lines(row), ['Partly agrees', `You wrote: "${claim}"`, `The page says: "${QUOTE}"`, reason,
-    'A news report. Date not given. Names its sources.', '']);
-  assert.equal(fields(row).stance.value, 'supports');          // partly agrees counts as supports
-  fields(row).stance.value = 'refutes'; await fields(row).stance.emit('change');
-  assert.equal(lines(row).at(-1), 'You chose differently from the reading. That is fine; others will see both.');
-  await p.runTimer(200);
-  assert.deepEqual(JSON.parse(p.requests.at(-1).options.body).evidence[0].check, {verdict: 'partly', quote: QUOTE});
-});
-
-test('a row with no link says no source given, and the tick says personal experience and is posted', async () => {
-  const p = await setup(undefined, undefined, {evidenceCheck: true}); await p.flush();
-  const [row] = await readWith(p, [{name: 'What I saw at the harbour', url: null, about: 'Coastal flooding'}]);
-  await p.flush();
-  assert.equal(checks(p).length, 0);                            // nothing to read
-  assert.deepEqual(lines(row), ['No source given.']);
-  const tick = box(row).children.find(c => c.tag === 'label');
-  assert.equal(tick.children[1], 'From my own experience');
-  tick.children[0].checked = true; await tick.children[0].emit('change'); await p.flush();
-  assert.deepEqual(lines(row), ['From personal experience.']);
-  await p.runTimer(200);
-  assert.equal(JSON.parse(p.requests.at(-1).options.body).evidence[0].personal, true);
-  // Typing a link clears the tick and the line; the link is read when the writer leaves the field.
-  fields(row).url.value = URL; await fields(row).url.emit('input');
-  assert.equal(tick.children[0].checked, false);
-  assert.deepEqual(lines(row), []);
-  await fields(row).url.emit('change'); await p.flush();
-  assert.equal(checks(p).length, 1);
-  await p.runTimer(200);
-  assert.equal(JSON.parse(p.requests.at(-1).options.body).evidence[0].personal, undefined);
-  // Removing the link brings the line back.
-  fields(row).url.value = ''; await fields(row).url.emit('input');
-  assert.deepEqual(lines(row), ['No source given.']);
-});
-
-test('an edited post keeps its personal experience tick', async () => {
-  const p = await setup(undefined, {issues: {'coastal flooding': {name: 'Coastal flooding', parent_key: null}}, solutions: {}, evidence: {}},
-                        {member: 'Ada Lovelace', evidenceCheck: true});
-  p.get('edit-post').textContent = JSON.stringify({id: 'post-1', text: 'Coastal flooding is worse.', anonymous: false,
-    card: {issues: [{name: 'Coastal flooding', parent: null}], solutions: [],
-           evidence: [{name: 'What I saw', url: null, stance: 'supports', about: 'Coastal flooding', personal: true}]}});
-  p.load('edit_post.js'); await p.flush();
-  const [row] = p.get('evidence-rows').children;
-  assert.deepEqual(lines(row), ['From personal experience.']);
-});
-
-test('without a reading service a link is not read, and a row with no link still says so', async () => {
-  const p = await setup(undefined, undefined, {evidenceCheck: true, noReading: true}); await p.flush();
-  const [linked, bare] = await readWith(p, [{name: 'Survey', url: URL, about: 'Coastal flooding'},
-                                            {name: 'What I saw', url: null, about: 'Coastal flooding'}]);
-  await p.flush();
-  assert.equal(checks(p).length, 0);
-  assert.deepEqual(lines(linked), []);
-  assert.deepEqual(lines(bare), ['No source given.']);
 });

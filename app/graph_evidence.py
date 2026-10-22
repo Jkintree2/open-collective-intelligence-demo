@@ -17,20 +17,17 @@ ON MATCH  SET e.url = coalesce(e.url, $url)
 WITH e
 FOREACH (_ IN CASE WHEN $source IS NOT NULL AND e.url = $url AND e.source_checked_at IS NULL THEN [1] ELSE [] END |
   SET e.source_type = $source.type, e.source_primary = $source.primary,
-      e.source_published = $source.published, e.source_cites = $source.cites, e.source_checked_at = $now)
+      e.source_published = $source.published, e.source_checked_at = $now)
 WITH e
 MATCH (p:Person {key: $person_key})
 CREATE (p)-[:SUBMIT {post_id: $post_id, anonymous: $anonymous, created_at: $now}]->(e)
 """
 
 # 5b, extended. {rel} is SUPPORTS or REFUTES and {label} Issue, Solution or Evidence, both from whitelists.
-# The revision round adds the writer's sentence, the reading's reason and the personal experience tick
-# ($personal is true or null; a null property is not stored).
 CREATE_EVIDENCE_STANCE_CHECKED = """
 MATCH (e:Evidence {key: $evidence_key}), (t:{label} {key: $target_key})
 CREATE (e)-[:{rel} {post_id: $post_id, created_at: $now,
-                    check: $check, check_quote: $check_quote, checked_at: $checked_at,
-                    check_claim: $check_claim, check_reason: $check_reason, personal: $personal}]->(t)
+                    check: $check, check_quote: $check_quote, checked_at: $checked_at}]->(t)
 """
 
 # Q35. The readings one post holds on its evidence edges, with what each page says about itself: for the
@@ -40,9 +37,7 @@ MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
 WHERE r.post_id = $post_id AND r.check IS NOT NULL
 RETURN e.key AS evidence_key, t.key AS target_key, e.url AS url, r.check AS check,
        r.check_quote AS check_quote, r.checked_at AS checked_at,
-       r.check_claim AS check_claim, r.check_reason AS check_reason,
-       e.source_type AS source_type, e.source_primary AS source_primary, e.source_published AS source_published,
-       e.source_cites AS source_cites
+       e.source_type AS source_type, e.source_primary AS source_primary, e.source_published AS source_published
 """
 
 
@@ -62,11 +57,8 @@ UNWIND [i] + solutions AS t
 MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
 RETURN CASE WHEN t:Issue THEN 'issue' ELSE 'solution' END AS target_kind, t.key AS target_key,
        e.key AS evidence_key, type(r) AS stance, r.check AS check,
-       r.check_quote AS check_quote, r.check_claim AS check_claim, r.check_reason AS check_reason,
-       r.personal AS personal,
        e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
-       e.source_primary AS source_primary, e.source_published AS source_published,
-       e.source_cites AS source_cites
+       e.source_primary AS source_primary, e.source_published AS source_published
 """
 
 

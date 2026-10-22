@@ -80,13 +80,6 @@ class EvidenceItem(BaseModel):
     # Phase 2: the reading the card showed for this row's link, as {verdict, quote}. Only a claim:
     # the write path keeps it only when the site made that reading itself (check.kept_checks).
     check: dict[str, str | None] | None = None
-    # Phase 2, revision round: "From my own experience" ticked on a row with no link.
-    personal: bool = False
-
-    @field_validator("personal", mode="before")
-    @classmethod
-    def _personal(cls, value: Any) -> bool:
-        return value if isinstance(value, bool) else False
 
     @field_validator("check", mode="before")
     @classmethod
@@ -275,18 +268,17 @@ def resolve_payload(payload: CardPayload, candidates: Candidates) -> ResolvedPay
                 continue
             target = ("Issue", first_issue)
         seen.add(key)
-        row = {
-            "key": key,
-            "name": candidates.evidence.get(key, name),
-            "url": item.url,
-            "stance": item.stance,
-            "target_label": target[0],
-            "target_key": target[1],
-            "existing": key in candidates.evidence,
-        }
-        if item.personal and not item.url:  # never on a row with a link (03_schema.md, revision round)
-            row["personal"] = True
-        out.evidence.append(row)
+        out.evidence.append(
+            {
+                "key": key,
+                "name": candidates.evidence.get(key, name),
+                "url": item.url,
+                "stance": item.stance,
+                "target_label": target[0],
+                "target_key": target[1],
+                "existing": key in candidates.evidence,
+            }
+        )
     _positions_only(out, candidates)
     if out.dropped or out.corrected:
         log.info(json.dumps({"event": "payload_dropped", "dropped": out.dropped,

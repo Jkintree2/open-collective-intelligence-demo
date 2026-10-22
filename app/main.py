@@ -257,10 +257,8 @@ def _render_index(
             "text": text,
             "about": about,
             "editing": editing,
-            # Phase 2: the card reads evidence links only with the flag and a reading service; with the
-            # flag alone a row with no link still says so (revision round).
-            "evidence_check": settings.evidence_check_enabled,
-            "evidence_read": settings.evidence_check_enabled and bool(settings.llm_api_key),
+            # Phase 2: the card reads evidence links only with the flag and a reading service.
+            "evidence_check": settings.evidence_check_enabled and bool(settings.llm_api_key),
         },
         status_code=status_code,
     )

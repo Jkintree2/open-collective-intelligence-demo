@@ -28,15 +28,11 @@ from app.text import clean_name, make_key
 
 log = logging.getLogger("oci")
 
-# partly: the page bears out some of what the writer says it shows, not all (03_schema.md, revision round).
-VERDICTS = ("supports", "partly", "refutes", "unclear")
-# Readings that rest on a sentence copied from the page.
-QUOTED = ("supports", "partly", "refutes")
+VERDICTS = ("supports", "refutes", "unclear")
 SOURCE_TYPES = ("news", "research", "government", "reference", "organisation", "blog", "other")
 SUGGESTION_KINDS = ("issues", "solutions", "evidence")
 MAX_SUGGESTIONS = 3
 QUOTE_MAX = 500
-CLAIM_MAX = 500
 REASON_MAX = 300
 CACHE_SIZE = 500
 
@@ -52,9 +48,8 @@ You get JSON with:
 - "page": the title, description, date and text of the page behind the evidence's link.
 
 Decide, from the page text alone, whether the page supports the claim, argues against it
-(refutes), supports it only in part (partly), or does not clearly say either way (unclear). The
-verdict is about the claim, never about the writer's position,
-but the page must also bear out what the writer says it shows.
+(refutes), or does not clearly say either way (unclear). The verdict is about the claim, never
+about the writer's position, but the page must also bear out what the writer says it shows.
 First read the claim as something that can be true or false:
 - An issue is often named as a topic, a belief or a claim rather than a sentence ("Flat Earth
   claim", "Belief in astrology", "Vaccine injury theory", "Rising sea levels"). Read it as "the
@@ -69,21 +64,15 @@ Rules:
   support. A page that reports a view without endorsing it is unclear unless the claim is that
   the view exists.
 - The writer's own words about the page count as well as the claim. Words that say about the same
-  as the page, even in other words, are fine: that is supports. When the page backs the claim and
-  part of the writer's words but they go further than the page (a bigger number, "proves" or
-  "became law" where the page says "suggests" or "led to action", a figure the page only reports
-  someone claiming), answer partly, and say in "reason" exactly what the page does not say, for
-  example "The page says led to government action, not became law." When the page backs none of
-  what the writer's words say, answer unclear.
-- Partly is a kind of support: never answer partly when the page argues against the claim.
+  as the page, even in other words, are fine. When they go further than the page (a bigger
+  number, "proves" or "became law" where the page says "suggests" or "led to action", a figure
+  the page only reports someone claiming), answer unclear, and say in "reason" what the page does
+  not say.
 - When in doubt, answer unclear. Calling a page supporting when it argues against is the worst
   mistake you can make.
 - "quote" is one sentence copied exactly, character for character, from page.text, that your
   verdict rests on. No paraphrase, no joining of sentences, no ellipsis. For unclear, give the
   closest sentence or an empty string.
-- "claim_words" is the one sentence of the statement in which the writer says what this evidence
-  shows, copied exactly, character for character, from statement. An empty string when the
-  statement says nothing about this evidence of its own.
 - "reason" is one short plain sentence a member of the public can read, about the page and the
   writer's words, never about the writer. Never mention yourself,
   models, extraction, nodes, edges or graphs. No dashes.
@@ -93,9 +82,6 @@ Also describe the source, from the page itself:
 - "primary": true when the page is the original study, data, record, law or first hand account;
   false when it reports on one; null when you cannot tell.
 - "published": the date the page gives for itself as YYYY-MM-DD, YYYY-MM or YYYY, or null.
-- "cites": true when the page names where its facts come from (studies, data, documents or people
-  by name, or a list of references); false when it gives facts without saying where from; null
-  when you cannot tell.
 
 Finally list what else on the page bears on this conversation and is not already in the claim,
 at most three of each, each a short name of under twelve words in the page's own terms:
@@ -103,26 +89,22 @@ at most three of each, each a short name of under twelve words in the page's own
 or reports the page cites). Empty lists are fine and usual.
 
 Answer with one JSON object and nothing else:
-{"verdict": "supports" | "partly" | "refutes" | "unclear",
+{"verdict": "supports" | "refutes" | "unclear",
  "quote": "...",
- "claim_words": "...",
  "reason": "...",
- "source": {"type": "...", "primary": true | false | null, "published": "..." | null,
-            "cites": true | false | null},
+ "source": {"type": "...", "primary": true | false | null, "published": "..." | null},
  "suggested": {"issues": ["..."], "solutions": ["..."], "evidence": ["..."]}}
 """.strip()
 
 
 @dataclass
 class Check:
-    """verdict: supports, partly, refutes, unclear (read), unread (page not opened), unsupported
-    (not a web page) or unchecked (no reading service, or it failed). claim: the writer's own sentence
-    about the evidence, as found in the statement read."""
+    """verdict: supports, refutes, unclear (read), unread (page not opened), unsupported (not a
+    web page) or unchecked (no reading service, or it failed)."""
     verdict: str
     url: str
     quote: str | None = None
     reason: str | None = None
-    claim: str | None = None
     source: dict[str, Any] | None = None
     suggested: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     checked_at: str | None = None
@@ -130,7 +112,7 @@ class Check:
 
     def as_json(self) -> dict[str, Any]:
         return {"verdict": self.verdict, "url": self.url, "quote": self.quote, "reason": self.reason,
-                "claim": self.claim, "source": self.source, "suggested": self.suggested, "checked_at": self.checked_at}
+                "source": self.source, "suggested": self.suggested, "checked_at": self.checked_at}
 
 
 class _Cache:
@@ -186,19 +168,9 @@ def flat(text: str) -> str:
     return " ".join(text.split())
 
 
-def found_in(words: str, text: str) -> bool:
-    wanted = flat(words).strip(" .\"'")
-    return len(wanted) >= 12 and wanted in flat(text)
-
-
 def on_page(quote: str, page: Page) -> bool:
-    return found_in(quote, page.text)
-
-
-def claim_in(claim: str | None, statement: str) -> str | None:
-    """The writer's sentence, when it is in `statement` as saved; else None (03_schema.md, check_claim)."""
-    claim = " ".join((claim or "").split())
-    return claim[:CLAIM_MAX] if claim and found_in(claim, statement) else None
+    wanted = flat(quote).strip(" .\"'")
+    return len(wanted) >= 12 and wanted in flat(page.text)
 
 
 def parse_check(content: str) -> dict[str, Any]:
@@ -223,8 +195,7 @@ def _source(raw: Any, page: Page) -> dict[str, Any]:
     # last update, not the day the page was first written (Wikipedia gives both).
     if kind == "reference" and page.modified:
         published = page.modified
-    cites = raw.get("cites") if isinstance(raw.get("cites"), bool) else None
-    return {"type": kind, "primary": primary, "published": published, "cites": cites}
+    return {"type": kind, "primary": primary, "published": published}
 
 
 def _suggestions(raw: Any, about: str, evidence_name: str, candidates: Candidates) -> dict[str, list[dict[str, Any]]]:
@@ -293,16 +264,14 @@ def check_evidence(url: str, evidence_name: str, about: str, statement: str, set
     verdict = data["verdict"]
     quote = data.get("quote") if isinstance(data.get("quote"), str) else ""
     quote = " ".join(FOOTNOTE.sub("", quote).split())
-    if verdict in QUOTED and not on_page(quote, page):
+    if verdict in ("supports", "refutes") and not on_page(quote, page):
         log.info(json.dumps({"event": "check_quote_missing", "request_id": request_id}))
         verdict = "unclear"
     reason = data.get("reason") if isinstance(data.get("reason"), str) else ""
-    claim = data.get("claim_words") if isinstance(data.get("claim_words"), str) else None
     result = Check(
         verdict, url,
-        quote=quote[:QUOTE_MAX] if verdict in QUOTED else None,
+        quote=quote[:QUOTE_MAX] if verdict in ("supports", "refutes") else None,
         reason=re.sub(r"\s+", " ", reason).strip()[:REASON_MAX] or None,
-        claim=claim_in(claim, statement),
         source=_source(data.get("source"), page),
         suggested=_suggestions(data.get("suggested"), about, evidence_name, candidates or Candidates.empty()),
         checked_at=now,
@@ -330,8 +299,7 @@ def confirmed(url: str, about: str, statement: str, verdict: str | None, quote: 
     return next((other for other in cache.same_claim(key[0], key[1]) if matches(other)), None)
 
 
-NO_CHECK = {"check": None, "check_quote": None, "checked_at": None, "source": None,
-            "check_claim": None, "check_reason": None}
+NO_CHECK = {"check": None, "check_quote": None, "checked_at": None, "source": None}
 
 
 def _when(value: str | None) -> datetime | None:
@@ -344,7 +312,7 @@ def _when(value: str | None) -> datetime | None:
 def kept_checks(items: list[Any], evidence: list[dict[str, Any]], statement: str,
                 stored: dict[tuple[str, str], dict[str, Any]] | None = None) -> dict[str, dict[str, Any]]:
     """For each resolved evidence row (`evidence`, keyed), what its post edge and Evidence node take:
-    `check`, `check_quote`, `checked_at`, `source`, `check_claim` and `check_reason`, or NO_CHECK. `items` are the card's own rows,
+    `check`, `check_quote`, `checked_at` and `source`, or NO_CHECK. `items` are the card's own rows,
     whose `check` is only a claim: it is kept when this process made that reading (confirmed), or,
     for an edited post, when it is the reading the record already holds on this post's edge for the
     same evidence, target and link (`stored`, keyed by evidence key and target key). A kept stored
@@ -366,16 +334,12 @@ def kept_checks(items: list[Any], evidence: list[dict[str, Any]], statement: str
         if (before and before.get("url") == row["url"] and before.get("check") == verdict
                 and (before.get("check_quote") or None) == quote):
             out[row["key"]] = {"check": verdict, "check_quote": quote,
-                               "checked_at": before.get("checked_at"), "source": None,
-                               "check_claim": claim_in(before.get("check_claim"), statement),
-                               "check_reason": before.get("check_reason")}
+                               "checked_at": before.get("checked_at"), "source": None}
             continue
         hit = confirmed(row["url"], item.about or "", statement, verdict, quote)
         if hit is not None:
             out[row["key"]] = {"check": hit.verdict, "check_quote": hit.quote, "checked_at": _when(hit.checked_at),
-                               "source": hit.source if hit.verdict in VERDICTS else None,
-                               # The writer's sentence only while the statement saved still holds it.
-                               "check_claim": claim_in(hit.claim, statement), "check_reason": hit.reason}
+                               "source": hit.source if hit.verdict in ("supports", "refutes", "unclear") else None}
     return out
 
 
@@ -412,9 +376,8 @@ def more_than_five_years(published: str | None, today: date) -> bool:
 
 
 def source_words(source: dict[str, Any] | None, today: date | None = None) -> str | None:
-    """What a page says about itself, in words (04_interface.md, Phase 2, as John approved it, and R16):
-    'A news report from March 2018. More than five years old. Secondary source. Names its sources.'
-    The date is counted
+    """What a page says about itself, in words (04_interface.md, Phase 2, as John approved it):
+    'A news report from March 2018. More than five years old. Secondary source.' The date is counted
     against `today` (the day the line is shown). Agreement is added on the issue page."""
     if not source:
         return None
@@ -426,5 +389,4 @@ def source_words(source: dict[str, Any] | None, today: date | None = None) -> st
         first += " More than five years old."
     primary = source.get("primary")
     second = " Primary source." if primary is True else " Secondary source." if primary is False else ""
-    third = " Names its sources." if source.get("cites") is True else ""
-    return first + second + third
+    return first + second
