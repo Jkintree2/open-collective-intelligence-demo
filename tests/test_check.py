@@ -63,7 +63,7 @@ GOOD = {"verdict": "supports",
 def test_a_supporting_page_with_its_quote():
     result = run(GOOD)
     assert result.verdict == "supports" and result.quote.startswith("A survey of forty")
-    assert result.source == {"type": "news", "primary": False, "published": "2024-03-14"}
+    assert result.source == {"type": "news", "primary": False, "published": "2024-03-14", "cites": None}
     assert result.suggested["issues"] == [{"name": "Sea walls not keeping pace", "existing": False}]
 
 
@@ -114,7 +114,7 @@ def test_a_page_that_cannot_be_read_is_not_sent_for_reading(status, reason, verd
 def test_unknown_source_type_and_odd_values_are_cleaned():
     result = run({**GOOD, "source": {"type": "tabloid", "primary": "yes", "published": "last year"}},
                  page=Page("ok", URL, TEXT))
-    assert result.source == {"type": "other", "primary": None, "published": None}
+    assert result.source == {"type": "other", "primary": None, "published": None, "cites": None}
 
 
 def test_the_page_date_wins_over_the_reply():
@@ -210,4 +210,62 @@ def test_a_long_page_is_cut_around_the_writers_words_and_the_reader_names_the_si
 def test_the_prompt_asks_for_the_writers_own_words_to_be_borne_out():
     # Audrey Tang, 21 October: "80% became law, which proves" was never checked against the page.
     assert "bear out what the writer says it shows" in check.SYSTEM_PROMPT
-    assert "say in \"reason\" what the page does\n  not say" in check.SYSTEM_PROMPT
+    prompt = " ".join(check.SYSTEM_PROMPT.split())
+    assert 'say in "reason" exactly what the page does not say' in prompt
+    # Revision round, 22 October: going further than the page is partly, not unclear.
+    assert "answer partly" in prompt and '"claim_words"' in prompt
+
+
+def test_the_prompt_reads_the_claim_alone_first_and_a_denial_backed_by_the_page_is_refutes():
+    # PR 16 was reverted for reading a page that backs a writer's denial as supports (22 October 2026).
+    prompt = " ".join(check.SYSTEM_PROMPT.split())
+    assert "Step 1, the claim alone. Ignore the statement and writer_says." in prompt
+    assert "only when step 1 says supports" in prompt
+    assert "When step 1 says refutes, answer refutes, whatever the writer's words say." in prompt
+    assert "the page agreeing with the writer is not the page supporting the claim" in prompt
+    assert "that is supports" not in prompt
+
+
+# Revision round: partly agrees, the writer's own sentence, and whether the page names its sources.
+STATEMENT = "Floods are getting worse. The survey of forty towns shows flooding days tripled since 2000."
+PARTLY = {**GOOD, "verdict": "partly", "claim_words": "The survey of forty towns shows flooding days tripled since 2000.",
+          "reason": "The page says flooding days doubled, not tripled.",
+          "source": {"type": "news", "primary": False, "published": "2024-03-14", "cites": True}}
+
+
+def run_with(data, statement=STATEMENT, page=PAGE):
+    return check_evidence(URL, "Forty town flooding survey", "Coastal flooding", statement, SETTINGS,
+                          fetcher=page_of(page), backup=no_backup, transport=reply(data))
+
+
+def test_a_partly_reading_keeps_its_quote_reason_and_the_writers_sentence():
+    result = run_with(PARTLY)
+    assert result.verdict == "partly" and result.quote.startswith("A survey of forty")
+    assert result.claim == "The survey of forty towns shows flooding days tripled since 2000."
+    assert result.reason == "The page says flooding days doubled, not tripled."
+    assert result.source["cites"] is True
+    assert result.as_json()["claim"] == result.claim
+    assert confirmed(URL, "Coastal flooding", STATEMENT, "partly", result.quote) is result
+
+
+def test_a_partly_reading_whose_quote_is_not_on_the_page_is_unclear():
+    result = run_with({**PARTLY, "quote": "Flooding days tripled since 2000."})
+    assert result.verdict == "unclear" and result.quote is None
+
+
+def test_the_writers_sentence_must_be_in_the_statement():
+    assert run_with({**PARTLY, "claim_words": "Flooding is the worst it has ever been anywhere."}).claim is None
+    check.cache.clear()
+    assert run_with({**PARTLY, "claim_words": ""}).claim is None
+    check.cache.clear()
+    assert run_with({**PARTLY, "claim_words": 7}).claim is None
+    check.cache.clear()
+    # Spacing and curly quotes are forgiven, as for the page's quote.
+    assert run_with({**PARTLY, "claim_words": "the survey of  forty towns shows flooding days tripled"}).claim == \
+        "the survey of forty towns shows flooding days tripled"
+
+
+def test_odd_cites_values_become_null():
+    for odd in ("yes", 1, None):
+        check.cache.clear()
+        assert run_with({**PARTLY, "source": {**PARTLY["source"], "cites": odd}}).source["cites"] is None

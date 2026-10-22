@@ -52,7 +52,10 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
             kept = checks.get(item["key"]) or {}
             submit, stance = graph_evidence.MERGE_EVIDENCE_SUBMIT_CHECKED, graph_evidence.CREATE_EVIDENCE_STANCE_CHECKED
             extra = {"check": kept.get("check"), "check_quote": kept.get("check_quote"),
-                     "checked_at": kept.get("checked_at")}
+                     "checked_at": kept.get("checked_at"), "check_claim": kept.get("check_claim"),
+                     "check_reason": kept.get("check_reason"),
+                     # From my own experience: only on a row with no link, never read (03_schema.md).
+                     "personal": True if item.get("personal") and not item.get("url") else None}
             source = {"source": kept.get("source")}
         tx.run(
             submit,

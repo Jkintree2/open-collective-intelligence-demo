@@ -118,3 +118,33 @@ def test_route_copy_is_in_the_interface_doc():
     from pathlib import Path
     doc = (Path(__file__).resolve().parent.parent / "docs/planning/04_interface.md").read_text(encoding="utf-8")
     assert routes_evidence.TOO_MANY in doc
+
+
+def test_the_write_page_loads_the_check_with_the_flag_and_says_when_nothing_can_be_read(api, monkeypatch):
+    # Revision round: with the flag on a row with no link says so even without a reading service.
+    client, holder, _ = api
+    main = importlib.import_module("app.main")
+    form = lambda html: html[html.index('<form method="post"'):].split(">", 1)[0]
+    html = client.get("/").text
+    assert "data-evidence-check" in form(html) and "data-no-reading" not in form(html)
+    assert "/static/evidence_check.js" in html
+    no_key = replace(holder["settings"], llm_api_key=None)
+    holder["settings"] = no_key
+    monkeypatch.setattr(main, "settings", no_key)
+    html = client.get("/").text
+    assert "data-evidence-check data-no-reading" in form(html) and "/static/evidence_check.js" in html
+    off = replace(holder["settings"], evidence_check_enabled=False)
+    holder["settings"] = off
+    monkeypatch.setattr(main, "settings", off)
+    html = client.get("/").text
+    assert "data-evidence-check" not in html and "evidence_check.js" not in html
+
+
+def test_the_answer_carries_the_writers_sentence(api, monkeypatch):
+    client, _, _ = api
+    monkeypatch.setattr(routes_evidence.check, "check_evidence", lambda *a, **k: Check(
+        "partly", BODY["url"], quote="Flooding days doubled.", reason="The page says doubled, not tripled.",
+        claim="Flooding days tripled.", source={"type": "news", "primary": False, "published": None, "cites": True}))
+    body = client.post("/api/check-evidence", json=BODY).json()
+    assert (body["verdict"], body["claim"], body["reason"]) == ("partly", "Flooding days tripled.", "The page says doubled, not tripled.")
+    assert body["line"] == "A news report. Date not given. Secondary source. Names its sources."
