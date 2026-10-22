@@ -210,9 +210,20 @@ def test_a_long_page_is_cut_around_the_writers_words_and_the_reader_names_the_si
 def test_the_prompt_asks_for_the_writers_own_words_to_be_borne_out():
     # Audrey Tang, 21 October: "80% became law, which proves" was never checked against the page.
     assert "bear out what the writer says it shows" in check.SYSTEM_PROMPT
-    assert 'say in "reason" exactly what the page does not say' in check.SYSTEM_PROMPT
+    prompt = " ".join(check.SYSTEM_PROMPT.split())
+    assert 'say in "reason" exactly what the page does not say' in prompt
     # Revision round, 22 October: going further than the page is partly, not unclear.
-    assert "answer partly" in check.SYSTEM_PROMPT and '"claim_words"' in check.SYSTEM_PROMPT
+    assert "answer partly" in prompt and '"claim_words"' in prompt
+
+
+def test_the_prompt_reads_the_claim_alone_first_and_a_denial_backed_by_the_page_is_refutes():
+    # PR 16 was reverted for reading a page that backs a writer's denial as supports (22 October 2026).
+    prompt = " ".join(check.SYSTEM_PROMPT.split())
+    assert "Step 1, the claim alone. Ignore the statement and writer_says." in prompt
+    assert "only when step 1 says supports" in prompt
+    assert "When step 1 says refutes, answer refutes, whatever the writer's words say." in prompt
+    assert "the page agreeing with the writer is not the page supporting the claim" in prompt
+    assert "that is supports" not in prompt
 
 
 # Revision round: partly agrees, the writer's own sentence, and whether the page names its sources.
