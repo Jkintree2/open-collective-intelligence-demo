@@ -1,6 +1,7 @@
 """PDFs behind evidence links: read by content type, size, page and time limits, no text, arXiv. No network."""
 
 import gzip
+import json
 import subprocess
 import sys
 import time
@@ -83,8 +84,9 @@ def test_a_pdf_over_the_size_stop_is_not_read(monkeypatch):
     assert page.status == "unread" and page.reason == "too_big"
 
 
-def test_the_size_stop_is_fifteen_megabytes_and_forty_pages():
-    assert fetch_pdf.MAX_BYTES == 15_000_000 and fetch_pdf.MAX_PAGES == 40
+def test_the_limits_are_fifteen_megabytes_forty_pages_and_twenty_five_seconds():
+    # 25 seconds: on Render's tenth of a CPU a 15 page arXiv paper takes about 20.
+    assert fetch_pdf.MAX_BYTES == 15_000_000 and fetch_pdf.MAX_PAGES == 40 and fetch_pdf.READ_SECONDS == 25
 
 
 def test_a_pdf_that_takes_too_long_is_stopped():
@@ -170,3 +172,48 @@ def test_the_reading_process_sets_the_cap_when_it_can():
              "print(cap_memory(), resource.getrlimit(resource.RLIMIT_AS)[0] == MEMORY_BYTES)")
     done = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, cwd=fetch_pdf.ROOT, check=True)
     assert done.stdout.split() == (["True", "True"] if sys.platform.startswith("linux") else ["False", "False"])
+
+
+def slow_reader(*pages, cut_off=""):
+    """A reader process that sends a title line and `pages`, then a line cut off part way, then hangs."""
+    lines = [json.dumps({"title": "Slow report", "published": "2024-06-11"})] + [json.dumps({"page": p}) for p in pages]
+    script = ("import sys, time; sys.stdin.buffer.read(); "
+              f"sys.stdout.write({chr(10).join(lines) + chr(10)!r} + {cut_off!r}); sys.stdout.flush(); time.sleep(30)")
+    return [sys.executable, "-c", script]
+
+
+SLOW_PAGES = ("Councils that restored salt marsh saw flood damage fall by a third over five years.",
+              "Sea walls alone did not reduce flood damage over the same period in any council.")
+
+
+def test_a_reading_out_of_time_keeps_the_pages_read_so_far(monkeypatch):
+    monkeypatch.setattr(fetch_pdf, "READ_SECONDS", 1.5)
+    monkeypatch.setattr(fetch_pdf, "READER", slow_reader(*SLOW_PAGES, cut_off='{"page": "Third page never fini'))
+    started = time.perf_counter()
+    found = fetch_pdf.pdf_text(b"%PDF-1.4")
+    assert time.perf_counter() - started < 5
+    assert found.partial and found.pages == 2 and found.title == "Slow report"
+    assert "Third page" not in found.text
+    page = read("https://gov.example.org/r", {("gov.example.org", "/r"): pdf_reply(b"%PDF-1.4 slow")})
+    assert page.status == "ok" and page.title == "Slow report" and page.published == "2024-06-11"
+    assert SLOW_PAGES[0] in page.text and SLOW_PAGES[1] in page.text
+
+
+def test_a_reading_out_of_time_before_any_page_is_unread(monkeypatch):
+    monkeypatch.setattr(fetch_pdf, "READ_SECONDS", 1.5)
+    monkeypatch.setattr(fetch_pdf, "READER", slow_reader())
+    assert fetch_pdf.pdf_text(b"%PDF-1.4") is None
+    page = read("https://gov.example.org/r", {("gov.example.org", "/r"): pdf_reply(b"%PDF-1.4 slow")})
+    assert page.status == "unread" and page.reason == "pdf"
+
+
+def test_a_reading_out_of_time_with_only_blank_pages_is_unread_not_scanned(monkeypatch):
+    monkeypatch.setattr(fetch_pdf, "READ_SECONDS", 1.5)
+    monkeypatch.setattr(fetch_pdf, "READER", slow_reader("", " "))
+    page = read("https://gov.example.org/r", {("gov.example.org", "/r"): pdf_reply(b"%PDF-1.4 slow")})
+    assert page.status == "unread" and page.reason == "pdf"
+
+
+def test_a_whole_reading_is_not_partial():
+    found = fetch_pdf.pdf_text((PDFS / "flood_report.pdf").read_bytes())
+    assert not found.partial and found.pages == 2 and "salt marsh" in found.text
