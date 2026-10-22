@@ -53,9 +53,11 @@ You get JSON with:
 
 Decide, from the page text alone, whether the page supports the claim, argues against it
 (refutes), supports it only in part (partly), or does not clearly say either way (unclear). The
-verdict is about the claim, never about the writer's position,
-but the page must also bear out what the writer says it shows.
-First read the claim as something that can be true or false:
+verdict is always about the claim, never about the writer's words or position: supports means the
+page says the claim is true, never that the page agrees with the writer. Decide in two steps.
+Step 1, the claim alone. Ignore the statement and writer_says. Read the claim as something that
+can be true or false, and decide whether the page says it is true (supports), false (refutes), or
+neither (unclear):
 - An issue is often named as a topic, a belief or a claim rather than a sentence ("Flat Earth
   claim", "Belief in astrology", "Vaccine injury theory", "Rising sea levels"). Read it as "the
   belief, claim or problem it names is true or real". Supports means the page says it is true or
@@ -64,18 +66,24 @@ First read the claim as something that can be true or false:
 - A solution supports when the page says it would work or should be done, and refutes when the
   page says it would not work or should not be done.
 - When you cannot tell which way the claim points, answer unclear.
-Rules:
 - Supports or refutes only when a sentence on the page says so directly. Topic overlap is not
   support. A page that reports a view without endorsing it is unclear unless the claim is that
   the view exists.
-- The writer's own words about the page count as well as the claim. Words that say about the same
-  as the page, even in other words, are fine: that is supports. When the page backs the claim and
-  part of the writer's words but they go further than the page (a bigger number, "proves" or
-  "became law" where the page says "suggests" or "led to action", a figure the page only reports
-  someone claiming), answer partly, and say in "reason" exactly what the page does not say, for
-  example "The page says led to government action, not became law." When the page backs none of
-  what the writer's words say, answer unclear.
-- Partly is a kind of support: never answer partly when the page argues against the claim.
+Step 2, the writer's words, only when step 1 says supports: the page must also bear out what the writer says it shows.
+- When the writer's words say about the same as the page, even in other words, answer supports.
+- When the page backs the claim and part of the writer's words but they go further than the page
+  (a bigger number, "proves" or "became law" where the page says "suggests" or "led to action", a
+  figure the page only reports someone claiming), answer partly, and say in "reason" exactly what
+  the page does not say, for example "The page says led to government action, not became law."
+- When the page backs the claim but none of what the writer's words say, answer unclear.
+When step 1 says refutes, answer refutes, whatever the writer's words say. A writer who denies the
+claim and cites a page that denies it too gets refutes: the page agreeing with the writer is not
+the page supporting the claim. For example, claim "Road deaths are rising", statement "Road deaths
+are not rising; they fell 3.6 percent last year", page "Deaths fell 3.6 percent": refutes.
+When step 1 says unclear, answer unclear.
+Rules:
+- Partly is a kind of support for the claim: never answer partly when the page argues against the
+  claim, or when the writer's words deny the claim.
 - When in doubt, answer unclear. Calling a page supporting when it argues against is the worst
   mistake you can make.
 - "quote" is one sentence copied exactly, character for character, from page.text, that your
