@@ -82,14 +82,39 @@ def test_an_abstract_that_settles_it_is_enough():
     assert result.source["type"] == "research" and result.source["primary"] is True
 
 
-def test_an_abstract_read_as_partly_agreeing_is_not_sent_on_to_the_paper():
-    seen = []
-    quote = "Our model achieves 28.4 BLEU after training for 3.5 days on eight GPUs."
-    partly = {**SUPPORTS, "verdict": "partly", "quote": quote,
-              "reason": "The abstract gives 3.5 days on eight GPUs, not 12 hours for the base model."}
-    result = run(ABS, {ABS: ABSTRACT, PAPER: FULL}, partly, seen=seen)
-    assert seen == [ABS] and result.verdict == "partly" and result.quote == quote
+ABSTRACT_QUOTE = "Our model achieves 28.4 BLEU after training for 3.5 days on eight GPUs."
+PARTLY = {**SUPPORTS, "verdict": "partly", "quote": ABSTRACT_QUOTE,
+          "reason": "The abstract gives 3.5 days on eight GPUs, not 12 hours for the base model."}
+
+
+def test_an_abstract_read_as_partly_has_its_paper_read_and_a_quoted_paper_reading_wins():
+    seen, calls = [], []
+    result = run(ABS, {ABS: ABSTRACT, PAPER: FULL}, PARTLY, SUPPORTS, seen=seen, calls=calls)
+    assert seen == [ABS, PAPER] and len(calls) == 2
+    assert result.verdict == "supports" and result.url == ABS and result.quote == SUPPORTS["quote"]
     assert result.source["type"] == "research" and result.source["primary"] is True
+    assert result.source["published"] == "2017-06-12"            # the abstract's date, not the PDF's
+    assert result.usage == {"prompt_tokens": 2000, "completion_tokens": 200}
+    assert confirmed(ABS, ABOUT, STATEMENT, "supports", SUPPORTS["quote"]) is result
+
+
+def test_an_abstract_read_as_partly_keeps_its_reading_when_the_paper_is_unclear():
+    seen = []
+    result = run(ABS, {ABS: ABSTRACT, PAPER: FULL}, PARTLY, UNCLEAR, seen=seen)
+    assert seen == [ABS, PAPER]
+    assert result.verdict == "partly" and result.quote == ABSTRACT_QUOTE and result.reason == PARTLY["reason"]
+    assert result.source["type"] == "research" and result.source["published"] == "2017-06-12"
+    assert result.usage == {"prompt_tokens": 2000, "completion_tokens": 200}
+    assert confirmed(ABS, ABOUT, STATEMENT, "partly", ABSTRACT_QUOTE) is result
+
+
+def test_an_abstract_read_as_partly_keeps_its_reading_when_the_paper_cannot_be_opened():
+    seen, calls = [], []
+    result = run(ABS, {ABS: ABSTRACT, PAPER: Page("unread", PAPER, reason="dns")}, PARTLY, seen=seen, calls=calls)
+    assert seen == [ABS, PAPER] and len(calls) == 1
+    assert result.verdict == "partly" and result.quote == ABSTRACT_QUOTE and result.url == ABS
+    assert result.usage == {"prompt_tokens": 1000, "completion_tokens": 100}
+    assert confirmed(ABS, ABOUT, STATEMENT, "partly", ABSTRACT_QUOTE) is result
 
 
 def test_the_paper_unclear_too_keeps_the_abstracts_reading_unclear():

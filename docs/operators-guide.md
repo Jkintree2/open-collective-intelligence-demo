@@ -226,7 +226,7 @@ Some pages cannot be read well:
 
 In each case the form works as before and the writer chooses supports or refutes themselves.
 
-**PDFs** are read like pages: a report, a study or a government document behind a link is read for the sentence the writer's claim rests on, and its date is the one the PDF gives for itself. Only the first 40 pages are read, and a PDF over 15 MB says "Could not open this page", as a very slow one does. A link to a paper on arXiv (arxiv.org/abs/...) reads the paper's summary page first; when that does not settle it, the whole paper is read too, which can take a little longer. Such a paper is always described as a primary research paper.
+**PDFs** are read like pages: a report, a study or a government document behind a link is read for the sentence the writer's claim rests on, and its date is the one the PDF gives for itself. Only the first 40 pages are read, and a PDF over 15 MB says "Could not open this page", as a very slow one does. A link to a paper on arXiv (arxiv.org/abs/...) reads the paper's summary page first; when that does not settle it, or only partly agrees, the whole paper is read too, which can take a little longer. A summary leaves out detail, so the paper's own sentence is shown when it finds one. Such a paper is always described as a primary research paper.
 
 A piece of evidence with no link says "No source given." under it, on the form and on the issue page. Under that line is a tick box, **From my own experience**. A writer who ticks it is saying the evidence is something they saw or lived through; the line then reads "From personal experience." instead, on the form and on the issue page. Nothing is read or checked for it, and the box goes away when a link is typed.
 

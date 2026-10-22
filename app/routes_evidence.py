@@ -49,8 +49,10 @@ def _added(first: dict | None, second: dict | None) -> dict | None:
 
 def read_link(url: str, evidence: str, about: str, statement: str, settings, *, fetcher=fetch, **kwargs) -> check.Check:
     """check.check_evidence, plus what PDFs need (03_schema.md, revision round: PDFs and arXiv papers).
-    An arXiv abstract that does not settle it has its full paper read too, and that reading stands for the
-    link; an arXiv paper is primary research; a PDF with no text answers notext, which is never kept."""
+    An arXiv abstract read as unclear, unread or partly has its full paper read too: after unclear or unread
+    the paper's reading stands; after partly only a paper reading that rests on a quote (agrees, partly agrees,
+    contradicts) replaces it. An arXiv paper is primary research; a PDF with no text answers notext, which is
+    never kept."""
     reasons = []
 
     def reading(link, **more):
@@ -62,16 +64,19 @@ def read_link(url: str, evidence: str, about: str, statement: str, settings, *, 
     if not reasons:  # no reading service, or a reading already in the cache
         return result
     paper = fetch_pdf.arxiv_paper(url)
-    # Only unclear or unread send the reading on to the paper. Partly agrees rests on a sentence the abstract
-    # does say and names what it does not; it is a reading the writer can weigh, not one still to be made.
-    if paper and result.verdict in ("unclear", "unread"):
+    # A partly agrees from an abstract is often only what a summary leaves out (Eston, 22 October 2026), so the
+    # paper is read for it too; it keeps its place unless the paper gives a reading that rests on a quote.
+    if paper and result.verdict in ("unclear", "unread", "partly"):
         full = check.check_evidence(paper, evidence, about, statement, settings, fetcher=reading, **kwargs)
-        if full.verdict in check.VERDICTS:
+        both = _added(result.usage, full.usage)
+        if full.verdict in (check.QUOTED if result.verdict == "partly" else check.VERDICTS):
             # The abstract page's date is the paper's; the PDF's own is when arXiv last made the file.
             dated = (result.source or {}).get("published")
-            result = replace(full, url=result.url, usage=_added(result.usage, full.usage))
+            result = replace(full, url=result.url, usage=both)
             if dated and result.source:
                 result = replace(result, source={**result.source, "published": dated})
+        else:
+            result = replace(result, usage=both)
     if result.verdict == "unread" and reasons[-1] == "no_text":
         result = replace(result, verdict="notext")
     if fetch_pdf.is_arxiv_paper(url) and result.source:
