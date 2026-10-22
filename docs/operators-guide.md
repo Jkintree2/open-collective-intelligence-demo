@@ -254,6 +254,13 @@ People can **Edit** or **Delete** their own posts, and nobody else's. Editing a 
 
 The Issues page has a search box. It finds issues, solutions, evidence and posts that hold every word typed, or words that start with it. Searching by meaning comes in a later phase.
 
+## Two checks after the October changes
+
+Two things can only be seen from your side, in Render and in the back room. Neither is urgent.
+
+1. **What the site could read.** Sign in to Render, open your service and choose **Logs**. Search for `"reader"`. A line with `"reader": "youtube"` says whether YouTube let the site read a video's captions: `ok` when it did, `refused` when it turned the site away and the writer was asked to paste the transcript. A line with `"reader": "deepseek"` is a page the site could not open itself, so DeepSeek's own page reader tried instead; if Wikipedia links show up there often, tell whoever helps you with the site.
+2. **A copy of the record.** In the back room, press **Download a copy** once. It should save one file, as before. If it says there was a problem instead, tell whoever helps you with the site.
+
 ## Who to ask
 
 For accounts, entering people and the back room, you are in charge. For anything that means changing how the site works, or putting a copy back, ask a developer. The list of things planned for later came with this guide. Hand it to whoever helps you, so nobody starts from scratch.
