@@ -64,6 +64,7 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
     `checks` (Phase 2, post_checks) puts each row's stored reading on it, for the card to show."""
     stored = json.loads(stored_json or "{}")
     urls = {row["key"]: row.get("url") for row in stored.get("evidence", [])}
+    personal = {row["key"] for row in stored.get("evidence", []) if row.get("personal")}
     stored_homes = {row["key"]: row.get("for_issue_key") for row in stored.get("solutions", [])}
     proposed_from = {row["to_key"]: row["from_key"] for row in rows if row["rel"] == "HAVE_PROPOSED"}
 
@@ -93,8 +94,11 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
             item = evidence.setdefault(row["from_key"], {"name": row["from_name"], "url": urls.get(row["from_key"]),
                                                          "stance": "supports", "about": None})
             item["stance"], item["about"] = rel.lower(), row["to_name"]
+            if checks is not None and row["from_key"] in personal:
+                item["personal"] = True
             if (stored := (checks or {}).get((row["from_key"], row["to_key"]))) is not None:
                 item["check"] = {"verdict": stored["check"], "quote": stored["check_quote"],
+                                 "claim": stored.get("check_claim"), "reason": stored.get("check_reason"),
                                  "line": check.source_words(_source(stored)) if stored["check"] != "unread" else None}
     return {"issues": list(claimed.values()), "solutions": list(solutions.values()),
             "evidence": list(evidence.values())}
@@ -104,7 +108,7 @@ def _source(stored: dict) -> dict | None:
     if stored.get("source_type") is None:
         return None
     return {"type": stored["source_type"], "primary": stored.get("source_primary"),
-            "published": stored.get("source_published")}
+            "published": stored.get("source_published"), "cites": stored.get("source_cites")}
 
 
 def stored_checks(post_id: str, stored_json: str | None) -> dict[tuple[str, str], dict]:
