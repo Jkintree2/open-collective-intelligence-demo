@@ -3,7 +3,7 @@
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 {% if not editing %}<p class="sentence">{{ site_sentence }}</p>{% endif %}
 
-<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% else %}/posts{% endif %}" class="write" id="compose"{% if evidence_check %} data-evidence-check{% if not evidence_read %} data-no-reading{% endif %}{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
+<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% else %}/posts{% endif %}" class="write" id="compose"{% if evidence_check %} data-evidence-check{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
   {% if not member %}
   <div class="name-row">
     <div class="field">

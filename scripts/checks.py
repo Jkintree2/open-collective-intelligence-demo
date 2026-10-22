@@ -41,9 +41,7 @@ def main() -> int:
         ran += 1
         ok = result.verdict in case["expect"]
         met += ok
-        # Partly agrees is a kind of support, so it is the wrong way round where refutes was expected.
-        side = {"supports": "supports", "partly": "supports", "refutes": "refutes"}
-        wrong_way += {side.get(result.verdict), side.get(case["expect"][0])} == {"supports", "refutes"}
+        wrong_way += {result.verdict, case["expect"][0]} == {"supports", "refutes"}
         usage = result.usage or {}
         tokens_in += usage.get("prompt_tokens", 0)
         tokens_out += usage.get("completion_tokens", 0)
@@ -51,8 +49,6 @@ def main() -> int:
         print(f"  verdict {result.verdict} (expected {' or '.join(case['expect'])})")
         if result.quote:
             print(f"  quote   {result.quote}")
-        if result.claim:
-            print(f"  wrote   {result.claim}")
         if result.reason:
             print(f"  reason  {result.reason}")
         if result.source:
@@ -61,7 +57,7 @@ def main() -> int:
             print(f"  also    {json.dumps({k: [r['name'] for r in v] for k, v in result.suggested.items() if v})}")
         if usage:
             print(f"  tokens  {usage.get('prompt_tokens')} in, {usage.get('completion_tokens')} out")
-    print(f"\n{met} of {ran} as expected; {wrong_way} read the wrong way round (supports or partly for refutes, or back).")
+    print(f"\n{met} of {ran} as expected; {wrong_way} read the wrong way round (supports for refutes or back).")
     print(f"Tokens: {tokens_in} in, {tokens_out} out over {ran} cases.")
     return 0
 

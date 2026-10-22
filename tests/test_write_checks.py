@@ -53,8 +53,7 @@ def test_a_reading_the_site_made_is_kept_with_its_source_facts():
     card, payload = resolved()
     kept = kept_checks(card.evidence, payload.evidence, "Floods are worse.")
     assert kept == {"forty town survey": {"check": "supports", "check_quote": QUOTE, "source": SOURCE,
-                                          "checked_at": datetime(2026, 10, 20, 12, tzinfo=timezone.utc),
-                                          "check_claim": None, "check_reason": None}}
+                                          "checked_at": datetime(2026, 10, 20, 12, tzinfo=timezone.utc)}}
 
 
 def test_a_reading_the_site_never_made_is_stored_as_none():
@@ -89,8 +88,7 @@ def test_an_edit_keeps_the_reading_the_post_already_holds():
     stored = {("forty town survey", "coastal flooding"): {"url": URL, "check": "supports", "check_quote": QUOTE,
                                                           "checked_at": then}}
     kept = kept_checks(card.evidence, payload.evidence, "Reworded.", stored)["forty town survey"]
-    assert kept == {"check": "supports", "check_quote": QUOTE, "checked_at": then, "source": None,
-                    "check_claim": None, "check_reason": None}
+    assert kept == {"check": "supports", "check_quote": QUOTE, "checked_at": then, "source": None}
     moved = {key: dict(value, url="https://elsewhere.example.org/") for key, value in stored.items()}
     assert kept_checks(card.evidence, payload.evidence, "Reworded.", moved)["forty town survey"] == NO_CHECK
     other = {key: dict(value, check="refutes") for key, value in stored.items()}
@@ -204,48 +202,3 @@ def test_a_second_row_with_the_same_name_cannot_lend_its_reading_to_the_first():
                               "evidence": [first, second]})
     assert [row["target_key"] for row in payload.evidence] == ["coastal flooding"]
     assert kept_checks(card.evidence, payload.evidence, "Floods are worse.") == {"forty town survey": NO_CHECK}
-
-
-# Revision round (03_schema.md, "Revision round: agrees, partly agrees, contradicts; ...").
-def test_a_kept_reading_carries_the_writers_sentence_only_while_the_statement_holds_it():
-    claim = "The survey found flooding days tripled since 2000."
-    statement = f"Floods are worse. {claim}"
-    reading = Check("partly", URL, quote=QUOTE, reason="The page says doubled, not tripled.", claim=claim,
-                    source=SOURCE, checked_at=READ_AT)
-    check.cache.put(check.cache_key(URL, "Coastal flooding", statement), reading)
-    row = dict(CARD["evidence"][0], check={"verdict": "partly", "quote": QUOTE})
-    card, payload = resolved({**CARD, "evidence": [row]})
-    kept = kept_checks(card.evidence, payload.evidence, statement)["forty town survey"]
-    assert (kept["check"], kept["check_claim"], kept["check_reason"]) == ("partly", claim, "The page says doubled, not tripled.")
-    # Tidied afterwards so the sentence is gone: the reading stays, the sentence does not.
-    tidied = kept_checks(card.evidence, payload.evidence, "Floods are worse, a survey says.")["forty town survey"]
-    assert (tidied["check"], tidied["check_claim"]) == ("partly", None)
-
-
-def test_personal_experience_is_kept_only_on_a_row_with_no_link():
-    rows = [{"name": "What I saw", "url": None, "personal": True, "about": "Coastal flooding"},
-            {"name": "A report", "url": URL, "personal": True, "about": "Coastal flooding"},
-            {"name": "What I heard", "url": None, "personal": "yes", "about": "Coastal flooding"}]
-    _, payload = resolved({"issues": [{"name": "Coastal flooding"}], "evidence": rows})
-    assert [row.get("personal") for row in payload.evidence] == [True, None, None]
-    tx = Transaction()
-    graph_posts.write_payload(tx, payload, COMMON, checks={})
-    stances = [params for query, params in evidence_runs(tx) if "CREATE (e)" in query]
-    assert [params["personal"] for params in stances] == [True, None, None]
-    assert "personal: $personal" in graph_evidence.CREATE_EVIDENCE_STANCE_CHECKED
-    # With the flag off nothing of it is written: statement 5b is Phase 1's.
-    tx = Transaction()
-    graph_posts.write_payload(tx, payload, COMMON)
-    assert all("personal" not in params for _, params in evidence_runs(tx))
-
-
-def test_the_edge_takes_the_writers_sentence_and_the_reason():
-    _, payload = resolved()
-    tx = Transaction()
-    kept = {"forty town survey": {"check": "partly", "check_quote": QUOTE, "checked_at": COMMON["now"],
-                                  "source": {**SOURCE, "cites": True}, "check_claim": "Flooding tripled.",
-                                  "check_reason": "The page says doubled."}}
-    graph_posts.write_payload(tx, payload, COMMON, checks=kept)
-    (submit, submit_params), (stance, stance_params) = evidence_runs(tx)
-    assert "e.source_cites = $source.cites" in submit and submit_params["source"]["cites"] is True
-    assert (stance_params["check_claim"], stance_params["check_reason"]) == ("Flooding tripled.", "The page says doubled.")

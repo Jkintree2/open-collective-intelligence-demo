@@ -31,9 +31,9 @@ def card(**row):
     return CardPayload.model_validate({"issues": [{"name": "Coastal flooding"}], "evidence": [evidence]})
 
 
-def read(verdict="supports", quote=QUOTE, source=NEWS, statement="Floods are worse.", claim=None, reason=None):
+def read(verdict="supports", quote=QUOTE, source=NEWS, statement="Floods are worse."):
     check.cache.put(check.cache_key(URL, "Coastal flooding", statement),
-                    Check(verdict, URL, quote=quote, source=source, checked_at=NOW.isoformat(), claim=claim, reason=reason))
+                    Check(verdict, URL, quote=quote, source=source, checked_at=NOW.isoformat()))
 
 
 def post(graph, person, sent, *, flag=True, statement="Floods are worse."):
@@ -148,45 +148,8 @@ def test_the_issue_page_reads_each_edge_with_its_reading_and_the_source_facts(li
     assert survey["source_known"] is True and survey["source_type"] == "news"
     assert next(r for r in rows if r["evidence_key"] == "seawall audit")["source_known"] is False
     lines = confidence.lines(rows, today=NOW.date())
-    survey_line = lines[("issue", "coastal flooding", "forty town survey", "SUPPORTS")]
-    assert survey_line["words"] == "A news report from March 2024. Secondary source. One other piece of evidence here says the same."
-    assert survey_line["differs"] == "The page was read as contradicting this."
-    assert sorted(r["word"] for r in survey_line["readings"]) == ["Agrees", "Contradicts"]
+    assert lines[("issue", "coastal flooding", "forty town survey", "SUPPORTS")] == {
+        "words": "A news report from March 2024. Secondary source. One other piece of evidence here says the same.",
+        "differs": "The page was read as arguing against this."}
     assert lines[("solution", "build seawalls", "seawall audit", "REFUTES")] is None
     assert graph_evidence.issue_confidence("no such issue") == []
-
-
-# Revision round (03_schema.md, "Revision round: agrees, partly agrees, contradicts; ...").
-CLAIM = "The survey shows flooding days tripled since 2000."
-SAID = f"Floods are worse. {CLAIM}"
-REASON = "The page says flooding days doubled, not tripled."
-
-
-def test_partly_with_the_writers_sentence_reason_and_cites_round_trips(live_graph):
-    read(verdict="partly", source={**NEWS, "cites": True}, statement=SAID, claim=CLAIM, reason=REASON)
-    post_id, _ = post(live_graph, "acct:ada", card(check={"verdict": "partly", "quote": QUOTE}), statement=SAID)
-    props = edge(live_graph, post_id)
-    assert (props["check"], props["check_claim"], props["check_reason"]) == ("partly", CLAIM, REASON)
-    assert "personal" not in props
-    assert evidence(live_graph)["source_cites"] is True
-    stored = graph_evidence.post_checks(post_id)[("forty town survey", "coastal flooding")]
-    assert (stored["check_claim"], stored["check_reason"], stored["source_cites"]) == (CLAIM, REASON, True)
-    rows = graph_evidence.issue_confidence("coastal flooding")
-    assert (rows[0]["check_quote"], rows[0]["check_claim"], rows[0]["source_cites"]) == (QUOTE, CLAIM, True)
-    exported = json.loads(json.dumps(live_graph.export_record()))
-    validate_record(exported)
-    before = edge(live_graph, post_id)
-    live_graph.driver().execute_query("MATCH (n) DETACH DELETE n", database_=live_graph.database())
-    live_graph.restore_record(exported)
-    assert edge(live_graph, post_id) == before and evidence(live_graph)["source_cites"] is True
-
-
-def test_personal_experience_is_on_the_edge_only_with_the_flag_and_no_link(live_graph):
-    sent = card(name="What I saw at the harbour", url=None, personal=True, check=None)
-    post_id, payload = post(live_graph, "acct:ada", sent)
-    assert payload.evidence[0]["personal"] is True
-    assert edge(live_graph, post_id)["personal"] is True
-    rows = graph_evidence.issue_confidence("coastal flooding")
-    assert [r["personal"] for r in rows] == [True]
-    off, _ = post(live_graph, "acct:bob", card(name="What Bob saw", url=None, personal=True, check=None), flag=False)
-    assert "personal" not in edge(live_graph, off)
