@@ -776,7 +776,7 @@ PDFs are read like pages, so "This kind of link cannot be read yet." now shows o
 
 > This PDF has no text that can be read.
 
-A PDF too large to read (over 15 MB) or too slow to open shows "Could not open this page.", as a page does. Only the first 40 pages of a long PDF are read.
+A PDF too large to read (over 15 MB) or too slow to open shows "Could not open this page.", as a page does. Only the first 40 pages of a long PDF are read, or as many as can be read in 25 seconds; a PDF of which not one page can be read in that time shows "Could not open this page."
 
 An arXiv paper's link (`arxiv.org/abs/...`) reads the abstract page first; when the abstract does not settle it or only partly agrees, the full paper is read too, and its reading is shown when it rests on a sentence from the paper. Nothing new is said on the card while that happens ("Reading the page…" and, after ten seconds, "Still reading. A slow page can take up to a minute." as for any page). Its source line says it is a primary research paper, for example:
 

@@ -3,7 +3,8 @@
 app/fetch_page.py downloads the file (public addresses only, checked on every redirect) and hands it
 here. The text is taken by this module run as its own process (python -m app.fetch_pdf, the file on its
 standard input), which is stopped after READ_SECONDS, so a hostile file cannot hold the server; at most
-MAX_PAGES pages are read, from a file of at most MAX_BYTES.
+MAX_PAGES pages are read, from a file of at most MAX_BYTES. The process sends each page as soon as it is
+read, so a slow file stopped part way keeps the pages read before the time was up.
 """
 
 from __future__ import annotations
@@ -16,13 +17,15 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import IO, NamedTuple
 from urllib.parse import urlsplit
 
 log = logging.getLogger("oci")
 
 MAX_BYTES = 15_000_000
 MAX_PAGES = 40
-READ_SECONDS = 10
+# Render's free plan has a tenth of a CPU: a 15 page arXiv paper takes about 20 seconds there.
+READ_SECONDS = 25
 DOWNLOAD_SECONDS = 30
 # Address space for the reading process. Render's free plan has 512 MB for everything, the server included;
 # on Linux a 5.5 MB report peaks near 120 MB and a decompression bomb stops at about 370 MB.
@@ -80,15 +83,20 @@ def cap_memory(limit: int = MEMORY_BYTES) -> bool:
         return False
 
 
-def _read(data: bytes) -> tuple[str, str | None, str | None]:
-    """(text of the first MAX_PAGES pages, title, YYYY-MM-DD) from the file's bytes."""
+def _send(out: IO[str], item: dict) -> None:
+    out.write(json.dumps(item) + "\n")
+    out.flush()
+
+
+def _read(data: bytes, out: IO[str]) -> None:
+    """Writes one JSON line with the title and YYYY-MM-DD date, then one line per page (at most
+    MAX_PAGES), each as soon as it is read."""
     from pypdf import PdfReader
 
     logging.getLogger("pypdf").setLevel(logging.ERROR)
     reader = PdfReader(io.BytesIO(data))
     if reader.is_encrypted:
         reader.decrypt("")  # many published PDFs are locked against editing only, with an empty password
-    text = "\n".join((page.extract_text() or "") for page in reader.pages[:MAX_PAGES])
     title = created = modified = None
     try:
         meta = reader.metadata
@@ -97,28 +105,54 @@ def _read(data: bytes) -> tuple[str, str | None, str | None]:
             created, modified = _date(meta.creation_date), _date(meta.modification_date)
     except Exception:  # a broken information block says nothing about the text
         pass
-    return text, title, created or modified
+    _send(out, {"title": title, "published": created or modified})
+    for one in reader.pages[:MAX_PAGES]:
+        _send(out, {"page": one.extract_text() or ""})
 
 
-def pdf_text(data: bytes, *, seconds: float = READ_SECONDS,
-             command: list[str] | None = None) -> tuple[str, str | None, str | None] | None:
-    """(text, title, published), or None when the file cannot be read within `seconds`; the reading
-    process is killed when the time is up."""
+class Reading(NamedTuple):
+    text: str
+    title: str | None
+    published: str | None
+    pages: int
+    partial: bool  # stopped (out of time, or failed) after some pages were read
+
+
+def pdf_text(data: bytes, *, seconds: float | None = None, command: list[str] | None = None) -> Reading | None:
+    """The PDF's text, title and date; None when not one page could be read within `seconds`. The reading
+    process is killed when the time is up, and the pages it sent before then are kept."""
     started = time.perf_counter()
-    outcome, found = "bad", None
+    outcome, out = "bad", b""
     try:
-        done = subprocess.run(command or READER, input=bytes(data), capture_output=True, timeout=seconds,
-                              cwd=ROOT, check=False)
-        if done.returncode == 0:
-            reply = json.loads(done.stdout)
-            outcome, found = "ok", (reply["text"], reply["title"], reply["published"])
-    except subprocess.TimeoutExpired:
-        outcome = "timeout"
-    except (OSError, ValueError, KeyError, TypeError):
+        process = subprocess.Popen(command or READER, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.DEVNULL, cwd=ROOT)
+        try:
+            out, _ = process.communicate(bytes(data), timeout=seconds or READ_SECONDS)
+            outcome = "ok" if process.returncode == 0 else "bad"
+        except subprocess.TimeoutExpired:
+            process.kill()
+            out, _ = process.communicate()  # what was sent before the time was up
+            outcome = "timeout"
+    except OSError:
         pass
-    log.info(json.dumps({"event": "pdf_read", "outcome": outcome, "bytes": len(data),
-                         "ms": round((time.perf_counter() - started) * 1000)}))
-    return found
+    title = published = None
+    pages: list[str] = []
+    for line in out.decode("utf-8", "replace").splitlines():
+        try:
+            item = json.loads(line)
+        except ValueError:  # a line cut off when the process was stopped
+            continue
+        if isinstance(item, dict) and isinstance(item.get("page"), str):
+            pages.append(item["page"])
+        elif isinstance(item, dict) and not pages:
+            title = item.get("title") if isinstance(item.get("title"), str) else None
+            published = item.get("published") if isinstance(item.get("published"), str) else None
+    partial = outcome != "ok" and bool(pages)
+    log.info(json.dumps({"event": "pdf_read", "outcome": outcome, "pages": len(pages), "partial": partial,
+                         "bytes": len(data), "ms": round((time.perf_counter() - started) * 1000)}))
+    if outcome != "ok" and not pages:
+        return None
+    return Reading("\n".join(pages), title, published, len(pages), partial)
 
 
 def page(data: bytes, url: str, about: str, stopped: str | None):
@@ -131,15 +165,14 @@ def page(data: bytes, url: str, about: str, stopped: str | None):
     found = pdf_text(data)
     if found is None:
         return Page("unread", url, reason="pdf")
-    text, title, published = found
-    text = tidy(text)
+    text = tidy(found.text)
     if len(text) < 40:
-        # Pages that are pictures (a scanned document): nothing to read (04_interface.md, PDFs).
-        return Page("unread", url, reason="no_text", title=title)
-    return Page("ok", url, cut(text, about), title, None, iso_date(published))
+        # Pages that are pictures (a scanned document) have nothing to read (04_interface.md, PDFs); a reading
+        # stopped before any text came is only a PDF that could not be opened in time.
+        return Page("unread", url, reason="pdf" if found.partial else "no_text", title=found.title)
+    return Page("ok", url, cut(text, about), found.title, None, iso_date(found.published))
 
 
 if __name__ == "__main__":
     cap_memory()
-    text, title, published = _read(sys.stdin.buffer.read())
-    sys.stdout.write(json.dumps({"text": text, "title": title, "published": published}))
+    _read(sys.stdin.buffer.read(), sys.stdout)
