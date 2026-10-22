@@ -10,6 +10,7 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
     refutes: 'Contradicts',
     unclear: 'The page does not clearly say either way.',
     unread: 'Could not open this page.',
+    notext: 'This PDF has no text that can be read.',
     unsupported: 'This kind of link cannot be read yet.'
   };
   // Which side of supports or refutes a reading takes; partly agrees counts as supports.

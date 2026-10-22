@@ -770,6 +770,19 @@ or, when the statement that added it ticked "From my own experience":
 
 The disagreement line follows the new words: under "Supported by", "The page was read as contradicting this."; under "Refuted by", "The page was read as agreeing with this." (or "The page was read as partly agreeing with this." when only a partly agrees reading went that way). A "Partly agrees" reading counts as agreeing everywhere, with what the page does not say shown under it.
 
+### Revision round: PDFs (added 22 October 2026)
+
+PDFs are read like pages, so "This kind of link cannot be read yet." now shows only for videos and other files that are not web pages or PDFs. A PDF's result is one of the same lines as a page's. A PDF that is only pictures of pages (a scanned document) has no text to read; under its link, **client-facing** (John's words, from the plan's copy list):
+
+> This PDF has no text that can be read.
+
+A PDF too large to read (over 15 MB) or too slow to open shows "Could not open this page.", as a page does. Only the first 40 pages of a long PDF are read.
+
+An arXiv paper's link (`arxiv.org/abs/...`) reads the abstract page first; when the abstract does not settle it or only partly agrees, the full paper is read too, and its reading is shown when it rests on a sentence from the paper. Nothing new is said on the card while that happens ("Reading the page…" and, after ten seconds, "Still reading. A slow page can take up to a minute." as for any page). Its source line says it is a primary research paper, for example:
+
+> A research paper from June 2017. More than five years old. Primary source.
+
+
 ### Your account: My Statements (no-cost extra, John 17 October 2026)
 
 Below "Change your password", **client-facing**:

@@ -47,12 +47,13 @@ app/routes_own_posts.py editing (with or without JavaScript, the card built from
 app/routes_tidy.py     rename, move and merge an issue; /changes
 app/routes_admin_people.py the back room's People section (/admin/people)
 app/routes_email.py    X2: change one's email (/account/email, /email/{link}), only with EMAIL_CHANGE_ENABLED; every earlier address kept with its date
-app/routes_evidence.py Phase 2: POST /api/check-evidence (behind EVIDENCE_CHECK_ENABLED; per person and site limits, cached links free)
+app/routes_evidence.py Phase 2: POST /api/check-evidence (behind EVIDENCE_CHECK_ENABLED; per person and site limits, cached links free); read_link() adds the arXiv full paper read and the PDF with no text
 app/search.py      the safe keyword query and grouped results
 app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names() for reloading the seed
 app/extract.py     prompt, model call with one retry, last_model_error, Extraction; re-exports CardPayload and resolution
 app/payload.py     card models, cleaning, reference resolution
 app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text), and the DeepSeek Fetch backup for pages it cannot open (X3); no Cypher
+app/fetch_pdf.py   Phase 2 revision round: the text of a PDF (pypdf, in a separate process stopped after 10 seconds and held to 384 MB on Linux; 15 MB, first 40 pages; date from its own information), arXiv's abstract to paper addresses; no Cypher
 app/check.py       Phase 2: one reading per evidence link (supports, refutes or unclear, with a quote that must be on the page), source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/confidence.py  Phase 2: source confidence on the issue page (Q39's rows to one line per piece of evidence: type, date, age, primary or secondary, agreement, and the disagreement line); no Cypher

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import check, config, graph
+from app import check, config, fetch_pdf, graph
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
+from app.fetch_page import fetch
 from app.members import current_member, require_access, require_same_origin
 from app.payload import EvidenceItem
 
@@ -39,6 +41,50 @@ def reader_key(request: Request) -> str:
     return "browser:" + hashlib.sha256(seen.encode("utf-8")).hexdigest()[:16]
 
 
+def _added(first: dict | None, second: dict | None) -> dict | None:
+    if not first or not second:
+        return first or second
+    return {k: first.get(k, 0) + second.get(k, 0) for k in ("prompt_tokens", "completion_tokens")}
+
+
+def read_link(url: str, evidence: str, about: str, statement: str, settings, *, fetcher=fetch, **kwargs) -> check.Check:
+    """check.check_evidence, plus what PDFs need (03_schema.md, revision round: PDFs and arXiv papers).
+    An arXiv abstract read as unclear, unread or partly has its full paper read too: after unclear or unread
+    the paper's reading stands; after partly only a paper reading that rests on a quote (agrees, partly agrees,
+    contradicts) replaces it. An arXiv paper is primary research; a PDF with no text answers notext, which is
+    never kept."""
+    reasons = []
+
+    def reading(link, **more):
+        page = fetcher(link, **more)
+        reasons.append(page.reason)
+        return page
+
+    result = check.check_evidence(url, evidence, about, statement, settings, fetcher=reading, **kwargs)
+    if not reasons:  # no reading service, or a reading already in the cache
+        return result
+    paper = fetch_pdf.arxiv_paper(url)
+    # A partly agrees from an abstract is often only what a summary leaves out (Eston, 22 October 2026), so the
+    # paper is read for it too; it keeps its place unless the paper gives a reading that rests on a quote.
+    if paper and result.verdict in ("unclear", "unread", "partly"):
+        full = check.check_evidence(paper, evidence, about, statement, settings, fetcher=reading, **kwargs)
+        both = _added(result.usage, full.usage)
+        if full.verdict in (check.QUOTED if result.verdict == "partly" else check.VERDICTS):
+            # The abstract page's date is the paper's; the PDF's own is when arXiv last made the file.
+            dated = (result.source or {}).get("published")
+            result = replace(full, url=result.url, usage=both)
+            if dated and result.source:
+                result = replace(result, source={**result.source, "published": dated})
+        else:
+            result = replace(result, usage=both)
+    if result.verdict == "unread" and reasons[-1] == "no_text":
+        result = replace(result, verdict="notext")
+    if fetch_pdf.is_arxiv_paper(url) and result.source:
+        result = replace(result, source={**result.source, "type": "research", "primary": True})
+    check.cache.put(check.cache_key(url, about, statement), result)
+    return result
+
+
 def answer(result: check.Check) -> JSONResponse:
     body = result.as_json()
     body["line"] = check.source_words(result.source)
@@ -61,7 +107,7 @@ def check_evidence(request: Request, data: CheckRequest) -> Response:
     if not person_limit.take(reader_key(request)) or not site_daily.take(site_minute):
         return JSONResponse({"message": TOO_MANY}, status_code=429)
     candidates = graph.candidates()
-    result = check.check_evidence(url, data.evidence, data.about, data.text, settings,
+    result = read_link(url, data.evidence, data.about, data.text, settings,
                                   writer_says=data.stance, candidates=candidates,
                                   request_id=getattr(request.state, "request_id", None))
     return answer(result)
