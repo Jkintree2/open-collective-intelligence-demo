@@ -295,3 +295,14 @@ def test_earlier_email_addresses_travel_as_two_lists_of_one_length():
     person["previous_emails"] = ["ada@old.example.org"]
     with pytest.raises(InvalidBackup):
         validate_record(data)
+
+
+def test_the_revision_round_properties_restore_with_their_types():
+    from app.backup import properties
+    decoded = properties({"check": "partly", "check_claim": "Flooding tripled.", "check_reason": "The page says doubled.",
+                          "personal": True, "post_id": "p1"})
+    assert decoded["check"] == "partly" and decoded["personal"] is True
+    assert properties({"source_cites": False})["source_cites"] is False
+    for bad in ({"check_claim": 3}, {"check_reason": True}, {"personal": "yes"}, {"source_cites": 1}, {"check": "agrees"}):
+        with pytest.raises(InvalidBackup):
+            properties(bad)

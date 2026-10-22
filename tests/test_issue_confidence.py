@@ -89,11 +89,13 @@ def test_with_the_flag_each_piece_of_evidence_says_its_source_confidence(page):
     about = section(html, "<h2>Evidence about this issue</h2>", '<section class="feed">')
     assert ('<span class="confidence">A news report from March 2018. More than five years old. Secondary source. '
             'One other piece of evidence here says the same.</span>'
-            '<span class="confidence differs">The page was read as arguing against this.</span></li>') in about
-    assert '<span class="confidence">One other piece of evidence here says the same.</span></li>' in about
+            '<span class="confidence differs">The page was read as contradicting this.</span></li>') in about
+    # The open letter has no link (revision round).
+    assert ('<span class="confidence">No source given.</span>'
+            '<span class="confidence">One other piece of evidence here says the same.</span></li>') in about
     solution = section(html, "<h3>Abolish the veto</h3>", "</section>")
-    assert '<span class="confidence differs">The page was read as supporting this.</span></li>' in solution
-    assert "confidence\">" not in solution.replace("confidence differs", "")
+    assert ('<li>A study<span class="confidence">No source given.</span>'
+            '<span class="confidence differs">The page was read as agreeing with this.</span></li>') in solution
 
 
 def test_without_the_flag_the_issue_page_is_todays(page):

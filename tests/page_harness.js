@@ -31,6 +31,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   if (options.member) get('compose').dataset = {member: options.member};
   // Phase 2: the write form asks for evidence links to be read (index.html, evidence_check.js).
   if (options.evidenceCheck) get('compose').dataset = {...get('compose').dataset, evidenceCheck: ''};
+  if (options.noReading) get('compose').dataset = {...get('compose').dataset, noReading: ''};  // no reading service
   const recognizers = [], requests = [], timers = new Map();
   let timerId = 0;
   class Recognition {
