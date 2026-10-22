@@ -190,3 +190,28 @@ def test_personal_experience_is_on_the_edge_only_with_the_flag_and_no_link(live_
     assert [r["personal"] for r in rows] == [True]
     off, _ = post(live_graph, "acct:bob", card(name="What Bob saw", url=None, personal=True, check=None), flag=False)
     assert "personal" not in edge(live_graph, off)
+
+
+def test_a_videos_time_and_a_pasted_transcript_round_trip(live_graph):
+    """Revision round, YouTube videos: where the quote is and that the reading rests on the writer's paste,
+    from this process's reading only, on the edge, through the edit read, the issue page and a copy."""
+    check.cache.put(check.cache_key(URL, "Coastal flooding", "Floods are worse."),
+                    Check("supports", URL, quote=QUOTE, source=NEWS, checked_at=NOW.isoformat(), quote_at="4:12",
+                          pasted=True))
+    post_id, _ = post(live_graph, "acct:ada", card(check={"verdict": "supports", "quote": QUOTE}))
+    props = edge(live_graph, post_id)
+    assert (props["check_quote_at"], props["check_pasted"]) == ("4:12", True)
+    stored = graph_evidence.post_checks(post_id)[("forty town survey", "coastal flooding")]
+    assert (stored["check_quote_at"], stored["check_pasted"]) == ("4:12", True)
+    rows = graph_evidence.issue_confidence("coastal flooding")
+    assert (rows[0]["check_quote_at"], rows[0]["check_pasted"]) == ("4:12", True)
+    exported = json.loads(json.dumps(live_graph.export_record()))
+    validate_record(exported)
+    live_graph.driver().execute_query("MATCH (n) DETACH DELETE n", database_=live_graph.database())
+    live_graph.restore_record(exported)
+    assert edge(live_graph, post_id) == props
+    # A page's reading stores neither: absent, not false.
+    check.cache.clear()
+    read()
+    plain, _ = post(live_graph, "acct:bob", card())
+    assert "check_quote_at" not in edge(live_graph, plain) and "check_pasted" not in edge(live_graph, plain)

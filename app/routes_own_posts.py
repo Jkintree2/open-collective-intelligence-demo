@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
-from app import check, extract as reading, graph, graph_evidence, graph_own_posts
+from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts
 from app.extract import CardPayload, ResolvedPayload, resolve_payload
 from app.members import Member, posting_identity, require_member, require_same_origin
 from app.pages import page
@@ -97,9 +97,12 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
             if checks is not None and row["from_key"] in personal:
                 item["personal"] = True
             if (stored := (checks or {}).get((row["from_key"], row["to_key"]))) is not None:
+                video, pasted = fetch_video.is_video(item["url"]), bool(stored.get("check_pasted"))
                 item["check"] = {"verdict": stored["check"], "quote": stored["check_quote"],
                                  "claim": stored.get("check_claim"), "reason": stored.get("check_reason"),
-                                 "line": check.source_words(_source(stored)) if stored["check"] != "unread" else None}
+                                 "quote_at": stored.get("check_quote_at"), "pasted": pasted, "video": video,
+                                 "line": check.source_words(_source(stored), video=video, pasted=pasted)
+                                 if stored["check"] != "unread" else None}
     return {"issues": list(claimed.values()), "solutions": list(solutions.values()),
             "evidence": list(evidence.values())}
 

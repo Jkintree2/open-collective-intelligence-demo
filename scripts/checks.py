@@ -1,7 +1,8 @@
 """Run the evidence check cases live and print each result for a person to judge; never writes to a database.
 
-Fixture cases read a saved page from tests/fixtures/pages (or a PDF from tests/fixtures/pdfs) instead of
-the web. Each link is read as the site reads it (routes_evidence.read_link: arXiv's full paper too). Prints the tokens
+Fixture cases read a saved page from tests/fixtures/pages (or a PDF from tests/fixtures/pdfs, or a YouTube
+caption track from tests/fixtures/videos) instead of the web; a case with a "transcript" reads that pasted
+transcript from tests/fixtures/videos, as the card sends one. Each link is read as the site reads it (routes_evidence.read_link: arXiv's full paper too). Prints the tokens
 used, so the cost per link can be measured.
 """
 
@@ -9,7 +10,7 @@ import argparse
 import json
 from pathlib import Path
 
-from app import fetch_pdf
+from app import fetch_pdf, fetch_video
 from app.config import load_settings
 from app.fetch_page import Page, cut, fetch, html_text
 from app.routes_evidence import read_link
@@ -17,7 +18,25 @@ from app.routes_evidence import read_link
 ROOT = Path(__file__).resolve().parent.parent
 
 
+VIDEOS = ROOT / "tests" / "fixtures" / "videos"
+
+
+def video_fetcher(captions: str | None = None):
+    """A YouTube video as fetch_video reads one: the fixture's title, channel and upload date, and its caption
+    track (or the transcript read_link passes on)."""
+    web = json.loads((VIDEOS / "player_web.json").read_text())
+    title, description, published = fetch_video._about(web["videoDetails"], web["microformat"]["playerMicroformatRenderer"])
+
+    def fetcher(url, about="", transcript=None, **kwargs):
+        segments = (fetch_video.pasted_segments(transcript) if transcript
+                    else fetch_video.caption_segments((VIDEOS / captions).read_text()))
+        return fetch_video.video_page(url, segments, about, title, description, published)
+    return fetcher
+
+
 def fixture_fetcher(name: str):
+    if name.endswith(".xml"):
+        return video_fetcher(name)
     if name.endswith(".pdf"):
         return lambda url, about="", **kwargs: fetch_pdf.page((ROOT / "tests" / "fixtures" / "pdfs" / name).read_bytes(),
                                                               url, about, None)
@@ -41,9 +60,11 @@ def main() -> int:
     for case in cases:
         if args.case and case["id"] not in args.case:
             continue
-        fetcher = fixture_fetcher(case["fixture"]) if case.get("fixture") else fetch
+        transcript = (VIDEOS / case["transcript"]).read_text() if case.get("transcript") else None
+        fetcher = (fixture_fetcher(case["fixture"]) if case.get("fixture") else video_fetcher() if transcript
+                   else fetch)
         result = read_link(case["url"], case["evidence"], case["about"], case["statement"], settings,
-                           writer_says=case["writer_says"], fetcher=fetcher)
+                           writer_says=case["writer_says"], fetcher=fetcher, transcript=transcript)
         ran += 1
         ok = result.verdict in case["expect"]
         met += ok
@@ -56,7 +77,9 @@ def main() -> int:
         print(f"\n{case['id']} {'as expected' if ok else 'NOT AS EXPECTED'}: {case['name']}")
         print(f"  verdict {result.verdict} (expected {' or '.join(case['expect'])})")
         if result.quote:
-            print(f"  quote   {result.quote}")
+            print(f"  quote   {result.quote}" + (f" (at {result.quote_at})" if result.quote_at else ""))
+        if result.pasted:
+            print("  pasted  read from a pasted transcript")
         if result.claim:
             print(f"  wrote   {result.claim}")
         if result.reason:

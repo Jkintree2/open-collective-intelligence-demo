@@ -54,6 +54,7 @@ app/extract.py     prompt, model call with one retry, last_model_error, Extracti
 app/payload.py     card models, cleaning, reference resolution
 app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addresses only, checked on every redirect and pinned; 2 MB, HTML or plain text, standard library HTML to text), and the DeepSeek Fetch backup for pages it cannot open (X3); no Cypher
 app/fetch_pdf.py   Phase 2 revision round: the text of a PDF (pypdf, in a separate process that sends each page as it reads it, stopped after 25 seconds keeping the pages read, and held to 384 MB on Linux; 15 MB, first 40 pages; date from its own information), arXiv's abstract to paper addresses; no Cypher
+app/fetch_video.py Phase 2 revision round: a YouTube video's captions through YouTube's player data (public addresses only, pinned, no redirects, 2 MB and 8 seconds a request), or a transcript the writer pasted (never kept); the quote's time; logs "reader": "youtube" and the outcome; no Cypher
 app/check.py       Phase 2: one reading per evidence link (supports, refutes or unclear, with a quote that must be on the page), source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/confidence.py  Phase 2: source confidence on the issue page (Q39's rows to one line per piece of evidence: type, date, age, primary or secondary, agreement, and the disagreement line); no Cypher

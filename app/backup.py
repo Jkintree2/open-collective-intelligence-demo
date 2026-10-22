@@ -131,10 +131,10 @@ def properties(value):
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
                    "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
                    "relationship", "kind", "details", "check_quote", "source_type",
-                   "source_published", "check_claim", "check_reason"} and not isinstance(item, str):
+                   "source_published", "check_claim", "check_reason", "check_quote_at"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
         if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary",
-                   "source_cites", "personal"} and type(item) is not bool:
+                   "source_cites", "personal", "check_pasted"} and type(item) is not bool:
             raise InvalidBackup("A boolean property has the wrong type.")
         if key == "latency_ms" and (type(item) is not int or item < 0):
             raise InvalidBackup("A latency property has the wrong type.")

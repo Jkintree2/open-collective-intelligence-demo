@@ -153,9 +153,11 @@ def test_each_distinct_reading_with_a_quote_is_shown_once_in_johns_words():
     found = confidence.lines(rows, today=TODAY)[("issue", "veto", "a", "SUPPORTS")]
     assert found["readings"] == [
         {"word": "Partly agrees", "claim": "Flooding days tripled.", "quote": "Flooding days doubled.",
-         "reason": "The page says doubled, not tripled."},
-        {"word": "Agrees", "claim": None, "quote": "Flooding days doubled.", "reason": None},
-        {"word": "Contradicts", "claim": "Floods are rare.", "quote": "Flooding days doubled.", "reason": None}]
+         "said": "The page says", "pasted": None, "reason": "The page says doubled, not tripled."},
+        {"word": "Agrees", "claim": None, "quote": "Flooding days doubled.", "said": "The page says", "pasted": None,
+         "reason": None},
+        {"word": "Contradicts", "claim": "Floods are rare.", "quote": "Flooding days doubled.",
+         "said": "The page says", "pasted": None, "reason": None}]
 
 
 def test_evidence_with_no_link_says_so_or_personal_experience():

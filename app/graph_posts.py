@@ -54,6 +54,7 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
             extra = {"check": kept.get("check"), "check_quote": kept.get("check_quote"),
                      "checked_at": kept.get("checked_at"), "check_claim": kept.get("check_claim"),
                      "check_reason": kept.get("check_reason"),
+                     "check_quote_at": kept.get("check_quote_at"), "check_pasted": kept.get("check_pasted"),
                      # From my own experience: only on a row with no link, never read (03_schema.md).
                      "personal": True if item.get("personal") and not item.get("url") else None}
             source = {"source": kept.get("source")}

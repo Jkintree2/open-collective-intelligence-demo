@@ -1002,7 +1002,7 @@ Export version 2 already carries every node and edge property not on the account
 
 Written before the code, from John's emails of 21 October (agrees, partly agrees, contradicts; the statement and the page side by side; "No source given") and 22 October (personal experience). Properties only, still behind `EVIDENCE_CHECK_ENABLED`; no new label, relationship type, constraint or index. Read queries treat an absent property as null, so edges and Evidence written before this round need nothing done to them.
 
-**A fourth reading, `partly`.** `check` on a post's `SUPPORTS` or `REFUTES` edge may now also be `partly`: the page says some of what the writer's words say about it but not all (for example the page says a share of proposals "led to government action" where the writer said they "became law"). Like `supports` and `refutes` it rests on a sentence copied from the page, checked in Python to be on the page, or it becomes `unclear`. The card sets the row to supports for a `partly` reading while the writer has not chosen (the writer still decides). For the disagreement line and source confidence a `partly` reading counts with `supports`: under "Refuted by", a `partly` reading is a reading that went the other way. The full list is now `supports`, `partly`, `refutes`, `unclear`, `unread`, or null. Every reading is about the claim, never about agreeing with the writer: the page is first read against the claim alone, and the writer's words only decide between `supports`, `partly` and `unclear` when the page supports the claim. A writer who denies the claim and cites a page that denies it too gets `refutes` (added 22 October 2026, after PR 16 was reverted for reading such a page as supports).
+**A fourth reading, `partly`.** `check` on a post's `SUPPORTS` or `REFUTES` edge may now also be `partly`: the page says some of what the writer's words say about it but not all (for example the page says a share of proposals "led to government action" where the writer said they "became law"). Like `supports` and `refutes` it rests on a sentence copied from the page, checked in Python to be on the page, or it becomes `unclear`. The card sets the row to supports for a `partly` reading while the writer has not chosen (the writer still decides). For the disagreement line and source confidence a `partly` reading counts with `supports`: under "Refuted by", a `partly` reading is a reading that went the other way. The full list is now `supports`, `partly`, `refutes`, `unclear`, `unread`, or null. Every reading is about the claim, never about agreeing with the writer: the page is first read against the claim alone, and the writer's words only decide between `supports`, `partly` and `unclear` when the page supports the claim. A writer who denies the claim and cites a page that denies it too gets `refutes` (added 22 October 2026, after PR 16 was reverted for reading such a page as supports). The writer's supports or refutes choice is not sent to the reading at all: told only to ignore it, the reading still followed it, and read Hans Rosling's talk, cited by a writer who chose refutes, as supporting the claim it argues against (22 October 2026, case C30, found while building YouTube videos).
 
 **The edge gains three properties**, set in the same CREATE as the edge, only from a kept check (the rule for keeping a check is unchanged) or, for `personal`, from the card row:
 
@@ -1051,6 +1051,39 @@ Written before the code (Eston, 22 October: PDFs are built inside Phase 2). Noth
 **A PDF with no text** (a scanned document: pages of pictures) is not read. The check answers `notext`, which, like `unsupported`, is never stored (the edge's `check` stays null).
 
 **arXiv.** An `arxiv.org/abs/<id>` link is read as a page (the abstract). When that reading is `unclear`, `unread` or `partly`, the full paper at `arxiv.org/pdf/<id>` is read too, against the same claim and statement. After `unclear` or `unread` the paper's reading is the link's; after `partly` (often only what a summary leaves out; Eston, 22 October 2026) the paper's reading replaces it only when it is `supports`, `partly` or `refutes`, and otherwise the abstract's `partly` stands. When the paper's reading is the link's: the quote is from the paper, and the cache keeps it under the `abs` link the card holds, so the write path confirms it as usual. For any `arxiv.org/abs/` or `arxiv.org/pdf/` link the source facts say `research`, primary (`source_type = 'research'`, `source_primary = true`), whatever the reading guessed. This lives in `app/routes_evidence.py` (`read_link`), around `check.check_evidence`, so `app/check.py` is unchanged.
+
+
+### Revision round: YouTube videos (added 22 October 2026)
+
+Written before the code (Eston, 22 October: videos are built inside Phase 2, best effort). Properties only, still behind `EVIDENCE_CHECK_ENABLED`; no new label, relationship type, constraint or index. A video's reading is stored like a page's (`check`, `check_quote`, `checked_at`, `check_claim`, `check_reason` on the edge, the source facts on `Evidence`).
+
+**Which links.** `youtube.com/watch?v=<id>`, `m.youtube.com/watch?v=<id>`, `youtube.com/shorts/<id>` and `youtu.be/<id>` (an `<id>` of eleven letters, digits, `-` or `_`). Every other YouTube address (a channel, a playlist), and every Vimeo and TikTok link, stays `unsupported` ("This kind of link cannot be read yet.").
+
+**Reading a video** (`app/fetch_video.py`, no Cypher; `app/fetch_page.py` hands such a link over before anything else). YouTube has no official free way to read another channel's captions, so this is best effort. The video's own caption track (the timed text YouTube serves to its player) is found through YouTube's player data (`www.youtube.com/youtubei/v1/player`, as its Android app asks for it), and the title, channel, description, category and upload date through the same player data as the website asks for it. A track the video's owner wrote is preferred to an automatic one, English to other languages. Every request goes to a public address checked and pinned as for pages, follows no redirect, and stops at 2 MB and 8 seconds; the caption track is fetched only from a `youtube.com` address. The captions become the page's text, cut by the same `cut()`, and are read by the same check with the same quote guard; the title, channel and upload date stand in for a page's title, description and date. When no track can be read (none, YouTube refused, or an error), the check answers `nocaptions`, which, like `notext`, is never stored. Each read logs `"reader": "youtube"` and its outcome: `ok`, `no_captions`, `refused`, `error`, or `pasted`.
+
+**A pasted transcript.** After `nocaptions` the writer may paste the transcript (YouTube shows it under "Show transcript"). `POST /api/check-evidence` takes it as `transcript` (at most 60,000 characters), for a video link only, under the same per person and site limits. It is read exactly like captions: the same `cut()`, the same prompt, and the quote must be found in the pasted text. The pasted text is never stored, logged or cached; only the reading is, and only through `check.confirmed` and `check.kept_checks` as for pages (the cache holds the reading under the same link, claim and statement, so the card cannot carry a reading this process did not make). Times in the paste ("4:12" at the start of a line, as YouTube's transcript gives them) are used for the quote's time and taken out of the text read; a paste without times gives none.
+
+**The edge gains two properties**, set in the same CREATE as the edge, only from a kept check:
+
+| Property | Type | Meaning |
+|---|---|---|
+| `check_quote_at` | string or null | Where in the video the quote is, as `M:SS` or `H:MM:SS`, from the caption (or pasted) times; null for a page, or when there is no time. |
+| `check_pasted` | true or absent | The reading was made from a transcript the writer pasted, so it rests on the writer's paste. A null property is not stored. |
+
+```cypher
+// 5b, extended again ({rel} and {label} from whitelists, as before).
+MATCH (e:Evidence {key: $evidence_key}), (t:{label} {key: $target_key})
+CREATE (e)-[:{rel} {post_id: $post_id, created_at: $now,
+                    check: $check, check_quote: $check_quote, checked_at: $checked_at,
+                    check_claim: $check_claim, check_reason: $check_reason, personal: $personal,
+                    check_quote_at: $check_quote_at, check_pasted: $check_pasted}]->(t)
+```
+
+Q35 also returns `r.check_quote_at` and `r.check_pasted` (an edit keeps them with a stored reading), and Q39 returns them for the issue page.
+
+**Source facts for a video.** The type says what the channel is: `news`, `organisation` (a government channel counts as an organisation) or `other`; any other type the reading guesses becomes `other`. The date is the upload date. On the card and the issue page a video's type reads "news video", "organisation's video" or "video".
+
+**Export and restore.** These travel in export version 2 with no format change. Restore checks `check_quote_at` is text and `check_pasted` a boolean.
 
 
 ## Change of email (no-cost extra X2, added 20 October 2026)
