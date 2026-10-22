@@ -139,3 +139,21 @@ test('a post being edited shows the reading it holds, without reading the page a
   fields(row).url.value = 'https://other.example.org/'; await fields(row).url.emit('change'); await p.flush();
   assert.equal(checks(p).length, 1);
 });
+
+test('a slow page says so after ten seconds, and the line goes when the reading comes', async () => {
+  const p = await setup(undefined, undefined, {evidenceCheck: true}); await p.flush();
+  const [row] = await readWith(p, [{name: 'Survey', url: URL, about: 'Coastal flooding'}]);
+  await p.runTimer(10000);
+  assert.deepEqual(lines(row), ['Reading the page…', 'Still reading. A slow page can take up to a minute.']);
+  checks(p)[0].resolve({verdict: 'supports', quote: QUOTE, line: null, suggested: {}}); await p.flush();
+  assert.equal(lines(row)[0], `The page seems to support this: "${QUOTE}"`);
+  assert.ok(!lines(row).includes('Still reading. A slow page can take up to a minute.'));
+});
+
+test('an unclear reading says why, for example what the page does not say', async () => {
+  const p = await setup(undefined, undefined, {evidenceCheck: true}); await p.flush();
+  const [row] = await readWith(p, [{name: 'Pol.is article', url: URL, about: 'Coastal flooding'}]);
+  const reason = 'The page says 80% of 26 issues led to government action, not that they became law.';
+  checks(p)[0].resolve({verdict: 'unclear', quote: null, reason, line: null, suggested: {}}); await p.flush();
+  assert.deepEqual(lines(row).slice(0, 2), ['The page does not clearly say either way.', reason]);
+});

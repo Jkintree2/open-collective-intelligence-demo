@@ -209,9 +209,11 @@ If Aura deletes your instance, the site shows an error and your record is gone f
 A piece of evidence can carry a link to a web page. When the form opens, the site reads the page behind each link and says, under that link, what it found:
 
 * "The page seems to support this", or "seems to argue against this", followed by the sentence from the page it rests on;
-* "The page does not clearly say either way";
+* "The page does not clearly say either way", followed by one sentence on why;
 * "Could not open this page";
 * "This kind of link cannot be read yet".
+
+The page is read against what the writer says it shows, not only against the issue or solution. A writer who copies or puts in their own words what the page says gets "seems to support this". A writer who goes further than the page, for example "proves" where the page says "suggests", or "became law" where it says "led to government action", gets "does not clearly say either way", and the sentence after it names what the page does not say. A slow page can take up to a minute; after ten seconds the form says "Still reading. A slow page can take up to a minute."
 
 Under a page it could read, one more line says what kind of page it is, when it was written and whether it is a primary source, for example "A news report from March 2024. Secondary source." The supports or refutes choice is set from the reading only while the writer has not touched it. **The writer always decides.** If they choose differently, the form says that is fine and that others will see both. Nothing is ever blocked or removed because of a reading, and Post never waits for one. The page may also mention other issues, solutions or evidence; up to three of each appear under **The page also mentions**, unticked, and ticking one adds it to the form.
 

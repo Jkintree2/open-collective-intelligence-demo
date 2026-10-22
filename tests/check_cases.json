@@ -68,5 +68,15 @@
    "url": "https://en.wikipedia.org/wiki/Spherical_Earth", "evidence": "Wikipedia, Spherical Earth",
    "about": "Flat Earth claim", "writer_says": "refutes",
    "statement": "The flat Earth claim is wrong. The Earth is a sphere, as measurements since ancient Greece show.",
-   "expect": ["refutes", "unclear"], "note": "Found in the 20 October walk-through: read as supports whichever way the writer chose. Must never come back as supports."}
+   "expect": ["refutes", "unclear"], "note": "Found in the 20 October walk-through: read as supports whichever way the writer chose. Must never come back as supports."},
+  {"id": "C15", "name": "Audrey's half true claim: the page says 80% led to government action, not that it became law or proves anything",
+   "url": "https://en.wikipedia.org/wiki/Pol.is", "evidence": "Wikipedia article on Pol.is",
+   "about": "Building a platform for digital democracy", "writer_says": "supports",
+   "statement": "The Wikipedia article on Pol.is shows that 80% of the issues discussed on vTaiwan became law, which proves online deliberation works.",
+   "expect": ["unclear"], "note": "Audrey Tang, 21 October 2026. The reason should name what the page does not say."},
+  {"id": "C16", "name": "John's copied climate change sentence: the page says it",
+   "url": "https://en.wikipedia.org/wiki/Climate_change", "evidence": "Wikipedia, Climate change",
+   "about": "Human caused global warming", "writer_says": "supports",
+   "statement": "The Wikipedia article on climate change shows that people are warming the planet: \"The modern-day rise in global temperatures is driven by human activities, especially fossil fuel (coal, oil and natural gas) burning since the Industrial Revolution.\" https://en.wikipedia.org/wiki/Climate_change",
+   "expect": ["supports"], "note": "John, 21 October 2026: read as unclear on the live site because the backup reader escaped every comma."}
 ]

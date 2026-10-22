@@ -301,3 +301,29 @@ def test_a_name_that_cannot_be_written_in_ascii_is_unread_not_an_error():
     seen = []
     page = fetch("https://" + "ü" * 70 + ".example/", resolver=resolver({}), transport=serving({}, seen))
     assert page.status == "unread" and seen == []
+
+
+def test_backup_text_unescapes_commas_and_every_other_mark():
+    # 21 October: on the live site Wikipedia came through the backup reader with every comma written "\,",
+    # so John's copied sentence was not found on the page and a supporting reading became unclear.
+    from app.fetch_page import markdown_text
+    escaped = r"Since the Industrial Revolution\, burning fossil fuels \(coal\, oil\) raised CO2 by 50\% \/ more\: \\ done"
+    assert markdown_text(escaped) == r"Since the Industrial Revolution, burning fossil fuels (coal, oil) raised CO2 by 50% / more: \ done"
+
+
+def test_the_reader_names_the_site_when_it_has_one():
+    from app.fetch_page import USER_AGENT, user_agent
+    seen = []
+    fetch("https://w.example.org/a", resolver=resolver({}), agent=user_agent("https://oci.example.org"),
+          transport=serving({("w.example.org", "/a"): html("news_article.html")}, seen))
+    assert seen[0].headers["user-agent"] == "OpenCollectiveIntelligence/0.2 (+https://oci.example.org; reads one page a person cited)"
+    assert user_agent(None) == USER_AGENT
+
+
+def test_cut_finds_a_sentence_the_writer_copied_from_deep_in_a_long_page():
+    copied = "Since the Industrial Revolution greenhouse gas concentrations have risen by half"
+    text = "\n".join(["climate change article opening words"] * 300 + ["unrelated history of measurement"] * 300
+                     + [copied + "."] + ["more unrelated history"] * 300)
+    statement = f'The article says: "{copied}." https://en.wikipedia.org/wiki/Climate_change'
+    assert copied not in cut(text, "Wikipedia Climate change", limit=3000)
+    assert copied in cut(text, f"Wikipedia Climate change {statement}", limit=3000)

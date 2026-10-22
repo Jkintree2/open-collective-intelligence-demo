@@ -22,7 +22,7 @@ import httpx
 
 from app.config import Settings
 from app.extract import call_model
-from app.fetch_page import Page, backup_allowed, backup_fetch, fetch, iso_date
+from app.fetch_page import Page, backup_allowed, backup_fetch, fetch, iso_date, user_agent
 from app.payload import Candidates
 from app.text import clean_name, make_key
 
@@ -42,14 +42,15 @@ You check one piece of evidence for a shared public record of issues, solutions 
 You get JSON with:
 - "claim": the issue or solution the evidence is cited about.
 - "evidence_name": the short title the writer gave the evidence.
-- "statement": what the writer wrote, for context only.
+- "statement": what the writer wrote. Find in it the writer's own words about this evidence: what
+  they say the page shows, perhaps a sentence copied from it.
 - "writer_says": "supports" or "refutes", how the writer used the evidence. Do not let it sway you.
 - "page": the title, description, date and text of the page behind the evidence's link.
 
 Decide, from the page text alone, whether the page supports the claim, argues against it
 (refutes), or does not clearly say either way (unclear). The verdict is about the claim, never
-about the writer's statement or the writer's position. First read the claim as something that
-can be true or false:
+about the writer's position, but the page must also bear out what the writer says it shows.
+First read the claim as something that can be true or false:
 - An issue is often named as a topic, a belief or a claim rather than a sentence ("Flat Earth
   claim", "Belief in astrology", "Vaccine injury theory", "Rising sea levels"). Read it as "the
   belief, claim or problem it names is true or real". Supports means the page says it is true or
@@ -62,12 +63,18 @@ Rules:
 - Supports or refutes only when a sentence on the page says so directly. Topic overlap is not
   support. A page that reports a view without endorsing it is unclear unless the claim is that
   the view exists.
+- The writer's own words about the page count as well as the claim. Words that say about the same
+  as the page, even in other words, are fine. When they go further than the page (a bigger
+  number, "proves" or "became law" where the page says "suggests" or "led to action", a figure
+  the page only reports someone claiming), answer unclear, and say in "reason" what the page does
+  not say.
 - When in doubt, answer unclear. Calling a page supporting when it argues against is the worst
   mistake you can make.
 - "quote" is one sentence copied exactly, character for character, from page.text, that your
   verdict rests on. No paraphrase, no joining of sentences, no ellipsis. For unclear, give the
   closest sentence or an empty string.
-- "reason" is one short plain sentence a member of the public can read. Never mention yourself,
+- "reason" is one short plain sentence a member of the public can read, about the page and the
+  writer's words, never about the writer. Never mention yourself,
   models, extraction, nodes, edges or graphs. No dashes.
 
 Also describe the source, from the page itself:
@@ -236,9 +243,12 @@ def check_evidence(url: str, evidence_name: str, about: str, statement: str, set
     key = cache_key(url, about, statement)
     if (hit := cache.get(key)) is not None:
         return hit
-    page = fetcher(url, about=f"{evidence_name} {about}", request_id=request_id)
+    # A long page is cut around the evidence, the claim and the writer's own words, so a sentence copied
+    # from deep in an article is in what is read.
+    near = f"{evidence_name} {about} {statement[:4000]}"
+    page = fetcher(url, about=near, request_id=request_id, agent=user_agent(settings.site_url))
     if backup_allowed(page, settings):
-        page = backup(url, settings, about=f"{evidence_name} {about}", request_id=request_id)
+        page = backup(url, settings, about=near, request_id=request_id)
     now = datetime.now(timezone.utc).isoformat()
     if page.status != "ok":
         result = Check("unsupported" if page.status == "unsupported" else "unread", url, checked_at=now)
