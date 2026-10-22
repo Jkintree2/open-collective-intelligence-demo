@@ -68,7 +68,7 @@ def test_when_the_abstract_does_not_settle_it_the_full_paper_is_read():
     assert seen == [ABS, PAPER] and len(calls) == 2
     assert result.verdict == "supports" and result.url == ABS
     assert result.quote == SUPPORTS["quote"]
-    assert result.source == {"type": "research", "primary": True, "published": "2017-06-12"}
+    assert result.source == {"type": "research", "primary": True, "published": "2017-06-12", "cites": None}
     assert result.usage == {"prompt_tokens": 2000, "completion_tokens": 200}
     # The card holds the abstract's link; the write path confirms the paper's reading under it.
     assert confirmed(ABS, ABOUT, STATEMENT, "supports", SUPPORTS["quote"]) is result
@@ -79,6 +79,16 @@ def test_an_abstract_that_settles_it_is_enough():
     quote = "Our model achieves 28.4 BLEU after training for 3.5 days on eight GPUs."
     result = run(ABS, {ABS: ABSTRACT}, {**SUPPORTS, "quote": quote}, seen=seen)
     assert seen == [ABS] and result.verdict == "supports" and result.quote == quote
+    assert result.source["type"] == "research" and result.source["primary"] is True
+
+
+def test_an_abstract_read_as_partly_agreeing_is_not_sent_on_to_the_paper():
+    seen = []
+    quote = "Our model achieves 28.4 BLEU after training for 3.5 days on eight GPUs."
+    partly = {**SUPPORTS, "verdict": "partly", "quote": quote,
+              "reason": "The abstract gives 3.5 days on eight GPUs, not 12 hours for the base model."}
+    result = run(ABS, {ABS: ABSTRACT, PAPER: FULL}, partly, seen=seen)
+    assert seen == [ABS] and result.verdict == "partly" and result.quote == quote
     assert result.source["type"] == "research" and result.source["primary"] is True
 
 

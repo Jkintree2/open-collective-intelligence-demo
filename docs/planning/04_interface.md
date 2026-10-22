@@ -712,6 +712,64 @@ The agreement part, word for word, counted in words from one to ten and in figur
 
 When no other evidence is on the same issue or solution, the agreement part is left out. When a page was never read, its type, date and primary or secondary are left out and only the agreement part shows, if any. When several statements cite the same evidence for the same claim, the "read as arguing against" line shows when any one of their readings went the other way.
 
+### Revision round: agrees, partly agrees, contradicts (added 22 October 2026)
+
+From John's emails of 21 October ("agrees, partly agrees, contradicts", the statement and the page side by side, "No source given") and 22 October (personal experience). Behind `EVIDENCE_CHECK_ENABLED`, like all of Phase 2. The verdict words, "No source given.", "From my own experience" and "From personal experience." are John's, from the plan's copy list; the labels "You wrote:", "The statement says:", "The page says:" and "Names its sources." are drafts for John. All **client-facing**.
+
+**On the card, under an evidence row with a link.** The three readings that rest on a sentence from the page replace "The page seems to support this" and "The page seems to argue against this". One word or two, then the writer's sentence and the page's sentence one under the other:
+
+> Agrees
+
+> Partly agrees
+
+> Contradicts
+
+> You wrote: "{the writer's own sentence about this evidence}"
+
+> The page says: "{quote}"
+
+"You wrote" is left out when the statement says nothing about the evidence of its own. Under "Partly agrees", the reading's one sentence on what the page does not say, as under "The page does not clearly say either way." today, for example:
+
+> The page says 80 percent led to government action, not that they became law.
+
+"The page does not clearly say either way.", "Could not open this page." and "This kind of link cannot be read yet." stay as they are. "Partly agrees" sets the row to supports while the writer has not chosen; "You chose differently from the reading." shows when the writer picks refutes against "Agrees" or "Partly agrees", or supports against "Contradicts".
+
+**On the card, under an evidence row with no link.** One line, and one tick box:
+
+> No source given.
+
+> From my own experience
+
+When the box is ticked, the line reads instead:
+
+> From personal experience.
+
+Nothing is read for such a row. The tick box goes away (and is cleared) when a link is typed; it comes back when the link is removed. The card asks the writer nothing more.
+
+**The source line** (on the card and in source confidence) gains one sentence after primary or secondary, when the page names where its facts come from (R16):
+
+> Names its sources.
+
+For example: "A news report from March 2024. Secondary source. Names its sources." Nothing is said when it does not, or when it cannot be told.
+
+**On the issue page, under each piece of evidence**, after the source confidence line, each statement's reading of the page that rests on a quote, one under another (each distinct one once):
+
+> Agrees. The statement says: "{the writer's sentence}" The page says: "{quote}"
+
+> Partly agrees. The statement says: "…" The page says: "…" {what the page does not say}
+
+> Contradicts. The statement says: "…" The page says: "…"
+
+"The statement says" is left out when the reading kept no sentence of the writer's. For a piece of evidence with no link, instead of a link:
+
+> No source given.
+
+or, when the statement that added it ticked "From my own experience":
+
+> From personal experience.
+
+The disagreement line follows the new words: under "Supported by", "The page was read as contradicting this."; under "Refuted by", "The page was read as agreeing with this." (or "The page was read as partly agreeing with this." when only a partly agrees reading went that way). A "Partly agrees" reading counts as agreeing everywhere, with what the page does not say shown under it.
+
 ### Revision round: PDFs (added 22 October 2026)
 
 PDFs are read like pages, so "This kind of link cannot be read yet." now shows only for videos and other files that are not web pages or PDFs. A PDF's result is one of the same lines as a page's. A PDF that is only pictures of pages (a scanned document) has no text to read; under its link, **client-facing** (John's words, from the plan's copy list):
@@ -723,6 +781,7 @@ A PDF too large to read (over 15 MB) or too slow to open shows "Could not open t
 An arXiv paper's link (`arxiv.org/abs/...`) reads the abstract page first; when the abstract does not settle it, the full paper is read too. Nothing new is said on the card while that happens ("Reading the page…" and, after ten seconds, "Still reading. A slow page can take up to a minute." as for any page). Its source line says it is a primary research paper, for example:
 
 > A research paper from June 2017. More than five years old. Primary source.
+
 
 ### Your account: My Statements (no-cost extra, John 17 October 2026)
 

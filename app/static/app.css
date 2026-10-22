@@ -433,3 +433,10 @@ form.search button { min-height: 44px; }
 /* Phase 2, days 7 and 8: source confidence under each piece of evidence on the issue page. */
 .evidence .confidence { display: block; font-size: 0.85rem; color: var(--ink-soft); overflow-wrap: anywhere; }
 .evidence .confidence.differs { color: var(--solution); }
+/* Phase 2 revision round: agrees, partly agrees, contradicts; the two sentences; no link. */
+.evidence-check p.check-verdict, .evidence .reading-word { font-weight: 600; }
+.evidence-check p.check-claim, .evidence-check p.check-quote { color: var(--ink); padding-left: 10px; border-left: 3px solid var(--rule); }
+.evidence-check label.check-personal { display: flex; gap: 8px; align-items: center; min-height: 44px; font-size: 0.94rem; }
+.evidence .confidence.reading { margin-top: 4px; }
+.evidence .reading > span { display: block; }
+.evidence .reading .reading-said { color: var(--ink); padding-left: 10px; border-left: 3px solid var(--rule); margin: 2px 0; }

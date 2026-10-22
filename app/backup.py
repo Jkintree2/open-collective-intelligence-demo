@@ -32,7 +32,7 @@ DIRECTIONS = {
 }
 TEMPORALS = {"DateTime": DateTime, "Date": Date, "Time": Time, "Duration": Duration}
 # Phase 2 (03_schema.md): how a page was read, on a post's SUPPORTS or REFUTES edge.
-CHECKS = frozenset({"supports", "refutes", "unclear", "unread"})
+CHECKS = frozenset({"supports", "partly", "refutes", "unclear", "unread"})
 
 
 class InvalidBackup(ValueError):
@@ -131,9 +131,10 @@ def properties(value):
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
                    "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
                    "relationship", "kind", "details", "check_quote", "source_type",
-                   "source_published"} and not isinstance(item, str):
+                   "source_published", "check_claim", "check_reason"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
-        if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary"} and type(item) is not bool:
+        if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary",
+                   "source_cites", "personal"} and type(item) is not bool:
             raise InvalidBackup("A boolean property has the wrong type.")
         if key == "latency_ms" and (type(item) is not int or item < 0):
             raise InvalidBackup("A latency property has the wrong type.")

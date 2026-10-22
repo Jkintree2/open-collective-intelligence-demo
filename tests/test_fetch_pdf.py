@@ -1,6 +1,7 @@
 """PDFs behind evidence links: read by content type, size, page and time limits, no text, arXiv. No network."""
 
 import gzip
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -135,3 +136,37 @@ def test_the_full_paper_behind_an_arxiv_abstract(url, paper):
 ])
 def test_arxiv_papers_are_research(url, research):
     assert fetch_pdf.is_arxiv_paper(url) is research
+
+
+class FakeResource:
+    RLIMIT_AS, RLIM_INFINITY = 9, -1
+
+    def __init__(self, hard=-1):
+        self.hard, self.set = hard, None
+
+    def getrlimit(self, which):
+        return (self.hard, self.hard)
+
+    def setrlimit(self, which, limits):
+        self.set = (which, limits)
+
+
+@pytest.mark.parametrize("hard,soft", [(-1, fetch_pdf.MEMORY_BYTES), (100_000_000, 100_000_000)])
+def test_the_reading_process_caps_its_memory_on_linux(monkeypatch, hard, soft):
+    fake = FakeResource(hard)
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setitem(sys.modules, "resource", fake)
+    assert fetch_pdf.cap_memory() is True
+    assert fake.set == (FakeResource.RLIMIT_AS, (soft, hard))
+
+
+def test_no_memory_cap_where_the_system_does_not_enforce_one(monkeypatch):
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert fetch_pdf.cap_memory() is False
+
+
+def test_the_reading_process_sets_the_cap_when_it_can():
+    probe = ("import resource, sys; from app.fetch_pdf import cap_memory, MEMORY_BYTES; "
+             "print(cap_memory(), resource.getrlimit(resource.RLIMIT_AS)[0] == MEMORY_BYTES)")
+    done = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, cwd=fetch_pdf.ROOT, check=True)
+    assert done.stdout.split() == (["True", "True"] if sys.platform.startswith("linux") else ["False", "False"])

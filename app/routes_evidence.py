@@ -62,6 +62,8 @@ def read_link(url: str, evidence: str, about: str, statement: str, settings, *, 
     if not reasons:  # no reading service, or a reading already in the cache
         return result
     paper = fetch_pdf.arxiv_paper(url)
+    # Only unclear or unread send the reading on to the paper. Partly agrees rests on a sentence the abstract
+    # does say and names what it does not; it is a reading the writer can weigh, not one still to be made.
     if paper and result.verdict in ("unclear", "unread"):
         full = check.check_evidence(paper, evidence, about, statement, settings, fetcher=reading, **kwargs)
         if full.verdict in check.VERDICTS:

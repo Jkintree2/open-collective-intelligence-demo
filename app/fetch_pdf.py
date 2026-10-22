@@ -24,6 +24,9 @@ MAX_BYTES = 15_000_000
 MAX_PAGES = 40
 READ_SECONDS = 10
 DOWNLOAD_SECONDS = 30
+# Address space for the reading process. Render's free plan has 512 MB for everything, the server included;
+# on Linux a 5.5 MB report peaks near 120 MB and a decompression bomb stops at about 370 MB.
+MEMORY_BYTES = 384 * 1024 * 1024
 ROOT = Path(__file__).resolve().parent.parent
 # -E and -s: no PYTHON* variables and no user packages in the process that opens a stranger's file.
 READER = [sys.executable, "-E", "-s", "-m", "app.fetch_pdf"]
@@ -60,6 +63,21 @@ def _date(value) -> str | None:
         return value.date().isoformat() if value else None
     except (AttributeError, ValueError):
         return None
+
+
+def cap_memory(limit: int = MEMORY_BYTES) -> bool:
+    """Limits this process's address space (RLIMIT_AS), where the system enforces it (Linux, as on
+    Render); True when the limit was set. Elsewhere nothing is done."""
+    if not sys.platform.startswith("linux"):
+        return False
+    try:
+        import resource
+
+        _, hard = resource.getrlimit(resource.RLIMIT_AS)
+        resource.setrlimit(resource.RLIMIT_AS, (limit if hard == resource.RLIM_INFINITY else min(limit, hard), hard))
+        return True
+    except (ImportError, ValueError, OSError):
+        return False
 
 
 def _read(data: bytes) -> tuple[str, str | None, str | None]:
@@ -122,5 +140,6 @@ def page(data: bytes, url: str, about: str, stopped: str | None):
 
 
 if __name__ == "__main__":
+    cap_memory()
     text, title, published = _read(sys.stdin.buffer.read())
     sys.stdout.write(json.dumps({"text": text, "title": title, "published": published}))

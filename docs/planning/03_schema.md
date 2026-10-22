@@ -998,15 +998,60 @@ The page text, the raw response of the reading service, and the suggestions the 
 
 Export version 2 already carries every node and edge property not on the account deny list, so these properties travel with no format change. Restore's validator accepts them (strings, booleans, datetimes, nulls).
 
+### Revision round: agrees, partly agrees, contradicts; the writer's words; no link (added 22 October 2026)
+
+Written before the code, from John's emails of 21 October (agrees, partly agrees, contradicts; the statement and the page side by side; "No source given") and 22 October (personal experience). Properties only, still behind `EVIDENCE_CHECK_ENABLED`; no new label, relationship type, constraint or index. Read queries treat an absent property as null, so edges and Evidence written before this round need nothing done to them.
+
+**A fourth reading, `partly`.** `check` on a post's `SUPPORTS` or `REFUTES` edge may now also be `partly`: the page says some of what the writer's words say about it but not all (for example the page says a share of proposals "led to government action" where the writer said they "became law"). Like `supports` and `refutes` it rests on a sentence copied from the page, checked in Python to be on the page, or it becomes `unclear`. The card sets the row to supports for a `partly` reading while the writer has not chosen (the writer still decides). For the disagreement line and source confidence a `partly` reading counts with `supports`: under "Refuted by", a `partly` reading is a reading that went the other way. The full list is now `supports`, `partly`, `refutes`, `unclear`, `unread`, or null.
+
+**The edge gains three properties**, set in the same CREATE as the edge, only from a kept check (the rule for keeping a check is unchanged) or, for `personal`, from the card row:
+
+| Property | Type | Meaning |
+|---|---|---|
+| `check_claim` | string or null | The writer's own sentence about this evidence, as the reading found it in the statement, at most 500 characters. Checked in Python to appear in the statement saved with the post (whitespace normalised); otherwise null. Null when the statement says nothing about the evidence of its own, or when there is no kept check. |
+| `check_reason` | string or null | The reading's one sentence on why, at most 300 characters; for `partly`, what the page does not say. Shown on the issue page only for `partly`. |
+| `personal` | true or absent | The writer ticked "From my own experience" on an evidence row with no link. Never read or checked. Written only when the row has no link; a row with a link never carries it. |
+
+```cypher
+// 5b, extended again ({rel} and {label} from whitelists, as before).
+MATCH (e:Evidence {key: $evidence_key}), (t:{label} {key: $target_key})
+CREATE (e)-[:{rel} {post_id: $post_id, created_at: $now,
+                    check: $check, check_quote: $check_quote, checked_at: $checked_at,
+                    check_claim: $check_claim, check_reason: $check_reason, personal: $personal}]->(t)
+```
+
+`$personal` is `true` or null (a null property is not stored). With the flag unset, statement 5b is Phase 1's and none of these is written. The resolved card row carries `personal: true` (only when it has no link) into the post's stored payload, so the edit card shows the tick again.
+
+**`source_cites` on Evidence** (R16), bool or null: true when the page names where its facts come from (cites studies, data, documents or people by name). Set with the other source facts, once, by the first kept reading of the evidence's own link, under the same rule; never overwritten.
+
+**Q35 and Q39 read the new properties.** Q35 also returns `r.check_claim`, `r.check_reason` and `e.source_cites`, so an edit keeps them with a stored reading. Q39 also returns `r.check_quote`, `r.check_claim`, `r.check_reason`, `r.personal` and `e.source_cites`:
+
+```cypher
+// Q39, extended. One row per evidence edge into the issue or one of its proposed solutions.
+...
+RETURN CASE WHEN t:Issue THEN 'issue' ELSE 'solution' END AS target_kind, t.key AS target_key,
+       e.key AS evidence_key, type(r) AS stance, r.check AS check,
+       r.check_quote AS check_quote, r.check_claim AS check_claim, r.check_reason AS check_reason,
+       r.personal AS personal,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published,
+       e.source_cites AS source_cites
+```
+
+Python (`app/confidence.py`) gives each evidence item on the issue page its readings (`supports`, `partly` or `refutes` with a quote; each distinct one once), and for an item with no link "From personal experience." when any of its edges on that target is `personal`, else "No source given.".
+
+**Export and restore.** These travel in export version 2 with no format change. Restore checks `check_claim` and `check_reason` are text, `personal` and `source_cites` booleans, and `check` one of `supports`, `partly`, `refutes`, `unclear`, `unread`.
+
 ### Revision round: PDFs and arXiv papers (added 22 October 2026)
 
 Written before the code (Eston, 22 October: PDFs are built inside Phase 2). Nothing new is stored: no new property, label, relationship type, constraint or index. A PDF's reading is stored exactly like a page's (`check`, `check_quote`, `checked_at` on the edge, the source facts on `Evidence`).
 
-**Reading a PDF** (`app/fetch_pdf.py`, no Cypher; `app/fetch_page.py` hands a PDF over to it). A reply is a PDF when its content type is `application/pdf` (or `application/x-pdf`), whatever the address ends in, or `application/octet-stream` for an address ending `.pdf`. The same public address checks run on every redirect. The file stops at 15 MB (larger is not read: a PDF cut short cannot be opened), the download at 30 seconds, and the text is taken from at most the first 40 pages, in a separate process stopped after 10 seconds, so a hostile file cannot hold the server. The text goes through the same `cut()` and the same check as a page. The PDF's own title, and its creation date (else its last change date), stand in for a page's title and published date.
+**Reading a PDF** (`app/fetch_pdf.py`, no Cypher; `app/fetch_page.py` hands a PDF over to it). A reply is a PDF when its content type is `application/pdf` (or `application/x-pdf`), whatever the address ends in, or `application/octet-stream` for an address ending `.pdf`. The same public address checks run on every redirect. The file stops at 15 MB (larger is not read: a PDF cut short cannot be opened), the download at 30 seconds, and the text is taken from at most the first 40 pages, in a separate process stopped after 10 seconds and, on Linux, held to 384 MB of memory (Render's free plan has 512 MB for everything), so a hostile file cannot hold the server. The text goes through the same `cut()` and the same check as a page. The PDF's own title, and its creation date (else its last change date), stand in for a page's title and published date.
 
 **A PDF with no text** (a scanned document: pages of pictures) is not read. The check answers `notext`, which, like `unsupported`, is never stored (the edge's `check` stays null).
 
 **arXiv.** An `arxiv.org/abs/<id>` link is read as a page (the abstract). When that reading is `unclear` or `unread`, the full paper at `arxiv.org/pdf/<id>` is read too, against the same claim and statement, and its reading is the link's: the quote is from the paper, and the cache keeps it under the `abs` link the card holds, so the write path confirms it as usual. For any `arxiv.org/abs/` or `arxiv.org/pdf/` link the source facts say `research`, primary (`source_type = 'research'`, `source_primary = true`), whatever the reading guessed. This lives in `app/routes_evidence.py` (`read_link`), around `check.check_evidence`, so `app/check.py` is unchanged.
+
 
 ## Change of email (no-cost extra X2, added 20 October 2026)
 
