@@ -998,6 +998,16 @@ The page text, the raw response of the reading service, and the suggestions the 
 
 Export version 2 already carries every node and edge property not on the account deny list, so these properties travel with no format change. Restore's validator accepts them (strings, booleans, datetimes, nulls).
 
+### Revision round: PDFs and arXiv papers (added 22 October 2026)
+
+Written before the code (Eston, 22 October: PDFs are built inside Phase 2). Nothing new is stored: no new property, label, relationship type, constraint or index. A PDF's reading is stored exactly like a page's (`check`, `check_quote`, `checked_at` on the edge, the source facts on `Evidence`).
+
+**Reading a PDF** (`app/fetch_pdf.py`, no Cypher; `app/fetch_page.py` hands a PDF over to it). A reply is a PDF when its content type is `application/pdf` (or `application/x-pdf`), whatever the address ends in, or `application/octet-stream` for an address ending `.pdf`. The same public address checks run on every redirect. The file stops at 15 MB (larger is not read: a PDF cut short cannot be opened), the download at 30 seconds, and the text is taken from at most the first 40 pages, in a separate process stopped after 10 seconds, so a hostile file cannot hold the server. The text goes through the same `cut()` and the same check as a page. The PDF's own title, and its creation date (else its last change date), stand in for a page's title and published date.
+
+**A PDF with no text** (a scanned document: pages of pictures) is not read. The check answers `notext`, which, like `unsupported`, is never stored (the edge's `check` stays null).
+
+**arXiv.** An `arxiv.org/abs/<id>` link is read as a page (the abstract). When that reading is `unclear` or `unread`, the full paper at `arxiv.org/pdf/<id>` is read too, against the same claim and statement, and its reading is the link's: the quote is from the paper, and the cache keeps it under the `abs` link the card holds, so the write path confirms it as usual. For any `arxiv.org/abs/` or `arxiv.org/pdf/` link the source facts say `research`, primary (`source_type = 'research'`, `source_primary = true`), whatever the reading guessed. This lives in `app/routes_evidence.py` (`read_link`), around `check.check_evidence`, so `app/check.py` is unchanged.
+
 ## Change of email (no-cost extra X2, added 20 October 2026)
 
 John's "chain of custody" note, 17 October 2026. Properties only, on account `Person`s; no new label, type or constraint (`person_email` stays on `email` alone). Not behind `EVIDENCE_CHECK_ENABLED`: it is part of Your account, so it needs `ACCOUNTS_ENABLED` like the rest of it, and its own switch, `EMAIL_CHANGE_ENABLED` (added 20 October 2026, so Phase 2 can go live before John approves the wording). Unset, Your account has no change of email form, `/account/email` and `/email/{link}` answer not found, and nothing here is written; the properties below stay absent, and the back room and export show only what is there.

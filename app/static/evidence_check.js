@@ -7,7 +7,8 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
     refutes: quote => `The page seems to argue against this: "${quote}"`,
     unclear: () => 'The page does not clearly say either way.',
     unread: () => 'Could not open this page.',
-    unsupported: () => 'This kind of link cannot be read yet.'
+    unsupported: () => 'This kind of link cannot be read yet.',
+    notext: () => 'This PDF has no text that can be read.'
   };
   const SLOW = 'Still reading. A slow page can take up to a minute.';
   const SLOW_AFTER_MS = 10000;

@@ -78,5 +78,20 @@
    "url": "https://en.wikipedia.org/wiki/Climate_change", "evidence": "Wikipedia, Climate change",
    "about": "Human caused global warming", "writer_says": "supports",
    "statement": "The Wikipedia article on climate change shows that people are warming the planet: \"The modern-day rise in global temperatures is driven by human activities, especially fossil fuel (coal, oil and natural gas) burning since the Industrial Revolution.\" https://en.wikipedia.org/wiki/Climate_change",
-   "expect": ["supports"], "note": "John, 21 October 2026: read as unclear on the live site because the backup reader escaped every comma."}
+   "expect": ["supports"], "note": "John, 21 October 2026: read as unclear on the live site because the backup reader escaped every comma."},
+  {"id": "C17", "name": "arXiv paper: the abstract does not give the base model's training time; the full paper does",
+   "url": "https://arxiv.org/abs/1706.03762", "evidence": "Attention Is All You Need",
+   "about": "Transformer models train quickly", "writer_says": "supports",
+   "statement": "The Transformer paper says the base model was trained in only 12 hours on eight GPUs.",
+   "expect": ["supports"], "note": "Revision round, PDFs. The abstract gives 3.5 days for the big model; the full paper (arxiv.org/pdf) says 100,000 steps or 12 hours for the base models. Source line: a primary research paper."},
+  {"id": "C18", "name": "Government PDF report, served without a .pdf ending: US road deaths fell in 2023",
+   "url": "https://crashstats.nhtsa.dot.gov/Api/Public/ViewPublication/813561", "evidence": "NHTSA early estimate of 2023 traffic fatalities",
+   "about": "Road traffic deaths are rising in the United States", "writer_says": "refutes",
+   "statement": "US road deaths are not rising: NHTSA estimates about 40,990 people died in 2023, down 3.6 percent from 2022.",
+   "expect": ["refutes", "unclear"], "note": "Revision round, PDFs. The report says deaths decreased, so it argues against an issue saying they are rising. Must never come back as supports."},
+  {"id": "C19", "name": "A scanned PDF (pages that are pictures) has no text to read",
+   "fixture": "scanned.pdf", "url": "https://council.example.org/minutes-2019.pdf", "evidence": "Council minutes, March 2019",
+   "about": "Coastal flooding", "writer_says": "supports",
+   "statement": "The council minutes show flooding was discussed in 2019.",
+   "expect": ["notext"], "note": "Revision round, PDFs. The card says: This PDF has no text that can be read."}
 ]

@@ -1,6 +1,7 @@
 """Run the evidence check cases live and print each result for a person to judge; never writes to a database.
 
-Fixture cases read a saved page from tests/fixtures/pages instead of the web. Prints the tokens
+Fixture cases read a saved page from tests/fixtures/pages (or a PDF from tests/fixtures/pdfs) instead of
+the web. Each link is read as the site reads it (routes_evidence.read_link: arXiv's full paper too). Prints the tokens
 used, so the cost per link can be measured.
 """
 
@@ -8,14 +9,19 @@ import argparse
 import json
 from pathlib import Path
 
-from app import check
+from app import fetch_pdf
 from app.config import load_settings
 from app.fetch_page import Page, cut, fetch, html_text
+from app.routes_evidence import read_link
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def fixture_fetcher(name: str):
+    if name.endswith(".pdf"):
+        return lambda url, about="", **kwargs: fetch_pdf.page((ROOT / "tests" / "fixtures" / "pdfs" / name).read_bytes(),
+                                                              url, about, None)
+
     def fetcher(url, about="", **kwargs):
         text, title, description, published, modified = html_text((ROOT / "tests" / "fixtures" / "pages" / name).read_text())
         return Page("ok", url, cut(text, about), title, description, published, modified=modified)
@@ -36,8 +42,8 @@ def main() -> int:
         if args.case and case["id"] not in args.case:
             continue
         fetcher = fixture_fetcher(case["fixture"]) if case.get("fixture") else fetch
-        result = check.check_evidence(case["url"], case["evidence"], case["about"], case["statement"], settings,
-                                      writer_says=case["writer_says"], fetcher=fetcher)
+        result = read_link(case["url"], case["evidence"], case["about"], case["statement"], settings,
+                           writer_says=case["writer_says"], fetcher=fetcher)
         ran += 1
         ok = result.verdict in case["expect"]
         met += ok

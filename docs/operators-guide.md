@@ -221,9 +221,12 @@ Some pages cannot be read well:
 
 * A page that is mostly menus and links, like the starting statements' United Nations document page, says "does not clearly say either way", because there is almost no text on it.
 * Some news sites, Reuters among them, turn away anything that is not a person in a browser. Their pages say "Could not open this page". When that happens the site asks DeepSeek's own page reader to try instead, which sometimes works. To stop it asking, add `DEEPSEEK_FETCH` with the value `0` in Render under Environment and save; those pages then simply say "Could not open this page".
-* PDF files and videos say "This kind of link cannot be read yet".
+* Videos, and files that are neither web pages nor PDFs (Word documents, pictures), say "This kind of link cannot be read yet".
+* A PDF that is only pictures of pages, as a scanned document is, says "This PDF has no text that can be read".
 
 In each case the form works as before and the writer chooses supports or refutes themselves.
+
+**PDFs** are read like pages: a report, a study or a government document behind a link is read for the sentence the writer's claim rests on, and its date is the one the PDF gives for itself. Only the first 40 pages are read, and a PDF over 15 MB says "Could not open this page", as a very slow one does. A link to a paper on arXiv (arxiv.org/abs/...) reads the paper's summary page first; when that does not settle it, the whole paper is read too, which can take a little longer. Such a paper is always described as a primary research paper.
 
 On the issue page, each piece of evidence then carries one line in plain words: the kind of page and its date, "More than five years old." when it is, primary or secondary, and how many other pieces of evidence on the same issue or solution say the same or disagree. For a reference work such as Wikipedia, the date is when the page was last updated. Anything not known is left out. When the writer kept "supports" but the page was read as arguing against, everyone sees "The page was read as arguing against this." (and the other way round). Five years is easy to change; ask whoever helps you with the site.
 

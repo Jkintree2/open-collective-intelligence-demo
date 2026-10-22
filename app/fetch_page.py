@@ -30,7 +30,7 @@ MAX_REDIRECTS = 3
 MAX_CHARS = 12_000
 PORTS = {None, 80, 443}
 TEXT_TYPES = ("text/html", "application/xhtml+xml", "text/plain")
-NOT_PAGES = re.compile(r"\.(pdf|docx?|xlsx?|pptx?|zip|gz|mp[34]|m4a|mov|avi|webm|wav|ogg|png|jpe?g|gif|webp|svg)$", re.I)
+NOT_PAGES = re.compile(r"\.(docx?|xlsx?|pptx?|zip|gz|mp[34]|m4a|mov|avi|webm|wav|ogg|png|jpe?g|gif|webp|svg)$", re.I)
 VIDEO_HOSTS = ("youtube.com", "youtu.be", "vimeo.com", "tiktok.com")
 USER_AGENT = "OpenCollectiveIntelligence/0.2 (reads one page a person cited)"
 
@@ -276,7 +276,8 @@ class _Body:
     """The page's bytes, unpacked here rather than by httpx so that a small compressed reply can never
     grow past MAX_BYTES in memory: each piece is unpacked only up to what is still allowed."""
 
-    def __init__(self, encoding: str) -> None:
+    def __init__(self, encoding: str, limit: int | None = None) -> None:
+        self.limit = limit or MAX_BYTES
         encoding = encoding.strip().lower()
         if encoding in ("", "identity"):
             self.unpack = None
@@ -290,13 +291,13 @@ class _Body:
         self.data = bytearray()
 
     def add(self, chunk: bytes) -> bool:
-        """Adds a piece; False once MAX_BYTES is reached."""
+        """Adds a piece; False once the limit is reached."""
         if self.unpack is None:
-            self.data += chunk[:MAX_BYTES + 1 - len(self.data)]
-            return len(self.data) <= MAX_BYTES
-        while chunk and len(self.data) <= MAX_BYTES:
+            self.data += chunk[:self.limit + 1 - len(self.data)]
+            return len(self.data) <= self.limit
+        while chunk and len(self.data) <= self.limit:
             try:
-                self.data += self.unpack.decompress(chunk, MAX_BYTES + 1 - len(self.data))
+                self.data += self.unpack.decompress(chunk, self.limit + 1 - len(self.data))
             except zlib.error as exc:
                 if getattr(self, "raw_deflate", False) and not self.data:
                     self.raw_deflate = False
@@ -304,7 +305,7 @@ class _Body:
                     continue
                 raise _Encoding("bad data") from exc
             chunk = self.unpack.unconsumed_tail
-        return len(self.data) <= MAX_BYTES
+        return len(self.data) <= self.limit
 
 
 def fetch(url: str, *, about: str = "", request_id: str | None = None, agent: str = USER_AGENT,
@@ -322,6 +323,7 @@ def fetch(url: str, *, about: str = "", request_id: str | None = None, agent: st
 
 
 def _fetch(url, about, agent, resolver, transport, entry, started) -> Page:
+    from app import fetch_pdf  # here, not at the top: fetch_pdf builds its Page from this module
     if unsupported(url):
         return Page("unsupported", url, reason="type")
     current = url
@@ -335,7 +337,8 @@ def _fetch(url, about, agent, resolver, transport, entry, started) -> Page:
             entry["host"] = tls_name
             request = client.build_request("GET", target, headers={
                 "Host": host_header, "User-Agent": agent,
-                "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9", "Accept-Encoding": "gzip, deflate"},
+                "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,application/pdf;q=0.8",
+                "Accept-Encoding": "gzip, deflate"},
                 extensions={"sni_hostname": tls_name})
             try:
                 response = client.send(request, stream=True)
@@ -356,11 +359,17 @@ def _fetch(url, about, agent, resolver, transport, entry, started) -> Page:
                 if response.is_error:
                     return Page("unread", current, reason="http")
                 content_type = response.headers.get("content-type", "").lower()
-                if not content_type.startswith(TEXT_TYPES):
+                # A PDF, by content type, goes to app/fetch_pdf.py with its own size and time limits.
+                pdf, stopped = fetch_pdf.is_pdf(content_type, current), None
+                if not pdf and not content_type.startswith(TEXT_TYPES):
                     return Page("unsupported", current, reason="type")
-                body = _Body(response.headers.get("content-encoding", ""))
+                body = _Body(response.headers.get("content-encoding", ""), fetch_pdf.MAX_BYTES if pdf else None)
                 for chunk in response.iter_raw():
-                    if not body.add(chunk) or time.perf_counter() - started > TIMEOUT_S * 2:
+                    if not body.add(chunk):
+                        stopped = "too_big"
+                    elif time.perf_counter() - started > (fetch_pdf.DOWNLOAD_SECONDS if pdf else TIMEOUT_S * 2):
+                        stopped = "timeout"
+                    if stopped:
                         break
             except _Encoding:
                 return Page("unread", current, reason="encoding")
@@ -369,6 +378,9 @@ def _fetch(url, about, agent, resolver, transport, entry, started) -> Page:
             finally:
                 response.close()
             entry["bytes"] = len(body.data)
+            if pdf:
+                entry["pdf"] = True
+                return fetch_pdf.page(body.data, current, about, stopped)
             body = body.data
             raw = bytes(body[:MAX_BYTES]).decode(_charset(content_type, bytes(body[:4096])), "replace")
             if content_type.startswith("text/plain"):

@@ -100,14 +100,15 @@ def test_follows_at_most_three_redirects():
 
 
 @pytest.mark.parametrize("url,content_type", [
-    ("https://example.org/report.pdf", None),
+    ("https://example.org/report.docx", None),
     ("https://www.youtube.com/watch?v=abc", None),
-    ("https://example.org/file", "application/pdf"),
+    ("https://example.org/file", "application/zip"),
     ("https://example.org/pic", "image/png"),
 ])
 def test_links_that_are_not_web_pages_are_unsupported(url, content_type):
+    # PDFs are read since the revision round (tests/test_fetch_pdf.py).
     seen = []
-    routes = {("example.org", "/file"): (200, {"content-type": content_type or ""}, b"%PDF"),
+    routes = {("example.org", "/file"): (200, {"content-type": content_type or ""}, b"PK\x03\x04"),
               ("example.org", "/pic"): (200, {"content-type": content_type or ""}, b"\x89PNG")}
     page = fetch(url, resolver=resolver({}), transport=serving(routes, seen))
     assert page.status == "unsupported"
