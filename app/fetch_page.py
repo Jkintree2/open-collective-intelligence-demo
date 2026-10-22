@@ -34,6 +34,11 @@ NOT_PAGES = re.compile(r"\.(pdf|docx?|xlsx?|pptx?|zip|gz|mp[34]|m4a|mov|avi|webm
 VIDEO_HOSTS = ("youtube.com", "youtu.be", "vimeo.com", "tiktok.com")
 USER_AGENT = "OpenCollectiveIntelligence/0.2 (reads one page a person cited)"
 
+
+def user_agent(site_url: str | None = None) -> str:
+    """Names the site, so a site that asks readers to say who they are (Wikipedia does) lets us in."""
+    return f"OpenCollectiveIntelligence/0.2 (+{site_url}; reads one page a person cited)" if site_url else USER_AGENT
+
 Resolver = Callable[[str, int], list[str]]
 NAT64 = ipaddress.ip_network("64:ff9b::/96")
 IPV4_COMPATIBLE = ipaddress.ip_network("::/96")
@@ -302,12 +307,12 @@ class _Body:
         return len(self.data) <= MAX_BYTES
 
 
-def fetch(url: str, *, about: str = "", request_id: str | None = None,
+def fetch(url: str, *, about: str = "", request_id: str | None = None, agent: str = USER_AGENT,
           resolver: Resolver = resolve, transport: httpx.BaseTransport | None = None) -> Page:
     """The page behind `url`, cut to MAX_CHARS around `about`. Never raises for a bad page."""
     started = time.perf_counter()
     entry = {"event": "fetch", "request_id": request_id, "reader": "site"}
-    page = _fetch(url, about, resolver, transport, entry, started)
+    page = _fetch(url, about, agent, resolver, transport, entry, started)
     entry.update(status=page.status, reason=page.reason, chars=len(page.text),
                  ms=round((time.perf_counter() - started) * 1000))
     log.info(json.dumps(entry))
@@ -316,7 +321,7 @@ def fetch(url: str, *, about: str = "", request_id: str | None = None,
     return page
 
 
-def _fetch(url, about, resolver, transport, entry, started) -> Page:
+def _fetch(url, about, agent, resolver, transport, entry, started) -> Page:
     if unsupported(url):
         return Page("unsupported", url, reason="type")
     current = url
@@ -329,7 +334,7 @@ def _fetch(url, about, resolver, transport, entry, started) -> Page:
                 return Page("unread", current, reason=str(exc))
             entry["host"] = tls_name
             request = client.build_request("GET", target, headers={
-                "Host": host_header, "User-Agent": USER_AGENT,
+                "Host": host_header, "User-Agent": agent,
                 "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9", "Accept-Encoding": "gzip, deflate"},
                 extensions={"sni_hostname": tls_name})
             try:
@@ -389,7 +394,8 @@ BACKUP_REASONS = {"timeout", "network", "http", "empty", "redirects"}
 def markdown_text(markdown: str) -> str:
     """Plain sentences from Markdown: images dropped, links kept as their words, marks removed."""
     text = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", markdown)
-    text = re.sub(r"\\([\\`*_{}\[\]()#+\-.!|;:~<>\"'])", r"\1", text)  # Fetch escapes punctuation
+    # Fetch escapes punctuation, commas included ("\,"); Markdown allows any ASCII mark to be escaped.
+    text = re.sub(r"\\([!-/:-@\[-`{-~])", r"\1", text)
     text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+", "", text, flags=re.M)
     text = re.sub(r"(\*\*|__|`)", "", text)

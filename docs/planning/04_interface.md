@@ -640,7 +640,17 @@ Then one of:
 
 > This kind of link cannot be read yet.
 
-The last one is for PDFs, videos and other links that are not web pages. "Could not open this page." is also what shows when the reading itself fails (the site does not answer, or the request is refused), apart from the busy reader below, which has its own line. Under a result with a page, one line of what the page says about itself (the same words as source confidence, below, without the agreement part), for example:
+Under "The page does not clearly say either way.", the reading's own one sentence on why, for example what the writer's words claim that the page does not say (added 22 October 2026 after Audrey Tang's test, a draft for John):
+
+> The page says vTaiwan claims 80 percent led to government action, not that they became law.
+
+When a page has not been read after ten seconds, one more line under "Reading the page…" until the result comes (22 October 2026, a draft for John):
+
+> Still reading. A slow page can take up to a minute.
+
+The page is read against what the writer says it shows (their own words about the evidence, or a sentence they copied from the page), with the issue or solution as the claim. Words that say about the same as the page, even in other words, count; words that go further than the page read as unclear (22 October 2026, after Audrey Tang's test; Phase 2 SOW item 1, "what the poster claims").
+
+The last one of the five results is for PDFs, videos and other links that are not web pages. "Could not open this page." is also what shows when the reading itself fails (the site does not answer, or the request is refused), apart from the busy reader below, which has its own line. Under a result with a page, one line of what the page says about itself (the same words as source confidence, below, without the agreement part), for example:
 
 > A news report from March 2024. Secondary source.
 

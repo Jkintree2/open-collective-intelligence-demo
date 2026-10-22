@@ -195,3 +195,19 @@ def test_a_reference_work_is_dated_by_its_last_update():
     assert run(reference, page=page).source["published"] == "2026-10-17"
     check.cache.clear()
     assert run(GOOD, page=page).source["published"] == "2001-12-06"   # a news report keeps its first date
+
+
+def test_a_long_page_is_cut_around_the_writers_words_and_the_reader_names_the_site():
+    seen = []
+    settings = Settings("test", "test", "test", "neo4j://localhost:7687", "neo4j", "test", llm_api_key="k",
+                        site_url="https://oci.example.org")
+    check_evidence(URL, "Forty town survey", "Coastal flooding", "Flooding days doubled in forty towns.", settings,
+                   fetcher=page_of(PAGE, seen), transport=reply(GOOD), backup=no_backup)
+    assert seen[0][1]["about"] == "Forty town survey Coastal flooding Flooding days doubled in forty towns."
+    assert "https://oci.example.org" in seen[0][1]["agent"]
+
+
+def test_the_prompt_asks_for_the_writers_own_words_to_be_borne_out():
+    # Audrey Tang, 21 October: "80% became law, which proves" was never checked against the page.
+    assert "bear out what the writer says it shows" in check.SYSTEM_PROMPT
+    assert "say in \"reason\" what the page does\n  not say" in check.SYSTEM_PROMPT

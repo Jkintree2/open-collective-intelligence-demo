@@ -9,6 +9,8 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
     unread: () => 'Could not open this page.',
     unsupported: () => 'This kind of link cannot be read yet.'
   };
+  const SLOW = 'Still reading. A slow page can take up to a minute.';
+  const SLOW_AFTER_MS = 10000;
   const DIFFERENT = 'You chose differently from the reading. That is fine; others will see both.';
   const ALSO_HINT = 'Tick any you want to add to your statement; you can edit it before you post. Evidence you tick keeps this page\'s link.';
   const KINDS = [['issues', 'Issue'], ['solutions', 'Solution'], ['evidence', 'Evidence']];
@@ -50,6 +52,8 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
     row.verdict = result.verdict;
     row.check = KEPT.includes(result.verdict) ? {verdict: result.verdict, quote: result.quote || null} : null;
     const lines = [node('p', SAYS[result.verdict](result.quote), 'check-result')];
+    // An unclear reading says why, for example what the writer's words claim that the page does not.
+    if (result.verdict === 'unclear' && result.reason) lines.push(node('p', result.reason, 'check-reason'));
     if (result.line) lines.push(node('p', result.line, 'check-source'));
     row.differentLine = node('p', '', 'check-different');
     row.checkBox.replaceChildren(...lines, row.differentLine);
@@ -66,12 +70,17 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow}) =>
     const serial = row.checkSerial = (row.checkSerial || 0) + 1;
     if (!url || !about) { say(row, ''); return; }
     say(row, 'Reading the page…');
+    const slow = setTimeout(() => {
+      if (serial === row.checkSerial && !row.verdict) row.checkBox.append(node('p', SLOW, 'check-slow'));
+    }, SLOW_AFTER_MS);
     try {
       const result = await request('/api/check-evidence', {url, evidence: row.name.value, about, text: text.value, stance: row.stance.value});
       if (serial === row.checkSerial) show(row, result);
     } catch (error) {
       // Only the busy reader has words of its own; anything else under a link is that the page was not opened.
       if (serial === row.checkSerial) say(row, error.status === 429 ? error.message : SAYS.unread());
+    } finally {
+      clearTimeout(slow);
     }
   }
   function watch(row, item = {}) {
