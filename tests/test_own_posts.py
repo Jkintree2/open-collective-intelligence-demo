@@ -234,15 +234,17 @@ def test_the_edit_card_comes_from_the_posts_edges_as_they_are_now():
                                        "source_type": "news", "source_primary": False, "source_published": "2024-03"}}
     assert edit_card(rows, stored, issues, checks)["evidence"][0]["check"] == {
         "verdict": "supports", "quote": "Seawalls failed twice.", "claim": None, "reason": None,
-        "line": "A news report from March 2024. Secondary source."}
+        "quote_at": None, "pasted": False, "video": False, "line": "A news report from March 2024. Secondary source."}
     unread = {key: dict(value, check="unread", check_quote=None, source_type=None) for key, value in checks.items()}
     assert edit_card(rows, stored, issues, unread)["evidence"][0]["check"] == {
-        "verdict": "unread", "quote": None, "claim": None, "reason": None, "line": None}
+        "verdict": "unread", "quote": None, "claim": None, "reason": None, "quote_at": None, "pasted": False,
+        "video": False, "line": None}
     # Revision round: the writer's sentence and the reason come back, and so does the personal experience tick.
     worded = {key: dict(value, check="partly", check_claim="Seawalls fail.", check_reason="The page says twice.",
                         source_cites=True) for key, value in checks.items()}
     assert edit_card(rows, stored, issues, worded)["evidence"][0]["check"] == {
         "verdict": "partly", "quote": "Seawalls failed twice.", "claim": "Seawalls fail.", "reason": "The page says twice.",
+        "quote_at": None, "pasted": False, "video": False,
         "line": "A news report from March 2024. Secondary source. Names its sources."}
     mine = jsonlib.loads(stored)
     mine["evidence"][0].update(url=None, personal=True)

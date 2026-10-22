@@ -1,0 +1,7 @@
+{"playabilityStatus": {"status": "OK"},
+ "videoDetails": {"videoId": "AbCdEfGhIj0", "title": "Lakeview lowered its speed limits. Here is what happened", "author": "Lakeview Evening News",
+                  "shortDescription": "Our transport reporter looks at the city's road safety figures, two years after the 20 mph limit."},
+ "captions": {"playerCaptionsTracklistRenderer": {"captionTracks": [
+   {"baseUrl": "https://www.youtube.com/api/timedtext?v=AbCdEfGhIj0&kind=asr&lang=en", "languageCode": "en", "kind": "asr"},
+   {"baseUrl": "https://www.youtube.com/api/timedtext?v=AbCdEfGhIj0&lang=fr", "languageCode": "fr"},
+   {"baseUrl": "https://www.youtube.com/api/timedtext?v=AbCdEfGhIj0&lang=en&written=1", "languageCode": "en"}]}}}

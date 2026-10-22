@@ -11,8 +11,13 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
     unclear: 'The page does not clearly say either way.',
     unread: 'Could not open this page.',
     notext: 'This PDF has no text that can be read.',
+    nocaptions: 'Could not read this video\'s captions. Paste the transcript below and it will be read.',
     unsupported: 'This kind of link cannot be read yet.'
   };
+  // YouTube videos (revision round): read from their captions, or from a transcript the writer pastes.
+  const VIDEO = /^https?:\/\/(?:(?:www\.|m\.)?youtube\.com\/(?:watch\?|shorts\/)|youtu\.be\/)/i;
+  const READ_TRANSCRIPT = 'Read the transcript';
+  const MAX_TRANSCRIPT = 60000;
   // Which side of supports or refutes a reading takes; partly agrees counts as supports.
   const SIDE = {supports: 'supports', partly: 'supports', refutes: 'refutes'};
   const NO_SOURCE = 'No source given.';
@@ -64,15 +69,32 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
     }
     row.checkBox.append(box);
   }
+  // No captions: a box for the transcript. What is pasted is sent only to be read, for this link only.
+  function pasteBox(row) {
+    const box = node('textarea', '', 'check-transcript'), button = node('button', READ_TRANSCRIPT, 'quiet check-read');
+    box.maxLength = MAX_TRANSCRIPT; box.rows = 5;
+    box.setAttribute('aria-label', 'Transcript');
+    button.type = 'button';
+    button.addEventListener('click', () => {
+      if (!box.value.trim()) { box.focus(); return; }
+      row.transcript = {url: row.url.value.trim(), text: box.value};
+      run(row);
+    });
+    row.checkBox.append(box, button);
+  }
   function show(row, result) {
     if (!SAYS[result.verdict]) { say(row, ''); return; }
+    if (result.verdict === 'nocaptions') { say(row, SAYS.nocaptions); pasteBox(row); return; }
     row.verdict = result.verdict;
     row.check = KEPT.includes(result.verdict) ? {verdict: result.verdict, quote: result.quote || null} : null;
     const lines = [node('p', SAYS[result.verdict], SIDE[result.verdict] ? 'check-result check-verdict' : 'check-result')];
     // Agrees, partly agrees or contradicts: the writer's sentence and the page's, one under the other.
     if (SIDE[result.verdict]) {
       if (result.claim) lines.push(node('p', `You wrote: "${result.claim}"`, 'check-claim'));
-      if (result.quote) lines.push(node('p', `The page says: "${result.quote}"`, 'check-quote'));
+      // A video's sentence says where it is; one from a pasted transcript says so (and its line ends saying so).
+      const said = (result.pasted ? 'The transcript says' : result.video ? 'The video says' : 'The page says') +
+        (result.quote_at ? ` at ${result.quote_at}` : '');
+      if (result.quote) lines.push(node('p', `${said}: "${result.quote}"`, 'check-quote'));
     }
     // Partly agrees and unclear say why, for example what the writer's words claim that the page does not.
     if ((result.verdict === 'partly' || result.verdict === 'unclear') && result.reason) lines.push(node('p', result.reason, 'check-reason'));
@@ -91,12 +113,15 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
     if (!url) { noLink(row); return; }
     const serial = row.checkSerial = (row.checkSerial || 0) + 1;
     if (!about || !reading) { say(row, ''); return; }
-    say(row, 'Reading the page…');
+    const transcript = row.transcript && row.transcript.url === url ? row.transcript.text : '';
+    say(row, transcript ? 'Reading the transcript…' : VIDEO.test(url) ? 'Reading the video…' : 'Reading the page…');
     const slow = setTimeout(() => {
       if (serial === row.checkSerial && !row.verdict) row.checkBox.append(node('p', SLOW, 'check-slow'));
     }, SLOW_AFTER_MS);
     try {
-      const result = await request('/api/check-evidence', {url, evidence: row.name.value, about, text: text.value, stance: row.stance.value});
+      const asked = {url, evidence: row.name.value, about, text: text.value, stance: row.stance.value};
+      if (transcript) asked.transcript = transcript;
+      const result = await request('/api/check-evidence', asked);
       if (serial === row.checkSerial) show(row, result);
     } catch (error) {
       // Only the busy reader has words of its own; anything else under a link is that the page was not opened.
