@@ -75,7 +75,7 @@ def test_lines_count_agreement_on_the_same_target_only():
     assert lines[("solution", "veto", "a", "SUPPORTS")] == {
         "words": "A news report from March 2024. Secondary source. "
                  "One other piece of evidence here says the same; one disagrees.",
-        "differs": None}
+        "differs": None, "readings": [], "personal": False}
     assert lines[("solution", "veto", "c", "REFUTES")]["words"] == "Two other pieces of evidence here disagree."
     assert lines[("solution", "other", "d", "SUPPORTS")] is None
     assert lines[("issue", "veto", "x", "SUPPORTS")] is None
@@ -98,9 +98,12 @@ def test_an_item_on_both_sides_counts_once_on_each():
 
 
 @pytest.mark.parametrize("stance,checks,differs", [
-    ("SUPPORTS", ["refutes"], "The page was read as arguing against this."),
-    ("SUPPORTS", ["supports", "refutes", None], "The page was read as arguing against this."),
-    ("REFUTES", ["supports"], "The page was read as supporting this."),
+    ("SUPPORTS", ["refutes"], "The page was read as contradicting this."),
+    ("SUPPORTS", ["supports", "refutes", None], "The page was read as contradicting this."),
+    ("REFUTES", ["supports"], "The page was read as agreeing with this."),
+    ("REFUTES", ["partly"], "The page was read as partly agreeing with this."),
+    ("REFUTES", ["partly", "supports"], "The page was read as agreeing with this."),
+    ("SUPPORTS", ["partly"], None),
     ("SUPPORTS", ["supports", "unclear", "unread", None], None),
     ("REFUTES", ["refutes"], None),
 ])
@@ -113,7 +116,7 @@ def test_a_reading_on_another_target_does_not_flag_this_one():
     rows = [row("veto", "a", "SUPPORTS", "refutes", kind="issue"), row("veto", "a", "SUPPORTS", "supports")]
     lines = confidence.lines(rows, today=TODAY)
     assert lines[("solution", "veto", "a", "SUPPORTS")] is None
-    assert lines[("issue", "veto", "a", "SUPPORTS")]["differs"] == "The page was read as arguing against this."
+    assert lines[("issue", "veto", "a", "SUPPORTS")]["differs"] == "The page was read as contradicting this."
 
 
 def test_annotate_puts_the_lines_on_the_page_items():
@@ -122,7 +125,7 @@ def test_annotate_puts_the_lines_on_the_page_items():
     solutions = [{"key": "abolish", "evidence": [{"key": "b", "name": "B", "url": None, "stance": "REFUTES"}]}]
     confidence.annotate("veto", evidence, solutions, rows, today=TODAY)
     assert evidence[0]["confidence"] == "A news report from March 2024. Secondary source."
-    assert evidence[0]["differs"] == "The page was read as arguing against this."
+    assert evidence[0]["differs"] == "The page was read as contradicting this."
     assert solutions[0]["evidence"][0]["confidence"] is None and solutions[0]["evidence"][0]["differs"] is None
 
 
@@ -134,3 +137,49 @@ def test_the_words_are_in_the_interface_doc():
                  confidence.agreement_words(0, 1), confidence.agreement_words(0, 2),
                  confidence.agreement_words(1, 2), confidence.agreement_words(2, 1)):
         assert line in doc
+
+
+# Revision round (03_schema.md and 04_interface.md, "Revision round: agrees, partly agrees, contradicts").
+def reading_row(check, quote="Flooding days doubled.", claim=None, reason=None, personal=None, stance="SUPPORTS"):
+    return {**row("veto", "a", stance, check, kind="issue"), "check_quote": quote, "check_claim": claim,
+            "check_reason": reason, "personal": personal}
+
+
+def test_each_distinct_reading_with_a_quote_is_shown_once_in_johns_words():
+    rows = [reading_row("partly", claim="Flooding days tripled.", reason="The page says doubled, not tripled."),
+            reading_row("partly", claim="Flooding days tripled.", reason="The page says doubled, not tripled."),
+            reading_row("supports", reason="Not shown for agrees."), reading_row("refutes", claim="Floods are rare."),
+            reading_row("unclear", quote=None), reading_row("unread", quote=None), reading_row("supports", quote=None)]
+    found = confidence.lines(rows, today=TODAY)[("issue", "veto", "a", "SUPPORTS")]
+    assert found["readings"] == [
+        {"word": "Partly agrees", "claim": "Flooding days tripled.", "quote": "Flooding days doubled.",
+         "reason": "The page says doubled, not tripled."},
+        {"word": "Agrees", "claim": None, "quote": "Flooding days doubled.", "reason": None},
+        {"word": "Contradicts", "claim": "Floods are rare.", "quote": "Flooding days doubled.", "reason": None}]
+
+
+def test_evidence_with_no_link_says_so_or_personal_experience():
+    rows = [{**row("veto", "seen", "SUPPORTS", kind="issue"), "personal": True},
+            row("veto", "told", "SUPPORTS", kind="issue")]
+    evidence = [{"key": "seen", "name": "What I saw", "url": None, "stance": "SUPPORTS"},
+                {"key": "told", "name": "What I heard", "url": None, "stance": "SUPPORTS"},
+                {"key": "linked", "name": "A report", "url": "https://example.org/r", "stance": "SUPPORTS"}]
+    confidence.annotate("veto", evidence, [], rows, today=TODAY)
+    assert [item["source_note"] for item in evidence] == ["From personal experience.", "No source given.", None]
+
+
+def test_names_its_sources_follows_primary_or_secondary():
+    assert source_words({**NEWS, "cites": True}, today=TODAY) == \
+        "A news report from March 2024. Secondary source. Names its sources."
+    assert source_words({**NEWS, "cites": False}, today=TODAY) == "A news report from March 2024. Secondary source."
+    facts = {**row("veto", "a", "SUPPORTS", kind="issue", facts=NEWS), "source_cites": True}
+    assert confidence.lines([facts], today=TODAY)[("issue", "veto", "a", "SUPPORTS")]["words"].endswith("Names its sources.")
+
+
+def test_the_revision_round_words_are_in_the_interface_doc():
+    from pathlib import Path
+    doc = (Path(__file__).resolve().parent.parent / "docs/planning/04_interface.md").read_text(encoding="utf-8")
+    for line in (confidence.PARTLY_FOR, confidence.NO_SOURCE, confidence.PERSONAL, "Names its sources.",
+                 "From my own experience", "The statement says:", "The page says:", "You wrote:",
+                 *confidence.WORDS.values()):
+        assert line in doc, line

@@ -94,6 +94,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         if (row.stance) item.stance = row.stance.value;
         if (row.radios) item.stance = row.radios.find(radio => radio.checked).value;
         if (row.check) item.check = row.check;
+        if (row.personal?.checked && !row.url?.value.trim()) item.personal = true;  // From my own experience
         return item;
       });
     }
@@ -325,6 +326,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   }
   // Phase 2: the page behind each evidence link is read when the form asks for it (evidence_check.js).
   const evidence = form.dataset?.evidenceCheck !== undefined && window.ociEvidenceCheck
-    ? window.ociEvidenceCheck({find, request, node, text, changed, addRow, removeRow}) : null;
+    ? window.ociEvidenceCheck({find, request, node, text, changed, addRow, removeRow, reading: form.dataset.noReading === undefined})
+    : null;
   return {state, grow, identity, changed, addRow, openCard, openPlain, noteShortened, loadCandidates, post, setPositionOnExisting};
 };
