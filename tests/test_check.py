@@ -219,7 +219,7 @@ def test_the_prompt_asks_for_the_writers_own_words_to_be_borne_out():
 def test_the_prompt_reads_the_claim_alone_first_and_a_denial_backed_by_the_page_is_refutes():
     # PR 16 was reverted for reading a page that backs a writer's denial as supports (22 October 2026).
     prompt = " ".join(check.SYSTEM_PROMPT.split())
-    assert "Step 1, the claim alone. Ignore the statement and writer_says." in prompt
+    assert "Step 1, the claim alone. Ignore the statement." in prompt
     assert "only when step 1 says supports" in prompt
     assert "When step 1 says refutes, answer refutes, whatever the writer's words say." in prompt
     assert "the page agreeing with the writer is not the page supporting the claim" in prompt
@@ -269,3 +269,12 @@ def test_odd_cites_values_become_null():
     for odd in ("yes", 1, None):
         check.cache.clear()
         assert run_with({**PARTLY, "source": {**PARTLY["source"], "cites": odd}}).source["cites"] is None
+
+
+def test_the_writers_supports_or_refutes_is_never_sent_to_the_reading():
+    # Told only to ignore it, the reading still followed it: Hans Rosling's talk, cited by a writer who chose
+    # refutes, came back as supports with a reason saying it argues against the claim (C30, 22 October 2026).
+    page = check.Page("ok", "https://example.org", "Text of the page that is long enough to read.", "Title")
+    for writer_says in ("supports", "refutes"):
+        sent = check.build_messages(page, "Evidence", "A claim", "A statement.", writer_says)
+        assert "writer_says" not in sent[1]["content"] and "writer_says" not in sent[0]["content"]

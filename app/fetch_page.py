@@ -309,8 +309,14 @@ class _Body:
 
 
 def fetch(url: str, *, about: str = "", request_id: str | None = None, agent: str = USER_AGENT,
-          resolver: Resolver = resolve, transport: httpx.BaseTransport | None = None) -> Page:
-    """The page behind `url`, cut to MAX_CHARS around `about`. Never raises for a bad page."""
+          resolver: Resolver = resolve, transport: httpx.BaseTransport | None = None,
+          transcript: str | None = None) -> Page:
+    """The page behind `url`, cut to MAX_CHARS around `about`. Never raises for a bad page. A YouTube
+    video goes to app/fetch_video.py (its captions, or `transcript`, the writer's paste)."""
+    from app import fetch_video  # here, not at the top: fetch_video builds its Page from this module
+    if fetch_video.is_video(url):
+        return fetch_video.fetch(url, about=about, request_id=request_id, transcript=transcript,
+                                 resolver=resolver, transport=transport)
     started = time.perf_counter()
     entry = {"event": "fetch", "request_id": request_id, "reader": "site"}
     page = _fetch(url, about, agent, resolver, transport, entry, started)

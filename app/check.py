@@ -48,14 +48,13 @@ You get JSON with:
 - "evidence_name": the short title the writer gave the evidence.
 - "statement": what the writer wrote. Find in it the writer's own words about this evidence: what
   they say the page shows, perhaps a sentence copied from it.
-- "writer_says": "supports" or "refutes", how the writer used the evidence. Do not let it sway you.
 - "page": the title, description, date and text of the page behind the evidence's link.
 
 Decide, from the page text alone, whether the page supports the claim, argues against it
 (refutes), supports it only in part (partly), or does not clearly say either way (unclear). The
 verdict is always about the claim, never about the writer's words or position: supports means the
 page says the claim is true, never that the page agrees with the writer. Decide in two steps.
-Step 1, the claim alone. Ignore the statement and writer_says. Read the claim as something that
+Step 1, the claim alone. Ignore the statement. Read the claim as something that
 can be true or false, and decide whether the page says it is true (supports), false (refutes), or
 neither (unclear):
 - An issue is often named as a topic, a belief or a claim rather than a sentence ("Flat Earth
@@ -135,10 +134,14 @@ class Check:
     suggested: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     checked_at: str | None = None
     usage: dict[str, Any] | None = None
+    # A video's: where the quote is ("4:12"), and whether the reading rests on a transcript the writer pasted.
+    quote_at: str | None = None
+    pasted: bool = False
 
     def as_json(self) -> dict[str, Any]:
         return {"verdict": self.verdict, "url": self.url, "quote": self.quote, "reason": self.reason,
-                "claim": self.claim, "source": self.source, "suggested": self.suggested, "checked_at": self.checked_at}
+                "claim": self.claim, "source": self.source, "suggested": self.suggested, "checked_at": self.checked_at,
+                "quote_at": self.quote_at, "pasted": self.pasted}
 
 
 class _Cache:
@@ -259,8 +262,10 @@ def _suggestions(raw: Any, about: str, evidence_name: str, candidates: Candidate
 
 
 def build_messages(page: Page, evidence_name: str, about: str, statement: str, writer_says: str) -> list[dict[str, str]]:
+    # The writer's supports or refutes is not sent: told only to ignore it, the reading still followed it and
+    # called a page that argues against the claim supporting when the writer chose refutes (22 October 2026,
+    # case C30). `writer_says` stays in the signature for callers.
     context = {"claim": about, "evidence_name": evidence_name, "statement": statement[:4000],
-               "writer_says": writer_says if writer_says in ("supports", "refutes") else "supports",
                "page": {"title": page.title, "description": page.description,
                         "published": page.published, "text": page.text}}
     return [{"role": "system", "content": SYSTEM_PROMPT},
@@ -271,14 +276,15 @@ def check_evidence(url: str, evidence_name: str, about: str, statement: str, set
                    writer_says: str = "supports", candidates: Candidates | None = None,
                    request_id: str | None = None, fetcher: Callable[..., Page] = fetch,
                    backup: Callable[..., Page] = backup_fetch,
-                   transport: httpx.BaseTransport | None = None) -> Check:
+                   transport: httpx.BaseTransport | None = None, fresh: bool = False) -> Check:
     """Read the page behind `url` and say whether it supports `about`. Never raises for a bad page
-    or a bad reply; without a reading service the answer is unchecked and nothing is fetched."""
+    or a bad reply; without a reading service the answer is unchecked and nothing is fetched. `fresh`
+    reads again whatever the cache holds (a transcript the writer pasted)."""
     url = url.strip()
     if not settings.llm_api_key:
         return Check("unchecked", url)
     key = cache_key(url, about, statement)
-    if (hit := cache.get(key)) is not None:
+    if not fresh and (hit := cache.get(key)) is not None:
         return hit
     # A long page is cut around the evidence, the claim and the writer's own words, so a sentence copied
     # from deep in an article is in what is read.
@@ -339,7 +345,7 @@ def confirmed(url: str, about: str, statement: str, verdict: str | None, quote: 
 
 
 NO_CHECK = {"check": None, "check_quote": None, "checked_at": None, "source": None,
-            "check_claim": None, "check_reason": None}
+            "check_claim": None, "check_reason": None, "check_quote_at": None, "check_pasted": None}
 
 
 def _when(value: str | None) -> datetime | None:
@@ -376,19 +382,26 @@ def kept_checks(items: list[Any], evidence: list[dict[str, Any]], statement: str
             out[row["key"]] = {"check": verdict, "check_quote": quote,
                                "checked_at": before.get("checked_at"), "source": None,
                                "check_claim": claim_in(before.get("check_claim"), statement),
-                               "check_reason": before.get("check_reason")}
+                               "check_reason": before.get("check_reason"),
+                               "check_quote_at": before.get("check_quote_at"),
+                               "check_pasted": True if before.get("check_pasted") else None}
             continue
         hit = confirmed(row["url"], item.about or "", statement, verdict, quote)
         if hit is not None:
             out[row["key"]] = {"check": hit.verdict, "check_quote": hit.quote, "checked_at": _when(hit.checked_at),
                                "source": hit.source if hit.verdict in VERDICTS else None,
                                # The writer's sentence only while the statement saved still holds it.
-                               "check_claim": claim_in(hit.claim, statement), "check_reason": hit.reason}
+                               "check_claim": claim_in(hit.claim, statement), "check_reason": hit.reason,
+                               # A video's time and paste come from this process's reading, never the card.
+                               "check_quote_at": hit.quote_at, "check_pasted": True if hit.pasted else None}
     return out
 
 
 SOURCE_WORDS = {"news": "news report", "research": "research paper", "government": "government source",
                 "reference": "reference work", "organisation": "organisation's page", "blog": "blog post", "other": "page"}
+# A YouTube video says what its channel is (03_schema.md, revision round: YouTube videos).
+VIDEO_WORDS = {"news": "news video", "organisation": "organisation's video"}
+PASTED = "Read from a transcript the writer pasted."
 MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
           "October", "November", "December")
 
@@ -419,14 +432,17 @@ def more_than_five_years(published: str | None, today: date) -> bool:
     return end < limit
 
 
-def source_words(source: dict[str, Any] | None, today: date | None = None) -> str | None:
+def source_words(source: dict[str, Any] | None, today: date | None = None, *, video: bool = False,
+                 pasted: bool = False) -> str | None:
     """What a page says about itself, in words (04_interface.md, Phase 2, as John approved it, and R16):
     'A news report from March 2018. More than five years old. Secondary source. Names its sources.'
     The date is counted
-    against `today` (the day the line is shown). Agreement is added on the issue page."""
+    against `today` (the day the line is shown). Agreement is added on the issue page. A video's type
+    is its channel's ("A news video"); a reading from a pasted transcript says so at the end."""
     if not source:
-        return None
-    kind = SOURCE_WORDS.get(source.get("type") or "other", "page")
+        return PASTED if pasted else None
+    kind = (VIDEO_WORDS.get(source.get("type") or "", "video") if video
+            else SOURCE_WORDS.get(source.get("type") or "other", "page"))
     article = "An" if kind[0] in "aeiou" else "A"
     date_words = when(source.get("published"))
     first = f"{article} {kind} from {date_words}." if date_words else f"{article} {kind}. Date not given."
@@ -435,4 +451,4 @@ def source_words(source: dict[str, Any] | None, today: date | None = None) -> st
     primary = source.get("primary")
     second = " Primary source." if primary is True else " Secondary source." if primary is False else ""
     third = " Names its sources." if source.get("cites") is True else ""
-    return first + second + third
+    return first + second + third + (" " + PASTED if pasted else "")

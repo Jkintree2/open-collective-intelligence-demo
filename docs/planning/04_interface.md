@@ -783,6 +783,38 @@ An arXiv paper's link (`arxiv.org/abs/...`) reads the abstract page first; when 
 > A research paper from June 2017. More than five years old. Primary source.
 
 
+### Revision round: YouTube videos (added 22 October 2026)
+
+YouTube videos are read from their own captions, best effort (YouTube may refuse). "This kind of link cannot be read yet." stays for Vimeo, TikTok, YouTube channels and playlists, and other files. All **client-facing**. "Could not read this video's captions. Paste the transcript below and it will be read." is John's, from the plan's copy list; the rest are drafts for John.
+
+**On the card, under a YouTube link.** While it is read:
+
+> Reading the video…
+
+Then one of the same results as a page. The video's sentence carries its time:
+
+> The video says at 4:12: "{quote}"
+
+When the captions cannot be read (the video has none, or YouTube refused):
+
+> Could not read this video's captions. Paste the transcript below and it will be read.
+
+with a box for the transcript (at most 60,000 characters) and a button:
+
+> Read the transcript
+
+While it is read: "Reading the transcript…". The result is one of the same lines, with:
+
+> The transcript says: "{quote}"
+
+(and "at 4:12" after "says" when the pasted transcript has its times, as YouTube's "Show transcript" gives them). The pasted text is never kept; only the reading is. A transcript too short to read shows the box again.
+
+**The source line** for a video names the channel's kind: "news video", "organisation's video" or "video", with the upload date, for example "A news video from March 2024. Secondary source." After a reading from a pasted transcript one more sentence:
+
+> Read from a transcript the writer pasted.
+
+**On the issue page**, a video's reading says "The video says at 4:12:" instead of "The page says:", and a reading from a pasted transcript "The transcript says:" followed by "Read from a transcript the writer pasted."
+
 ### Your account: My Statements (no-cost extra, John 17 October 2026)
 
 Below "Change your password", **client-facing**:

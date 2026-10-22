@@ -440,3 +440,6 @@ form.search button { min-height: 44px; }
 .evidence .confidence.reading { margin-top: 4px; }
 .evidence .reading > span { display: block; }
 .evidence .reading .reading-said { color: var(--ink); padding-left: 10px; border-left: 3px solid var(--rule); margin: 2px 0; }
+/* Phase 2 revision round: a YouTube video's transcript, pasted when its captions could not be read. */
+.card-row .evidence-check textarea.check-transcript { min-height: 120px; resize: vertical; field-sizing: fixed; margin-top: 4px; }
+.evidence-check button.check-read { min-height: 44px; margin-top: 6px; padding: 0 14px; border: 1px solid var(--accent); border-radius: 6px; background: var(--input); }

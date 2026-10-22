@@ -54,7 +54,8 @@ def test_a_reading_the_site_made_is_kept_with_its_source_facts():
     kept = kept_checks(card.evidence, payload.evidence, "Floods are worse.")
     assert kept == {"forty town survey": {"check": "supports", "check_quote": QUOTE, "source": SOURCE,
                                           "checked_at": datetime(2026, 10, 20, 12, tzinfo=timezone.utc),
-                                          "check_claim": None, "check_reason": None}}
+                                          "check_claim": None, "check_reason": None,
+                                          "check_quote_at": None, "check_pasted": None}}
 
 
 def test_a_reading_the_site_never_made_is_stored_as_none():
@@ -90,7 +91,7 @@ def test_an_edit_keeps_the_reading_the_post_already_holds():
                                                           "checked_at": then}}
     kept = kept_checks(card.evidence, payload.evidence, "Reworded.", stored)["forty town survey"]
     assert kept == {"check": "supports", "check_quote": QUOTE, "checked_at": then, "source": None,
-                    "check_claim": None, "check_reason": None}
+                    "check_claim": None, "check_reason": None, "check_quote_at": None, "check_pasted": None}
     moved = {key: dict(value, url="https://elsewhere.example.org/") for key, value in stored.items()}
     assert kept_checks(card.evidence, payload.evidence, "Reworded.", moved)["forty town survey"] == NO_CHECK
     other = {key: dict(value, check="refutes") for key, value in stored.items()}

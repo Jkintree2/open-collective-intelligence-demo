@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import check, config, fetch_pdf, graph
+from app import check, config, fetch_pdf, fetch_video, graph
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.fetch_page import fetch
 from app.members import current_member, require_access, require_same_origin
@@ -31,6 +31,8 @@ class CheckRequest(BaseModel):
     about: str = Field(max_length=300)
     text: str = Field(default="", max_length=4000)
     stance: str = "supports"
+    # A YouTube video's transcript, pasted by the writer when its captions could not be read; never kept.
+    transcript: str = Field(default="", max_length=fetch_video.MAX_TRANSCRIPT)
 
 
 def reader_key(request: Request) -> str:
@@ -47,21 +49,35 @@ def _added(first: dict | None, second: dict | None) -> dict | None:
     return {k: first.get(k, 0) + second.get(k, 0) for k in ("prompt_tokens", "completion_tokens")}
 
 
-def read_link(url: str, evidence: str, about: str, statement: str, settings, *, fetcher=fetch, **kwargs) -> check.Check:
+def read_link(url: str, evidence: str, about: str, statement: str, settings, *, fetcher=fetch,
+              transcript: str | None = None, **kwargs) -> check.Check:
     """check.check_evidence, plus what PDFs need (03_schema.md, revision round: PDFs and arXiv papers).
     An arXiv abstract read as unclear, unread or partly has its full paper read too: after unclear or unread
     the paper's reading stands; after partly only a paper reading that rests on a quote (agrees, partly agrees,
     contradicts) replaces it. An arXiv paper is primary research; a PDF with no text answers notext, which is
-    never kept."""
-    reasons = []
+    never kept. A YouTube video (revision round: YouTube videos) is read from its captions, or from `transcript`,
+    the writer's paste, read afresh; one that cannot be read answers nocaptions, never kept."""
+    reasons, pages = [], []
+    video = fetch_video.is_video(url)
+    pasted = bool(video and transcript and transcript.strip())
 
     def reading(link, **more):
-        page = fetcher(link, **more)
+        page = fetcher(link, **more, **({"transcript": transcript} if pasted else {}))
         reasons.append(page.reason)
+        pages.append(page)
         return page
 
-    result = check.check_evidence(url, evidence, about, statement, settings, fetcher=reading, **kwargs)
+    result = check.check_evidence(url, evidence, about, statement, settings, fetcher=reading,
+                                  **({"fresh": True} if pasted else {}), **kwargs)
     if not reasons:  # no reading service, or a reading already in the cache
+        return result
+    if video:
+        if result.verdict == "unread":
+            result = replace(result, verdict="nocaptions")
+        else:
+            result = replace(result, source=fetch_video.channel_source(result.source), pasted=pasted,
+                             quote_at=fetch_video.quote_time(result.quote, getattr(pages[-1], "segments", [])))
+        check.cache.put(check.cache_key(url, about, statement), result)
         return result
     paper = fetch_pdf.arxiv_paper(url)
     # A partly agrees from an abstract is often only what a summary leaves out (Eston, 22 October 2026), so the
@@ -87,7 +103,8 @@ def read_link(url: str, evidence: str, about: str, statement: str, settings, *, 
 
 def answer(result: check.Check) -> JSONResponse:
     body = result.as_json()
-    body["line"] = check.source_words(result.source)
+    body["video"] = fetch_video.is_video(result.url)
+    body["line"] = check.source_words(result.source, video=body["video"], pasted=result.pasted)
     return JSONResponse(body)
 
 
@@ -101,13 +118,15 @@ def check_evidence(request: Request, data: CheckRequest) -> Response:
         return JSONResponse({"verdict": "unchecked", "url": data.url, "line": None})
     if not settings.llm_api_key:
         return answer(check.Check("unchecked", url))
-    cached = check.cache.get(check.cache_key(url, data.about, data.text))
+    # A transcript counts only for a video link, and is read afresh: the reading before it found no captions.
+    transcript = data.transcript if data.transcript.strip() and fetch_video.is_video(url) else None
+    cached = None if transcript else check.cache.get(check.cache_key(url, data.about, data.text))
     if cached is not None:
         return answer(cached)
     if not person_limit.take(reader_key(request)) or not site_daily.take(site_minute):
         return JSONResponse({"message": TOO_MANY}, status_code=429)
     candidates = graph.candidates()
-    result = read_link(url, data.evidence, data.about, data.text, settings,
-                                  writer_says=data.stance, candidates=candidates,
-                                  request_id=getattr(request.state, "request_id", None))
+    result = read_link(url, data.evidence, data.about, data.text, settings, transcript=transcript,
+                       writer_says=data.stance, candidates=candidates,
+                       request_id=getattr(request.state, "request_id", None))
     return answer(result)
