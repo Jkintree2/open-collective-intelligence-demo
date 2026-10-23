@@ -184,6 +184,18 @@ class ResolvedPayload:
         )
 
 
+def link_name(url: str | None) -> str:
+    """The name of evidence given only as a link: its host without "www." and its path, so the same
+    link always makes the same name (John, 22 Oct 2026: a link given is always evidence)."""
+    if not url:
+        return ""
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").removeprefix("www.")
+    # The query stays (a video's ?v= is the video); only tracking parameters go.
+    query = "&".join(part for part in parsed.query.split("&") if part and not part.startswith("utm_"))
+    return (host + parsed.path.rstrip("/") + ("?" + query if query else ""))[:120]
+
+
 def _keyed(name: str | None) -> tuple[str | None, str]:
     """The key and display form of a name. References resolve on the key alone."""
     cleaned = clean_name(name or "")
@@ -259,7 +271,7 @@ def resolve_payload(payload: CardPayload, candidates: Candidates) -> ResolvedPay
     # Evidence: the target is an issue or solution from the payload, or anything in the record.
     seen = set()
     for item in payload.evidence:
-        key, name = _keyed(item.name)
+        key, name = _keyed(item.name or link_name(item.url))
         if not _usable(key, name, candidates.evidence):
             out.dropped.append(f"evidence {item.name!r}")
             continue

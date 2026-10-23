@@ -36,7 +36,7 @@ RETURN post.id AS id, post.edited_at AS edited_at,
        EXISTS { MATCH (:Person {key: $me})-[:POSTED]->(post) } AS mine
 """
 
-# Q36 (X1), My Statements on Your account: the member's own posts, newest first, in the feed's shape (Q7).
+# Q36 (X1), My statements: the member's own posts, newest first, in the feed's shape (Q7).
 # Anonymous ones are theirs too; the page is seen only by its owner. Seed posts are nobody's.
 MY_POSTS = """
 MATCH (:Person {key: $me})-[:POSTED]->(post:Post)

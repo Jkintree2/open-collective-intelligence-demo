@@ -7,7 +7,7 @@
   {% if done %}
   {% if free %}<p class="notice" role="status">Your email is changed. From now on, sign in with {{ new }}.</p>
   {% else %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
-  <p>{% if signed_in %}<a href="/account">Your account</a>{% else %}<a href="/sign-in">Sign in</a>{% endif %}</p>
+  <p>{% if signed_in %}<a href="/account">My account</a>{% else %}<a href="/sign-in">Sign in</a>{% endif %}</p>
   {% else %}
   <p>From now on, sign in with {{ new }}. Your old address, {{ old }}, stays on your account's record as an earlier one.</p>
   <form method="post" action="/email/{{ secret }}" data-once>

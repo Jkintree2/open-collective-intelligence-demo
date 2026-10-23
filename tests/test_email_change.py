@@ -62,11 +62,11 @@ def secret_in(text):
     return text.split("/email/")[1].split()[0]
 
 
-def test_your_account_offers_the_change(change):
+def test_my_account_offers_the_change(change):
     page = change.client.get("/account").text
-    assert "<h2>Change your email</h2>" in page and 'action="/account/email"' in page
+    assert "<h2>Change my email</h2>" in page and 'action="/account/email"' in page
     assert "Send a link to the new email" in page
-    assert page.index("Change your password") < page.index("Change your email") < page.index("My Statements")
+    assert page.index("Change my password") < page.index("Change my email")
 
 
 @pytest.mark.parametrize("fields, message", [
@@ -120,7 +120,7 @@ def test_an_expired_link_says_so(change):
     change.client.post("/account/email", data=form())
     secret = secret_in(change.sent[0][2])
     next(iter(change.links.values()))["expires_at"] = NOW - timedelta(minutes=1)
-    assert "This link has expired. You can ask for a new one on Your account." in change.client.get(f"/email/{secret}").text
+    assert "This link has expired. You can ask for a new one on My account." in change.client.get(f"/email/{secret}").text
 
 
 def test_the_link_never_reaches_the_log():
@@ -139,14 +139,14 @@ def test_the_switch_is_off_unless_set():
 
 
 def test_with_the_switch_off_there_is_no_form_and_no_pages(change, monkeypatch):
-    """EMAIL_CHANGE_ENABLED unset: Your account goes from the password form to My Statements, and the
+    """EMAIL_CHANGE_ENABLED unset: My account ends with the password form, and the
     change of email pages answer not found, even for a link sent while it was on."""
     assert change.client.post("/account/email", data=form()).status_code == 200
     secret = secret_in(change.sent[0][2])
     switch(change, monkeypatch, False)
     page = change.client.get("/account").text
-    assert "Change your email" not in page and "/account/email" not in page
-    assert page.index("Change password") < page.index("My Statements")
+    assert "Change my email" not in page and "/account/email" not in page
+    assert page.index("Change password") < page.index("</main>")
     assert change.client.post("/account/email", data=form(email="ada.other@example.org")).status_code == 404
     assert change.client.get(f"/email/{secret}").status_code == 404
     assert change.client.post(f"/email/{secret}").status_code == 404

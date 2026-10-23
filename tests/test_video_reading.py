@@ -136,6 +136,17 @@ def test_the_write_path_takes_the_time_and_the_paste_from_this_processs_reading_
     assert kept == check.NO_CHECK
 
 
+def test_a_reading_of_a_link_with_no_name_is_kept_under_the_name_made_from_the_link():
+    """John, 22 Oct 2026: a link alone is evidence; the reading the card showed for it is kept too."""
+    run({**SUPPORTS, "quote": PASTE_QUOTE}, transcript=PASTE, about="Four day week", statement="A four day week works.")
+    card = CardPayload.model_validate({"issues": [{"name": "Four day week"}], "evidence": [
+        {"name": "", "url": URL, "stance": "supports", "about": "Four day week",
+         "check": {"verdict": "supports", "quote": PASTE_QUOTE}}]})
+    payload = resolve_payload(card, Candidates.empty())
+    assert [row["key"] for row in payload.evidence] == ["youtube com watch v abcdefghij0"]
+    assert kept_checks(card.evidence, payload.evidence, "A four day week works.")["youtube com watch v abcdefghij0"]["check"] == "supports"
+
+
 def test_an_edit_keeps_the_stored_time_and_paste():
     card, payload = resolved(ABOUT)
     stored = {("lakeview news report", make(ABOUT)): {"url": URL, "check": "supports", "check_quote": QUOTE,

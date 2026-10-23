@@ -168,7 +168,7 @@ Added 4 October 2026 at Gate 0 of Phase 1. With `ACCOUNTS_ENABLED` set, sign in 
 
 ### Header
 
-Signed in, the header links read "Write", "Issues", "Enter a person" and "Your account", and wrap onto a second line on a narrow phone. The sign in, accept and password pages show the site name only.
+Signed in, the header links read "Write", "Issues", "Enter a person", "My statements" and "My account" (John, 22 October 2026: "My" instead of "Your", and My statements as its own menu item), and wrap onto a second line on a narrow phone. The sign in, accept and password pages show the site name only.
 
 ### Sign in (`/sign-in`)
 
@@ -410,22 +410,24 @@ Then the write page opens with:
 
 The same length and "not the same" messages as accepting, and the same page when the link cannot be used.
 
-### Your account (`/account`)
+### My account (`/account`)
 
-> **Your account**
+Called "Your account" until 22 October 2026, when John asked for "My" on the menu and in the page's headings and buttons.
+
+> **My account**
 > [ Sign out ]
 >
 > {name} · {email}
 > Entered by {inviter} ({relationship}) on {4 October 2026}.
 >
-> **Your details**
+> **My details**
 > Name: [ {name} ]
 > Country: [ {country} ]
 > Postal code (optional): [ {postal code} ]
 > Posts you have already made keep the name they were posted with.
-> [ Save your details ]
+> [ Save my details ]
 >
-> **Change your password**
+> **Change my password**
 > Email: {email}
 > Current password: [ input ]
 > New password: [ input ]
@@ -442,7 +444,7 @@ The same length and "not the same" messages as accepting, and the same page when
 
 The email on this page, on accepting and on choosing a new password is plain text, not a box, so it does not look as if it could be changed there (John, 17 October 2026). Not client-facing: it stays a read-only username field so a phone's password manager saves the password under it. Changing the email is its own form below (X2, in the Phase 2 section).
 
-The postal code is optional everywhere: entering a person, accepting and Your account (John, 18 October 2026: the site does not check postal codes). Everyone can change their own name, country and postal code at any time (revision round, promised 8 October 2026).
+The postal code is optional everywhere: entering a person, accepting and My account (John, 18 October 2026: the site does not check postal codes). Everyone can change their own name, country and postal code at any time (revision round, promised 8 October 2026).
 
 John's account leaves out the "Entered by" line. "Sign out" sits right under the heading (John, 17 October 2026).
 
@@ -815,11 +817,11 @@ While it is read: "Reading the transcript…". The result is one of the same lin
 
 **On the issue page**, a video's reading says "The video says at 4:12:" instead of "The page says:", and a reading from a pasted transcript "The transcript says:" followed by "Read from a transcript the writer pasted."
 
-### Your account: My Statements (no-cost extra, John 17 October 2026)
+### My statements (`/my-statements`; no-cost extra, John 17 October 2026)
 
-Below "Change your password", **client-facing**:
+First at the foot of Your account; since 22 October 2026 (Beth's request, John's yes) a page of its own, linked from the menu between "Enter a person" and "My account". **Client-facing**:
 
-> **My Statements**
+> **My statements**
 
 Then the member's own posts, newest first, each as in the feed: byline, statement, what it added, and "Edit" and "Delete". Posts made anonymously are included and say "Anonymous" as in the feed; this page is seen only by its owner. At most 50 at first; with more, under the last one:
 
@@ -829,18 +831,18 @@ which shows 50 more each time. With none yet:
 
 > You have not posted anything yet.
 
-### Your account: Change your email (no-cost extra, John 17 October 2026)
+### My account: Change my email (no-cost extra, John 17 October 2026)
 
-Shown only with `EMAIL_CHANGE_ENABLED` set (not client-facing), which waits for John's yes on the wording below; unset, Your account goes straight from "Change your password" to "My Statements".
+Shown only with `EMAIL_CHANGE_ENABLED` set (not client-facing), which waits for John's yes on the wording below; unset, My account ends with "Change my password".
 
-Between "Change your password" and "My Statements", **client-facing**:
+After "Change my password", **client-facing**:
 
-> **Change your email**
+> **Change my email**
 > New email: [ input ]
 > Current password: [ input ]
 > [ Send a link to the new email ]
 
-Then, at the top of Your account, the same words whether or not the new address can be used (as on "Forgot your password?"):
+Then, at the top of My account, the same words whether or not the new address can be used (as on "Forgot your password?"):
 
 > We have sent a link to {new email}. Open it to finish the change. If it does not arrive in a few minutes, please check your spam folder. Until then, sign in with {current email}.
 
@@ -891,7 +893,7 @@ Nothing changes until the link is opened. A new address is not used when it belo
 Then:
 
 > Your email is changed. From now on, sign in with {new email}.
-> [ Your account ] (signed in) or [ Sign in ]
+> [ My account ] (signed in) or [ Sign in ]
 
 When the address was taken by another account meanwhile:
 
@@ -899,7 +901,7 @@ When the address was taken by another account meanwhile:
 
 An expired link:
 
-> This link has expired. You can ask for a new one on Your account.
+> This link has expired. You can ask for a new one on My account.
 
 A used or replaced link reads as for the other links ("This link no longer works...").
 

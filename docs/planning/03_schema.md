@@ -131,6 +131,7 @@ Rules applied in Python before the transaction:
 
 * Every solution must name an issue from the same payload or an existing issue. If the model returned a solution with no issue, the card forces the tester to pick one before Post is enabled.
 * Every evidence item must name a target from the payload or the graph. Default target is the first issue in the payload.
+* Evidence given only as a link, with no words beside it, is still evidence: its name is made from the link, the host without `www.` and the path, with the query kept and `utm_` parameters dropped (`payload.link_name`), so the same link always gives the same name (John, 22 October 2026: any time a link is given it is evidence).
 * A parent that does not exist is dropped (the issue becomes top level) and logged. A parent that is itself a sub-issue is replaced by its own parent and logged. A child that already has a parent keeps it; the request is logged and ignored.
 * Node names go through `clean_name()` and keys through `make_key()` as defined above; a name whose key is rejected is dropped from the payload with a message on the card.
 * A position (approve or oppose) on a solution the record already lists under that issue writes only the `APPROVE` or `OPPOSE` edge: no `PROPOSE`, no `HAVE_PROPOSED`. An existing issue whose only part in the post is to hold such positions is not claimed again; a new solution, evidence or sub-issue for it keeps the claim. The issue page still lists the post through the stance edge (GitHub issue 4, October 2026).

@@ -130,7 +130,7 @@ input:disabled {
 /* An empty message line takes no room, but stays in the page so a message put in it is still read out. */
 .notice:empty { padding: 0; margin: 0; border: 0; background: none; }
 
-/* R2: forms with each label above its field (Enter a person, Your account): room after each field,
+/* R2: forms with each label above its field (Enter a person, My account): room after each field,
    the tick box on its own line, and room above the green button. */
 .stacked-form > input:not([type="hidden"]), .stacked-form > select { margin-bottom: 14px; }
 .stacked-form > .check { display: flex; margin-bottom: 4px; }
@@ -413,7 +413,7 @@ form.search button { min-height: 44px; }
 .account-row details[open] { display: block; }
 .account-row summary { color: var(--accent); cursor: pointer; min-height: 44px; display: flex; align-items: center; }
 .account-row button.quiet { font: inherit; }
-/* Your account: Sign out right under the heading (R10). */
+/* My account: Sign out right under the heading (R10). */
 .sign-out { margin: -8px 0 8px; }
 .sign-out .quiet { padding: 0; font: inherit; }
 
@@ -426,8 +426,7 @@ form.search button { min-height: 44px; }
 .check-also legend { font-size: 0.94rem; color: var(--ink-soft); padding: 0 4px; }
 .check-also label.check { display: flex; gap: 8px; align-items: center; min-height: 44px; }
 .check-also .check-hint { margin: 2px 0 4px; font-size: 0.94rem; color: var(--ink-soft); }
-/* X1: My Statements on Your account. */
-#my-statements { margin-top: 32px; }
+/* X1: Show more on My statements. */
 .show-more a { display: inline-flex; align-items: center; min-height: 44px; }
 
 /* Phase 2, days 7 and 8: source confidence under each piece of evidence on the issue page. */

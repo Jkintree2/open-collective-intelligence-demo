@@ -42,6 +42,6 @@ def test_the_operators_guide_is_plain_and_covers_phase_1():
     assert "Eston" not in guide and "passphrase is the only lock" not in guide
     for phrase in ("Enter a person", "This person has agreed to be entered", "Send the invitation again",
                    "Send a password link", "Withdraw", "Switch off", "Switch on", "first account",
-                   "Forgot your password?", "Your account", "Sending email", "Tidy this issue",
+                   "Forgot your password?", "My account", "My statements", "Sending email", "Tidy this issue",
                    "Changes to the issues", "Sending email from your Gmail"):
         assert phrase in guide, phrase

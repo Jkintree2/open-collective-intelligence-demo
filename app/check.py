@@ -23,7 +23,7 @@ import httpx
 from app.config import Settings
 from app.extract import call_model
 from app.fetch_page import Page, backup_allowed, backup_fetch, fetch, iso_date, user_agent
-from app.payload import Candidates
+from app.payload import Candidates, link_name
 from app.text import clean_name, make_key
 
 log = logging.getLogger("oci")
@@ -367,7 +367,7 @@ def kept_checks(items: list[Any], evidence: list[dict[str, Any]], statement: str
     card's first issue as a fallback), and only from the first row of that name, the one resolved."""
     claimed: dict[str | None, Any] = {}
     for item in items:
-        claimed.setdefault(make_key(clean_name(item.name)), item)
+        claimed.setdefault(make_key(clean_name(item.name or link_name(item.url))), item)
     out: dict[str, dict[str, Any]] = {}
     for row in evidence:
         out[row["key"]] = dict(NO_CHECK)
