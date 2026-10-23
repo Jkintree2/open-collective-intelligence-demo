@@ -12,8 +12,8 @@ FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "cards.json").read_t
 def test_drug_policy_sentences_match_the_six_acceptance_lines():
     assert sentences(CardPayload.model_validate(FIXTURES["1"]), "John Kintree") == [
         "John Kintree claims Drug dealing problem",
-        "John Kintree proposes Decriminalize drug sales",
-        "John Kintree proposes Treat drug use as medical issue",
+        "John Kintree proposes solution Decriminalize drug sales",
+        "John Kintree proposes solution Treat drug use as medical issue",
         "Drug dealing problem has proposed Decriminalize drug sales",
         "Drug dealing problem has proposed Treat drug use as medical issue",
         "John Kintree approves Treat drug use as medical issue",
@@ -23,11 +23,27 @@ def test_drug_policy_sentences_match_the_six_acceptance_lines():
 def test_seawall_sentences_match_the_five_acceptance_lines():
     assert sentences(CardPayload.model_validate(FIXTURES["4"]), "Tester") == [
         "Tester claims Rising sea levels threaten coastal housing",
-        "Tester proposes Seawall in the harbor district",
+        "Tester proposes solution Seawall in the harbor district",
         "Rising sea levels threaten coastal housing has proposed Seawall in the harbor district",
-        "Tester submits 2024 NOAA flooding survey",
-        "2024 NOAA flooding survey supports Rising sea levels threaten coastal housing",
+        "Tester submits evidence 2024 NOAA flooding survey",
+        "2024 NOAA flooding survey supports issue of Rising sea levels threaten coastal housing",
     ]
+
+
+def test_evidence_names_what_it_speaks_to_and_a_known_issue_is_not_claimed_twice():
+    """John, 23 October 2026: "supports solution of", and no "claims" line for an issue already in the record
+    when the card adds anything else; a card with only that issue still shows it."""
+    known = Candidates(issues={"flooding": {"name": "Flooding", "parent_key": None}}, evidence={"old report": "Old report"})
+    card = CardPayload.model_validate({"found": True, "issues": [{"name": "Flooding"}],
+                                       "solutions": [{"name": "Seawalls", "for_issue": "Flooding"}],
+                                       "evidence": [{"name": "Survey", "about": "Seawalls", "stance": "supports"},
+                                                    {"name": "Memo", "about": "Old report", "stance": "refutes"}]})
+    assert sentences(card, "Ada", resolve_payload(card, known)) == [
+        "Ada proposes solution Seawalls", "Flooding has proposed Seawalls",
+        "Ada submits evidence Survey", "Ada submits evidence Memo",
+        "Survey supports solution of Seawalls", "Memo refutes evidence of Old report"]
+    only = CardPayload.model_validate({"found": True, "issues": [{"name": "Flooding"}]})
+    assert sentences(only, "Ada", resolve_payload(only, known)) == ["Ada claims Flooding"]
 
 
 @pytest.mark.parametrize("case", ["1", "4", "5", "6A", "7"])

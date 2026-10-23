@@ -53,7 +53,7 @@ from app.members import (
 from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app import graph_own_posts
-from app.text import clean_name, count_line, make_key, relative_time, sentences
+from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
 from app import check, confidence, graph_evidence, search, tidy
 
 settings = get_settings()
@@ -79,8 +79,8 @@ SORTS = (("people", "Most people"), ("recent", "Most recent"), ("evidence", "Mos
 # Display verbs from docs/planning/03_schema.md; PART_OF has no sentence.
 VERBS = {
     "CLAIM": "claims",
-    "SUBMIT": "submits",
-    "PROPOSE": "proposes",
+    "SUBMIT": "submits evidence",
+    "PROPOSE": "proposes solution",
     "HAVE_PROPOSED": "has proposed",
     "SUPPORTS": "supports",
     "REFUTES": "refutes",
@@ -212,7 +212,8 @@ def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
             verb = VERBS.get(row["rel"])
             if verb:
                 subject = "Anonymous" if row["from_label"] == "Person" and row.get("anonymous") else row["from_name"]
-                sentences.append(f"{subject or 'Anonymous'} {verb} {row['to_name']}")
+                kind = TARGET_WORDS.get(row["to_label"], "") + " " if row["rel"] in ("SUPPORTS", "REFUTES") else ""
+                sentences.append(f"{subject or 'Anonymous'} {verb} {kind}{row['to_name']}")
         post["chips"] = list(chips.values())
         post["sentences"] = sentences
     return posts
@@ -479,7 +480,7 @@ def preview_card(request: Request, data: PostRequest) -> Response:
     _, resolved, card = _card_result(data)
     name, _ = _poster(data, current_member(request))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
-    return JSONResponse({"sentences": sentences(card, name or "Anonymous"), "valid": valid,
+    return JSONResponse({"sentences": sentences(card, name or "Anonymous", resolved), "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
                          "payload": card.model_dump()})
 
@@ -506,7 +507,7 @@ def post_card(request: Request, data: PostRequest) -> Response:
     source = data.source if not resolved.is_empty else "manual"
     # An empty box means the statement is composed from the form, so the post is the tester's own
     # however the card was first filled in; its sentences become the statement and the source is manual.
-    statement = data.text.strip() or (". ".join(sentences(card, name or "Anonymous")) + ".")[:TEXT_MAX]
+    statement = data.text.strip() or (". ".join(sentences(card, name or "Anonymous", resolved)) + ".")[:TEXT_MAX]
     if not data.text.strip():
         source = "manual"
     edited = False

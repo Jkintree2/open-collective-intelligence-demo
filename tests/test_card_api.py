@@ -184,7 +184,7 @@ def test_a_filled_card_posts_without_a_statement_and_stores_its_sentences(api):
     assert preview.status_code == 200 and preview.json()["valid"]
     assert client.post("/api/posts", json=body).status_code == 201
     args, _ = writes[0]
-    assert args[4] == "John claims Veto. John proposes Abolish the veto. Veto has proposed Abolish the veto. John approves Abolish the veto."
+    assert args[4] == "John proposes solution Abolish the veto. Veto has proposed Abolish the veto. John approves Abolish the veto."  # Veto is already in the record, so it is not claimed again in the list (John, 23 October 2026)
 
 
 def test_an_empty_card_with_no_statement_is_refused(api):

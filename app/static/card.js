@@ -210,7 +210,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       field(row, 'stance', 'supports / refutes', 'select');
       ['supports', 'refutes'].forEach(value => row.stance.add(new Option(value, value)));
       row.stance.value = item.stance || 'supports';
-      field(row, 'about', 'about', 'select');
+      field(row, 'about', 'claim about', 'select');
       evidence?.watch(row, item);
     }
     const remove = node('button', 'remove from this form', 'quiet'); remove.type = 'button';

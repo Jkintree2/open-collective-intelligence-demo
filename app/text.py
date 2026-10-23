@@ -81,14 +81,29 @@ def count_line(row: dict) -> str:
     return f"{people} · {claims} · {solutions} · {evidence}"
 
 
-def sentences(payload, display_name: str) -> list[str]:
-    """The card's sentences, in the order of the acceptance examples."""
+# What a piece of evidence speaks to, by the label of its target (John, 23 October 2026).
+TARGET_WORDS = {"Issue": "issue of", "Solution": "solution of", "Evidence": "evidence of"}
+
+
+def sentences(payload, display_name: str, resolved=None) -> list[str]:
+    """The card's sentences, in the order of the acceptance examples, in John's words of 23 October
+    2026: "proposes solution", "submits evidence", "supports issue of" (or solution of, evidence of).
+    An issue already in the record is not listed as claimed again when the card adds anything else.
+    `resolved` is the card's ResolvedPayload; without it the card is resolved against an empty record."""
+    if resolved is None:
+        from app.payload import Candidates, resolve_payload  # payload imports this module
+
+        resolved = resolve_payload(payload, Candidates.empty())
     name = clean_name(display_name) or "Anonymous"
-    result = [f"{name} claims {item.name}" for item in payload.issues]
+    existing = {row["key"] for row in resolved.issues if row.get("existing")}
+    kinds = {row["target_key"]: row["target_label"] for row in resolved.evidence}
+    claims = [(make_key(item.name), f"{name} claims {item.name}") for item in payload.issues]
     proposed = [item for item in payload.solutions if not item.stance_only]
-    result.extend(f"{name} proposes {item.name}" for item in proposed)
-    result.extend(f"{item.for_issue} has proposed {item.name}" for item in proposed)
-    result.extend(f"{name} {item.stance}s {item.name}" for item in payload.solutions if item.stance != "none")
-    result.extend(f"{name} submits {item.name}" for item in payload.evidence)
-    result.extend(f"{item.name} {item.stance} {item.about}" for item in payload.evidence)
-    return result
+    rest = [f"{name} proposes solution {item.name}" for item in proposed]
+    rest.extend(f"{item.for_issue} has proposed {item.name}" for item in proposed)
+    rest.extend(f"{name} {item.stance}s {item.name}" for item in payload.solutions if item.stance != "none")
+    rest.extend(f"{name} submits evidence {item.name}" for item in payload.evidence)
+    for item in payload.evidence:
+        kind = kinds.get(make_key(item.about or "") or "")
+        rest.append(f"{item.name} {item.stance} {TARGET_WORDS[kind] + ' ' if kind else ''}{item.about}")
+    return [line for key, line in claims if not (key in existing and rest)] + rest
