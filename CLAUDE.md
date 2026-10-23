@@ -69,6 +69,7 @@ scripts/cards.py   prints the card the live model produces for each case in test
 scripts/checks.py  prints the evidence check for each case in tests/check_cases.json, with tokens used (needs LLM_API_KEY)
 scripts/probe_reading.py one reading service preflight call; prints capability results, never credentials
 scripts/restore.py loads an admin export into an empty database
+scripts/smoke.py   read-only checks on the deployed site after each deploy (GET only; the served scripts and style match --ref; OCI_SMOKE_COOKIE adds the signed-in pages)
 tests/             offline by default (no network, no database); conftest.py (live_graph, member_app), page_harness.js (the fake page every *.cjs test drives); test_live_*.py are marked live and run only against the disposable Neo4j on port 7688; extraction_cases.json, fixtures/
 docs/operators-guide.md   client-facing guide for John
 docs/planning/     copies of the planning documents
@@ -96,7 +97,7 @@ The local `.env` points at the development database, a local Neo4j 5 in Docker (
 
 ## Deploy
 
-Every push to `main` deploys to Render. There is no staging. So: run `pytest` and open the local site before every push, and push small. If a deploy breaks the live site, revert the commit and push again; do not fix forward on a broken site. Environment variables live in the Render dashboard, never in the repo. `render.yaml` describes the service so it can be recreated in another Render account by "New Blueprint".
+Every push to `main` deploys to Render. There is no staging. So: run `pytest` and open the local site before every push, and push small. After each deploy, run `python -m scripts.smoke --url <the live address>` (it reads, never writes, so it is the one check allowed against production; `git fetch` first so `origin/main` is the merged commit). If a deploy breaks the live site, revert the commit and push again; do not fix forward on a broken site. Environment variables live in the Render dashboard, never in the repo. `render.yaml` describes the service so it can be recreated in another Render account by "New Blueprint".
 
 Phase 2 (evidence that checks itself) runs behind `EVIDENCE_CHECK_ENABLED`, set in the Render dashboard; unset, the card is the Phase 1 card and nothing is fetched. `DEEPSEEK_FETCH=0` stops the backup reader. Change your email (X2) has its own switch, `EMAIL_CHANGE_ENABLED`, also in the dashboard; unset, Your account has no change of email form and its pages answer not found. Phase 1 runs behind `ACCOUNTS_ENABLED`; unset, the site keeps the passphrase and the 0.1 rules for posts, stances and the order of solutions (decision X1), and keyword search on the Issues page works too. Its variables (`SITE_URL`, `MAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `ACCOUNTS_ENABLED`) live in the Render dashboard. The Gmail values come from John's own Google project, with the send permission only, and only John types them in.
 
@@ -125,4 +126,4 @@ Display verbs: claims, submits, proposes, has proposed, supports, refutes, appro
 
 ## Done means
 
-The change is verified in a browser or terminal, `pytest` is green, the commit is pushed, the deploy is green on Render, and the live URL was opened after the deploy.
+The change is verified in a browser or terminal, `pytest` is green, the commit is pushed, the deploy is green on Render, `scripts.smoke` passes against it, and the live URL was opened after the deploy.
