@@ -207,7 +207,7 @@ def test_the_edit_preview_shows_what_an_unchanged_save_keeps(live_graph):
     ada = Member(key="acct:ada", name="Ada", email="ada@example.org", admin=False)
     shown = edit_preview(ada, {"anonymous": False}, data, resolved, prepared)
     assert shown["valid"] is True and shown["dropped"] == []
-    assert shown["sentences"] == ["Ada claims Flooding", "Ada proposes Seawalls", "Flooding has proposed Seawalls",
+    assert shown["sentences"] == ["Ada claims Flooding", "Ada proposes solution Seawalls", "Flooding has proposed Seawalls",
                                   "Ada approves Seawalls"]
     before = edges(live_graph, pid)
     assert edit_unchanged(live_graph, pid)

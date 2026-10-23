@@ -107,7 +107,7 @@ Nodes: `Person {key, name, anonymous}`, `Issue {key, name, seed}`, `Solution {ke
 
 Edges, from actor to target, each carrying `post_id` and `created_at` (Person edges also `anonymous`): `POSTED`, `CLAIM`, `SUBMIT`, `PROPOSE`, `HAVE_PROPOSED` (Issue to Solution, MERGE), `SUPPORTS`, `REFUTES` (Evidence to Issue, Solution or Evidence), `APPROVE`, `OPPOSE` (Person to Solution, MERGE one per pair; with `ACCOUNTS_ENABLED` set, one stance per person and solution: a new stance, by click or by a post, replaces the opposite one, and pairs left from 0.1 stay until that person takes a new stance; unset, posts follow the 0.1 rule and may hold both; a click stance carries `source: "click"` and no `post_id`), `PART_OF` (sub-issue to top-level issue, one level; one made by tidying has no `post_id`). Phase 1 adds `ENTERED` (account to account: `relationship`, `agreed`, `created_at`; one into every account except John's, the root), `MADE` (admin account to `Change`) and `CHANGED` (`Change` to `Issue`, moved to the kept issue on a merge). No other labels or types. `DECIDE` is deliberately absent.
 
-Display verbs: claims, submits, proposes, has proposed, supports, refutes, approves, opposes. Sentences are `display name, lowercase verb, node name`.
+Display verbs: claims, submits evidence, proposes solution, has proposed, supports, refutes, approves, opposes; supports and refutes name what they speak to (`supports issue of`, `solution of`, `evidence of`). Sentences are `display name, lowercase verb, node name`. An issue already in the record is not listed as claimed again under "What this will add" when the card adds anything else (John, 23 October 2026).
 
 ## Rules
 

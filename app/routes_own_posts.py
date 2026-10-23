@@ -158,7 +158,7 @@ def _save(member: Member, row: dict, post_id: str, text: str, resolved: Resolved
     from app import main as site
     # Q25 and R4: the edit takes the name or Anonymous chosen on the edit page, at any time (D2's one rule).
     _, _, hidden, shown = posting_identity(member, anonymous)
-    statement = text or (". ".join(sentences(card, shown or "Anonymous")) + ".")[:site.TEXT_MAX]
+    statement = text or (". ".join(sentences(card, shown or "Anonymous", resolved)) + ".")[:site.TEXT_MAX]
     # Phase 2: a row keeps its reading when the card still carries one the site made (now, or stored on
     # this post's edge for the same evidence, target and link); otherwise it is saved without one.
     checks = None
@@ -231,7 +231,7 @@ def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, car
     with no choice of its own (the record's card, as built for the page) keeps the post's."""
     _, _, _, shown = posting_identity(member, getattr(data, "anonymous", bool(row["anonymous"])))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
-    return {"sentences": sentences(card, shown or "Anonymous"), "valid": valid, "dropped": resolved.dropped,
+    return {"sentences": sentences(card, shown or "Anonymous", resolved), "valid": valid, "dropped": resolved.dropped,
             "corrected": resolved.corrected, "payload": card.model_dump()}
 
 
