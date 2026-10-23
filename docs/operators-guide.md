@@ -43,9 +43,9 @@ If the link has expired, they can ask for a new one, or use **Forgot your passwo
 People sign in with their email address and password, and stay signed in on that phone or computer for thirty days.
 
 * **Forgot your password?** on the sign in page emails a link to choose a new password. The link works once, for one hour. The page says the same thing whatever address is typed, so it never tells a stranger who is taking part.
-* **Your account**, at the top of the page, is where people sign out (right under the heading), change their name, country and postal code at any time, and change their password. Posts they already made keep the name they were posted with. Changing the password signs them out on every other phone or computer.
-* **Change your email**, also on Your account, takes the new address and the current password. The site sends a link to the new address and a short note to the old one; nothing changes until the link is opened, within 24 hours. Until then the person signs in with their old address. An address that belongs to another account, now or before, is never used, and the page says the same thing either way. Every earlier address stays on the account's record with the date it stopped being used, and the back room lists them under People, so each address can only ever point at one person. This part is switched on in Render, under Environment, as `EMAIL_CHANGE_ENABLED` set to true; until then Your account has no Change your email form.
-* **My Statements**, at the foot of Your account, lists everything that person has posted, newest first, including posts made anonymously, with **Edit** and **Delete** beside each. Only they see this list. Fifty show at first, and **Show more** brings the next fifty.
+* **My account**, at the top of the page, is where people sign out (right under the heading), change their name, country and postal code at any time, and change their password. Posts they already made keep the name they were posted with. Changing the password signs them out on every other phone or computer.
+* **Change my email**, also on My account, takes the new address and the current password. The site sends a link to the new address and a short note to the old one; nothing changes until the link is opened, within 24 hours. Until then the person signs in with their old address. An address that belongs to another account, now or before, is never used, and the page says the same thing either way. Every earlier address stays on the account's record with the date it stopped being used, and the back room lists them under People, so each address can only ever point at one person. This part is switched on in Render, under Environment, as `EMAIL_CHANGE_ENABLED` set to true; until then My account has no Change my email form.
+* **My statements**, its own link at the top of the page between Enter a person and My account, lists everything that person has posted, newest first, including posts made anonymously, with **Edit** and **Delete** beside each. Only they see this list. Fifty show at first, and **Show more** brings the next fifty.
 
 No password is ever sent by email, and nobody, you included, can see anyone's password.
 
@@ -206,7 +206,7 @@ If Aura deletes your instance, the site shows an error and your record is gone f
 
 ## When you add a link
 
-A piece of evidence can carry a link to a web page. When the form opens, the site reads the page behind each link and says, under that link, what it found:
+A piece of evidence can carry a link to a web page. A link with nothing written beside it is still kept as evidence, named after the link itself (for example "Reuters.com/world/europe"); the writer can type a better name in its place. When the form opens, the site reads the page behind each link and says, under that link, what it found:
 
 * "Agrees", "Partly agrees" or "Contradicts", followed by the writer's own sentence about the page ("You wrote") and the sentence from the page the reading rests on ("The page says"), one under the other;
 * "The page does not clearly say either way", followed by one sentence on why;

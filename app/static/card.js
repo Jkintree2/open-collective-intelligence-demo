@@ -86,7 +86,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   function collect() {
     const payload = {...identity(), ...state.metadata, text: text.value, plain: state.plain};
     for (const [group, rows] of Object.entries(state.groups)) {
-      payload[group] = rows.filter(row => row.name.value.trim()).map(row => {
+      // A link with no words beside it is still evidence (John, 22 Oct 2026); the site names it after the link.
+      payload[group] = rows.filter(row => row.name.value.trim() || row.url?.value.trim()).map(row => {
         const item = {name: row.name.value};
         for (const fieldName of ['parent', 'for_issue', 'url', 'about']) {
           if (row[fieldName]) item[fieldName] = row[fieldName].value || null;

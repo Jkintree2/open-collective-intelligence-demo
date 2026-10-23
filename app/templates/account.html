@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Your account · {{ site_name }}{% endblock %}
+{% block title %}My account · {{ site_name }}{% endblock %}
 {% block content %}
-<h1>Your account</h1>
+<h1>My account</h1>
 <form method="post" action="/sign-out" class="sign-out"><button type="submit" class="quiet">Sign out</button></form>
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 <p>{{ member.name }} · {{ member.email }}</p>
 {% if entered %}<p class="counts">Entered by {{ entered.inviter_name }} ({{ entered.relationship }}){% if entered.entered_at %} on {{ entered.entered_at.strftime("%-d %B %Y") }}{% endif %}.</p>{% endif %}
-<h2>Your details</h2>
+<h2>My details</h2>
 {% if details_message %}<p class="notice" role="alert">{{ details_message }}</p>{% endif %}
 <form method="post" action="/account/details" class="account-details stacked-form" data-once>
   <label for="name">Name:</label>
@@ -16,9 +16,9 @@
   <label for="postal_code">Postal code (optional):</label>
   <input id="postal_code" name="postal_code" type="text" maxlength="20" autocomplete="postal-code" value="{{ details.postal_code or '' }}">
   <p class="counts">Posts you have already made keep the name they were posted with.</p>
-  <button type="submit" class="primary">Save your details</button>
+  <button type="submit" class="primary">Save my details</button>
 </form>
-<h2>Change your password</h2>
+<h2>Change my password</h2>
 {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
 <form method="post" action="/account/password" class="stacked-form">
   <label for="username">Email:</label>
@@ -31,7 +31,7 @@
   <input id="again" name="again" type="password" autocomplete="new-password" minlength="10" required>
   <button type="submit" class="primary">Change password</button>
 </form>
-{% if email_change %}<h2>Change your email</h2>
+{% if email_change %}<h2>Change my email</h2>
 {% if email_message %}<p class="notice" role="alert">{{ email_message }}</p>{% endif %}
 <form method="post" action="/account/email" class="stacked-form" data-once>
   <label for="new_email">New email:</label>
@@ -40,7 +40,5 @@
   <input id="email_current" name="current" type="password" autocomplete="current-password" required>
   <button type="submit" class="primary">Send a link to the new email</button>
 </form>
-{% endif %}<h2 id="my-statements">My Statements</h2>
-{% for post in posts %}{% include "_post.html" %}{% else %}<p>You have not posted anything yet.</p>{% endfor %}
-{% if more %}<p class="show-more"><a href="/account?shown={{ more }}#my-statements">Show more</a></p>{% endif %}
+{% endif %}
 {% endblock %}

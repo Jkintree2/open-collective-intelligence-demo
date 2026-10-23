@@ -229,3 +229,22 @@ def test_an_existing_solution_with_no_position_and_a_new_solution_with_one_are_p
                       {"name": "Plant more trees", "for_issue": "Global climate coordination", "stance": "approve"}]}), CLIMATE)
     assert [row["key"] for row in resolved.issues] == ["global climate coordination"]
     assert [row["stance_only"] for row in resolved.solutions] == [False, False]
+
+
+def test_a_link_with_no_name_is_kept_as_evidence_named_after_the_link():
+    """John, 22 Oct 2026: any time a link is given it is evidence. Beth gave one with no words beside it."""
+    payload = _payload(evidence=[
+        {"name": "", "url": "https://www.reuters.com/world/europe/oil-sanctions/", "stance": "supports", "about": ISSUE},
+        {"name": "  ", "url": None, "stance": "supports", "about": ISSUE},
+    ])
+    resolved = resolve_payload(payload, Candidates.empty())
+    assert [(row["name"], row["url"]) for row in resolved.evidence] == [
+        ("Reuters.com/world/europe/oil-sanctions", "https://www.reuters.com/world/europe/oil-sanctions/")]
+    assert resolved.dropped == ["evidence ''"]
+
+
+def test_a_link_name_keeps_the_query_but_not_tracking():
+    from app.payload import link_name
+    assert link_name("https://www.youtube.com/watch?v=AbC&utm_source=x") == "youtube.com/watch?v=AbC"
+    assert link_name("https://example.org/?utm_medium=mail") == "example.org"
+    assert link_name(None) == ""

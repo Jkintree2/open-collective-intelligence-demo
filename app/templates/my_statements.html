@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}My statements · {{ site_name }}{% endblock %}
+{% block content %}
+<h1>My statements</h1>
+{% for post in posts %}{% include "_post.html" %}{% else %}<p>You have not posted anything yet.</p>{% endfor %}
+{% if more %}<p class="show-more"><a href="/my-statements?shown={{ more }}">Show more</a></p>{% endif %}
+{% endblock %}

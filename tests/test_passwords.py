@@ -40,7 +40,7 @@ def test_account_page_offers_a_new_password(signed_in):
     assert page.headers["referrer-policy"] == "same-origin"
     # John, 17 Oct: Sign out right under the heading, once.
     assert page.text.count('action="/sign-out"') == 1
-    assert page.text.index("<h1>Your account</h1>") < page.text.index('action="/sign-out"') < page.text.index("Ada Tester ·")
+    assert page.text.index("<h1>My account</h1>") < page.text.index('action="/sign-out"') < page.text.index("Ada Tester ·")
 
 
 @pytest.mark.parametrize("current, new, again, message", [
@@ -78,7 +78,9 @@ def test_a_flood_of_wrong_current_passwords_never_reaches_scrypt(signed_in, monk
 
 
 def test_the_header_offers_the_account_page(signed_in):
-    assert '<a href="/account">Your account</a>' in signed_in.client.get("/").text
+    # John, 22 Oct 2026: "My account", with "My statements" between "Enter a person" and it.
+    assert ('<a href="/people">Enter a person</a><a href="/my-statements">My statements</a>'
+            '<a href="/account">My account</a>') in signed_in.client.get("/").text
 
 
 def test_the_password_form_refuses_a_post_from_another_site(signed_in):
@@ -312,7 +314,7 @@ def test_the_account_page_shows_ones_own_details_to_change(details):
     assert 'id="name" name="name" type="text" maxlength="120" autocomplete="name" required value="Ada Tester"' in page
     assert 'value="Germany"' in page and 'value="10115"' in page
     assert "Postal code (optional):" in page and "Posts you have already made keep the name they were posted with." in page
-    assert page.index("Your details") < page.index("Change your password")
+    assert page.index("My details") < page.index("Save my details") < page.index("Change my password")
 
 
 def test_details_change_at_any_time_and_the_postal_code_may_be_empty(details):
