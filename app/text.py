@@ -88,7 +88,8 @@ TARGET_WORDS = {"Issue": "issue of", "Solution": "solution of", "Evidence": "evi
 def sentences(payload, display_name: str, resolved=None) -> list[str]:
     """The card's sentences, in the order of the acceptance examples, in John's words of 23 October
     2026: "proposes solution", "submits evidence", "supports issue of" (or solution of, evidence of).
-    An issue already in the record is not listed as claimed again when the card adds anything else.
+    An issue already in the record reads "claims about existing issue" (John, 24 October 2026; from 23 to
+    24 October its line was left out whenever the card added anything else).
     `resolved` is the card's ResolvedPayload; without it the card is resolved against an empty record."""
     if resolved is None:
         from app.payload import Candidates, resolve_payload  # payload imports this module
@@ -97,7 +98,8 @@ def sentences(payload, display_name: str, resolved=None) -> list[str]:
     name = clean_name(display_name) or "Anonymous"
     existing = {row["key"] for row in resolved.issues if row.get("existing")}
     kinds = {row["target_key"]: row["target_label"] for row in resolved.evidence}
-    claims = [(make_key(item.name), f"{name} claims {item.name}") for item in payload.issues]
+    claims = [f"{name} claims {'about existing issue ' if make_key(item.name) in existing else ''}{item.name}"
+              for item in payload.issues]
     proposed = [item for item in payload.solutions if not item.stance_only]
     rest = [f"{name} proposes solution {item.name}" for item in proposed]
     rest.extend(f"{item.for_issue} has proposed {item.name}" for item in proposed)
@@ -106,4 +108,4 @@ def sentences(payload, display_name: str, resolved=None) -> list[str]:
     for item in payload.evidence:
         kind = kinds.get(make_key(item.about or "") or "")
         rest.append(f"{item.name} {item.stance} {TARGET_WORDS[kind] + ' ' if kind else ''}{item.about}")
-    return [line for key, line in claims if not (key in existing and rest)] + rest
+    return claims + rest
