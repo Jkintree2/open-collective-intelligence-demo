@@ -155,6 +155,9 @@ class Candidates:
     solutions: dict[str, str] = field(default_factory=dict)
     evidence: dict[str, str] = field(default_factory=dict)
     solution_issues: dict[str, list[str]] = field(default_factory=dict)
+    # 24 October 2026: each evidence link, normalised by link_key(), to its evidence key, so the
+    # same link counts as the same evidence whatever name the writer typed.
+    evidence_links: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def empty(cls) -> "Candidates":
@@ -194,6 +197,18 @@ def link_name(url: str | None) -> str:
     # The query stays (a video's ?v= is the video); only tracking parameters go.
     query = "&".join(part for part in parsed.query.split("&") if part and not part.startswith("utm_"))
     return (host + parsed.path.rstrip("/") + ("?" + query if query else ""))[:120]
+
+
+def link_key(url: str | None) -> str:
+    """The form in which two links count as the same (24 October 2026): scheme, a leading "www.",
+    a trailing slash and the fragment ignored, `utm_` parameters dropped and the rest of the query
+    kept (a video's ?v= is the video). An arXiv abstract page and its PDF stay different."""
+    if not url:
+        return ""
+    parsed = urlsplit(url)
+    host = parsed.netloc.lower().removeprefix("www.")
+    query = "&".join(part for part in parsed.query.split("&") if part and not part.startswith("utm_"))
+    return host + parsed.path.rstrip("/") + ("?" + query if query else "")
 
 
 def _keyed(name: str | None) -> tuple[str | None, str]:
@@ -272,6 +287,11 @@ def resolve_payload(payload: CardPayload, candidates: Candidates) -> ResolvedPay
     seen = set()
     for item in payload.evidence:
         key, name = _keyed(item.name or link_name(item.url))
+        # The same link is the same evidence (24 October 2026): when the name is not already in the
+        # record, a link the record holds decides, and the row takes that evidence's name.
+        linked = candidates.evidence_links.get(link_key(item.url)) if item.url else None
+        if linked and key not in candidates.evidence:
+            key, name = linked, candidates.evidence[linked]
         if not _usable(key, name, candidates.evidence):
             out.dropped.append(f"evidence {item.name!r}")
             continue

@@ -17,6 +17,14 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     result = result.replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     return result.length >= 2 ? result : '';
   };
+  // The form in which two links count as the same (payload.link_key, 24 October 2026): scheme, "www.",
+  // a trailing slash and the fragment ignored, utm_ parameters dropped, the rest of the query kept.
+  const linkKey = value => {
+    const match = /^https?:\/\/([^/?#]*)([^?#]*)(?:\?([^#]*))?/i.exec((value || '').trim());
+    if (!match) return '';
+    const query = (match[3] || '').split('&').filter(part => part && !part.startsWith('utm_')).join('&');
+    return match[1].toLowerCase().replace(/^www\./, '') + match[2].replace(/\/+$/, '') + (query ? `?${query}` : '');
+  };
   function node(tag, content, className) {
     const element = document.createElement(tag);
     if (content) element.textContent = content;
@@ -113,7 +121,18 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       && !candidates.issues[key(row.name.value)]?.parent_key).map(row => row.name.value.trim());
     for (const [group, rows] of Object.entries(groups)) {
       for (const row of rows) {
-        const known = candidates[group][key(row.name.value)];
+        let known = candidates[group][key(row.name.value)];
+        if (row.url) {
+          // The same link is the same evidence (24 October 2026): a link the record holds names the row
+          // after that evidence, once per link, and the row counts as existing unless its name is
+          // itself another piece in the record. The writer may still change the name.
+          const linked = candidates.evidence_links?.[linkKey(row.url.value)] || null;
+          if (linked && row.linkedTo !== linked && !known) row.name.value = candidates.evidence[linked];
+          row.linkedTo = linked;
+          const named = candidates.evidence[key(row.name.value)];
+          known = named || (linked ? candidates.evidence[linked] : undefined);
+          row.linkNote.hidden = !(linked && (!named || named === candidates.evidence[linked]));
+        }
         row.badge.textContent = row.name.value.trim() ? known ? 'existing' : 'new' : ''; grow(row.name);
         if (row.parent) {
           const self = key(row.name.value);
@@ -211,6 +230,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       ['supports', 'refutes'].forEach(value => row.stance.add(new Option(value, value)));
       row.stance.value = item.stance || 'supports';
       field(row, 'about', 'claim about', 'select');
+      row.linkNote = node('p', 'This evidence is already in the record.', 'link-note'); row.linkNote.hidden = true;
+      row.element.append(row.linkNote);
       evidence?.watch(row, item);
     }
     const remove = node('button', 'remove from this form', 'quiet'); remove.type = 'button';
