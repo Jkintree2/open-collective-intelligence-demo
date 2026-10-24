@@ -259,3 +259,19 @@ def test_approving_an_existing_solution_previews_and_posts_one_approval(api, mon
 def test_with_accounts_off_the_name_field_stays(api):
     page = api[0].get("/").text
     assert 'id="display_name"' in page and "data-member" not in page
+
+
+def test_candidates_carry_each_evidence_link(monkeypatch):
+    """24 October 2026: the card needs every evidence link, normalised, to know a link is already in the record."""
+    from app import graph
+
+    rows = {graph.CANDIDATE_ISSUES: [], graph.CANDIDATE_SOLUTIONS: [],
+            graph.CANDIDATE_EVIDENCE: [
+                {"key": "new copy", "name": "New copy", "url": "https://www.example.org/report/"},
+                {"key": "old report", "name": "Old report", "url": "http://example.org/report?utm_source=x"},
+                {"key": "no link", "name": "No link", "url": None}]}
+    monkeypatch.setattr(graph, "_read", lambda query, **params: rows[query])
+    found = graph.candidates()
+    assert found.evidence == {"new copy": "New copy", "old report": "Old report", "no link": "No link"}
+    # Two pieces with the same link (entered before this rule): the older one is the one found.
+    assert found.evidence_links == {"example.org/report": "old report"}

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from app.extract import Candidates, CardPayload, resolve_payload
+from app.extract import Candidates, CardPayload, prepared_card, resolve_payload
 from app.text import sentences
 
 FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "cards.json").read_text())
@@ -79,3 +79,78 @@ def test_session_5_fixtures_resolve_without_drops(case, stances):
         assert [(row["target_label"], row["target_key"]) for row in resolved.evidence] == [("Solution", "more processing on personal devices")]
     if case == "17":
         assert [(row["target_label"], row["target_key"]) for row in resolved.evidence] == [("Solution", "platform for digital democracy")]
+
+
+# 24 October 2026: the same link counts as the same evidence, whatever name the writer typed.
+LINKED = Candidates(
+    issues={"flooding": {"name": "Flooding", "parent_key": None}},
+    evidence={"old report": "Old report", "other report": "Other report", "reuters com world": "reuters.com/world"},
+    evidence_links={"example.org/report": "old report", "example.org/other": "other report",
+                    "reuters.com/world": "reuters com world"},
+)
+
+
+def _evidence(name, url):
+    payload = CardPayload.model_validate({"issues": [{"name": "Flooding"}],
+                                          "evidence": [{"name": name, "url": url, "about": "Flooding"}]})
+    return resolve_payload(payload, LINKED).evidence[0]
+
+
+def test_same_link_under_a_different_name_joins_the_existing_evidence():
+    row = _evidence("Flood study 2024", "https://example.org/report")
+    assert (row["key"], row["name"], row["existing"]) == ("old report", "Old report", True)
+    card = CardPayload.model_validate({"issues": [{"name": "Flooding"}],
+                                       "evidence": [{"name": "Flood study 2024", "url": "https://example.org/report", "about": "Flooding"}]})
+    shown = prepared_card(card, LINKED)  # what the card gets back, as /api/preview builds it
+    assert shown.evidence[0].name == "Old report"
+    assert sentences(shown, "Pat", resolve_payload(shown, LINKED)) == [
+        "Pat submits evidence Old report", "Old report supports issue of Flooding"]
+
+
+@pytest.mark.parametrize("url", [
+    "http://example.org/report", "https://www.example.org/report", "https://example.org/report/",
+    "https://example.org/report?utm_source=mail&utm_medium=x", "https://example.org/report#section-2",
+    "HTTPS://EXAMPLE.ORG/report",
+])
+def test_scheme_www_trailing_slash_utm_and_fragment_do_not_make_a_new_piece_of_evidence(url):
+    assert _evidence("Flood study 2024", url)["key"] == "old report"
+
+
+def test_a_different_query_is_a_different_piece_of_evidence():
+    row = _evidence("Flood study 2024", "https://example.org/report?page=2")
+    assert (row["key"], row["existing"]) == ("flood study 2024", False)
+
+
+def test_a_name_already_in_the_record_wins_over_the_link():
+    row = _evidence("Other report", "https://example.org/report")
+    assert (row["key"], row["name"]) == ("other report", "Other report")
+
+
+def test_evidence_named_only_by_its_link_still_joins():
+    row = _evidence("", "http://www.reuters.com/world/")
+    assert (row["key"], row["name"], row["existing"]) == ("reuters com world", "reuters.com/world", True)
+
+
+def test_a_short_typed_name_with_a_known_link_is_kept_not_dropped():
+    assert _evidence("ab", "https://example.org/report")["key"] == "old report"
+
+
+def test_evidence_can_be_about_evidence_matched_by_link():
+    payload = CardPayload.model_validate({"issues": [{"name": "Flooding"}], "evidence": [
+        {"name": "Flood study 2024", "url": "https://example.org/report", "about": "Flooding"},
+        {"name": "A rebuttal", "url": "https://example.org/rebuttal", "stance": "refutes", "about": "Old report"}]})
+    rows = resolve_payload(payload, LINKED).evidence
+    assert [(r["target_label"], r["target_key"]) for r in rows] == [("Issue", "flooding"), ("Evidence", "old report")]
+
+
+@pytest.mark.parametrize("url, expected", [
+    ("https://www.youtube.com/watch?v=abc&utm_source=x", "youtube.com/watch?v=abc"),
+    ("http://Example.org/", "example.org"),
+    ("https://arxiv.org/abs/1234.5678", "arxiv.org/abs/1234.5678"),
+    ("https://arxiv.org/pdf/1234.5678", "arxiv.org/pdf/1234.5678"),
+    (None, ""),
+])
+def test_link_key(url, expected):
+    from app.payload import link_key
+
+    assert link_key(url) == expected

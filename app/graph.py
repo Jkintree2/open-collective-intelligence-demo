@@ -12,6 +12,7 @@ from typing import Any
 from neo4j.exceptions import ServiceUnavailable
 
 from app.extract import Candidates, ResolvedPayload
+from app.payload import link_key
 from app.text import make_key
 from app.issue_groups import SORTS, group_issues
 from app.graph_runtime import (RecordAsleep, _read, _write, close_driver, database, driver, open_driver)
@@ -291,7 +292,7 @@ RETURN s.name AS name, s.key AS key, collect(i.name) AS issues
 
 CANDIDATE_EVIDENCE = """
 MATCH (e:Evidence)
-RETURN e.name AS name, e.key AS key
+RETURN e.name AS name, e.key AS key, e.url AS url
 ORDER BY e.created_at DESC LIMIT 200
 """
 
@@ -442,9 +443,14 @@ def candidates() -> Candidates:
     }
     solution_rows = _read(CANDIDATE_SOLUTIONS)
     solutions = {row["key"]: row["name"] for row in solution_rows}
-    evidence = {row["key"]: row["name"] for row in _read(CANDIDATE_EVIDENCE)}
+    evidence_rows = _read(CANDIDATE_EVIDENCE)
+    evidence = {row["key"]: row["name"] for row in evidence_rows}
+    # The same link is the same evidence (24 October 2026). Where two pieces already share a link,
+    # the older one is found: the rows come newest first, so the last written wins.
+    evidence_links = {link_key(row["url"]): row["key"] for row in evidence_rows if row.get("url")}
     return Candidates(issues=issues, solutions=solutions, evidence=evidence,
-                      solution_issues={row["key"]: row["issues"] for row in solution_rows})
+                      solution_issues={row["key"]: row["issues"] for row in solution_rows},
+                      evidence_links=evidence_links)
 
 
 def health() -> int:

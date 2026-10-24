@@ -359,6 +359,7 @@ a.quiet { display: inline-flex; align-items: center; min-height: 44px; }
 .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0 1rem; }
 blockquote.statement + .row-actions { margin-top: 1rem; }
 .badge { display: block; font-size: .8rem; color: var(--ink-soft); margin: 4px 0; }
+.link-note { font-size: .9rem; color: var(--ink-soft); margin: 4px 0 0; }  /* the same link is the same evidence, 24 October 2026 */
 .write-issue { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); }
 .card input, .card select { min-width: 0; max-width: 100%; }
 .card ul, .statement, .chip { overflow-wrap: anywhere; }
