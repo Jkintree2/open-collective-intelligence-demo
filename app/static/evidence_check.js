@@ -108,6 +108,20 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
     if (!row.fromPage) suggestions(row, result.suggested || {});  // a row ticked from a page does not list that page again
     changed();  // the card now carries the check, and the preview says so
   }
+  // A post being edited shows the reading it holds, but what else the page mentions is not kept with the
+  // post, so the page is read again quietly and the list appears when it arrives; the stored reading and
+  // the writer's choice stand (Beth, 22 October 2026). Not when there is no reading service.
+  async function alsoMentions(row) {
+    if (!reading) return;
+    const serial = row.checkSerial = (row.checkSerial || 0) + 1;
+    try {
+      const result = await request('/api/check-evidence',
+        {url: row.url.value.trim(), evidence: row.name.value, about: row.about.value, text: text.value, stance: row.stance.value});
+      if (serial === row.checkSerial) suggestions(row, result.suggested || {});
+    } catch (error) {
+      // The stored reading already says what the page says; a page that will not open now adds nothing.
+    }
+  }
   async function run(row) {
     const url = row.url.value.trim(), about = row.about.value;
     if (!url) { noLink(row); return; }
@@ -157,7 +171,7 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
     // post being edited shows the reading the post holds instead, and its supports or refutes stays the writer's.
     Promise.resolve().then(() => {
       if (!row.url.value.trim()) { noLink(row); return; }
-      if (item.check && SAYS[item.check.verdict]) { row.lastAsked = asked(); row.stanceChosen = true; show(row, item.check); } else ask();
+      if (item.check && SAYS[item.check.verdict]) { row.lastAsked = asked(); row.stanceChosen = true; show(row, item.check); alsoMentions(row); } else ask();
     });
   }
   return {watch};

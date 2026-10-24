@@ -120,7 +120,7 @@ test('without the flag nothing is read and the card is the Phase 1 card', async 
   assert.equal(fields(row).about.afterNodes, undefined);
 });
 
-test('a post being edited shows the reading it holds, without reading the page again', async () => {
+test('a post being edited shows the reading it holds, and lists what else the page mentions', async () => {
   const p = await setup(undefined, {issues: {'coastal flooding': {name: 'Coastal flooding', parent_key: null}}, solutions: {}, evidence: {}},
                         {member: 'Ada Lovelace', evidenceCheck: true});
   const stored = {verdict: 'refutes', quote: QUOTE, line: 'A news report from March 2024. Secondary source.'};
@@ -129,15 +129,39 @@ test('a post being edited shows the reading it holds, without reading the page a
            evidence: [{name: 'Survey', url: URL, stance: 'supports', about: 'Coastal flooding', check: stored}]}});
   p.load('edit_post.js'); await p.flush();
   const [row] = p.get('evidence-rows').children;
-  assert.equal(checks(p).length, 0);
   assert.deepEqual(lines(row), ['Contradicts', `The page says: "${QUOTE}"`, stored.line,
     'You chose differently from the reading. That is fine; others will see both.']);
   assert.equal(fields(row).stance.value, 'supports');  // the writer's choice stays
+  // The page is read again only for what else it mentions (Beth, 22 October 2026): the stored reading stands,
+  // whatever the fresh one says, and the list appears under it.
+  assert.equal(checks(p).length, 1);
+  checks(p)[0].resolve({verdict: 'supports', quote: 'another sentence', line: 'A page. Date not given.',
+    suggested: {issues: [{name: 'Sea walls not keeping pace', existing: false}], solutions: [], evidence: []}});
+  await p.flush();
+  assert.deepEqual(lines(row), ['Contradicts', `The page says: "${QUOTE}"`, stored.line,
+    'You chose differently from the reading. That is fine; others will see both.']);
+  assert.equal(fields(row).stance.value, 'supports');
+  const also = box(row).children.find(c => c.tag === 'fieldset');
+  assert.equal(also.children[0].textContent, 'The page also mentions');
+  assert.equal(also.children[2].children[1], 'Issue: Sea walls not keeping pace');
   await p.runTimer(200);
   assert.deepEqual(JSON.parse(p.requests.at(-1).options.body).evidence[0].check, {verdict: 'refutes', quote: QUOTE});
   // A new link is read as usual.
   fields(row).url.value = 'https://other.example.org/'; await fields(row).url.emit('change'); await p.flush();
-  assert.equal(checks(p).length, 1);
+  assert.equal(checks(p).length, 2);
+});
+
+test('a post being edited with no reading service shows its reading and asks for nothing', async () => {
+  const p = await setup(undefined, {issues: {'coastal flooding': {name: 'Coastal flooding', parent_key: null}}, solutions: {}, evidence: {}},
+                        {member: 'Ada Lovelace', evidenceCheck: true, noReading: true});
+  const stored = {verdict: 'refutes', quote: QUOTE, line: 'A news report from March 2024. Secondary source.'};
+  p.get('edit-post').textContent = JSON.stringify({id: 'post-1', text: 'Coastal flooding is worse.', anonymous: false,
+    card: {issues: [{name: 'Coastal flooding', parent: null}], solutions: [],
+           evidence: [{name: 'Survey', url: URL, stance: 'supports', about: 'Coastal flooding', check: stored}]}});
+  p.load('edit_post.js'); await p.flush();
+  const [row] = p.get('evidence-rows').children;
+  assert.equal(lines(row)[0], 'Contradicts');
+  assert.equal(checks(p).length, 0);
 });
 
 test('a slow page says so after ten seconds, and the line goes when the reading comes', async () => {
