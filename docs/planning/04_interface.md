@@ -489,6 +489,8 @@ The "Post anonymously" box starts at the post's own choice and can be changed at
 
 Note for the builder: while editing, the reading buttons and the "post it as a plain statement anyway" button are hidden; the card is the edit.
 
+A row with a link the post already holds a reading for shows that reading (Phase 2); what else the page mentions is not kept with the post, so the page is read again quietly and "The page also mentions" appears under the stored reading when it arrives. The stored reading and the writer's supports or refutes stand whatever the fresh reading says; a page that cannot be opened now adds nothing. With the flag on but no reading service, nothing is asked (Beth's note of 22 October 2026, that the list did not show when she added a link while editing; added 24 October 2026).
+
 > Your post is updated.
 
 > You can change only your own posts.
