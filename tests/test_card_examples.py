@@ -30,20 +30,21 @@ def test_seawall_sentences_match_the_five_acceptance_lines():
     ]
 
 
-def test_evidence_names_what_it_speaks_to_and_a_known_issue_is_not_claimed_twice():
-    """John, 23 October 2026: "supports solution of", and no "claims" line for an issue already in the record
-    when the card adds anything else; a card with only that issue still shows it."""
+def test_evidence_names_what_it_speaks_to_and_a_known_issue_is_claimed_about():
+    """John, 23 October 2026: "supports solution of". John, 24 October 2026: an issue already in the
+    record reads "claims about existing issue", whether or not the card adds anything else."""
     known = Candidates(issues={"flooding": {"name": "Flooding", "parent_key": None}}, evidence={"old report": "Old report"})
-    card = CardPayload.model_validate({"found": True, "issues": [{"name": "Flooding"}],
+    card = CardPayload.model_validate({"found": True, "issues": [{"name": "Flooding"}, {"name": "Erosion"}],
                                        "solutions": [{"name": "Seawalls", "for_issue": "Flooding"}],
                                        "evidence": [{"name": "Survey", "about": "Seawalls", "stance": "supports"},
                                                     {"name": "Memo", "about": "Old report", "stance": "refutes"}]})
     assert sentences(card, "Ada", resolve_payload(card, known)) == [
+        "Ada claims about existing issue Flooding", "Ada claims Erosion",
         "Ada proposes solution Seawalls", "Flooding has proposed Seawalls",
         "Ada submits evidence Survey", "Ada submits evidence Memo",
         "Survey supports solution of Seawalls", "Memo refutes evidence of Old report"]
     only = CardPayload.model_validate({"found": True, "issues": [{"name": "Flooding"}]})
-    assert sentences(only, "Ada", resolve_payload(only, known)) == ["Ada claims Flooding"]
+    assert sentences(only, "Ada", resolve_payload(only, known)) == ["Ada claims about existing issue Flooding"]
 
 
 @pytest.mark.parametrize("case", ["1", "4", "5", "6A", "7"])
@@ -104,7 +105,7 @@ def test_same_link_under_a_different_name_joins_the_existing_evidence():
     shown = prepared_card(card, LINKED)  # what the card gets back, as /api/preview builds it
     assert shown.evidence[0].name == "Old report"
     assert sentences(shown, "Pat", resolve_payload(shown, LINKED)) == [
-        "Pat submits evidence Old report", "Old report supports issue of Flooding"]
+        "Pat claims about existing issue Flooding", "Pat submits evidence Old report", "Old report supports issue of Flooding"]
 
 
 @pytest.mark.parametrize("url", [

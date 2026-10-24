@@ -101,7 +101,7 @@ def test_preview_sentences_use_resolved_names_and_cleared_rows_are_removed(api):
     client, _, _ = api
     result = client.post("/api/preview", json={"text": "Veto reform", "display_name": "Tester", "issues": [{"name": "the veto."}]})
     assert result.json()["valid"]
-    assert result.json()["sentences"] == ["Tester claims Veto"]
+    assert result.json()["sentences"] == ["Tester claims about existing issue Veto"]
     assert result.json()["payload"]["issues"][0]["parent"] == "World"
 
 
@@ -184,7 +184,7 @@ def test_a_filled_card_posts_without_a_statement_and_stores_its_sentences(api):
     assert preview.status_code == 200 and preview.json()["valid"]
     assert client.post("/api/posts", json=body).status_code == 201
     args, _ = writes[0]
-    assert args[4] == "John proposes solution Abolish the veto. Veto has proposed Abolish the veto. John approves Abolish the veto."  # Veto is already in the record, so it is not claimed again in the list (John, 23 October 2026)
+    assert args[4] == "John claims about existing issue Veto. John proposes solution Abolish the veto. Veto has proposed Abolish the veto. John approves Abolish the veto."  # Veto is already in the record (John, 24 October 2026)
 
 
 def test_an_empty_card_with_no_statement_is_refused(api):
@@ -202,7 +202,7 @@ def test_an_emptied_box_keeps_the_reading_it_came_from_but_posts_as_manual(api):
             "issues": [{"name": "Veto"}]}
     assert client.post("/api/posts", json=body).status_code == 201
     args, kwargs = writes[0]
-    assert args[4] == "John claims Veto."
+    assert args[4] == "John claims about existing issue Veto."
     assert kwargs["source"] == "manual" and kwargs["extraction_raw"] == raw
 
 

@@ -134,6 +134,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
           row.linkNote.hidden = !(linked && (!named || named === candidates.evidence[linked]));
         }
         row.badge.textContent = row.name.value.trim() ? known ? 'existing' : 'new' : ''; grow(row.name);
+        if (row.issueNote) row.issueNote.hidden = !known;
         if (row.parent) {
           const self = key(row.name.value);
           options(row.parent, [['On this form', cardTop.filter(name => key(name) !== self)],
@@ -210,7 +211,12 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     const label = group === 'issues' ? 'Issue' : group === 'solutions' ? 'Solution' : 'Evidence';
     field(row, 'name', label).value = item.name || '';
     row.badge = node('span', '', 'badge'); row.element.append(row.badge);
-    if (group === 'issues') field(row, 'parent', 'Part of', 'select');
+    if (group === 'issues') {
+      field(row, 'parent', 'Part of', 'select');
+      // John, 24 October 2026: an issue the record holds says so under the row, not only in the badge.
+      row.issueNote = node('p', 'This issue is already in the record.', 'issue-note'); row.issueNote.hidden = true;
+      row.element.append(row.issueNote);
+    }
     if (group === 'solutions') {
       field(row, 'for_issue', 'for issue', 'select');
       const choices = node('fieldset'), legend = node('legend', 'Your position'); choices.append(legend);
