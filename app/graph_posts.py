@@ -9,6 +9,7 @@ from neo4j.exceptions import ServiceUnavailable
 from app import graph, graph_evidence
 from app.extract import ResolvedPayload
 from app.graph_runtime import RecordAsleep
+from app.payload import NO_PLACE
 from app.text import make_key
 
 log = logging.getLogger("oci")
@@ -94,12 +95,14 @@ def merge_post(
     edited: bool = False,
     one_stance: bool = False,
     checks: dict[str, dict[str, Any]] | None = None,
+    place: dict[str, str | None] | None = None,
 ) -> str:
     """Merge one post and everything it adds, in one write transaction. Returns the post id.
 
     `created_at` and `post_id` are for the seed only; the app never passes them.
     `one_stance` is True for a post by an account, so its stance replaces the person's opposite
-    one (D7, from sub-plan C2 on).
+    one (D7, from sub-plan C2 on). `place` is Phase 3's (payload.resolve_place, only with
+    PLACES_ENABLED): None writes no place.
     """
     post_id = post_id or str(uuid.uuid4())
     now = created_at or datetime.now(timezone.utc)
@@ -124,6 +127,7 @@ def merge_post(
             model=model,
             latency_ms=latency_ms,
             payload=payload.as_json(),
+            **(place or NO_PLACE),
             **common,
         )
         write_payload(tx, payload, common, one_stance=one_stance, checks=checks)
@@ -147,6 +151,7 @@ def merge_post(
                 "solutions": len(payload.solutions),
                 "evidence": len(payload.evidence),
                 **({"checks_kept": sum(1 for row in checks.values() if row.get("check"))} if checks is not None else {}),
+                **({"placed": bool(place["place_country"])} if place is not None else {}),
             }
         )
     )

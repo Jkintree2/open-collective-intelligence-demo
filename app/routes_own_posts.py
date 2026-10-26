@@ -154,7 +154,7 @@ def resolve_edit(data: CardPayload, own: dict[str, set[str]]) -> tuple[ResolvedP
 
 
 def _save(member: Member, row: dict, post_id: str, text: str, resolved: ResolvedPayload, card: CardPayload,
-          anonymous: bool, items: list, **reading_fields) -> bool:
+          anonymous: bool, items: list, place: dict | None = None, **reading_fields) -> bool:
     from app import main as site
     # Q25 and R4: the edit takes the name or Anonymous chosen on the edit page, at any time (D2's one rule).
     _, _, hidden, shown = posting_identity(member, anonymous)
@@ -166,7 +166,7 @@ def _save(member: Member, row: dict, post_id: str, text: str, resolved: Resolved
         checks = check.kept_checks(items, resolved.evidence, text, stored_checks(post_id, row["payload"]))
     return graph_own_posts.edit_own_post(member.key, post_id, resolved, text=statement,
                                          now=datetime.now(timezone.utc), anonymous=hidden, display_name=shown,
-                                         checks=checks, **reading_fields)
+                                         checks=checks, place=place, **reading_fields)
 
 
 @router.get("/posts/{post_id}/edit")
@@ -177,6 +177,8 @@ def edit_page(request: Request, post_id: str, member: Member = Depends(require_m
         return problem
     card, _ = current_card(post_id, row["payload"], readings=site.settings.evidence_check_enabled)
     editing = {"id": row["id"], "text": row["text"], "anonymous": bool(row["anonymous"]), "card": card}
+    if site.settings.places_enabled:  # Phase 3: the Place row starts at the post's place (Q24).
+        editing["place"] = {"country": row.get("place_country"), "area": row.get("place_area")}
     return site._render_index(request, text=row["text"], editing=editing)
 
 
@@ -231,6 +233,9 @@ def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, car
     with no choice of its own (the record's card, as built for the page) keeps the post's."""
     _, _, _, shown = posting_identity(member, getattr(data, "anonymous", bool(row["anonymous"])))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
+    if getattr(data, "place", None) is not None:  # Phase 3: a town with no country holds Save back
+        from app import main as site
+        valid = valid and not site.place_problem(data)
     return {"sentences": sentences(card, shown or "Anonymous", resolved), "valid": valid, "dropped": resolved.dropped,
             "corrected": resolved.corrected, "payload": card.model_dump()}
 
@@ -247,14 +252,18 @@ def preview_edit(request: Request, post_id: str, body: dict = Body(...),
 @router.post("/api/posts/{post_id}", dependencies=[Depends(require_same_origin)])
 def save_edit(request: Request, post_id: str, body: dict = Body(...),
               member: Member = Depends(require_member)) -> Response:
+    from app import main as site
     checked = _checked_edit(post_id, body, member)
     if isinstance(checked, Response):
         return checked
     row, data, resolved, card = checked
     if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": CHECK_THE_FORM, "dropped": resolved.dropped}, status_code=422)
+    if site.place_problem(data):
+        return JSONResponse({"message": site.PLACE_NEEDS_COUNTRY}, status_code=422)
     source = data.source if data.text.strip() and not resolved.is_empty else "manual"
     if not _save(member, row, post_id, data.text.strip(), resolved, card, source=source, anonymous=data.anonymous,
-                 items=data.evidence, extraction_raw=data.extraction_raw, model=data.model, latency_ms=data.latency_ms):
+                 items=data.evidence, place=site.card_place(data), extraction_raw=data.extraction_raw,
+                 model=data.model, latency_ms=data.latency_ms):
         return JSONResponse({"message": GONE}, status_code=404)
     return JSONResponse({"id": post_id, "message": UPDATED})

@@ -17,7 +17,8 @@ MATCH (:Person {key: $me})-[:POSTED]->(post:Post {id: $id})
 WHERE coalesce(post.seed, false) = false
 SET post.id = post.id
 RETURN post.id AS id, post.text AS text, post.anonymous AS anonymous, post.display_name AS display_name,
-       post.payload AS payload, post.created_at AS created_at
+       post.payload AS payload, post.created_at AS created_at,
+       post.place_country AS place_country, post.place_area AS place_area
 """
 
 # For the page's answer: gone (no row), someone else's, or mine.
@@ -25,7 +26,7 @@ POST_OWNER = """
 MATCH (post:Post {id: $id})
 OPTIONAL MATCH (author:Person)-[:POSTED]->(post)
 RETURN post.id AS id, post.text AS text, post.anonymous AS anonymous, post.payload AS payload,
-       post.created_at AS created_at,
+       post.created_at AS created_at, post.place_country AS place_country, post.place_area AS place_area,
        coalesce(author.key = $me AND coalesce(post.seed, false) = false, false) AS mine
 """
 
@@ -65,6 +66,13 @@ MATCH (post:Post {id: $id})
 SET post.text = $text, post.payload = $payload, post.source = $source,
     post.extraction_raw = $extraction_raw, post.model = $model, post.latency_ms = $latency_ms,
     post.edited_at = $now, post.anonymous = $anonymous, post.display_name = $display_name
+"""
+
+# Q25 step 4, Phase 3: the place from the edited card, only with PLACES_ENABLED; unset, the place stays
+# as it is (an edit never clears a place it cannot show).
+UPDATE_POST_PLACE = """
+MATCH (post:Post {id: $id})
+SET post.place_country = $place_country, post.place_area = $place_area, post.place_area_key = $place_area_key
 """
 
 # Q25 step 5. A stance this post made stays through an edit (MERGE keeps the first edge), so it takes
@@ -121,12 +129,14 @@ def delete_own_post(me: str, post_id: str) -> bool:
 def edit_own_post(me: str, post_id: str, payload: ResolvedPayload, *, text: str, source: str,
                   extraction_raw: str | None, model: str | None, latency_ms: int | None, now: datetime,
                   anonymous: bool | None = None, display_name: str | None = None,
-                  checks: dict[str, dict[str, Any]] | None = None) -> bool:
+                  checks: dict[str, dict[str, Any]] | None = None,
+                  place: dict[str, str | None] | None = None) -> bool:
     """Q25, in one transaction: the check, the post's own edges out, the edited card in under the
     same post id, orphans out (after, so a record the new version still uses stays), the post updated.
     An edit is always an account's, so its stances take the one-stance rule (D7). `anonymous` None
     keeps the post's choice; otherwise the post and all its edges take it, with `display_name`.
-    `checks` is Phase 2's (write_payload): None writes the evidence edges as Phase 1 does."""
+    `checks` is Phase 2's (write_payload): None writes the evidence edges as Phase 1 does. `place` is
+    Phase 3's (payload.resolve_place): None leaves the post's place as it is."""
     def work(tx: Any) -> bool:
         row = tx.run(OWN_POST, me=me, id=post_id).single()
         if row is None:
@@ -143,6 +153,8 @@ def edit_own_post(me: str, post_id: str, payload: ResolvedPayload, *, text: str,
         tx.run(UPDATE_POST, id=post_id, text=text, payload=payload.as_json(), source=source,
                extraction_raw=extraction_raw, model=model, latency_ms=latency_ms, now=now,
                anonymous=hidden, display_name=shown).consume()
+        if place is not None:
+            tx.run(UPDATE_POST_PLACE, id=post_id, **place).consume()
         tx.run(RESTAMP_STANCES, me=me, id=post_id, anonymous=hidden).consume()
         return True
     return _write(me, post_id, work)
