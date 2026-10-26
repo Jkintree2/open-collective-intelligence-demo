@@ -286,6 +286,8 @@ def _near(request: Request, country: str | None, area: str | None) -> dict:
     """The Issues page's Near filter (Phase 3). Asked (Show pressed): the place it filters by, or none. Not
     asked: the form starts at the member's last placed post (Q43), else the account's country."""
     asked = country is not None or area is not None
+    # The list sends a code; country_code() takes a code only in capitals (a lower-case "de" could be a word).
+    country = country.strip().upper() if country and len(country.strip()) == 2 else country
     code, area = places.country_code(country), places.clean_area(area) or ""
     me = member_key(request)
     if not asked and me:
