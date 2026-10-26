@@ -8,9 +8,11 @@ const {Element} = require('./page_harness.js');
 
 const MISSING = 'Where did you read or hear this?';
 
-function card(rows) {
+function card(rows, {candidatesReady = true} = {}) {
   const window = {};
-  const context = {window, document: {createElement: tag => Object.assign(new Element(), {tag})}};
+  const timers = [];
+  const context = {window, document: {createElement: tag => Object.assign(new Element(), {tag})},
+    setTimeout: (fn, delay) => timers.push({fn, delay})};
   vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static/followups.js'), 'utf8'), context, {filename: 'followups.js'});
   const node = (tag, content, className) => {
@@ -31,14 +33,19 @@ function card(rows) {
   let changes = 0;
   const request = (url, body) => new Promise((resolve, reject) => requests.push({url, body, resolve, reject}));
   assert.equal(window.ociCardExtras.length, 1);
-  const extra = window.ociCardExtras[0]({request, node, text, changed: () => { changes++; }, state: {groups}});
+  const state = {groups, candidatesReady};
+  const cardElement = new Element();
+  const extra = window.ociCardExtras[0]({find: id => (id === 'card' ? cardElement : new Element()), request, node, text,
+    changed: () => { changes++; }, state});
+  // Fire the timers waiting now, as the page's clock would.
+  const tick = () => { for (const timer of timers.splice(0)) timer.fn(); };
   const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
   const boxes = row => row.element.children.filter(child => child.className === 'follow-up');
   const find = (box, test) => {
     const walk = element => [element, ...(element.children || []).flatMap(child => child instanceof Element ? walk(child) : [])];
     return walk(box).find(test);
   };
-  return {extra, groups, text, requests, flush, boxes, find, changes: () => changes};
+  return {extra, groups, state, card: cardElement, text, requests, flush, tick, timers, boxes, find, changes: () => changes};
 }
 
 test('only new named rows are sent, with their link and tick', async () => {
@@ -202,4 +209,52 @@ test('on the real card: asked once the card opens, answered into the statement, 
   assert.deepEqual(p.get('issue-rows').children.map(row => row.children.find(c => c.className === 'name').value), ['Flooding', 'Erosion']);
   assert.equal(p.requests.filter(r => r.url === '/api/extract').length, extracts);  // not read again
   assert.ok(p.get('evidence-rows').children[0].children.some(child => child.className === 'follow-up'));
+});
+
+test('a card that opens before the record\'s names have arrived asks once they have, and only once', async () => {
+  // Before /api/candidates answers, every named row reads "new"; the existing one must not be asked about.
+  const page = card([['issues', 'Rent rises', 'new'], ['issues', 'Housing', 'new']], {candidatesReady: false});
+  page.extra.opened();
+  await page.flush();
+  assert.equal(page.requests.length, 0);
+  page.tick(); page.tick();
+  assert.equal(page.requests.length, 0);
+  // The names arrive: the card marks the rows (refresh) and is ready.
+  page.groups.issues[1].badge.textContent = 'existing';
+  page.state.candidatesReady = true;
+  page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 1);
+  assert.deepEqual([...page.requests[0].body.rows.map(row => row.name)], ['Rent rises']);
+  page.tick(); page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 1);
+  assert.equal(page.timers.length, 0);
+});
+
+test('a waiting card that closes or opens again asks nothing for the earlier opening', async () => {
+  const page = card([['issues', 'Rent rises', 'new']], {candidatesReady: false});
+  page.extra.opened();
+  page.card.hidden = true;
+  page.state.candidatesReady = true;
+  page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 0);
+  page.card.hidden = false;
+  page.state.candidatesReady = false;
+  page.extra.opened();
+  page.extra.opened();
+  page.state.candidatesReady = true;
+  page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 1);
+});
+
+test('names that never arrive stop the wait after a minute, with no request', async () => {
+  const page = card([['issues', 'Rent rises', 'new']], {candidatesReady: false});
+  page.extra.opened();
+  for (let i = 0; i < 300; i++) page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 0);
+  assert.equal(page.timers.length, 0);
 });

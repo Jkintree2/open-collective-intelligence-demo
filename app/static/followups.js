@@ -2,13 +2,16 @@
 // Loads before card.js, only with FOLLOW_UPS_ENABLED, and registers on the card hook. Questions are asked once,
 // when the card opens; an answer is added to the statement as one line, and the card is not read again.
 // Post never waits for a question, and nothing shows while they are being thought of.
-(window.ociCardExtras ||= []).push(({request, node, text, changed, state}) => {
+(window.ociCardExtras ||= []).push(({find, request, node, text, changed, state}) => {
   const INTRO = 'A question that would make this clearer:';
   const ADD = 'Add to my statement';
   const SKIP = 'Skip';
   const PUBLIC = 'Your answer is added to your statement, so everyone who reads the post sees it.';
   const TOO_LONG = 'That is longer than this demo can read at once. Please shorten it to a few paragraphs.';
   const LONGEST = 4000;
+  // Which rows are new is known only once the record's names have arrived (/api/candidates); a card that opens
+  // before them waits, checking every quarter second for at most a minute, then asks once.
+  const WAIT_MS = 250, WAIT_TRIES = 240;
   const ROW = {issues: 'issue', solutions: 'solution', evidence: 'evidence'};
   let asking = 0, serial = 0;
   // The same key as card.js, so a question finds its row by name as the record would.
@@ -61,9 +64,18 @@
     row.followUp = box;
     row.element.append(box);
   }
-  async function opened() {
+  function opened() {
     const mine = ++asking;
     for (const {row} of rows()) { row.followUp?.remove(); row.followUp = null; }
+    let tries = 0;
+    const whenKnown = () => {
+      if (mine !== asking || find('card').hidden) return;  // the card opened again, or closed
+      if (state.candidatesReady) ask(mine);
+      else if (++tries <= WAIT_TRIES) setTimeout(whenKnown, WAIT_MS);
+    };
+    whenKnown();
+  }
+  async function ask(mine) {
     const fresh = rows().filter(({row}) => row.badge.textContent === 'new' && row.name.value.trim());
     if (!fresh.length) return;
     const body = {text: text.value, rows: fresh.map(({kind, row}) => ({row: kind, name: row.name.value.trim(), existing: false,
