@@ -37,6 +37,9 @@ CONSTRAINTS = (
     "CREATE CONSTRAINT change_id    IF NOT EXISTS FOR (c:Change)   REQUIRE c.id IS UNIQUE",
     "CREATE FULLTEXT INDEX record_names IF NOT EXISTS FOR (n:Issue|Solution|Evidence) ON EACH [n.name]",
     "CREATE FULLTEXT INDEX post_text    IF NOT EXISTS FOR (p:Post) ON EACH [p.text]",
+    # Phase 3: a place on each post (Q43 by country alone uses the first).
+    "CREATE INDEX post_place_country IF NOT EXISTS FOR (p:Post) ON (p.place_country)",
+    "CREATE INDEX post_place_area    IF NOT EXISTS FOR (p:Post) ON (p.place_area_key)",
 )
 
 # The write path, statement by statement, from docs/planning/03_schema.md.
@@ -53,7 +56,8 @@ CREATE (post:Post {
   id: $post_id, text: $text, created_at: $now,
   anonymous: $anonymous, display_name: $display_name, seed: $seed,
   source: $source, extraction_raw: $extraction_raw,
-  model: $model, latency_ms: $latency_ms, payload: $payload
+  model: $model, latency_ms: $latency_ms, payload: $payload,
+  place_country: $place_country, place_area: $place_area, place_area_key: $place_area_key
 })
 CREATE (p)-[:POSTED {created_at: $now}]->(post)
 """

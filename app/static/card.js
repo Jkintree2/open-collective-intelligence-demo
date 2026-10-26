@@ -93,6 +93,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   }
   function collect() {
     const payload = {...identity(), ...state.metadata, text: text.value, plain: state.plain};
+    if (state.place) payload.place = state.place();  // Phase 3: the Place row (place.js, PLACES_ENABLED)
     for (const [group, rows] of Object.entries(state.groups)) {
       // A link with no words beside it is still evidence (John, 22 Oct 2026); the site names it after the link.
       payload[group] = rows.filter(row => row.name.value.trim() || row.url?.value.trim()).map(row => {
@@ -313,6 +314,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       // An edit goes back to the write page, which says the post is updated.
       if (state.editing) { location.href = '/?done=edited'; return; }
       card.hidden = true; text.value = ''; state.metadata = {source: 'manual'};
+      extras.forEach(extra => extra.posted?.());  // the next statement starts afresh (place.js)
       find('compose-message').textContent = 'Added to the record';
       setTimeout(() => { if (find('compose-message').textContent === 'Added to the record') find('compose-message').textContent = ''; }, 6000);
       try {
@@ -359,7 +361,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     ? window.ociEvidenceCheck({find, request, node, text, changed, addRow, removeRow, reading: form.dataset.noReading === undefined})
     : null;
   // Phase 3: card scripts that load before this one (followups.js, place.js) push a function onto
-  // window.ociCardExtras; each gets the same helpers and may answer {row(group, row, item), opened(payload, meta)}.
+  // window.ociCardExtras; each gets the same helpers and may answer {row(group, row, item), opened(payload, meta),
+  // posted()}: posted() once a new post is saved, before the next statement.
   const extras = (window.ociCardExtras || []).map(extra => extra({find, request, node, text, state, changed, addRow, removeRow, updateText}) || {});
   return {state, grow, identity, changed, addRow, openCard, openPlain, noteShortened, loadCandidates, post, setPositionOnExisting};
 };

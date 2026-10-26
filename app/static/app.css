@@ -449,6 +449,12 @@ form.search button { min-height: 44px; }
 /* Phase 3: follow-up questions under new rows on the card. */
 
 /* Phase 3: the Place row on the card. */
+.place-row { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.place-row label { display: block; margin-top: 4px; }
+.place-row input[type="text"] { width: 100%; }
+.place-note, .place-problem { font-size: .9rem; color: var(--ink-soft); margin: 4px 0 0; }
+.place-problem { color: var(--solution); }  /* the line that holds Post back */
+.place-problem:empty { display: none; }
 
 /* Phase 3: the Near filter on the Issues page, and the place under a post. */
 
