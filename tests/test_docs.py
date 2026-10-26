@@ -1,4 +1,4 @@
-"""CLAUDE.md names every module, script, template and page script, and every label and type a copy
+"""docs/code-map.md names every module, script, template and page script, and every label and type a copy
 can hold; the operator's guide stays plain (CLAUDE.md rules 5 and 8)."""
 
 import re
@@ -19,7 +19,7 @@ def named(name: str, text: str) -> bool:
 
 
 def test_layout_names_every_module_script_template_and_page_script():
-    layout = section("CLAUDE.md", "Layout")
+    layout = (ROOT / "docs/code-map.md").read_text(encoding="utf-8")
     files = [*ROOT.glob("app/*.py"), *ROOT.glob("scripts/*.py"), *ROOT.glob("app/static/*")]
     missing = [p.name for p in files if p.name != "__init__.py" and not named(p.name, layout)]
     templates = next(line for line in layout.splitlines() if line.startswith("app/templates/"))
