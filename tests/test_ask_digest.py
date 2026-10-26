@@ -92,7 +92,7 @@ def test_posts_that_do_not_fit_are_counted_and_never_cited():
 def test_one_post_left_out_is_said_in_the_singular():
     posts = [(post("a", 2, "y" * 300), "climate"), (post("b", 1, "y" * 300), "climate")]
     empty = len(ask.build("Climate", [ISSUE], [], [], []).text)
-    _, digest = digest_of("Climate", [ISSUE], [], [], posts, cap=empty + 450)
+    _, digest = digest_of("Climate", [ISSUE], [], [], posts, cap=empty + 500)
     assert digest["note"] == "1 more post was left out."
 
 
@@ -113,7 +113,7 @@ def test_sources_hold_what_the_page_shows():
     source = built.sources["P1"]
     assert (source.kind, source.name, source.date, source.href) == ("post", "Ada Okafor", "2026-10-03",
                                                                      "/issues/climate%20sub")
-    assert source.text == long_text[:200]
+    assert source.text == long_text[:200].rstrip() + "\u2026" and source.when == "3 October 2026"
     assert built.sources["S1"].href == "/issues/climate" and built.sources["S1"].name == "Tax"
     assert built.sources["E1"].kind == "evidence" and built.sources["E1"].href == "/issues/climate"
     assert json.loads(built.text)["posts"][0]["edited"] == "2026-10-07"
@@ -136,12 +136,12 @@ def test_evidence_carries_its_reading_its_source_and_evidence_on_evidence():
     dashboard = pieces["Dashboard"]
     assert dashboard["link"] == "https://example.org/dashboard"
     assert dashboard["source"] == "An organisation's page from November 2023. Primary source. Names its sources."
-    assert dashboard["about"] == [{"what": "issue Climate", "says": "supports", "page_read_as": "agrees", "post": "P1"}]
+    assert dashboard["about"] == [{"what": "issue Climate", "side": "supports", "page_read_as": "agrees", "post": "P1"}]
     assert dashboard["supported_by"] == ["E3"] and dashboard["refuted_by"] == ["E4"]
-    assert pieces["Study"]["about"] == [{"what": "solution S1", "says": "refutes", "page_read_as": "partly agrees",
+    assert pieces["Study"]["about"] == [{"what": "solution S1", "side": "refutes", "page_read_as": "partly agrees",
                                          "post": "P2"}]
-    assert pieces["Imf"]["about"] == [{"what": "evidence E1", "says": "supports", "post": "P2"}]
-    assert pieces["Plant"]["about"] == [{"what": "solution Elsewhere", "says": "supports",
+    assert pieces["Imf"]["about"] == [{"what": "evidence E1", "side": "supports", "post": "P2"}]
+    assert pieces["Plant"]["about"] == [{"what": "solution Elsewhere", "side": "supports",
                                          "from_personal_experience": True}]
 
 
