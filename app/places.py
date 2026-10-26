@@ -93,9 +93,8 @@ def _fold(text: str) -> str:
     return normalise("".join(ch for ch in decomposed if not unicodedata.combining(ch)))
 
 
-# Name to code, from every name above and the codes themselves.
+# Name to code, from every name above. The codes are not in it: folded, "No" or "in" would read as a country.
 _BY_NAME: dict[str, str] = {
-    **{_fold(code): code for code in COUNTRIES},
     **{_fold(name): code for code, name in COUNTRIES.items()},
     **ALIASES,
 }
@@ -107,7 +106,10 @@ def choices() -> list[tuple[str, str]]:
 
 
 def country_code(text: str | None) -> str | None:
-    """The two-letter code for a country as someone wrote it ("USA", "the Netherlands", "de"), or None."""
+    """The two-letter code for a country as someone wrote it ("USA", "the Netherlands", "DE"), or None.
+    A code counts only as written, in capitals."""
+    if text and text.strip() in COUNTRIES:
+        return text.strip()
     words = _fold(text or "")
     return _BY_NAME.get(words) or _BY_NAME.get(words.removeprefix("the ")) if words else None
 
