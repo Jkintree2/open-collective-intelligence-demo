@@ -8,6 +8,7 @@ Properties retain their names and values; temporal tags preserve nanoseconds.
 import base64
 import json
 import math
+import re
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -33,6 +34,9 @@ DIRECTIONS = {
 TEMPORALS = {"DateTime": DateTime, "Date": Date, "Time": Time, "Duration": Duration}
 # Phase 2 (03_schema.md): how a page was read, on a post's SUPPORTS or REFUTES edge.
 CHECKS = frozenset({"supports", "partly", "refutes", "unclear", "unread"})
+# Phase 3 (03_schema.md, "A place on each post"): a post's place, in version 2 with no format change.
+PLACE_COUNTRY = re.compile(r"[A-Z]{2}")
+PLACE_AREA_MAX = 80
 
 
 class InvalidBackup(ValueError):
@@ -131,7 +135,8 @@ def properties(value):
         if key in {"key", "id", "name", "text", "url", "display_name", "source", "extraction_raw",
                    "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
                    "relationship", "kind", "details", "check_quote", "source_type",
-                   "source_published", "check_claim", "check_reason", "check_quote_at"} and not isinstance(item, str):
+                   "source_published", "check_claim", "check_reason", "check_quote_at",
+                   "place_country", "place_area", "place_area_key"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
         if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary",
                    "source_cites", "personal", "check_pasted"} and type(item) is not bool:
@@ -143,6 +148,10 @@ def properties(value):
             raise InvalidBackup("A timestamp property has the wrong type.")
         if key == "check" and item not in CHECKS:
             raise InvalidBackup("A reading of a page has an unknown value.")
+        if key == "place_country" and not PLACE_COUNTRY.fullmatch(item):
+            raise InvalidBackup("A place has an unknown country.")
+        if key == "place_area" and len(item) > PLACE_AREA_MAX:
+            raise InvalidBackup("A place's town or area is too long.")
     # X2: every earlier address with the time it stopped being used, as two lists of one length.
     if "previous_emails" in decoded or "previous_emails_until" in decoded:
         addresses, untils = decoded.get("previous_emails"), decoded.get("previous_emails_until")

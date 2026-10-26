@@ -13,6 +13,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 from urllib.parse import urlsplit
 
+from app import places
 from app.text import clean_name, make_key
 
 log = logging.getLogger("oci")
@@ -145,6 +146,38 @@ class CardPayload(BaseModel):
     @classmethod
     def _note(cls, value: Any) -> str:
         return _text(value)[:300]
+
+
+class PlaceItem(BaseModel):
+    """Phase 3: the card's Place row (PLACES_ENABLED), as the writer chose it. `country` is a code or a
+    name; `area` the town or area as typed. Absent from the request means the card had no Place row."""
+
+    country: str | None = None
+    area: str | None = None
+
+    @field_validator("country", "area", mode="before")
+    @classmethod
+    def _strings(cls, value: Any) -> str | None:
+        return _text(value)[:300] or None
+
+
+# The three place properties of a Post (03_schema.md, "A place on each post"); null means no place.
+PLACE_FIELDS = ("place_country", "place_area", "place_area_key")
+NO_PLACE: dict[str, str | None] = dict.fromkeys(PLACE_FIELDS)
+
+
+def place_needs_country(item: PlaceItem | None) -> bool:
+    """A town or area typed with "Not about one place" (or a country the list does not hold)."""
+    return item is not None and places.clean_area(item.area) is not None and places.country_code(item.country) is None
+
+
+def resolve_place(item: PlaceItem | None) -> dict[str, str | None]:
+    """The Post's place properties: the ISO code, the area kept only with a country, and its key."""
+    country = places.country_code(item.country) if item is not None else None
+    if country is None:
+        return dict(NO_PLACE)
+    area = places.clean_area(item.area)
+    return {"place_country": country, "place_area": area, "place_area_key": places.area_key(area)}
 
 
 @dataclass(frozen=True)

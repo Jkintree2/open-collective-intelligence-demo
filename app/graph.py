@@ -38,6 +38,11 @@ CONSTRAINTS = (
     "CREATE FULLTEXT INDEX record_names IF NOT EXISTS FOR (n:Issue|Solution|Evidence) ON EACH [n.name]",
     "CREATE FULLTEXT INDEX post_text    IF NOT EXISTS FOR (p:Post) ON EACH [p.text]",
 )
+# Phase 3: a place on each post (Q43 by country alone uses the first). Made only with PLACES_ENABLED.
+PLACE_INDEXES = (
+    "CREATE INDEX post_place_country IF NOT EXISTS FOR (p:Post) ON (p.place_country)",
+    "CREATE INDEX post_place_area    IF NOT EXISTS FOR (p:Post) ON (p.place_area_key)",
+)
 
 # The write path, statement by statement, from docs/planning/03_schema.md.
 
@@ -53,7 +58,8 @@ CREATE (post:Post {
   id: $post_id, text: $text, created_at: $now,
   anonymous: $anonymous, display_name: $display_name, seed: $seed,
   source: $source, extraction_raw: $extraction_raw,
-  model: $model, latency_ms: $latency_ms, payload: $payload
+  model: $model, latency_ms: $latency_ms, payload: $payload,
+  place_country: $place_country, place_area: $place_area, place_area_key: $place_area_key
 })
 CREATE (p)-[:POSTED {created_at: $now}]->(post)
 """
@@ -342,10 +348,11 @@ MATCH (a:{source_label} {{{source_key}: $source}}),
 CREATE (a)-[r:{type}]->(b) SET r = $properties
 """
 
-def ensure_constraints() -> None:
-    """Run the schema statements from docs/planning/03_schema.md. Idempotent."""
+def ensure_constraints(places: bool = False) -> None:
+    """Run the schema statements from docs/planning/03_schema.md. Idempotent. `places` adds Phase 3's
+    two place indexes (PLACES_ENABLED), so an unset switch leaves the database as it was."""
     try:
-        for statement in CONSTRAINTS:
+        for statement in CONSTRAINTS + (PLACE_INDEXES if places else ()):
             driver().execute_query(statement, database_=database())
     except ServiceUnavailable as exc:
         raise RecordAsleep(str(exc)) from exc

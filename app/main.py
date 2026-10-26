@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from app import graph, extract as reading
 from app.extract import CardPayload, resolve_payload
+from app.payload import PlaceItem, place_needs_country, resolve_place
 from app.auth import (
     GATE_COOKIE,
     GATE_SECONDS,
@@ -54,7 +55,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app import graph_own_posts
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
-from app import check, confidence, graph_evidence, search, tidy
+from app import check, confidence, graph_accounts, graph_evidence, places, search, tidy
 
 settings = get_settings()
 
@@ -108,6 +109,7 @@ NOT_FOUND = "We could not find an issue, a claim, evidence or a solution in that
 ENGLISH_ONLY = "This demo reads English only for now."
 READING_LIMIT = "Too many requests. Please wait a minute or fill in the form by hand."
 WAIT_BEFORE_POSTING = "Please wait a moment before posting again."
+PLACE_NEEDS_COUNTRY = "Please choose the country for this town or area."
 
 log = logging.getLogger("oci")
 
@@ -127,7 +129,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _configure_logging()
     graph.open_driver(settings)
     try:
-        graph.ensure_constraints()
+        graph.ensure_constraints(places=settings.places_enabled)
     except RecordAsleep as exc:
         log.warning(json.dumps({"event": "constraints_skipped", "error": str(exc)}))
     yield
@@ -421,6 +423,19 @@ class PostRequest(CardPayload):
     model: str | None = Field(default=None, max_length=120)
     latency_ms: int | None = Field(default=None, ge=0, le=300000)
     plain: bool = False
+    # Phase 3: the Place row, sent only by place.js (PLACES_ENABLED); ignored while the switch is unset.
+    place: PlaceItem | None = None
+
+
+def card_place(data: CardPayload) -> dict | None:
+    """The post's place properties from the card, or None to write none (and, editing, keep the post's)."""
+    sent = getattr(data, "place", None)
+    return resolve_place(sent) if settings.places_enabled and sent is not None else None
+
+
+def place_problem(data: CardPayload) -> bool:
+    """A town or area with no country: the card says so and Post waits (04_interface.md)."""
+    return settings.places_enabled and place_needs_country(getattr(data, "place", None))
 
 
 def _display_name(raw: str) -> str:
@@ -450,6 +465,17 @@ def _poster(data: ReadingRequest | PostRequest, member=None) -> tuple[str | None
 @app.get("/api/candidates", dependencies=[Depends(require_access)])
 def card_candidates() -> dict:
     return asdict(graph.candidates())
+
+
+@app.get("/api/place", dependencies=[Depends(require_access)])
+def place_choices(request: Request) -> Response:
+    """Phase 3: the Place row's list, and the account's country to start a named post with."""
+    if not settings.places_enabled:
+        return JSONResponse({"message": "Not found"}, status_code=404)
+    member = current_member(request)
+    details = graph_accounts.own_details(member.key) if member is not None else None
+    return JSONResponse({"not_one_place": places.NOT_ONE_PLACE, "choices": places.choices(),
+                         "country": places.country_code((details or {}).get("country"))})
 
 
 @app.post("/api/extract", dependencies=[Depends(require_access), Depends(require_same_origin)])
@@ -489,6 +515,7 @@ def preview_card(request: Request, data: PostRequest) -> Response:
     _, resolved, card = _card_result(data)
     name, _ = _poster(data, current_member(request))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
+    valid = valid and not place_problem(data)
     return JSONResponse({"sentences": sentences(card, name or "Anonymous", resolved), "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
                          "payload": card.model_dump()})
@@ -503,6 +530,8 @@ def post_card(request: Request, data: PostRequest) -> Response:
     if resolved.dropped or (resolved.is_empty and not (data.plain and data.text.strip())):
         return JSONResponse({"message": "Please check the form before posting.",
                              "dropped": resolved.dropped}, status_code=422)
+    if place_problem(data):
+        return JSONResponse({"message": PLACE_NEEDS_COUNTRY}, status_code=422)
     member = current_member(request)
     if member is not None:
         person_key, name, anonymous, _ = posting_identity(member, data.anonymous)
@@ -535,7 +564,7 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 extraction_raw=data.extraction_raw, model=data.model,
                                 latency_ms=data.latency_ms,
                                 request_id=_request_id(request), edited=edited,
-                                one_stance=settings.accounts_enabled, checks=checks)
+                                one_stance=settings.accounts_enabled, checks=checks, place=card_place(data))
     response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
     if member is None:
         if anonymous:
