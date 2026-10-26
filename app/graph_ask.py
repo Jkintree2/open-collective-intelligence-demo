@@ -9,7 +9,7 @@ from typing import Any
 
 from app.graph_runtime import _read
 
-SOLUTION_LIMIT = 15  # solutions on one issue and its sub-issues
+SOLUTION_LIMIT = 20  # solutions on one issue and its sub-issues
 STANCE_LIMIT = 20    # dated stances listed under one solution, newest first; the counts are always whole
 EVIDENCE_LIMIT = 10  # evidence record-wide
 EDGE_LIMIT = 300     # evidence rows on one issue

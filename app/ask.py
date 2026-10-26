@@ -27,6 +27,7 @@ DIGEST_CHARS = 32000  # about 8,000 tokens
 POSTS_PER_ISSUE = 200
 RECORD_ISSUES = 3
 RECORD_TOP = 10
+EVIDENCE_PIECES = 30  # pieces of evidence in one digest (part 1 is never cut, so it is capped)
 SNIPPET = 200
 ANONYMOUS = "Anonymous"
 # The Phase 2 reading of a page, in John's words (04_interface.md, revision round).
@@ -106,8 +107,10 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
     e_ids: dict[str, str] = {}
     for row in evidence_rows:
         for key in (row["key"], row["target_key"] if row["target_kind"] == "evidence" else None):
-            if key and key not in e_ids:
+            if key and key not in e_ids and len(e_ids) < EVIDENCE_PIECES:
                 e_ids[key] = f"E{len(e_ids) + 1}"
+    evidence_rows = [row for row in evidence_rows if row["key"] in e_ids
+                     and (row["target_kind"] != "evidence" or row["target_key"] in e_ids)]
     ordered = _ordered_posts(solutions, posts)
     p_ids = {post["id"]: f"P{n}" for n, (post, _) in enumerate(ordered, 1)}
     home = issues[0]["key"] if scope and issues else None
@@ -252,26 +255,17 @@ def issue_digest(key: str, *, cap: int = DIGEST_CHARS, today: date | None = None
 
 def pick_issues(name_rows: list[dict[str, Any]], post_rows: list[dict[str, Any]],
                 structure: dict[str, list[dict[str, Any]]], limit: int = RECORD_ISSUES) -> list[str]:
-    """Up to `limit` issue keys for a question asked of the whole record, from the names (Q26) and the
-    posts (Q27) the question query found. Each list counts by rank, best first (1, 1/2, 1/3 ...), and a
-    hit counts for the issues it belongs to: a name for its issue, a post for the issues it claims. A tie
-    keeps the order the issues were found in."""
-    scores: dict[str, float] = {}
-
-    def add(keys: Iterable[str], weight: float) -> None:
-        for key in dict.fromkeys(k for k in keys if k):
-            scores[key] = scores.get(key, 0.0) + weight
-
-    for rank, row in enumerate(name_rows, 1):
-        if row["label"] == "Issue":
-            add([row["key"]], 1 / rank)
-        elif row["label"] == "Solution":
-            add(row["solution_homes"], 1 / rank)
-        else:
-            add(row["evidence_homes"], 1 / rank)
-    for rank, post in enumerate(post_rows, 1):
-        add([edge["to_key"] for edge in structure.get(post["id"], []) if edge["rel"] == "CLAIM"], 1 / rank)
-    return [key for key, _ in sorted(scores.items(), key=lambda item: -item[1])][:limit]
+    """Up to `limit` issue keys for a question asked of the whole record (05_extraction.md, Phase 3):
+    the issues of the names the question found (Q26) in score order, an issue for itself, a solution or
+    piece of evidence for the issues it belongs to; then the issues the posts it found (Q27) claim."""
+    keys: list[str] = []
+    for row in name_rows:
+        homes = [row["key"]] if row["label"] == "Issue" else \
+            row["solution_homes"] if row["label"] == "Solution" else row["evidence_homes"]
+        keys += homes
+    for post in post_rows:
+        keys += [edge["to_key"] for edge in structure.get(post["id"], []) if edge["rel"] == "CLAIM"]
+    return list(dict.fromkeys(key for key in keys if key))[:limit]
 
 
 def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None = None) -> Digest:

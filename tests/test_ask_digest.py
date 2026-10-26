@@ -145,6 +145,15 @@ def test_evidence_carries_its_reading_its_source_and_evidence_on_evidence():
                                          "from_personal_experience": True}]
 
 
+def test_at_most_thirty_pieces_of_evidence_and_nothing_points_past_them():
+    rows = [edge(f"piece{n:02d}", "issue", "climate") for n in range(1, 35)]
+    rows.append(edge("piece01", "evidence", "piece33"))  # into a piece past the cap
+    _, digest = digest_of("Climate", [ISSUE], [], rows, [])
+    assert [item["name"] for item in digest["evidence"]] == [f"Piece{n:02d}" for n in range(1, 31)]
+    assert all(len(item["about"]) == 1 for item in digest["evidence"])
+    assert "E31" not in json.dumps(digest)
+
+
 def test_nothing_in_the_record_still_makes_a_digest():
     built, digest = digest_of("Climate", [ISSUE], [], [], [])
     assert digest == {"asked_about": "the issue Climate", "issues": [ISSUE_ENTRY]} and built.sources == {}
@@ -161,7 +170,8 @@ def test_whole_record_issues_are_picked_by_rank_in_names_and_posts():
     posts = [{"id": "p1"}, {"id": "p2"}]
     structure = {"p1": [{"rel": "CLAIM", "to_key": "housing"}, {"rel": "PROPOSE", "to_key": "tax"}],
                  "p2": [{"rel": "CLAIM", "to_key": "veto"}, {"rel": "CLAIM", "to_key": "flooding"}]}
-    # climate 1 + 1/3, veto 1/2 + 1/2, housing 1, flooding 1/2; a tie keeps the order found
+    # Names first in score order (their issues), then the issues the posts claim; no repeats.
     assert ask.pick_issues(names, posts, structure) == ["climate", "veto", "housing"]
-    assert ask.pick_issues(names, posts, structure, limit=1) == ["climate"]
+    assert ask.pick_issues(names, posts, structure, limit=5) == ["climate", "veto", "housing", "flooding"]
+    assert ask.pick_issues(names[3:], posts, structure) == ["housing", "veto", "flooding"]
     assert ask.pick_issues([], [], {}) == []
