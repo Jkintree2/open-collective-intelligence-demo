@@ -15,6 +15,8 @@ DIGEST = ask.Digest("{}", {"P1": ask.Source("P1", "post", "Anonymous", "2026-10-
 ANSWERED = ask.Answer("answered", [{"text": "One writer says the veto <blocks> action.", "refs": [1]}],
                       list(DIGEST.sources.values()), partial=True)
 SAME_SITE = {"sec-fetch-site": "same-origin"}
+# As the module sets them, before a fixture swaps them for roomy ones.
+DEFAULT_LIMITS = (routes_ask.site_minute.capacity, routes_ask.site_daily.capacity, routes_ask.person_limit.count)
 
 
 @pytest.fixture
@@ -201,3 +203,33 @@ def test_without_javascript_a_question_not_asked_is_not_carried(asking):
     page = asking.client.post("/ask", data={"question": "x" * 600, "earlier": ["One?"]}, headers=SAME_SITE).text
     assert 'name="earlier" value="One?"' in page and 'value="xxx' not in page
     assert ("x" * 600 + "</textarea>") in page  # kept in the box to shorten
+
+
+def test_five_a_minute_for_the_site_and_the_person_is_not_charged(asking, monkeypatch):
+    """The final review: 40 second calls on a tenth of a CPU. The default bucket holds five."""
+    assert DEFAULT_LIMITS == (5, 300, 30)
+    monkeypatch.setattr(routes_ask, "site_minute", MinuteBucket(capacity=1, period=60.0))
+    assert post(asking.client, {"question": "Why?"}).status_code == 200
+    response = post(asking.client, {"question": "Why?"})
+    assert response.status_code == 429
+    assert response.json() == {"message": "The question could not be answered just now. Please try again in a minute."}
+    assert len(routes_ask.person_limit.uses["acct:ada"]) == 1
+
+
+def test_an_empty_record_answers_the_empty_line_with_no_call_and_no_count(asking, monkeypatch):
+    monkeypatch.setattr(ask, "issue_digest", lambda key, **kw: ask.Digest("{}", {}, issue_keys=[key]))
+    body = post(asking.client, {"question": "Why?", "issue": "veto"}).json()
+    assert body["status"] == "empty" and body["message"] == "The record does not say anything about this yet."
+    assert [call for call in asking.calls if call[0] == "answer"] == [] and routes_ask.person_limit.uses == {}
+
+
+def test_a_use_can_be_given_back():
+    limit = KeyedLimit(2, 60)
+    assert limit.take("a", now=0) and limit.take("a", now=1) and not limit.take("a", now=2)
+    limit.give_back("a")
+    assert limit.take("a", now=3)
+    limit.give_back("a")
+    limit.give_back("a")
+    limit.give_back("a")  # nothing left to give back: no error
+    assert limit.uses == {}
+    limit.give_back("never")

@@ -30,7 +30,8 @@ NO_SERVICE = "Asking needs the reading service, which is not set up."
 # 30 questions a person a day and 300 for the site, held in this process: a restart or a wake from
 # Render's sleep starts both counts again, so they are a ceiling per waking (the logs hold the real count).
 person_limit = KeyedLimit(30, 86400)
-site_minute = MinuteBucket(capacity=30, period=60.0)
+# Five a minute: each call can hold a worker for 40 seconds, and Render's free plan has a tenth of a CPU.
+site_minute = MinuteBucket(capacity=5, period=60.0)
 site_daily = DailyLimit(capacity=300)
 
 
@@ -46,14 +47,13 @@ class AskRequest(BaseModel):
 
 
 def _take(key: str) -> str | None:
-    """The person's count, then the site's; a question the site refuses is not counted for the person."""
+    """The person's count, then the site's; a question the site refuses is not counted for the person.
+    The site's day full says so; its minute full (five a minute) is "try again in a minute"."""
     if not person_limit.take(key):
         return PERSON_LIMIT
     if not site_daily.take(site_minute):
-        with person_limit._lock:
-            if person_limit.uses.get(key):
-                person_limit.uses[key].pop()
-        return SITE_LIMIT
+        person_limit.give_back(key)
+        return SITE_LIMIT if site_daily.used >= site_daily.capacity else ask.FAILED
     return None
 
 
@@ -74,11 +74,14 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None) 
     settings = config.get_settings()
     if not settings.llm_api_key:
         return 200, {"message": NO_SERVICE}
-    if (refused := _take(reader_key(request))) is not None:
-        return 429, {"message": refused}
     digest = ask.issue_digest(issue) if issue else ask.record_digest(question)
     if digest is None:
         raise HTTPException(404)
+    if digest.empty:  # nothing to answer from: the empty line, with no call and no count
+        return 200, {"status": "empty", "message": ask.EMPTY, "paragraphs": [], "sources": [], "partial": None,
+                     "issue": issue_name}
+    if (refused := _take(reader_key(request))) is not None:
+        return 429, {"message": refused}
     result = ask.answer(question, earlier, digest, settings, scope="issue" if issue else "record",
                         request_id=getattr(request.state, "request_id", None))
     return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,

@@ -76,6 +76,11 @@ class Digest:
     def chars(self) -> int:
         return len(self.text)
 
+    @property
+    def empty(self) -> bool:
+        """No post and no solution: nothing an answer could rest on, so the reading service is not asked."""
+        return not any(sid[0] in "PS" for sid in self.sources)
+
 
 def _dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
@@ -437,9 +442,13 @@ _IDS_IN_BRACKETS = re.compile(r"\s*[\[(]\s*(?:[PSE]\d{1,3}\s*[,;]?\s*(?:and\s+)?
 _BARE_ID = re.compile(r"\b[PSE]\d{1,3}\b")
 _SOURCE_ID = re.compile(r"^[PSE]\d{1,4}$")
 _DIGEST = re.compile(r"\bdigests?\b", re.IGNORECASE)
-# A count line holds a figure or a count in words: "Approved by 5", "No evidence here is supported by other
-# evidence" (the walk of 26 October: that line cited only E ids and was dropped).
-_COUNTED = re.compile(r"\d|\b(?:no|none|zero|one|two|three|four|five|six|seven|eight|nine|ten)\b", re.IGNORECASE)
+# A count line holds a figure, or a count in words beside what it counts: "Approved by 5", "No evidence here is
+# supported by other evidence" (the walk of 26 October: that line cited only E ids and was dropped), but not
+# "One solution is to ban cars." (the final review: a number word alone let a claim through on an S id).
+_NUMBER = r"(?:no|none|zero|one|two|three|four|five|six|seven|eight|nine|ten)"
+_COUNTS = r"(?:approv\w*|oppos\w*|people|person|posts?|pieces?|evidence|stances?|support\w*|refut\w*)"
+_COUNTED = re.compile(rf"\d|\b{_NUMBER}\W+(?:\w+\W+){{0,2}}?{_COUNTS}\b|\b{_COUNTS}\W+(?:by\W+)?{_NUMBER}\b",
+                      re.IGNORECASE)
 
 
 @dataclass
@@ -488,7 +497,7 @@ def _clean(text: str, digest: Digest) -> str:
 def guard(reply: dict[str, Any], digest: Digest) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """The paragraphs the page may show, each {"text", "sources"} with ids from the digest only, and
     the counts that are logged. A paragraph keeps a P id, or is a count line: at most 200 characters,
-    a figure or a count in words in it, citing S or E only; any other is dropped. At most 5 paragraphs, kept in order while
+    a figure, or a count in words beside what it counts, citing S or E only; any other is dropped. At most 5 paragraphs, kept in order while
     the total stays within 1,200 characters; the one that would pass it is dropped with the rest."""
     counts = {"paragraphs_dropped": 0, "sources_kept": 0, "sources_dropped": 0}
     kept: list[dict[str, Any]] = []
@@ -533,6 +542,8 @@ def build_messages(question: str, earlier: list[str], digest: Digest) -> list[di
 def answer(question: str, earlier: list[str], digest: Digest, settings: Settings, *,
            request_id: str | None = None, scope: str = "issue", transport: Any = None) -> Answer:
     """One attempt, 40 seconds. Without a reading service the route never gets here."""
+    if digest.empty:
+        return Answer("empty")
     started = time.perf_counter()
     earlier = [text[:QUESTION_MAX] for text in earlier if isinstance(text, str) and text.strip()][-EARLIER_MAX:]
     reply = call_model(build_messages(question, earlier, digest), settings, request_id=request_id,

@@ -181,6 +181,14 @@ class KeyedLimit:
             recent.append(now)
             return True
 
+    def give_back(self, key: str) -> None:
+        """Undo the last use of `key`, for a use refused further on (a limit after this one)."""
+        with self._lock:
+            if self.uses.get(key):
+                self.uses[key].pop()
+                if not self.uses[key]:
+                    del self.uses[key]
+
 
 admin_basic = HTTPBasic()
 

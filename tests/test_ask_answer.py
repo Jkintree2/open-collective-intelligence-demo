@@ -41,6 +41,7 @@ def test_a_paragraph_needs_a_post_unless_it_is_a_count_line():
                               ("The dashboard is backed by 2 other pieces of evidence.", ["E1"]),
                               ("Only the solution, without a figure.", ["S1"]),
                               ("No evidence here is supported or refuted by other evidence.", ["E1"]),
+                              ("One solution is to ban cars.", ["S1"]),
                               ("Opposed by 3. " + "x" * 200, ["S1"]),
                               ("Ada and an anonymous writer disagree.", ["P1", "P2", "S1"]),
                               ("Nobody is cited.", []))
@@ -48,7 +49,17 @@ def test_a_paragraph_needs_a_post_unless_it_is_a_count_line():
                                                "The dashboard is backed by 2 other pieces of evidence.",
                                                "No evidence here is supported or refuted by other evidence.",
                                                "Ada and an anonymous writer disagree."]
-    assert counts["paragraphs_dropped"] == 4
+    assert counts["paragraphs_dropped"] == 5
+
+
+def test_a_number_word_counts_only_beside_what_it_counts():
+    """The final review: "One solution is to ban cars." on an S id alone is a claim, not a count."""
+    for text in ("One solution is to ban cars.", "No reason is given for it.", "None of this is settled."):
+        assert kept((text, ["S1"]))[0] == [], text
+    for text in ("No evidence here is supported or refuted by other evidence.", "Three people oppose it.",
+                 "Two other pieces of evidence back it.", "Opposed by none, approved by two.",
+                 "Approved by 4, opposed by 3, as of 17 October."):
+        assert [p["text"] for p in kept((text, ["S1"]))[0]] == [text], text
 
 
 def test_five_paragraphs_at_most_and_twelve_hundred_characters_in_order():
@@ -143,6 +154,17 @@ def test_an_empty_answer_and_a_partial_one():
     partial = ask.answer("Why?", [], partial_digest, SETTINGS,
                          transport=service(json.dumps(reply(("Ada wants a tax.", ["P1"]))), calls))
     assert partial.partial is True
+
+
+def test_an_empty_record_is_never_sent(monkeypatch):
+    monkeypatch.setattr(ask, "call_model", lambda *args, **kw: pytest.fail("the reading service was asked"))
+    nothing = ask.Digest('{"asked_about":"the whole record","issues":[]}', {})
+    only_evidence = ask.Digest("{}", {"E1": SOURCES["E1"]})
+    for digest in (nothing, only_evidence):
+        assert digest.empty
+        result = ask.answer("Why?", [], digest, SETTINGS)
+        assert result.status == "empty" and result.message == "The record does not say anything about this yet."
+    assert not DIGEST.empty
 
 
 def test_the_timeout_is_forty_seconds(monkeypatch):
