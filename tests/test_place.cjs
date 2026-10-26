@@ -2,7 +2,7 @@
 // statement and empty for an anonymous one; a town needs a country; the place goes with the card as {country, area}.
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {setup} = require('./page_harness.js');
+const {Element, setup} = require('./page_harness.js');
 
 const PLACES = {not_one_place: 'Not about one place', choices: [['DE', 'Germany'], ['US', 'United States']], country: 'US'};
 const NEEDS_COUNTRY = 'Please choose the country for this town or area.';
@@ -114,4 +114,19 @@ test('after a post the next statement starts afresh, empty when anonymous', asyn
   p.get('anonymous').checked = true; await p.get('anonymous').emit('change');
   await p.type('A second statement'); await p.get('stop').emit('click');
   assert.deepEqual([p.country.value, p.area.value], ['', '']);
+});
+
+test('a page where the row cannot be placed keeps a working card, with no row and no place', async () => {
+  const after = Element.prototype.after;
+  Element.prototype.after = function () { throw new TypeError('no place for the row'); };  // as when the button is missing
+  try {
+    const p = await setup(undefined, undefined, {member: 'Ada Tester', before: ['place.js']});
+    assert.equal(p.requests.some(r => r.url === '/api/place'), false);
+    await p.type('The river floods every spring'); await p.get('stop').emit('click');
+    assert.equal(p.get('card').hidden, false);
+    assert.equal(p.get('issue-rows').children.length, 1);
+    await p.runTimer(200);
+    const body = JSON.parse(p.requests.filter(r => r.url === '/api/preview').at(-1).options.body);
+    assert.equal('place' in body, false);
+  } finally { Element.prototype.after = after; }
 });

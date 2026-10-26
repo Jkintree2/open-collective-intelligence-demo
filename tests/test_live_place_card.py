@@ -79,8 +79,12 @@ def test_export_and_restore_carry_the_place(live_graph):
     assert (place_of(live_graph, placed), place_of(live_graph, plain)) == before
 
 
-def test_the_two_place_indexes_are_there(live_graph):
-    rows = live_graph.driver().execute_query("SHOW INDEXES YIELD name, properties RETURN name, properties",
-                                             database_=live_graph.database()).records
-    found = {row["name"]: row["properties"] for row in rows}
-    assert found["post_place_country"] == ["place_country"] and found["post_place_area"] == ["place_area_key"]
+def test_the_two_place_indexes_are_made_only_with_the_switch(live_graph):
+    def found():
+        rows = live_graph.driver().execute_query("SHOW INDEXES YIELD name, properties RETURN name, properties",
+                                                 database_=live_graph.database()).records
+        return {row["name"]: row["properties"] for row in rows}
+    assert not {"post_place_country", "post_place_area"} & set(found())  # live_graph starts as with the switch unset
+    live_graph.ensure_constraints(places=True)
+    live_graph.ensure_constraints(places=True)  # idempotent
+    assert found()["post_place_country"] == ["place_country"] and found()["post_place_area"] == ["place_area_key"]
