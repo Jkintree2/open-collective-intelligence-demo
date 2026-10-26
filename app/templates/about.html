@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}About · {{ site_name }}{% endblock %}
+{% block content %}
+{# Only what is switched on is described (Ask the record, follow-up questions, the evidence check). #}
+{% set on = switches() %}
+{% macro and_list(items) %}{{ items[:-1]|join(", ") }}{% if items|length > 1 %} and {% endif %}{{ items[-1] }}{% endmacro %}
+<article class="about">
+<h1>About this site</h1>
+
+<h2>What it is for</h2>
+<p>{{ site_name }} is a small test of a shared record. People write statements about issues they care about. The site reads each one into a short card of the issue, the evidence and the solutions it mentions; the writer checks and corrects the card; and it joins a record that everyone here can read{% if on.ask %}, ask questions of,{% endif %} and build on.</p>
+
+<h2>How statements are read{% if on.ask %} and questions are answered{% endif %}</h2>
+<p>A reading service fills in the card from the statement. Nothing joins the record until the writer has checked the card and posted it.</p>
+{% if on.ask %}
+<p>When you ask a question, the site gathers what the record holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The reading service writes a short answer from that alone, and each part of the answer names the posts it comes from. A part that names no post is left out. Questions and answers are not kept.</p>
+{% endif %}
+
+<h2>The reading service</h2>
+{% if service %}
+<p>{{ service.provider }}, version {{ service.version }}. It {{ and_list(["reads statements"] + (["answers questions"] if on.ask else []) + (["suggests follow-up questions"] if on.follow_ups else [])) }}, with the guiding principles below at the start of its instructions each time.{% if evidence_check %} When it checks the page behind an evidence link it is given no principles, so that each link stays quick and cheap to read.{% endif %}</p>
+{% else %}
+<p>{{ no_service if on.ask else no_service_cards }}</p>
+{% endif %}
+
+<h2>What is sent to the reading service</h2>
+<p>The statement being written and its card; {% if on.ask %}the question and your earlier questions on the page; and what the record holds that an answer is built from: posts under the name they were posted with, or none when anonymous, and {% else %}and {% endif %}the names of issues, solutions and evidence. Never an email address, a password, or an account's country or postal code.</p>
+
+<h2>Software</h2>
+<p>The site is written in Python with FastAPI and keeps the record in a Neo4j database. Its code is open, under the MIT licence, in John Kintree's repository: <a href="{{ repository }}" rel="noopener noreferrer">{{ repository }}</a>.</p>
+
+<h2>Where it runs</h2>
+<p>On Render's free plan, with the record in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page{% if on.ask %} or question{% endif %} after one can take up to a minute.</p>
+
+<h2>Guiding principles</h2>
+<p>The reading service is given these three documents, in this order, at the start of its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own card.</p>
+{% for title, text in documents %}
+<section class="guiding">
+<h3>{{ title }}</h3>
+<div class="guiding-text">{{ text }}</div>
+</section>
+{% endfor %}
+</article>
+{% endblock %}
