@@ -26,13 +26,15 @@ CREATE (p)-[:SUBMIT {post_id: $post_id, anonymous: $anonymous, created_at: $now}
 # 5b, extended. {rel} is SUPPORTS or REFUTES and {label} Issue, Solution or Evidence, both from whitelists.
 # The revision round adds the writer's sentence, the reading's reason and the personal experience tick
 # ($personal is true or null; a null property is not stored). YouTube videos add where the quote is and
-# whether the reading rests on a transcript the writer pasted ($check_pasted is true or null).
+# whether the reading rests on a transcript the writer pasted ($check_pasted is true or null). Issue 29 adds
+# `answers`: on the writer's own statement, the key of the evidence whose page was read the other way
+# (app/sides.py); null, so not stored, on every other edge.
 CREATE_EVIDENCE_STANCE_CHECKED = """
 MATCH (e:Evidence {key: $evidence_key}), (t:{label} {key: $target_key})
 CREATE (e)-[:{rel} {post_id: $post_id, created_at: $now,
                     check: $check, check_quote: $check_quote, checked_at: $checked_at,
                     check_claim: $check_claim, check_reason: $check_reason, personal: $personal,
-                    check_quote_at: $check_quote_at, check_pasted: $check_pasted}]->(t)
+                    check_quote_at: $check_quote_at, check_pasted: $check_pasted, answers: $answers}]->(t)
 """
 
 # Q35. The readings one post holds on its evidence edges, with what each page says about itself: for the
@@ -54,6 +56,20 @@ def post_checks(post_id: str) -> dict[tuple[str, str], dict[str, Any]]:
     return {(row["evidence_key"], row["target_key"]): row for row in _read(POST_CHECKS, post_id=post_id)}
 
 
+# Q35b (issue 29). The statements one post wrote beside a page read the other way: for the edit card, which
+# shows the page's row on the writer's side again and leaves the statement out, since the save rebuilds it.
+POST_STATEMENTS = """
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WHERE r.post_id = $post_id AND r.answers IS NOT NULL
+RETURN e.key AS evidence_key, r.answers AS answers, t.key AS target_key, type(r) AS stance
+"""
+
+
+def post_statements(post_id: str) -> list[dict[str, Any]]:
+    """Q35b. Asked only with EVIDENCE_CHECK_ENABLED set."""
+    return _read(POST_STATEMENTS, post_id=post_id)
+
+
 # Q39. Source confidence on one issue page: one row per evidence edge into the issue or one of its
 # proposed solutions, with the edge's reading and the evidence's source facts. Q4 and Q5 stay as they
 # are; app/confidence.py counts agreement (Q34) and the disagreement line from these rows.
@@ -67,6 +83,7 @@ RETURN CASE WHEN t:Issue THEN 'issue' ELSE 'solution' END AS target_kind, t.key 
        e.key AS evidence_key, type(r) AS stance, r.check AS check,
        r.check_quote AS check_quote, r.check_claim AS check_claim, r.check_reason AS check_reason,
        r.personal AS personal, r.check_quote_at AS check_quote_at, r.check_pasted AS check_pasted,
+       r.answers AS answers,
        e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
        e.source_primary AS source_primary, e.source_published AS source_published,
        e.source_cites AS source_cites

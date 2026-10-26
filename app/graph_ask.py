@@ -80,7 +80,8 @@ RETURN post.id AS id, post.text AS text, post.display_name AS display_name, post
 """
 
 # One evidence edge's columns, shared by both forms of Q41: the evidence, what it is about, which way,
-# the reading kept on the edge (Phase 2) and what the page says about itself.
+# the reading kept on the edge (Phase 2) and what the page says about itself; `answers` (issue 29) names the
+# page a writer's own statement was written beside.
 _EVIDENCE_COLUMNS = """
 RETURN e.key AS key, e.name AS name, e.url AS url,
        e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
@@ -89,7 +90,7 @@ RETURN e.key AS key, e.name AS name, e.url AS url,
        CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END AS target_kind,
        t.key AS target_key, t.name AS target_name, t.url AS target_url,
        toLower(type(r)) AS stance, r.check AS check, r.personal AS personal, r.post_id AS post_id,
-       r.created_at AS created_at
+       r.created_at AS created_at, r.answers AS answers
 """
 
 # Q41, for an issue. Every evidence edge into the issue, its sub-issues or their solutions, then every

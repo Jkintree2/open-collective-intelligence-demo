@@ -47,6 +47,7 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
         label = item["target_label"]
         if label not in graph.TARGET_LABELS:
             raise ValueError(f"unknown target label {label!r}")
+        statement = None
         if checks is None:
             submit, stance, extra, source = graph.MERGE_EVIDENCE_SUBMIT, graph.CREATE_EVIDENCE_STANCE, {}, {}
         else:
@@ -57,8 +58,14 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
                      "check_reason": kept.get("check_reason"),
                      "check_quote_at": kept.get("check_quote_at"), "check_pasted": kept.get("check_pasted"),
                      # From my own experience: only on a row with no link, never read (03_schema.md).
-                     "personal": True if item.get("personal") and not item.get("url") else None}
+                     "personal": True if item.get("personal") and not item.get("url") else None,
+                     "answers": None}
             source = {"source": kept.get("source")}
+            # Issue 29 (app/sides.py): a page read the other way goes on its own side, and the writer's
+            # statement on theirs, below.
+            statement = kept.get("statement")
+            if statement:
+                rel = graph.EVIDENCE_TYPES[statement["page"]]
         tx.run(
             submit,
             evidence_key=item["key"],
@@ -74,6 +81,23 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
             **extra,
             **common,
         )
+        if statement:
+            _write_statement(tx, statement, item, label, common)
+
+
+def _write_statement(tx: Any, statement: dict[str, Any], item: dict[str, Any], label: str,
+                     common: dict[str, Any]) -> None:
+    """Issue 29: the writer's own statement beside a page read the other way. Statements 5 and 5b write it
+    like a row with no link (no reading, no source facts, never personal), on the writer's side, to the
+    page's target, with `answers` naming the page's evidence."""
+    tx.run(graph_evidence.MERGE_EVIDENCE_SUBMIT_CHECKED, evidence_key=statement["key"],
+           evidence_name=statement["name"], url=None, source=None, **common)
+    rel = graph.EVIDENCE_TYPES[statement["stance"]]
+    nothing_read = dict.fromkeys(("check", "check_quote", "checked_at", "check_claim", "check_reason", "personal",
+                                  "check_quote_at", "check_pasted"))
+    tx.run(graph_evidence.CREATE_EVIDENCE_STANCE_CHECKED.replace("{label}", label).replace("{rel}", rel),
+           evidence_key=statement["key"], target_key=item["target_key"], answers=item["key"],
+           **nothing_read, **common)
 
 
 def merge_post(
@@ -150,7 +174,9 @@ def merge_post(
                 "issues": len(payload.issues),
                 "solutions": len(payload.solutions),
                 "evidence": len(payload.evidence),
-                **({"checks_kept": sum(1 for row in checks.values() if row.get("check"))} if checks is not None else {}),
+                **({"checks_kept": sum(1 for row in checks.values() if row.get("check")),
+                    "both_sides": sum(1 for row in checks.values() if row.get("statement"))}
+                   if checks is not None else {}),
                 **({"placed": bool(place["place_country"])} if place is not None else {}),
             }
         )

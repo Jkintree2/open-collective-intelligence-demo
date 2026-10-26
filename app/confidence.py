@@ -17,6 +17,12 @@ PARTLY_FOR = "The page was read as partly agreeing with this."
 WORDS = {"supports": "Agrees", "partly": "Partly agrees", "refutes": "Contradicts"}
 NO_SOURCE = "No source given."
 PERSONAL = "From personal experience."
+# Issue 29, drafts awaiting John's yes (04_interface.md): under the writer's own statement written beside a
+# page read the other way, in place of "No source given.". {page} is the page's evidence name.
+STATEMENT = {"REFUTES": "The writer's own words about {page}, which was read as agreeing with this.",
+             "SUPPORTS": "The writer's own words about {page}, which was read as contradicting this."}
+STATEMENT_NO_NAME = {"REFUTES": "The writer's own words about a page that was read as agreeing with this.",
+                     "SUPPORTS": "The writer's own words about a page that was read as contradicting this."}
 NUMBERS = ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")
 OTHER_SIDE = {"SUPPORTS": "REFUTES", "REFUTES": "SUPPORTS"}
 
@@ -73,15 +79,22 @@ def lines(rows: list[dict[str, Any]], today: date | None = None,
     """Q39's rows (one per evidence edge) to one entry per (target kind, target key, evidence key, side):
     {"words": the source confidence line or None, "differs": the disagreement line or None, "readings":
     each distinct reading that rests on a quote, "personal": whether any statement ticked personal
-    experience}, or None when there is none of these."""
+    experience, "answers": the page's evidence key when this is the writer's own statement beside a page
+    read the other way (issue 29)}, or None when there is none of these. Such a statement is not a source:
+    it is never counted as another piece of evidence saying the same or disagreeing, and gets no line of
+    its own but the one annotate() gives it."""
     sides: dict[tuple, dict[str, set[str]]] = defaultdict(lambda: {"SUPPORTS": set(), "REFUTES": set()})
     checks: dict[tuple, set] = defaultdict(set)
     readings: dict[tuple, list[dict[str, Any]]] = defaultdict(list)
     personal: set[tuple] = set()
+    answers: dict[tuple, str] = {}
     sources: dict[str, dict[str, Any] | None] = {}
     for row in rows:
         target = (row["target_kind"], row["target_key"])
         key = target + (row["evidence_key"], row["stance"])
+        if row.get("answers"):
+            answers.setdefault(key, row["answers"])
+            continue
         sides[target][row["stance"]].add(row["evidence_key"])
         checks[key].add(row.get("check"))
         if (found := reading(row)) is not None and found not in readings[key]:
@@ -101,22 +114,37 @@ def lines(rows: list[dict[str, Any]], today: date | None = None,
         entry = {"words": words, "differs": differs(stance, seen), "readings": readings[key],
                  "personal": key in personal}
         out[key] = entry if any(entry.values()) else None
+    for key, page in answers.items():
+        # Cited both as a statement and, by another post, as evidence on the same side: the evidence wins.
+        if out.get(key) is None:
+            out[key] = {"words": None, "differs": None, "readings": [], "personal": False, "answers": page}
     return out
 
 
 def annotate(issue_key: str, evidence: list[dict[str, Any]], solutions: list[dict[str, Any]],
              rows: list[dict[str, Any]], today: date | None = None) -> None:
     """Put `confidence`, `differs`, `readings` and, for evidence with no link, `source_note` ("No source
-    given." or "From personal experience.") on each evidence item of the issue page, in place."""
+    given.", "From personal experience.", or for the writer's own statement beside a page read the other
+    way, STATEMENT naming that page) on each evidence item of the issue page, in place."""
     items = evidence + [item for solution in solutions for item in solution["evidence"]]
     found = lines(rows, today=today, videos={item["key"] for item in items if is_video(item.get("url"))})
+    names = {item["key"]: item.get("name") for item in items}
+
+    def note(item: dict[str, Any], entry: dict[str, Any]) -> str | None:
+        if item.get("url"):
+            return None
+        if entry.get("answers"):
+            page = names.get(entry["answers"])
+            side = item["stance"] if item["stance"] in STATEMENT else "REFUTES"
+            return STATEMENT[side].format(page=page) if page else STATEMENT_NO_NAME[side]
+        return PERSONAL if entry.get("personal") else NO_SOURCE
 
     def mark(kind: str, target_key: str, items: list[dict[str, Any]]) -> None:
         for item in items:
             entry = found.get((kind, target_key, item["key"], item["stance"])) or {}
             item["confidence"], item["differs"] = entry.get("words"), entry.get("differs")
             item["readings"] = entry.get("readings") or []
-            item["source_note"] = None if item.get("url") else PERSONAL if entry.get("personal") else NO_SOURCE
+            item["source_note"] = note(item, entry)
 
     mark("issue", issue_key, evidence)
     for solution in solutions:

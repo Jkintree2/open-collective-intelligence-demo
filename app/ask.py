@@ -207,6 +207,10 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
                 about["page_read_as"] = word
             if row.get("personal"):
                 about["from_personal_experience"] = True
+            if row.get("answers"):
+                # Issue 29: not a source but the writer's own words, written beside the evidence whose page was
+                # read the other way; it has no link and no source line of its own.
+                entry["writers_own_words_beside"] = e_ids.get(row["answers"], True)
             if (cited := cite([row["post_id"]] if row.get("post_id") else [])):
                 about["post"] = cited[0]
             entry.setdefault("about", []).append(about)
