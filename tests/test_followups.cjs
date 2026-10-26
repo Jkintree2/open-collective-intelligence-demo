@@ -1,0 +1,260 @@
+// Follow-up questions under the card's new rows (followups.js), driven through the card hook with a fake card.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const vm = require('node:vm');
+const fs = require('node:fs');
+const path = require('node:path');
+const {Element} = require('./page_harness.js');
+
+const MISSING = 'Where did you read or hear this?';
+
+function card(rows, {candidatesReady = true} = {}) {
+  const window = {};
+  const timers = [];
+  const context = {window, document: {createElement: tag => Object.assign(new Element(), {tag})},
+    setTimeout: (fn, delay) => timers.push({fn, delay})};
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static/followups.js'), 'utf8'), context, {filename: 'followups.js'});
+  const node = (tag, content, className) => {
+    const element = Object.assign(new Element(), {tag});
+    if (content) element.textContent = content;
+    if (className) element.className = className;
+    return element;
+  };
+  const make = (name, badge, more = {}) => {
+    const row = {element: new Element(), name: Object.assign(new Element(), {value: name}),
+      badge: Object.assign(new Element(), {textContent: badge}), ...more};
+    return row;
+  };
+  const groups = {issues: [], solutions: [], evidence: []};
+  for (const [group, name, badge, more] of rows) groups[group].push(make(name, badge, more));
+  const text = Object.assign(new Element(), {value: 'Rents doubled in our town.'});
+  const requests = [];
+  let changes = 0;
+  const request = (url, body) => new Promise((resolve, reject) => requests.push({url, body, resolve, reject}));
+  assert.equal(window.ociCardExtras.length, 1);
+  const state = {groups, candidatesReady};
+  const cardElement = new Element();
+  const extra = window.ociCardExtras[0]({find: id => (id === 'card' ? cardElement : new Element()), request, node, text,
+    changed: () => { changes++; }, state});
+  // Fire the timers waiting now, as the page's clock would.
+  const tick = () => { for (const timer of timers.splice(0)) timer.fn(); };
+  const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+  const boxes = row => row.element.children.filter(child => child.className === 'follow-up');
+  const find = (box, test) => {
+    const walk = element => [element, ...(element.children || []).flatMap(child => child instanceof Element ? walk(child) : [])];
+    return walk(box).find(test);
+  };
+  return {extra, groups, state, card: cardElement, text, requests, flush, tick, timers, boxes, find, changes: () => changes};
+}
+
+test('only new named rows are sent, with their link and tick', async () => {
+  const page = card([['issues', 'Rent rises', 'new'], ['issues', 'Housing', 'existing'], ['solutions', '', ''],
+    ['evidence', 'A survey', 'new', {url: Object.assign(new Element(), {value: ' https://example.org '}),
+      personal: Object.assign(new Element(), {checked: false})}]]);
+  page.extra.opened();
+  await page.flush();
+  assert.equal(page.requests.length, 1);
+  assert.equal(page.requests[0].url, '/api/follow-ups');
+  assert.deepEqual(JSON.parse(JSON.stringify(page.requests[0].body)), {text: 'Rents doubled in our town.', rows: [
+    {row: 'issue', name: 'Rent rises', existing: false, url: null, personal: false},
+    {row: 'evidence', name: 'A survey', existing: false, url: 'https://example.org', personal: false}]});
+});
+
+test('no new row, no request', async () => {
+  const page = card([['issues', 'Housing', 'existing']]);
+  page.extra.opened();
+  await page.flush();
+  assert.equal(page.requests.length, 0);
+});
+
+test('a question shows under its row; the answer is added as one line and the card is not read again', async () => {
+  const page = card([['issues', 'Rent rises', 'new'], ['solutions', 'Build homes', 'new']]);
+  page.extra.opened();
+  await page.flush();
+  page.requests[0].resolve({questions: [{row: 'issue', name: 'rent rises', kind: 'who', text: 'Who is most affected?'},
+    {row: 'issue', name: 'Something else', kind: 'who', text: 'Who?'}]});
+  await page.flush();
+  const issue = page.groups.issues[0];
+  const [box] = page.boxes(issue);
+  assert.ok(box);
+  assert.equal(page.boxes(page.groups.solutions[0]).length, 0);
+  assert.equal(box.children[0].textContent, 'A question that would make this clearer:');
+  assert.equal(box.children[1].textContent, 'Who is most affected?');
+  assert.equal(find(box, 'Your answer is added to your statement, so everyone who reads the post sees it.', page), true);
+  const input = page.find(box, element => element.tag === 'input');
+  input.value = '  Families   with children ';
+  const add = page.find(box, element => element.textContent === 'Add to my statement');
+  await add.emit('click');
+  assert.equal(page.text.value, 'Rents doubled in our town.\nWho is most affected? Families with children');
+  assert.equal(page.boxes(issue).length, 0);
+  assert.equal(page.changes(), 1);  // the preview follows; nothing else is asked
+  assert.equal(page.requests.length, 1);
+});
+
+function find(box, words, page) {
+  return Boolean(page.find(box, element => element.textContent === words));
+}
+
+test('an empty answer adds nothing; Skip removes the box', async () => {
+  const page = card([['issues', 'Rent rises', 'new']]);
+  page.extra.opened();
+  await page.flush();
+  page.requests[0].resolve({questions: [{row: 'issue', name: 'Rent rises', kind: 'where', text: 'Where is this?'}]});
+  await page.flush();
+  const [box] = page.boxes(page.groups.issues[0]);
+  await page.find(box, element => element.textContent === 'Add to my statement').emit('click');
+  assert.equal(page.text.value, 'Rents doubled in our town.');
+  assert.equal(page.boxes(page.groups.issues[0]).length, 1);
+  await page.find(box, element => element.textContent === 'Skip').emit('click');
+  assert.equal(page.boxes(page.groups.issues[0]).length, 0);
+  assert.equal(page.text.value, 'Rents doubled in our town.');
+});
+
+test('Enter in the answer box adds it instead of sending the form, and typing is not a change to the row', async () => {
+  const page = card([['issues', 'Rent rises', 'new']]);
+  page.extra.opened();
+  await page.flush();
+  page.requests[0].resolve({questions: [{row: 'issue', name: 'Rent rises', kind: 'when', text: 'When did this start?'}]});
+  await page.flush();
+  const [box] = page.boxes(page.groups.issues[0]);
+  const input = page.find(box, element => element.tag === 'input');
+  let stopped = 0;
+  await input.emit('input', {stopPropagation() { stopped++; }});
+  assert.equal(stopped, 1);
+  input.value = 'In 2023.';
+  let prevented = false;
+  await input.emit('keydown', {key: 'Enter', preventDefault() { prevented = true; }});
+  assert.ok(prevented);
+  assert.equal(page.text.value, 'Rents doubled in our town.\nWhen did this start? In 2023.');
+});
+
+test('an answer that would make the statement too long is not added', async () => {
+  const page = card([['issues', 'Rent rises', 'new']]);
+  page.text.value = 'x'.repeat(3990);
+  page.extra.opened();
+  await page.flush();
+  page.requests[0].resolve({questions: [{row: 'issue', name: 'Rent rises', kind: 'who', text: 'Who is affected?'}]});
+  await page.flush();
+  const [box] = page.boxes(page.groups.issues[0]);
+  page.find(box, element => element.tag === 'input').value = 'Everyone here';
+  await page.find(box, element => element.textContent === 'Add to my statement').emit('click');
+  assert.equal(page.text.value.length, 3990);
+  assert.ok(page.find(box, element => /longer than this demo/.test(element.textContent || '')));
+});
+
+test('the missing source question goes once the row has a link or the tick', async () => {
+  const url = Object.assign(new Element(), {value: ''}), personal = Object.assign(new Element(), {checked: false});
+  const page = card([['evidence', 'A survey', 'new', {url, personal}]]);
+  page.extra.opened();
+  await page.flush();
+  page.requests[0].resolve({questions: [{row: 'evidence', name: 'A survey', kind: 'where', text: MISSING, fixed: true}]});
+  await page.flush();
+  const row = page.groups.evidence[0];
+  assert.equal(page.boxes(row).length, 1);
+  personal.checked = true;
+  await personal.emit('change');
+  assert.equal(page.boxes(row).length, 0);
+});
+
+test('a failed request shows nothing, and a reply for an earlier opening is ignored', async () => {
+  const page = card([['issues', 'Rent rises', 'new']]);
+  page.extra.opened();
+  await page.flush();
+  page.requests[0].reject(new Error('Too many requests.'));
+  await page.flush();
+  assert.equal(page.boxes(page.groups.issues[0]).length, 0);
+  page.extra.opened();
+  await page.flush();
+  page.extra.opened();
+  await page.flush();
+  page.requests[1].resolve({questions: [{row: 'issue', name: 'Rent rises', kind: 'who', text: 'Who is affected?'}]});
+  await page.flush();
+  assert.equal(page.boxes(page.groups.issues[0]).length, 0);
+  page.requests[2].resolve({questions: [{row: 'issue', name: 'Rent rises', kind: 'who', text: 'Who is affected?'}]});
+  await page.flush();
+  assert.equal(page.boxes(page.groups.issues[0]).length, 1);
+});
+
+// Through the real card (page_harness with followups.js before card.js, as index.html loads it).
+const {setup} = require('./page_harness.js');
+const CANDIDATES = {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}};
+const READING = {payload: {found: true, language_ok: true, issues: [{name: 'Flooding'}, {name: 'Erosion'}],
+  solutions: [{name: 'Sea walls', for_issue: 'Erosion'}], evidence: [{name: 'Tide gauges', about: 'Erosion'}]},
+  source: 'model', extraction_raw: '{}', model: 'reader', latency_ms: 5};
+
+test('on the real card: asked once the card opens, answered into the statement, the card kept as it is', async () => {
+  const p = await setup(undefined, CANDIDATES, {before: ['followups.js']}); await p.flush();
+  await p.type('Flooding is getting worse and the coast is eroding');
+  await p.get('compose').emit('submit');
+  p.requests.find(r => r.url === '/api/extract').resolve(READING);
+  await p.flush();
+  const asked = p.requests.filter(r => r.url === '/api/follow-ups');
+  assert.equal(asked.length, 1);
+  const body = JSON.parse(asked[0].options.body);
+  assert.deepEqual(body.rows.map(row => [row.row, row.name]), [['issue', 'Erosion'], ['solution', 'Sea walls'], ['evidence', 'Tide gauges']]);
+  asked[0].resolve({questions: [
+    {row: 'evidence', name: 'Tide gauges', kind: 'where', text: MISSING, fixed: true},
+    {row: 'solution', name: 'Sea walls', kind: 'who', text: 'Who would build the sea walls?', fixed: false}]});
+  await p.flush();
+  const extracts = p.requests.filter(r => r.url === '/api/extract').length;
+  const walls = p.get('solution-rows').children[0];
+  const box = walls.children.find(child => child.className === 'follow-up');
+  assert.ok(box);
+  const walk = element => [element, ...(element.children || []).flatMap(child => typeof child === 'object' ? walk(child) : [])];
+  walk(box).find(element => element.tag === 'input').value = 'The county';
+  await walk(box).find(element => element.textContent === 'Add to my statement').emit('click');
+  assert.equal(p.get('text').value, 'Flooding is getting worse and the coast is eroding\nWho would build the sea walls? The county');
+  assert.equal(p.get('card').hidden, false);
+  assert.deepEqual(p.get('issue-rows').children.map(row => row.children.find(c => c.className === 'name').value), ['Flooding', 'Erosion']);
+  assert.equal(p.requests.filter(r => r.url === '/api/extract').length, extracts);  // not read again
+  assert.ok(p.get('evidence-rows').children[0].children.some(child => child.className === 'follow-up'));
+});
+
+test('a card that opens before the record\'s names have arrived asks once they have, and only once', async () => {
+  // Before /api/candidates answers, every named row reads "new"; the existing one must not be asked about.
+  const page = card([['issues', 'Rent rises', 'new'], ['issues', 'Housing', 'new']], {candidatesReady: false});
+  page.extra.opened();
+  await page.flush();
+  assert.equal(page.requests.length, 0);
+  page.tick(); page.tick();
+  assert.equal(page.requests.length, 0);
+  // The names arrive: the card marks the rows (refresh) and is ready.
+  page.groups.issues[1].badge.textContent = 'existing';
+  page.state.candidatesReady = true;
+  page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 1);
+  assert.deepEqual([...page.requests[0].body.rows.map(row => row.name)], ['Rent rises']);
+  page.tick(); page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 1);
+  assert.equal(page.timers.length, 0);
+});
+
+test('a waiting card that closes or opens again asks nothing for the earlier opening', async () => {
+  const page = card([['issues', 'Rent rises', 'new']], {candidatesReady: false});
+  page.extra.opened();
+  page.card.hidden = true;
+  page.state.candidatesReady = true;
+  page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 0);
+  page.card.hidden = false;
+  page.state.candidatesReady = false;
+  page.extra.opened();
+  page.extra.opened();
+  page.state.candidatesReady = true;
+  page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 1);
+});
+
+test('names that never arrive stop the wait after a minute, with no request', async () => {
+  const page = card([['issues', 'Rent rises', 'new']], {candidatesReady: false});
+  page.extra.opened();
+  for (let i = 0; i < 300; i++) page.tick();
+  await page.flush();
+  assert.equal(page.requests.length, 0);
+  assert.equal(page.timers.length, 0);
+});
