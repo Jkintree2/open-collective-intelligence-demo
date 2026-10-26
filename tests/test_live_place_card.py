@@ -84,7 +84,11 @@ def test_the_two_place_indexes_are_made_only_with_the_switch(live_graph):
         rows = live_graph.driver().execute_query("SHOW INDEXES YIELD name, properties RETURN name, properties",
                                                  database_=live_graph.database()).records
         return {row["name"]: row["properties"] for row in rows}
-    assert not {"post_place_country", "post_place_area"} & set(found())  # live_graph starts as with the switch unset
+    # Wiping the nodes leaves indexes, so an earlier run with the switch on may have left these two behind.
+    for name in ("post_place_country", "post_place_area"):
+        live_graph.driver().execute_query(f"DROP INDEX {name} IF EXISTS", database_=live_graph.database())
+    live_graph.ensure_constraints()  # as startup runs it with the switch unset
+    assert not {"post_place_country", "post_place_area"} & set(found())
     live_graph.ensure_constraints(places=True)
     live_graph.ensure_constraints(places=True)  # idempotent
     assert found()["post_place_country"] == ["place_country"] and found()["post_place_area"] == ["place_area_key"]
