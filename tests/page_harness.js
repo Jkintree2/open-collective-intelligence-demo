@@ -41,6 +41,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
     result(...values) { this.onresult({results: values.map(value => [{transcript: value}])}); }
   }
   const win = new Element(); win.innerHeight = 800; if (speech) win[speech] = Recognition;
+  // Phase 3: card extras registered as if a script before card.js had pushed them (the card hook).
+  if (options.cardExtras) win.ociCardExtras = [...options.cardExtras];
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
     // The feed fragment after a post is read as text, as the page reads it.
@@ -61,7 +63,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
     clearTimeout: id => timers.delete(id)};
   // The page loads these in this order (index.html); app.js wires up what the first two define.
   vm.createContext(context);
-  for (const file of [...(options.evidenceCheck ? ['evidence_check.js'] : []), 'card.js', 'dictation.js', 'app.js']) {
+  // Phase 3: options.before names card scripts the page loads before card.js (followups.js, place.js).
+  for (const file of [...(options.evidenceCheck ? ['evidence_check.js'] : []), ...(options.before || []), 'card.js', 'dictation.js', 'app.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
   }
   const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };

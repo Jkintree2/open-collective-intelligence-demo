@@ -4,6 +4,8 @@
 
 > **Extended 4 October 2026 for Phase 1 (People and positions, SOW 0.2).** Added: sign in, entering a person, the invitation and password emails, accepting, password pages, your account, approve and oppose buttons, editing and deleting your own posts, search, tidying and the list of changes, and back room additions. See "Phase 1: people and positions" at the end. With `ACCOUNTS_ENABLED` unset the screens above are unchanged, except search on the Issues page, which works behind the passphrase too.
 
+> **Extended 26 October 2026 for Phase 3 (Talking to the record).** Added: drafts for Ask the record, follow-up questions on the card, a place on each post, issues near me and the About page, all for John's yes on 28 October. See "Phase 3: talking to the record" at the end. Each shows only with its switch set.
+
 Five screens, one CSS file, one JavaScript file. Look taken from John's two Claude prototypes: the paper palette and serif statements of the second ("The Commons"), the sidebar-free single column and the plain-sentence relationships of both. Anything marked **client-facing** is copy John will read; it avoids dashes and machine phrasing, and John may replace any of it.
 
 ## Look
@@ -918,3 +920,181 @@ On each person's line in People, after the email, for each earlier one:
 ### Not client-facing
 
 The reading takes a few seconds per link; rows fill in as they arrive. A link is read once for the same claim and statement; the reading is kept for the life of the running site (up to 500 readings), so reading it again costs nothing until the site restarts. With the reading service unset, no line appears at all.
+
+## Phase 3: talking to the record
+
+Added 26 October 2026, before any Phase 3 code. Every quote below is a **client-facing** draft for John's yes on the call of 28 October 2026; he may replace any of it. Each part shows only with its switch set (not client-facing): `ASK_ENABLED`, `FOLLOW_UPS_ENABLED`, `PLACES_ENABLED`, `ABOUT_ENABLED`; unset, every screen is exactly as before. No dashes, none of the forbidden words. After this entry each workstream edits only its own subsection, and only after its case run: Ask the record (W2), Follow-up questions on the card (W3a), A place on the card (W3b), Places in the record (W4), About (W1).
+
+### Header
+
+Two menu items, each behind its switch: "Ask" after "Issues", for anyone who can read the record (passphrase or signed in), and "About" last, wherever the menu shows. The About page also opens without signing in (open question 9; default yes).
+
+> Write · Issues · Ask · Enter a person · My statements · My account · About
+
+### Ask the record (`/ask`, and a box on each issue page)
+
+**On `/ask`,** for the whole record:
+
+> **Ask the record**
+>
+> Ask a question in plain words. The answer is built only from what people have posted here, and names the posts it comes from.
+>
+> [ input, placeholder "For example: What do people say about the Security Council veto?" ]
+> [ Ask ]
+
+**On each issue page,** under the evidence and above the posts:
+
+> **Ask about this issue**
+>
+> [ input, placeholder "For example: Why do people oppose these solutions?" ]
+> [ Ask ]
+>
+> Answers come only from the posts about this issue and its sub-issues.
+
+Under either box, small:
+
+> Answers sum up what is in the record, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up; nothing is kept after you leave.
+
+**While it reads:**
+
+> Reading the record… The first question after a quiet spell can take a minute.
+
+After ten seconds, one more line until the answer comes:
+
+> Still reading. A long issue can take up to a minute.
+
+**The answer,** a few short paragraphs, each ending in its source numbers ([1] [3]), then:
+
+> **Sources**
+>
+> 1. {name or Anonymous}, {date}: "{the first 200 characters of the post}…" On {issue name}
+
+Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
+
+**When the record had more than one answer can read,** under the answer:
+
+> There are more posts on this than one answer can read, so this answer may leave some out.
+
+**When the record holds nothing on it,** or nothing in the answer could be tied to a post:
+
+> The record does not say anything about this yet.
+
+**When it cannot go ahead:**
+
+> Please write a question.
+
+> Please keep the question under 500 characters.
+
+> You have asked 30 questions today. Please ask again tomorrow.
+
+> The site has answered as many questions as it can today. Please ask again tomorrow.
+
+> Asking needs the reading service, which is not set up.
+
+> The question could not be answered just now. Please try again in a minute.
+
+The last line is for a reply that is late, refused or unreadable; never an error page. Not client-facing: the browser waits 50 seconds, longer than the server's 40.
+
+### Follow-up questions on the card
+
+Under a **new** issue, solution or evidence row (never one already in the record), at most three on a card, once the card has opened:
+
+> A question that would make this clearer:
+> {question}
+> [ input ]
+> [ Add to my statement ] [ Skip ]
+>
+> Your answer is added to your statement, so everyone who reads the post sees it.
+
+Under an evidence row with no link and no "From my own experience" tick, always this question (no reading needed):
+
+> Where did you read or hear this?
+
+"Add to my statement" adds one line to the statement, the question and then the answer ("When did this happen? In 2023."), and the box goes. The card is not read again. "Skip" removes the box. Post is never held back by a question, and nothing shows while questions are being thought of. Questions are in English, like the rest of the card.
+
+### A place on the card
+
+A "Place" row under the card's rows, before Post:
+
+> Place: [ list, first choice "Not about one place", then countries A to Z ]
+> Town or area, optional: [ input ]
+
+For a named statement the country starts as the account's country; for an anonymous one both start empty, with:
+
+> A town can tell others who wrote an anonymous statement. Add one only if you are happy with that.
+
+When a town or area is typed with "Not about one place":
+
+> Please choose the country for this town or area.
+
+On the edit page the row shows the post's place and can be changed like the rest.
+
+### Places in the record
+
+**Under a post** that has a place, in the feed, on issue pages, in search and on My statements:
+
+> In St. Louis, United States
+
+> In Germany
+
+**On the Issues page,** under search and above "Sort by":
+
+> Near: [ list of countries ] [ Town or area, optional ] [ Show ]
+
+It starts with the place of the member's last placed post, else the account's country. Results replace the list, sorted and counted as the full list:
+
+> **Issues near {place}**
+> Show all issues
+
+With a town or area, near means posts placed in the same town or area; with a country only, posts placed in that country. When there are none:
+
+> No statements have been placed in {place} yet. Show all issues
+
+### About (`/about`)
+
+> **About this site**
+>
+> **What it is for**
+>
+> {SITE_NAME} is a small test of a shared record. People write statements about issues they care about. The site reads each one into a short card of the issue, the evidence and the solutions it mentions; the writer checks and corrects the card; and it joins a record that everyone here can read, ask questions of, and build on.
+>
+> **How statements are read and questions are answered**
+>
+> A reading service fills in the card from the statement. Nothing joins the record until the writer has checked the card and posted it.
+>
+> When you ask a question, the site gathers what the record holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The reading service writes a short answer from that alone, and each part of the answer names the posts it comes from. A part that names no post is left out. Questions and answers are not kept.
+>
+> **The reading service**
+>
+> {provider}, version {version}. It reads statements, answers questions and suggests follow-up questions, with the guiding principles below at the start of its instructions each time. When it checks the page behind an evidence link it is given no principles, so that each link stays quick and cheap to read.
+>
+> **What is sent to the reading service**
+>
+> The statement being written and its card; the question and your earlier questions on the page; and what the record holds that an answer is built from: posts under the name they were posted with, or none when anonymous, and the names of issues, solutions and evidence. Never an email address, a password, or an account's country or postal code.
+>
+> **Software**
+>
+> The site is written in Python with FastAPI and keeps the record in a Neo4j database. Its code is open, under the MIT licence, in John Kintree's repository: {repository address}.
+>
+> **Where it runs**
+>
+> On Render's free plan, with the record in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page or question after one can take up to a minute.
+>
+> **Guiding principles**
+>
+> The reading service is given these three documents, in this order, at the start of its instructions for reading statements, answering questions and asking follow-up questions. They guide it; they are not a test that posts must pass. It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does. Each person still checks their own card.
+>
+> **Statement of purpose**
+> {purpose, in full}
+>
+> **Universal Declaration of Human Rights**
+> {the Declaration, in full}
+>
+> **The Earth Charter**
+> {the Charter, in full}
+
+The three documents are shown from the same files the instructions use, so the page and the instructions can never differ. `{provider}` and `{version}` come from `LLM_BASE_URL` and `LLM_MODEL` (DeepSeek, deepseek-v4-flash). Without `LLM_API_KEY` the reading service paragraph reads:
+
+> No reading service is set up at the moment, so cards are filled in by hand and questions cannot be asked.
+
+`{repository address}` is John's repository, as the README names it; nothing personal to the builder (CLAUDE.md rule 8).

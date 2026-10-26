@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Open Collective Intelligence</title>
+  <link rel="stylesheet" href="/static/app.css?v=ASSET">
+  <script src="/static/once.js?v=ASSET" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-name" href="/">Open Collective Intelligence</a>
+    
+  </header>
+  <main class="column">
+    
+<section class="card gate">
+  <h1>Open Collective Intelligence</h1>
+  <p>An invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, and submitting.</p>
+  <p>Everything written here is merged into a free instance of the Neo4j Aura graph database that other testers can read. It is not a private conversation. Use it for things you are happy to say in public.</p>
+<p>A language model run by an outside company, DeepSeek, reads what you write when you enter statements. In the future, we would like to provide the option of using a small language model that runs on personal computers such as smartphones.</p>
+  
+  <form method="post" action="/sign-in">
+    <input type="hidden" name="next" value="/">
+    <label for="email">Email:</label>
+    <input id="email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required value="">
+    <label for="password">Password:</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit" class="primary">Sign in</button>
+  </form>
+  <p><a href="/forgot-password">Forgot your password?</a></p>
+  <p class="counts">New here? Someone already taking part must enter you, and you get an email from jkintree.oci@gmail.com with a link to choose your password.</p>
+</section>
+
+  </main>
+</body>
+</html>

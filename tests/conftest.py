@@ -4,6 +4,7 @@ OCI_TEST_NEO4J_URI they are skipped."""
 
 import importlib
 import os
+from dataclasses import replace
 from types import SimpleNamespace
 from urllib.parse import urlsplit
 
@@ -111,3 +112,17 @@ def member_app(monkeypatch):
     yield SimpleNamespace(client=client, main=main, settings=settings, sign_in=sign_in, set_cookie=set_cookie,
                           accounts=record, writes=writes, own_posts=own_posts)
     client.close()
+
+
+@pytest.fixture
+def switch(member_app, monkeypatch):
+    """`switch(ask_enabled=True, ...)` changes member_app's settings wherever they are read: main.settings
+    (which the pages' switches() reads when a page is drawn) and get_settings() (which the routers read)."""
+    def turn(**fields):
+        settings = replace(member_app.settings, **fields)
+        for target in ("app.config.get_settings", "app.auth.get_settings"):
+            monkeypatch.setattr(target, lambda: settings)
+        monkeypatch.setattr(member_app.main, "settings", settings)
+        member_app.settings = settings
+        return settings
+    return turn
