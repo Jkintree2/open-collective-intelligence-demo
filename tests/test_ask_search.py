@@ -7,7 +7,21 @@ from app import search
 
 def test_stop_words_go_and_the_rest_are_ored():
     assert search.question_query("What are the reasons for opposition to the carbon tax?") == \
-        "(reasons reasons*) (opposition opposition*) (carbon carbon*) (tax tax*)"
+        "(opposition opposition* oppos*) (carbon carbon*) (tax tax*)"
+
+
+def test_a_common_ending_is_also_taken_off():
+    """No stemmer in the indexes: "opposing" must also find "oppose" and "opposed"."""
+    assert search.question_query("approvals amendments") == \
+        "(approvals approvals* approval*) (amendments amendments* amendment*)"
+    assert search.question_query("tax veto rule") == "(tax tax*) (veto veto*) (rule rule*)"
+
+
+def test_words_about_the_record_itself_find_nothing():
+    """The walk of 26 October: "solutions" picked the issues whose names say solutions."""
+    assert search.question_query("What reasons do people give for opposing solutions?") == "(opposing opposing* oppos*)"
+    assert search.question_query("Which evidence here is most supported by other evidence?") == \
+        "(supported supported* support*)"
 
 
 def test_the_issues_search_box_still_needs_every_word():
@@ -16,12 +30,12 @@ def test_the_issues_search_box_still_needs_every_word():
 
 def test_punctuation_around_a_word_is_dropped_and_repeats_are_kept_once():
     assert search.question_query('"Veto," veto; (veto) ... veto?!') == "(veto veto*)"
-    assert search.question_query("Who's opposing it, and why?") == "(opposing opposing*)"
+    assert search.question_query("Who's opposing it, and why?") == "(opposing opposing* oppos*)"
 
 
 @pytest.mark.parametrize("typed, query", [
     ("a:b", "(a\\:b a\\:b*)"),
-    ("c++ rules", "(rules rules*)"),  # one character left: dropped
+    ("c++ rules", "(rules rules* rule*)"),  # one character left: dropped
     ("c#++x", "(c#\\+\\+x c#\\+\\+x*)"),
     ("sub-issue", "(sub\\-issue sub\\-issue*)"),
     ("path/to", "(path\\/to path\\/to*)"),

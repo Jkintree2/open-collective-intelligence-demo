@@ -18,16 +18,20 @@ class Node {
   }
 }
 
-function page(issue) {
+function page(issue, carried = []) {
   const status = new Node('p'), answers = new Node('div'), field = {value: ''};
   const box = {dataset: issue ? {issue} : {}, querySelector: s => ({'[data-ask-status]': status, '[data-ask-answers]': answers})[s]};
   const attrs = {};
   const form = {matches: s => s === 'form.ask-form', closest: () => box, querySelector: () => field,
-    setAttribute: (k, v) => { attrs[k] = v; }, removeAttribute: k => { delete attrs[k]; }, hasAttribute: k => k in attrs};
-  let submit; const requests = [], timers = new Map(); let timerId = 0;
+    querySelectorAll: s => s === '[name=earlier]' ? carried.map(value => ({value})) : [],
+    setAttribute: (k, v) => { attrs[k] = v; }, removeAttribute: k => { delete attrs[k]; }, hasAttribute: k => k in attrs,
+    requestSubmit() { this.submitted = (this.submitted || 0) + 1; }};
+  field.form = form;
+  field.matches = s => s === 'form.ask-form textarea';
+  let submit, keydown; const requests = [], timers = new Map(); let timerId = 0;
   const location = {href: '/issues/veto', pathname: '/issues/veto', search: ''};
   const context = {
-    document: {addEventListener: (name, fn) => { if (name === 'submit') submit = fn; },
+    document: {addEventListener: (name, fn) => { if (name === 'submit') submit = fn; if (name === 'keydown') keydown = fn; },
       createElement: tag => new Node(tag), createTextNode: text => text},
     location, AbortController,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
@@ -39,13 +43,16 @@ function page(issue) {
     preventDefault() { this.prevented = true; }}; const done = submit(event); return {event, done}; };
   const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
   const fire = delay => { for (const [id, t] of [...timers]) if (t.delay === delay) { timers.delete(id); t.fn(); } };
-  return {ask, status, answers, field, requests, flush, fire, timers, attrs, location};
+  const key = (name, extra = {}) => { const event = {key: name, target: field, prevented: false, ...extra,
+    preventDefault() { this.prevented = true; }}; keydown(event); return event; };
+  return {ask, status, answers, field, form, requests, flush, fire, timers, attrs, location, key};
 }
 const json = (data, status = 200) => ({ok: status < 400, status, json: async () => data});
 const ANSWER = {status: 'answered', message: null, partial: null,
   paragraphs: [{text: 'Two writers oppose it <b>loudly</b>.', refs: [1, 2]}],
-  sources: [{name: 'Anonymous', when: '30 October 2026', text: 'The veto blocks action.', issue: 'Security Council veto', href: '/issues/veto'},
-            {name: 'Carbon tax', when: null, text: null, issue: 'Climate', href: '/issues/climate'}]};
+  sources: [{kind: 'post', name: 'Anonymous', when: '30 October 2026', text: 'The veto blocks action.', issue: 'Security Council veto', href: '/issues/veto'},
+            {kind: 'solution', name: 'Carbon tax', when: null, text: null, issue: 'Climate', href: '/issues/climate'},
+            {kind: 'evidence', name: 'UN Charter, Article 27', when: null, text: null, issue: null, href: null}]};
 
 test('an answer shows in place, as text, with its numbered sources', async () => {
   const p = page('veto');
@@ -63,7 +70,8 @@ test('an answer shows in place, as text, with its numbered sources', async () =>
   const sources = block.find('ask-sources');
   assert.equal(sources.children[0].text, 'Anonymous, 30 October 2026: “The veto blocks action.” On Security Council veto');
   assert.equal(sources.children[0].children[2].href, '/issues/veto');
-  assert.equal(sources.children[1].text, 'Carbon tax. On Climate');
+  assert.equal(sources.children[1].text, 'Solution: Carbon tax. On Climate');
+  assert.equal(sources.children[2].text, 'Evidence: UN Charter, Article 27.');
   assert.equal(p.field.value, '');
   assert.equal('aria-busy' in p.attrs, false);
 });
@@ -141,4 +149,23 @@ test('one question at a time', () => {
   const p = page();
   p.ask('Why?'); p.ask('Why again?');
   assert.equal(p.requests.length, 1);
+});
+
+test('Enter asks; Shift and Enter makes a new line', () => {
+  const p = page();
+  const enter = p.key('Enter');
+  assert.equal(enter.prevented, true); assert.equal(p.form.submitted, 1);
+  const shifted = p.key('Enter', {shiftKey: true});
+  assert.equal(shifted.prevented, false); assert.equal(p.form.submitted, 1);
+  assert.equal(p.key('Enter', {isComposing: true}).prevented, false);
+  assert.equal(p.key('a').prevented, false);
+});
+
+test('questions carried by the page without JavaScript start the list', async () => {
+  const p = page(null, ['one?', 'two?']);
+  p.ask('three?');
+  assert.deepEqual(p.requests[0].body.earlier, ['one?', 'two?']);
+  p.requests[0].resolve(json(ANSWER)); await p.flush();
+  p.ask('four?');
+  assert.deepEqual(p.requests[1].body.earlier, ['one?', 'two?', 'three?']);
 });

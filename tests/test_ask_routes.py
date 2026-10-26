@@ -178,3 +178,26 @@ def test_the_page_copy_has_no_dashes_or_forbidden_words(asking):
             assert word not in lowered, word
     for text in words:
         assert "-" not in text and "–" not in text and "—" not in text
+
+
+def test_without_javascript_the_last_three_questions_are_carried_never_the_answers(asking, monkeypatch):
+    with_solution = ask.Answer("answered", [{"text": "Approved by 2, as of 30 October.", "refs": [1]}],
+                               [ask.Source("S1", "solution", "Limit the veto", href="/issues/veto",
+                                           issue="Security Council veto")])
+    monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
+                        asking.calls.append(("answer", question, earlier)) or with_solution)
+    page = asking.client.post("/ask", data={"question": "Four?", "earlier": ["One?", "Two?", "Three?"]},
+                              headers=SAME_SITE).text
+    assert asking.calls[-1] == ("answer", "Four?", ["One?", "Two?", "Three?"])
+    hidden = [line.split('value="')[1].split('"')[0] for line in page.splitlines() if 'name="earlier"' in line
+              for line in line.split("<input")[1:]]
+    assert hidden == ["Two?", "Three?", "Four?"]
+    assert "Approved by 2" in page and 'name="earlier" value="Approved' not in page
+    assert "Solution: Limit the veto. On <a href=\"/issues/veto\">Security Council veto</a>" in page
+    assert '<textarea name="question"' in page and "Four?</textarea>" not in page
+
+
+def test_without_javascript_a_question_not_asked_is_not_carried(asking):
+    page = asking.client.post("/ask", data={"question": "x" * 600, "earlier": ["One?"]}, headers=SAME_SITE).text
+    assert 'name="earlier" value="One?"' in page and 'value="xxx' not in page
+    assert ("x" * 600 + "</textarea>") in page  # kept in the box to shorten

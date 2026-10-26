@@ -35,8 +35,8 @@ def test_q40_ranks_an_issues_solutions_with_dated_stances(record):
     assert border["issues"] == [{"key": CLIMATE, "name": "Global climate coordination"}]
     assert border["proposed_in"] == ["ask-04"]
     # Newest first; a click has no post; Ada's stance was taken by ask-01 and said again by ask-08.
-    assert border["stances"][0] == {"stance": "oppose", "date": "2026-10-15", "post_ids": []}
-    assert {"stance": "approve", "date": "2026-10-01", "post_ids": ["ask-01", "ask-08"]} in tax["stances"]
+    assert border["stances"][0] == {"stance": "oppose", "date": "2026-10-15", "post_ids": [], "click": True}
+    assert {"stance": "approve", "date": "2026-10-01", "post_ids": ["ask-01", "ask-08"], "click": False} in tax["stances"]
     assert [s["stance"] for s in tax["stances"]].count("oppose") == 3
 
 
@@ -142,3 +142,37 @@ def test_the_whole_record_digest_picks_issues_from_the_question(record):
 def test_a_question_with_no_words_still_reads_the_top_of_the_record(record):
     built = ask.record_digest("What is it?", today=TODAY)
     assert built.issue_keys and json.loads(built.text)["solutions"]
+
+
+def test_q42_second_form_reads_the_most_opposed_and_the_posts_behind_them(record):
+    rows = {row["name"]: row for row in graph_ask.top_opposed()}  # chosen by opposition, listed by net support
+    assert set(rows) == {"Global carbon tax by referendum", "Limit or abolish the Security Council veto",
+                         "Carbon border adjustment"}
+    assert graph_ask.top_opposed(1)[0]["name"] == "Global carbon tax by referendum"
+    border = rows["Carbon border adjustment"]
+    assert border["stances"][0] == {"stance": "oppose", "date": "2026-10-15", "post_ids": [], "click": True}
+    assert all(stance["click"] is False for stance in rows["Global carbon tax by referendum"]["stances"]
+               if stance["post_ids"])
+    posts = graph_ask.posts_by_ids(["ask-12", "ask-03", "no such post"])
+    assert {post["id"]: post["anonymous"] for post in posts} == {"ask-12": False, "ask-03": True}
+    assert graph_ask.posts_by_ids([]) == []
+
+
+def test_on_the_whole_record_a_stance_is_a_click_only_when_it_was_one(record):
+    """The walk of 26 October: a stance whose post was outside the three issues read looked like a click."""
+    for question in ("What reasons do people give for opposing solutions?", "carbon prices", "What is it?"):
+        digest = json.loads(ask.record_digest(question, today=TODAY).text)
+        clicks = sorted((s["name"], st["stance"], st["date"]) for s in digest["solutions"] for st in s.get("stances", [])
+                        if st.get("click"))
+        assert clicks == [("Carbon border adjustment", "oppose", "2026-10-15"),
+                          ("Global carbon tax by referendum", "approve", "2026-10-17")], question
+        # Every opposing post is read on the whole record, wherever it was posted.
+        texts = " ".join(p["text"] for p in digest["posts"])
+        assert "League of Nations" in texts and "global tax collector" in texts, question
+
+
+def test_an_issue_with_no_evidence_on_evidence_says_none(record):
+    digest = json.loads(ask.issue_digest("security council veto", today=TODAY).text)
+    assert digest["evidence"] and digest["evidence_backed_by_other_evidence"] == 0
+    climate = json.loads(ask.issue_digest(CLIMATE, today=TODAY).text)
+    assert climate["evidence_backed_by_other_evidence"] == 1

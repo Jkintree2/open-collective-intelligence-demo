@@ -15,8 +15,8 @@ EVIDENCE_LIMIT = 10  # evidence record-wide
 EDGE_LIMIT = 300     # evidence rows on one issue
 
 # One solution's columns, shared by Q40 and Q42: its issues, proposers counted as in Q4 (by account and
-# anonymity, D2), the posts that proposed it, and its stances newest first, each with its date and the
-# posts that took it (the first and, when a later post said the same, that one). A click has no post.
+# anonymity, D2), the posts that proposed it, and its stances newest first, each with its date, whether
+# it was a click, and the posts that took it (the first and, when a later post said the same, that one).
 _SOLUTION_COLUMNS = """
 CALL (s) {
   OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
@@ -32,6 +32,7 @@ CALL (s) {
   OPTIONAL MATCH (:Person)-[st:APPROVE|OPPOSE]->(s)
   WITH st ORDER BY st.created_at DESC
   RETURN [x IN collect({stance: toLower(type(st)), date: toString(date(st.created_at)),
+                        click: coalesce(st.source = 'click', false),
                         post_ids: [p IN [st.post_id, st.last_post_id] WHERE p IS NOT NULL]})
           WHERE x.stance IS NOT NULL][..$stance_limit] AS stances
 }
@@ -59,6 +60,24 @@ WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPP
 ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 LIMIT $limit
 """ + _SOLUTION_COLUMNS
+
+# Q42, second form. The solutions most opposed in the whole record, so a question about opposition reads
+# them even when its words find other issues.
+TOP_OPPOSED = """
+MATCH (s:Solution)
+WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
+WHERE opposes > 0
+ORDER BY opposes DESC, approves ASC, toLower(s.name) ASC
+LIMIT $limit
+""" + _SOLUTION_COLUMNS
+
+# Q42, the posts behind those solutions' stances (record scope), read by id and shaped like Q6 with the
+# edit date. Their issues may not be among the three the question's words found.
+POSTS_BY_IDS = """
+MATCH (post:Post) WHERE post.id IN $ids
+RETURN post.id AS id, post.text AS text, post.display_name AS display_name, post.anonymous AS anonymous,
+       post.created_at AS created_at, post.seed AS seed, post.edited_at AS edited_at
+"""
 
 # One evidence edge's columns, shared by both forms of Q41: the evidence, what it is about, which way,
 # the reading kept on the edge (Phase 2) and what the page says about itself.
@@ -121,6 +140,16 @@ def issue_stances(key: str, limit: int = SOLUTION_LIMIT) -> list[dict[str, Any]]
 def top_solutions(limit: int = 10) -> list[dict[str, Any]]:
     """Q42."""
     return _read(TOP_SOLUTIONS, limit=limit, stance_limit=STANCE_LIMIT)
+
+
+def top_opposed(limit: int = 5) -> list[dict[str, Any]]:
+    """Q42, second form."""
+    return _read(TOP_OPPOSED, limit=limit, stance_limit=STANCE_LIMIT)
+
+
+def posts_by_ids(ids: list[str]) -> list[dict[str, Any]]:
+    """Q42, the posts behind the stances, by id."""
+    return _read(POSTS_BY_IDS, ids=ids) if ids else []
 
 
 def issue_evidence(key: str, limit: int = EDGE_LIMIT) -> list[dict[str, Any]]:

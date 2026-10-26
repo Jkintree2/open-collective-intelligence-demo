@@ -22,7 +22,8 @@ def solution(key: str, stances: list[tuple[str, int, list[str]]], approves: int 
              proposed_in: list[str] | None = None):
     return {"key": key, "name": key.title(), "issues": [{"key": "climate", "name": "Climate"}], "proposers": 1,
             "proposed_in": proposed_in or [], "approves": approves, "opposes": opposes,
-            "stances": [{"stance": s, "date": f"2026-10-{d:02d}", "post_ids": ids} for s, d, ids in stances]}
+            "stances": [{"stance": s, "date": f"2026-10-{d:02d}", "post_ids": ids, "click": not ids}
+                        for s, d, ids in stances]}
 
 
 def edge(key: str, target_kind: str, target_key: str, stance: str = "supports", **extra):
@@ -53,12 +54,24 @@ def test_posts_that_took_a_stance_come_first_then_the_rest_each_newest_first():
 def test_the_head_comes_first_in_the_plans_order():
     sols = [solution("tax", [], 2, 1)]
     _, digest = digest_of("Climate", [ISSUE], sols, [edge("report", "issue", "climate")], [(post("a", 1), "climate")])
-    assert list(digest) == ["asked_about", "issues", "solutions", "evidence", "posts"]
+    assert list(digest) == ["asked_about", "issues", "solutions", "evidence", "evidence_backed_by_other_evidence",
+                            "posts"]
+    assert digest["evidence_backed_by_other_evidence"] == 0
     assert digest["asked_about"] == "the issue Climate"
     assert digest["issues"] == [{"name": "Climate", "part_of": "World government", "sub_issues": ["Carbon prices"],
                                  "people_claiming": 4}]
     assert digest["solutions"][0] == {"id": "S1", "name": "Tax", "issues": ["Climate"], "approved_by": 2,
                                       "opposed_by": 1, "proposed_by": 1}
+
+
+def test_a_click_and_a_post_not_read_are_told_apart():
+    """The walk of 26 October: a stance whose post was not read looked like a click."""
+    sols = [solution("veto", [("oppose", 5, ["unread"]), ("approve", 4, []), ("approve", 3, ["read"])], 2, 1)]
+    _, digest = digest_of(None, [ISSUE], sols, [], [(post("read", 3), "climate")])
+    assert digest["solutions"][0]["stances"] == [
+        {"stance": "oppose", "date": "2026-10-05", "post_not_read": True},
+        {"stance": "approve", "date": "2026-10-04", "click": True},
+        {"stance": "approve", "date": "2026-10-03", "posts": ["P1"]}]
 
 
 def test_a_post_read_under_two_issues_is_listed_once():
@@ -138,6 +151,7 @@ def test_evidence_carries_its_reading_its_source_and_evidence_on_evidence():
     assert dashboard["source"] == "An organisation's page from November 2023. Primary source. Names its sources."
     assert dashboard["about"] == [{"what": "issue Climate", "side": "supports", "page_read_as": "agrees", "post": "P1"}]
     assert dashboard["supported_by"] == ["E3"] and dashboard["refuted_by"] == ["E4"]
+    assert digest["evidence_backed_by_other_evidence"] == 1
     assert pieces["Study"]["about"] == [{"what": "solution S1", "side": "refutes", "page_read_as": "partly agrees",
                                          "post": "P2"}]
     assert pieces["Imf"]["about"] == [{"what": "evidence E1", "side": "supports", "post": "P2"}]
@@ -152,6 +166,15 @@ def test_at_most_thirty_pieces_of_evidence_and_nothing_points_past_them():
     assert [item["name"] for item in digest["evidence"]] == [f"Piece{n:02d}" for n in range(1, 31)]
     assert all(len(item["about"]) == 1 for item in digest["evidence"])
     assert "E31" not in json.dumps(digest)
+
+
+def test_each_piece_of_evidence_links_to_its_own_issue_on_the_whole_record():
+    rows = [edge("report", "issue", "veto", target_name="Security Council veto"),
+            edge("study", "solution", "tax"), edge("note", "evidence", "report"), edge("loose", "solution", "other")]
+    built, _ = digest_of(None, [ISSUE], [solution("tax", [], 1)], rows, [])
+    found = {s.name: (s.href, s.issue) for s in built.sources.values() if s.kind == "evidence"}
+    assert found == {"Report": ("/issues/veto", "Security Council veto"), "Study": ("/issues/climate", "Climate"),
+                     "Note": (None, None), "Loose": (None, None)}
 
 
 def test_nothing_in_the_record_still_makes_a_digest():

@@ -39,12 +39,14 @@ def test_a_paragraph_needs_a_post_unless_it_is_a_count_line():
     paragraphs, counts = kept(("Most people back the tax.", ["S1"]),
                               ("Approved by 4, opposed by 3, as of 17 October.", ["S1"]),
                               ("The dashboard is backed by 2 other pieces of evidence.", ["E1"]),
-                              ("No figure here, only the solution.", ["S1"]),
+                              ("Only the solution, without a figure.", ["S1"]),
+                              ("No evidence here is supported or refuted by other evidence.", ["E1"]),
                               ("Opposed by 3. " + "x" * 200, ["S1"]),
                               ("Ada and an anonymous writer disagree.", ["P1", "P2", "S1"]),
                               ("Nobody is cited.", []))
     assert [p["text"] for p in paragraphs] == ["Approved by 4, opposed by 3, as of 17 October.",
                                                "The dashboard is backed by 2 other pieces of evidence.",
+                                               "No evidence here is supported or refuted by other evidence.",
                                                "Ada and an anonymous writer disagree."]
     assert counts["paragraphs_dropped"] == 4
 
@@ -67,6 +69,11 @@ def test_not_in_the_record_or_nothing_left_is_empty():
 def test_ids_in_the_text_become_names_or_go():
     paragraphs, _ = kept(("Ada (P1) and P2 differ on S1 [P1, P2]; E1 backs it.", ["P1"]))
     assert paragraphs[0]["text"] == "Ada and a post differ on Carbon tax; World Bank dashboard backs it."
+
+
+def test_the_word_digest_never_reaches_a_reader():
+    paragraphs, _ = kept(("No other posts in the digest say so; this Digest is short.", ["P1"]))
+    assert paragraphs[0]["text"] == "No other posts in the record say so; this record is short."
 
 
 def test_sources_are_numbered_in_the_order_first_cited():
@@ -106,7 +113,7 @@ def test_the_call_carries_the_guiding_block_the_digest_and_only_earlier_question
     system, user = body["messages"]
     assert system["role"] == "system" and system["content"].startswith("\n" + guiding_block() + "\n")
     assert system["content"] == ask.SYSTEM_PROMPT  # the same bytes every time, so the cache holds
-    assert json.loads(user["content"]) == {"digest": json.loads(DIGEST.text), "earlier_questions": ["q2", "q3", "q4"],
+    assert json.loads(user["content"]) == {"record": json.loads(DIGEST.text), "earlier_questions": ["q2", "q3", "q4"],
                                            "question": "And why?"}
     assert body["max_tokens"] == 700 and body["temperature"] == 0.1
     assert result.status == "answered" and result.message is None

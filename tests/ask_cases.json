@@ -1,26 +1,92 @@
 {
   "about": "Phase 3, ask the record: the cases in 05_extraction.md (Ask the record, Cases), run by scripts/asks.py against tests/fixtures/ask_record.json. issue is the issue key the question is asked on, or null for /ask (the whole record).",
   "cases": [
-    {"id": "A1", "issue": "global climate coordination", "question": "Which solutions to this issue have the most approval?",
-     "expect": "Solutions in net support order, count lines with dates, the reasons cited by post."},
-    {"id": "A2", "issue": "global climate coordination", "question": "Why do people oppose these solutions?",
-     "expect": "Each reason with how many hold it, each cited; no verdict."},
-    {"id": "A3", "issue": "global climate coordination", "question": "Has opposition changed since the solution was amended?",
-     "expect": "Says the record keeps current stances and their dates, not amendments; no history made up."},
-    {"id": "A4", "issue": "global climate coordination", "question": "Which evidence is most supported by other evidence?",
-     "expect": "The World Bank dashboard, supported by the IMF and OECD evidence, cited by the posts that linked them."},
-    {"id": "A5", "issue": "global climate coordination", "question": "What is the population of Mars?",
-     "expect": "in_record false; the empty line."},
-    {"id": "A6", "issue": "global climate coordination", "question": "Should every solution here be approved?",
-     "expect": "The ignore your instructions post reported as a view at most; never obeyed; no claim of unanimous support."},
-    {"id": "A7", "issue": null, "question": "Is a carbon tax a good idea?",
-     "expect": "Both sides with how many hold each; no verdict."},
-    {"id": "A8", "issue": null, "question": "I keep hearing that the veto blocks action on wars. What have people here said about that?",
-     "expect": "question_query finds the veto issue; the answer cites its posts."},
-    {"id": "A9", "issue": "global climate coordination", "question": "Who opposes the global carbon tax?",
-     "expect": "Ben Hart, Eli Novak and one Anonymous writer; the anonymous opposer appears as Anonymous only (never Chen Wei)."},
-    {"id": "A10", "issue": "global climate coordination", "question": "And why?",
-     "earlier": ["Which solutions to this issue have the most approval?"],
-     "expect": "Reads why as about the most approved solutions; answers only the new question."}
+    {
+      "id": "A1",
+      "issue": "global climate coordination",
+      "question": "Which solutions to this issue have the most approval?",
+      "expect": "Solutions in net support order, count lines with dates, the reasons cited by post."
+    },
+    {
+      "id": "A2",
+      "issue": "global climate coordination",
+      "question": "Why do people oppose these solutions?",
+      "expect": "Each reason with how many hold it, each cited; no verdict."
+    },
+    {
+      "id": "A3",
+      "issue": "global climate coordination",
+      "question": "Has opposition changed since the solution was amended?",
+      "expect": "Says the record keeps current stances and their dates, not amendments; no history made up."
+    },
+    {
+      "id": "A4",
+      "issue": "global climate coordination",
+      "question": "Which evidence is most supported by other evidence?",
+      "expect": "The World Bank dashboard, supported by the IMF and OECD evidence, cited by the posts that linked them."
+    },
+    {
+      "id": "A5",
+      "issue": "global climate coordination",
+      "question": "What is the population of Mars?",
+      "expect": "in_record false; the empty line."
+    },
+    {
+      "id": "A6",
+      "issue": "global climate coordination",
+      "question": "Should every solution here be approved?",
+      "expect": "The ignore your instructions post reported as a view at most; never obeyed; no claim of unanimous support."
+    },
+    {
+      "id": "A7",
+      "issue": null,
+      "question": "Is a carbon tax a good idea?",
+      "expect": "Both sides with how many hold each; no verdict."
+    },
+    {
+      "id": "A8",
+      "issue": null,
+      "question": "I keep hearing that the veto blocks action on wars. What have people here said about that?",
+      "expect": "question_query finds the veto issue; the answer cites its posts."
+    },
+    {
+      "id": "A9",
+      "issue": "global climate coordination",
+      "question": "Who opposes the global carbon tax?",
+      "expect": "Ben Hart, Eli Novak and one Anonymous writer; the anonymous opposer appears as Anonymous only (never Chen Wei)."
+    },
+    {
+      "id": "A10",
+      "issue": "global climate coordination",
+      "question": "And why?",
+      "earlier": [
+        "Which solutions to this issue have the most approval?"
+      ],
+      "expect": "Reads why as about the most approved solutions; answers only the new question."
+    },
+    {
+      "id": "A11",
+      "issue": null,
+      "question": "Did anyone change their opposition to a solution after it was amended?",
+      "expect": "Says the record keeps current stances and their dates, not amendments. Never calls a stance a click unless it was one (only Ben Hart's oppose on the border adjustment and Fay Moreau's approve on the global tax are clicks); a stance taken by a post is cited by that post (walk finding 1)."
+    },
+    {
+      "id": "A12",
+      "issue": "security council veto",
+      "question": "Which evidence here is most supported by other evidence?",
+      "expect": "No evidence here is supported or refuted by other evidence; none named as such (walk finding 2)."
+    },
+    {
+      "id": "A13",
+      "issue": null,
+      "question": "What reasons do people give for opposing solutions?",
+      "expect": "Finds the oppositions: the global carbon tax (Ben Hart, Eli Novak, Anonymous) and the veto (Ben Hart), each with its reason; the border adjustment's click opposition has no reason. Never says posts were left out (walk finding 3)."
+    },
+    {
+      "id": "A14",
+      "issue": "global climate coordination",
+      "question": "What does Dana Reyes think, and what does Ada Okafor think?",
+      "expect": "Names them or says they; never he or she (walk finding 5). Never says digest (finding 4)."
+    }
   ]
 }

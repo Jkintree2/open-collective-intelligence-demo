@@ -21,11 +21,14 @@
     return node;
   }
 
+  // 04_interface.md: a post is "{name}, {date}: “{first 200 characters}” On {issue}"; a solution or a piece
+  // of evidence is "Solution: {name}. On {issue}" or "Evidence: {name}. On {issue}".
+  const KINDS = {solution: 'Solution: ', evidence: 'Evidence: '};
   function sourceLine(source) {
     const item = el('li');
-    let words = source.name + (source.when ? ', ' + source.when : '');
-    // A post ends on its quote; a solution or piece of evidence on its name, so it takes a full stop.
-    words += source.text ? ': “' + source.text + '”' : '.';
+    const words = source.kind === 'post'
+      ? source.name + (source.when ? ', ' + source.when : '') + (source.text ? ': \u201c' + source.text + '\u201d' : '')
+      : (KINDS[source.kind] || '') + source.name + '.';
     item.append(document.createTextNode(words));
     if (source.issue && source.href) {
       item.append(document.createTextNode(' On '));
@@ -68,7 +71,8 @@
     const question = field.value.split(/\s+/).filter(Boolean).join(' ');
     if (!question) { status.textContent = lines.noQuestion; return; }
     if (question.length > QUESTION_MAX) { status.textContent = lines.tooLong; return; }
-    const asked = earlier.get(box) || [];
+    // Questions asked before this page was drawn (the answer page without JavaScript) start the list.
+    const asked = earlier.get(box) || [...form.querySelectorAll('[name=earlier]')].map(input => input.value);
     form.setAttribute('aria-busy', 'true');
     status.textContent = lines.waiting;
     const still = setTimeout(() => { status.textContent = lines.waiting + ' ' + lines.still; }, STILL_AFTER);
@@ -106,4 +110,12 @@
   }
 
   document.addEventListener('submit', submit);
+  // Enter asks; Shift and Enter starts a new line.
+  document.addEventListener('keydown', event => {
+    const field = event.target;
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing || !field.matches
+        || !field.matches('form.ask-form textarea')) return;
+    event.preventDefault();
+    field.form.requestSubmit();
+  });
 })();

@@ -88,15 +88,20 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None) 
 
 @router.get("/ask", dependencies=[Depends(ask_on), Depends(require_access)])
 def ask_page(request: Request) -> Response:
-    return page(request, "ask.html", {"result": None, "question": "", "issue": None})
+    return page(request, "ask.html", {"result": None, "question": "", "issue": None, "earlier": []})
 
 
 @router.post("/ask", dependencies=[Depends(ask_on), Depends(require_access), Depends(require_same_origin)])
 def ask_form(request: Request, question: str = Form("", max_length=5000),
-             issue: str = Form("", max_length=200)) -> Response:
-    """Without JavaScript: the answer on the Ask page, with a way back to the issue it was asked on."""
-    status, body = run(request, question, [], issue or None)
-    return page(request, "ask.html", {"result": body, "question": question[:ask.QUESTION_MAX],
+             issue: str = Form("", max_length=200),
+             earlier: list[str] = Form(default_factory=list, max_length=20)) -> Response:
+    """Without JavaScript: the answer on the Ask page, with a way back to the issue it was asked on. The
+    page carries the last three questions (never the answers) in hidden fields, as the box does with it."""
+    earlier = [text[:ask.QUESTION_MAX] for text in earlier if text.strip()][-ask.EARLIER_MAX:]
+    status, body = run(request, question, earlier, issue or None)
+    asked = " ".join(question.split())
+    carried = (earlier + [asked])[-ask.EARLIER_MAX:] if body.get("status") else earlier
+    return page(request, "ask.html", {"result": body, "question": asked, "earlier": carried,
                                       "issue": {"key": issue, "name": body.get("issue")} if issue else None},
                 status_code=status)
 

@@ -4,7 +4,8 @@
   {% if not ask_page %}<h2 id="ask-title">Ask about this issue</h2>{% endif %}
   <form class="ask-form" method="post" action="/ask">
     {% if ask_issue %}<input type="hidden" name="issue" value="{{ ask_issue.key }}">{% endif %}
-    <textarea name="question" rows="2" aria-labelledby="ask-title" placeholder="{% if ask_issue %}For example: Why do people oppose these solutions?{% else %}For example: What do people say about the Security Council veto?{% endif %}">{{ ask_question or "" }}</textarea>
+    {% for earlier in ask_earlier or [] %}<input type="hidden" name="earlier" value="{{ earlier }}">{% endfor %}
+    <textarea name="question" rows="2" aria-labelledby="ask-title" placeholder="{% if ask_issue %}For example: Why do people oppose these solutions?{% else %}For example: What do people say about the Security Council veto?{% endif %}">{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
     <button class="primary" type="submit">Ask</button>
   </form>
   {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues.</p>{% endif %}
@@ -18,7 +19,7 @@
       {% endfor %}{% if ask_result.partial %}<p class="ask-partial">{{ ask_result.partial }}</p>{% endif %}
       {% if ask_result.sources %}<h3 class="ask-sources-title">Sources</h3>
       <ol class="ask-sources">{% for source in ask_result.sources %}
-        <li>{{ source.name }}{% if source.when %}, {{ source.when }}{% endif %}{% if source.text %}: “{{ source.text }}”{% else %}.{% endif %}{% if source.issue and source.href %} On <a href="{{ source.href }}">{{ source.issue }}</a>{% endif %}</li>{% endfor %}
+        <li>{% if source.kind == "post" %}{{ source.name }}{% if source.when %}, {{ source.when }}{% endif %}{% if source.text %}: “{{ source.text }}”{% endif %}{% else %}{{ "Solution" if source.kind == "solution" else "Evidence" }}: {{ source.name }}.{% endif %}{% if source.issue and source.href %} On <a href="{{ source.href }}">{{ source.issue }}</a>{% endif %}</li>{% endfor %}
       </ol>{% endif %}
     </div>
   {% endif %}</div>
