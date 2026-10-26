@@ -6,17 +6,30 @@ from typing import Any
 from app.graph_runtime import _read
 
 # Q43. Keys of the issues a placed post touches: any edge carrying its id, or a stance on one of its solutions.
+# It starts from the placed posts (range indexes) and reads each writer's own edges once, so the cost follows
+# the posts placed there, not the size of the record. Every edge a post writes hangs off its writer: CLAIM to
+# the issue, PART_OF from it, PROPOSE to a solution its HAVE_PROPOSED joins, SUBMIT to evidence its SUPPORTS or
+# REFUTES points at an issue, and a stance (a later post's stance carries last_post_id).
 ISSUES_NEAR = """
-MATCH (post:Post)
+MATCH (person:Person)-[:POSTED]->(post:Post)
 WHERE post.place_country = $country
   AND ($area_key IS NULL OR post.place_area_key = $area_key)
-WITH collect(post.id) AS ids
-MATCH (i:Issue)
-WHERE EXISTS { MATCH (i)-[r]-() WHERE r.post_id IN ids }
-   OR EXISTS { MATCH (i)-[:HAVE_PROPOSED]->(:Solution)<-[r:APPROVE|OPPOSE]-(:Person)
-               WHERE r.post_id IN ids OR r.last_post_id IN ids }
-RETURN i.key AS key
+WITH person, post ORDER BY post.created_at DESC LIMIT $post_limit
+WITH person, collect(post.id) AS ids
+MATCH (person)-[a:CLAIM|PROPOSE|SUBMIT|APPROVE|OPPOSE]->(n)
+WHERE a.post_id IN ids OR (type(a) IN ['APPROVE', 'OPPOSE'] AND a.last_post_id IN ids)
+WITH a, n, type(a) IN ['APPROVE', 'OPPOSE'] AS stance,
+     CASE WHEN a.post_id IN ids THEN a.post_id ELSE a.last_post_id END AS id
+UNWIND CASE WHEN n:Issue THEN [n] ELSE [] END
+     + [(n)-[r:PART_OF]-(i:Issue) WHERE r.post_id = id | i]
+     + [(n)-[r:SUPPORTS|REFUTES]->(i:Issue) WHERE r.post_id = id | i]
+     + [(i:Issue)-[r:HAVE_PROPOSED]->(n) WHERE stance OR r.post_id = id | i] AS i
+RETURN DISTINCT i.key AS key
+LIMIT $issue_limit
 """
+# The newest placed posts Q43 reads, and the issues it returns; far above a test group's record.
+NEAR_POSTS = 1000
+NEAR_ISSUES = 500
 
 # Q43, the prefill: the member's last placed post, anonymous or not (shown only to them).
 LAST_PLACE = """
@@ -36,7 +49,8 @@ RETURN post.id AS id, post.place_country AS country, post.place_area AS area
 
 
 def issues_near(country: str, area_key: str | None) -> set[str]:
-    return {row["key"] for row in _read(ISSUES_NEAR, country=country, area_key=area_key)}
+    return {row["key"] for row in _read(ISSUES_NEAR, country=country, area_key=area_key,
+                                          post_limit=NEAR_POSTS, issue_limit=NEAR_ISSUES)}
 
 
 def last_place(me: str) -> dict[str, Any] | None:

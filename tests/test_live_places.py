@@ -99,3 +99,57 @@ def test_the_prefill_is_the_members_newest_placed_post(live_graph):
     assert graph_places.last_place("acct:ada") == {"country": "DE", "area": "Berlin"}
     assert graph_places.last_place("acct:bob") == {"country": "FR", "area": None}
     assert graph_places.last_place("acct:nobody") is None
+
+
+# The first Q43 (26 October): every issue against every collected post id. Kept as the reference the
+# post-first Q43 must agree with.
+FIRST_Q43 = """
+MATCH (post:Post)
+WHERE post.place_country = $country
+  AND ($area_key IS NULL OR post.place_area_key = $area_key)
+WITH collect(post.id) AS ids
+MATCH (i:Issue)
+WHERE EXISTS { MATCH (i)-[r]-() WHERE r.post_id IN ids }
+   OR EXISTS { MATCH (i)-[:HAVE_PROPOSED]->(:Solution)<-[r:APPROVE|OPPOSE]-(:Person)
+               WHERE r.post_id IN ids OR r.last_post_id IN ids }
+RETURN i.key AS key
+"""
+
+
+def test_post_first_q43_finds_what_the_first_one_found(live_graph):
+    from app.graph_runtime import _read
+    post(live_graph, "acct:ada", "Floods and rent", issues=[{"name": "Flooding"}, {"name": "Rent"}],
+         solutions=[{"name": "Seawalls", "for_issue": "Flooding"}])
+    post(live_graph, "acct:bob", "Berlin floods", country="DE", area="Berlin",
+         issues=[{"name": "Floods in Berlin", "parent": "Flooding"}])
+    # A proposal only, for an issue the post does not claim.
+    post(live_graph, "acct:cy", "Rent caps", country="DE", area="Berlin",
+         solutions=[{"name": "Rent caps", "for_issue": "Rent"}])
+    # Evidence only, about an issue the post does not claim.
+    ev = post(live_graph, "acct:di", "A report", country="DE", area="Hamburg",
+              evidence=[{"name": "Flood report", "about": "Flooding", "stance": "supports"}])
+    # A stance by an unplaced post, then taken again by a placed one (last_post_id).
+    post(live_graph, "acct:ed", "Seawalls yes", solutions=[{"name": "Seawalls", "for_issue": "Flooding", "stance": "approve"}])
+    post(live_graph, "acct:ed", "Seawalls still", country="DE", area="Munich", minutes=5,
+         solutions=[{"name": "Seawalls", "for_issue": "Flooding", "stance": "approve"}])
+    post(live_graph, "acct:fay", "Heat", country="FR", issues=[{"name": "Heat"}])
+    supports = live_graph.driver().execute_query(
+        "MATCH (:Evidence)-[r:SUPPORTS]->(:Issue {key: 'flooding'}) WHERE r.post_id = $id RETURN count(r) AS n",
+        id=ev, database_=live_graph.database()).records[0]["n"]
+    assert supports == 1
+    for country, area_key in (("DE", None), ("DE", "berlin"), ("DE", "hamburg"), ("DE", "munich"),
+                              ("FR", None), ("US", None)):
+        first = {row["key"] for row in _read(FIRST_Q43, country=country, area_key=area_key)}
+        assert graph_places.issues_near(country, area_key) == first, (country, area_key)
+    assert graph_places.issues_near("DE", "hamburg") == {"flooding"}
+    assert graph_places.issues_near("DE", "munich") == {"flooding"}
+    assert graph_places.issues_near("DE", "berlin") == {"floods in berlin", "flooding", "rent"}
+
+
+def test_q43_reads_only_the_newest_placed_posts_and_caps_the_issues(live_graph, monkeypatch):
+    post(live_graph, "acct:ada", "Old", minutes=1, country="DE", issues=[{"name": "Rent"}])
+    post(live_graph, "acct:bob", "New", minutes=2, country="DE", issues=[{"name": "Heat"}, {"name": "Veto"}])
+    monkeypatch.setattr(graph_places, "NEAR_POSTS", 1)
+    assert graph_places.issues_near("DE", None) == {"heat", "veto"}
+    monkeypatch.setattr(graph_places, "NEAR_ISSUES", 1)
+    assert len(graph_places.issues_near("DE", None)) == 1
