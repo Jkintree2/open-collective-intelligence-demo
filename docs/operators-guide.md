@@ -191,7 +191,7 @@ The site was built for a small, trusted group. Before you let many more people i
 Nothing, by default.
 
 * **Render** is free. The Starter plan, about 7 US dollars a month, removes the slow first visit. You can change the plan on the service page in Render at any time.
-* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs about a tenth of a US cent each time, about one US dollar per thousand links; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read.
+* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs about a tenth of a US cent each time, about one US dollar per thousand links; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read. Asking the record costs at most about half a US cent a question, and a follow-up question about a third of a cent a statement; see "Talking to the record".
 * **Neo4j Aura** is free. Never upgrade to Aura Professional for this site. It is far more than a test needs and it costs real money every month.
 * **UptimeRobot** and **GitHub** are free.
 
@@ -260,6 +260,73 @@ Two things can only be seen from your side, in Render and in the back room. Neit
 
 1. **What the site could read.** Sign in to Render, open your service and choose **Logs**. Search for `"reader"`. A line with `"reader": "youtube"` says whether YouTube let the site read a video's captions: `ok` when it did, `refused` when it turned the site away and the writer was asked to paste the transcript. A line with `"reader": "deepseek"` is a page the site could not open itself, so DeepSeek's own page reader tried instead; if Wikipedia links show up there often, tell whoever helps you with the site.
 2. **A copy of the record.** In the back room, press **Download a copy** once. It should save one file, as before. If it says there was a problem instead, tell whoever helps you with the site.
+
+## Talking to the record
+
+Four parts let people ask the record questions, make their statements clearer as they write, say which place a statement is about, and read how the site works. Each part has its own switch in Render and stays off until you switch it on. Until then the site looks exactly as it did before.
+
+To switch a part on:
+
+1. Sign in to Render and open your service.
+2. Click **Environment**.
+3. Add the switch below with the value `true`, then click **Save**. Render restarts the site. This takes a few minutes.
+
+To switch a part off again, set its value to false and save. The site then looks as it did before, and nothing in the record is lost.
+
+* `ABOUT_ENABLED` shows the **About** page, last in the menu at the top of the page.
+* `PLACES_ENABLED` shows the **Place** row on the form, the place under each post, and **Near** on the Issues page.
+* `FOLLOW_UPS_ENABLED` shows follow-up questions on the form.
+* `ASK_ENABLED` shows **Ask** in the menu, after Issues, and a box on every issue page.
+
+About and places cost nothing to run, so they are a good first pair. With everything on, the menu reads Write, Issues, Ask, Enter a person, My statements, My account, About.
+
+### The About page
+
+The About page says what the site is for, how statements are read and questions answered, which reading service is used and its version, what is sent to it (never an email address, a password, or an account's country or postal code), the software, and where the site runs. Then it shows the three guiding documents in full: your statement of purpose, the Universal Declaration of Human Rights and the Earth Charter. Anyone can open it, signed in or not, because it holds nothing from the record.
+
+The reading service is given the same three documents, word for word, at the start of its instructions each time it reads a statement, answers a question or suggests a follow-up question. They guide it; they are not a test that posts must pass. They live on GitHub as three plain text files, `app/guiding/purpose.txt`, `app/guiding/udhr.txt` and `app/guiding/earth_charter.txt`. Edit one there and the page and the instructions change together. After an edit, tell whoever helps you with the site, because one of the site's own checks holds a fingerprint of those words and needs the new one. The Declaration keeps the line breaks it has in its file, so on a wide screen some of its lines end early.
+
+**After switching it on:** open the site address with `/about` at the end, signed out. Check that **The reading service** names DeepSeek and a version, and that the three documents are there in full. If it says "No reading service is set up at the moment", the DeepSeek key is missing in Render.
+
+### Places and Near
+
+The form gains a **Place** row before Post: a list of countries, whose first choice is "Not about one place", and "Town or area, optional". The writer chooses the place. It is never read from the statement, and postal codes are never used. A statement under the writer's name starts with the account's country. An anonymous one starts empty, with a reminder that a town can tell others who wrote it. The place can be changed when the post is edited.
+
+A post with a place says so under it, for example "In St. Louis, United States" or "In Germany", in the recent statements, on issue pages, in search and on My statements. On the Issues page, **Near** takes a country, a town or area if wanted, and **Show**. It lists the issues that have posts placed there: the same town or area when one is typed (St. Louis and st louis count as the same), otherwise the same country. There are no distances and no maps. Posts written before places were switched on have no place, so Near finds only newer posts at first.
+
+Places cost nothing on the reading service.
+
+**After switching it on:** write a statement, choose a country and type a town, and post. Check that the post shows the town and country under it, and that **Near** on the Issues page, with that town, lists its issue.
+
+### Follow-up questions
+
+Once the form has opened, a new issue, solution or piece of evidence (never one already in the record) may get one short question under it, such as "When did this happen?", with a box for the answer, **Add to my statement** and **Skip**. A form gets at most three. A piece of evidence with no link and no **From my own experience** tick always gets "Where did you read or hear this?"; that one needs no reading service, so it shows even when DeepSeek is not set up.
+
+**An answer becomes part of the public statement.** **Add to my statement** adds the question and the answer as one line at the end of the statement ("When did this happen? In 2023."), so everyone who reads the post sees it, and search, editing, asking and the copies you download all carry it. When the post is anonymous, so is the answer. The form says this beside the button. A question never holds back Post, and **Skip** removes it.
+
+**Cost:** each form with something new on it makes one small extra request to the reading service, about a third of a US cent at DeepSeek's busiest hours, and less when it comes soon after another one, because DeepSeek charges less for the long opening instructions it has just read. The site makes at most 300 of these a day; after that only "Where did you read or hear this?" shows. Like the question limits below, that count starts again when the site wakes from sleep.
+
+**After switching it on:** write a statement with a piece of evidence and no link, and press **Read my statement**. Check that "Where did you read or hear this?" appears under the evidence. Type an answer, press **Add to my statement**, and check that the line is added at the end of the statement before you post.
+
+### Asking the record
+
+**Ask**, in the menu, opens a page for questions about the whole record. Each issue page also has a box, **Ask about this issue**, under the evidence and above the posts, for questions about that issue and the issues that are part of it. Anyone who can read the record can ask, in plain words.
+
+The answer is a few short paragraphs that sum up what the record holds, including views that differ and how many people hold each one. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown. When the record holds nothing on the question, the answer says "The record does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
+
+Nothing is kept. Questions and answers live only in the open page and are gone when it is closed. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go. The first question after a quiet spell can take up to a minute, because the site may be waking up.
+
+**Cost:** a question costs at most about half a US cent, and less after the first question of a spell, because DeepSeek charges less for the long opening instructions it has just read. Each person can ask 30 questions a day, and the site answers 300 a day in all, so a full day at the limit costs at most about 1.50 US dollars.
+
+**The daily limits start again when the site sleeps.** They are kept in the site's working memory, not in the record. When the site goes to sleep after a quiet spell (see "The slow first visit") and wakes again, or restarts after a change in Render, both counts start again from zero. So 300 is a ceiling for each time the site is awake, not a firm total for the day. If DeepSeek's usage page ever shows more than you expect, switch asking off and tell whoever helps you with the site.
+
+Without a DeepSeek key, the page says "Asking needs the reading service, which is not set up." If an answer says "The question could not be answered just now", wait a minute and ask again. If it keeps saying so, check your DeepSeek balance and the reading service line in the back room, as in "When reading stops".
+
+**After switching it on:** open an issue with a few posts and ask one of your own questions, for example which solutions have the most approvals, or why people oppose them. Check that the answer names its sources and that each source links to its issue. Then ask about something the record does not hold, and check that it says "The record does not say anything about this yet."
+
+### After switching anything on
+
+Whoever helps you with the site can run its read only check against the live address. It now also says whether the About page and Ask are switched on or off, so a switch that did not take shows up straight away.
 
 ## Who to ask
 
