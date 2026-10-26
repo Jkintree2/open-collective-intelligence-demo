@@ -60,8 +60,57 @@ def test_it_names_the_reading_service_and_its_version(about):
 def test_without_a_key_it_says_no_reading_service_is_set_up(about, switch):
     switch(llm_api_key=None)
     html = about.client.get("/about").text
-    assert f"<p>{routes_about.NO_READING_SERVICE}</p>" in html
+    assert f"<p>{routes_about.NO_READING_SERVICE_CARDS}</p>" in html
     assert "DeepSeek" not in html
+    switch(ask_enabled=True)
+    assert f"<p>{routes_about.NO_READING_SERVICE}</p>" in about.client.get("/about").text
+
+
+def text_of(html: str) -> str:
+    return re.sub(r"\s+", " ", own_words(html))
+
+
+def test_with_ask_and_follow_ups_off_it_speaks_only_of_reading_statements(about):
+    words = text_of(about.client.get("/about").text)
+    assert "question" not in words.lower() and "follow-up" not in words
+    assert "evidence link" not in words
+    assert "It reads statements, with the guiding principles below" in words
+    assert "at the start of its instructions for reading statements. They guide it" in words
+    assert "It does not judge a post against them, and names an article or a principle only when a post does." in words
+    assert "The statement being written and its card; and the names of issues, solutions and evidence." in words
+    assert "the first page after one can take up to a minute" in words
+    assert "everyone here can read and build on." in words
+
+
+def test_with_every_part_on_it_reads_as_04_has_it(about, switch):
+    switch(ask_enabled=True, follow_ups_enabled=True, evidence_check_enabled=True)
+    words = text_of(about.client.get("/about").text)
+    for sentence in (
+            "everyone here can read, ask questions of, and build on.",
+            " How statements are read and questions are answered ",
+            "When you ask a question, the site gathers what the record holds about it:",
+            "It reads statements, answers questions and suggests follow-up questions, with the guiding principles below "
+            "at the start of its instructions each time. When it checks the page behind an evidence link it is given "
+            "no principles, so that each link stays quick and cheap to read.",
+            "The statement being written and its card; the question and your earlier questions on the page; and what the "
+            "record holds that an answer is built from:",
+            "the first page or question after one can take up to a minute.",
+            "at the start of its instructions for reading statements, answering questions and asking follow-up questions.",
+            "It does not judge a post against them unless a question asks, and names an article or a principle only when "
+            "the question or a post does."):
+        assert sentence in words, sentence
+
+
+@pytest.mark.parametrize("fields, reads, given", [
+    ({"ask_enabled": True}, "It reads statements and answers questions,",
+     "instructions for reading statements and answering questions."),
+    ({"follow_ups_enabled": True}, "It reads statements and suggests follow-up questions,",
+     "instructions for reading statements and asking follow-up questions.")])
+def test_each_switch_adds_only_its_own_part(about, switch, fields, reads, given):
+    switch(**fields)
+    words = text_of(about.client.get("/about").text)
+    assert reads in words and given in words
+    assert ("When you ask a question" in words) is ("ask_enabled" in fields)
 
 
 @pytest.mark.parametrize("url, name", [("https://api.deepseek.com", "DeepSeek"),

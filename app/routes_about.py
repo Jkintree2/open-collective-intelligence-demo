@@ -18,6 +18,8 @@ REPOSITORY = "https://github.com/Jkintree2/open-collective-intelligence-demo"
 
 # Client facing copy, word for word from docs/planning/04_interface.md.
 NO_READING_SERVICE = "No reading service is set up at the moment, so cards are filled in by hand and questions cannot be asked."
+# The same line without Ask the record (ASK_ENABLED unset), which then has no questions to speak of.
+NO_READING_SERVICE_CARDS = "No reading service is set up at the moment, so cards are filled in by hand."
 
 PROVIDERS = {"deepseek": "DeepSeek", "openai": "OpenAI", "openrouter": "OpenRouter", "groq": "Groq",
              "mistral": "Mistral", "together": "Together AI"}
@@ -45,9 +47,12 @@ def reading_service(settings: Settings) -> dict[str, str] | None:
 
 @router.get("/about", dependencies=[Depends(about_on)])
 def about(request: Request) -> Response:
+    settings = config.get_settings()
     return page(request, "about.html", {
-        "service": reading_service(config.get_settings()),
+        "service": reading_service(settings),
         "no_service": NO_READING_SERVICE,
+        "no_service_cards": NO_READING_SERVICE_CARDS,
+        "evidence_check": settings.evidence_check_enabled,
         "repository": REPOSITORY,
         "documents": [("Statement of purpose", principles.PURPOSE),
                       ("Universal Declaration of Human Rights", principles.UDHR),
