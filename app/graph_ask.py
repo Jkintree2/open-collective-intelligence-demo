@@ -1,0 +1,133 @@
+"""Phase 3, ask the record: the reads behind an answer (03_schema.md, Phase 3, Q40 to Q42). Read only.
+
+app/ask.py turns the rows into the digest the reading service sees. Nothing here returns an email,
+a country, a postal code or the name behind an anonymous edge: stances come as counts, dates and the
+posts that took them, and a post's name is read from the post itself (Q6).
+"""
+
+from typing import Any
+
+from app.graph_runtime import _read
+
+SOLUTION_LIMIT = 15  # solutions on one issue and its sub-issues
+STANCE_LIMIT = 20    # dated stances listed under one solution, newest first; the counts are always whole
+EVIDENCE_LIMIT = 10  # evidence record-wide
+EDGE_LIMIT = 300     # evidence rows on one issue
+
+# One solution's columns, shared by Q40 and Q42: its issues, proposers counted as in Q4 (by account and
+# anonymity, D2), the posts that proposed it, and its stances newest first, each with its date and the
+# posts that took it (the first and, when a later post said the same, that one). A click has no post.
+_SOLUTION_COLUMNS = """
+CALL (s) {
+  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
+  WITH home ORDER BY home.created_at
+  RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
+}
+CALL (s) {
+  OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
+  RETURN count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+         [x IN collect(DISTINCT pr.post_id) WHERE x IS NOT NULL] AS proposed_in
+}
+CALL (s) {
+  OPTIONAL MATCH (:Person)-[st:APPROVE|OPPOSE]->(s)
+  WITH st ORDER BY st.created_at DESC
+  RETURN [x IN collect({stance: toLower(type(st)), date: toString(date(st.created_at)),
+                        post_ids: [p IN [st.post_id, st.last_post_id] WHERE p IS NOT NULL]})
+          WHERE x.stance IS NOT NULL][..$stance_limit] AS stances
+}
+RETURN s.key AS key, s.name AS name, issues, proposers, proposed_in, approves, opposes, stances
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
+"""
+
+# Q40. The solutions proposed for an issue and its sub-issues, ranked by net support as Q4 ranks them.
+ISSUE_STANCES = """
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
+WITH i, collect(child) AS children
+UNWIND [i] + children AS x
+MATCH (x)-[:HAVE_PROPOSED]->(s:Solution)
+WITH DISTINCT s
+WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
+LIMIT $limit
+""" + _SOLUTION_COLUMNS
+
+# Q42. The solutions with the most net support in the whole record.
+TOP_SOLUTIONS = """
+MATCH (s:Solution)
+WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
+LIMIT $limit
+""" + _SOLUTION_COLUMNS
+
+# One evidence edge's columns, shared by both forms of Q41: the evidence, what it is about, which way,
+# the reading kept on the edge (Phase 2) and what the page says about itself.
+_EVIDENCE_COLUMNS = """
+RETURN e.key AS key, e.name AS name, e.url AS url,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published,
+       e.source_cites AS source_cites,
+       CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END AS target_kind,
+       t.key AS target_key, t.name AS target_name, t.url AS target_url,
+       toLower(type(r)) AS stance, r.check AS check, r.personal AS personal, r.post_id AS post_id,
+       r.created_at AS created_at
+"""
+
+# Q41, for an issue. Every evidence edge into the issue, its sub-issues or their solutions, then every
+# edge from other evidence into that evidence (evidence on evidence, one step).
+ISSUE_EVIDENCE = """
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
+WITH i, collect(child) AS children
+WITH [i] + children AS issues
+UNWIND issues AS x
+OPTIONAL MATCH (x)-[:HAVE_PROPOSED]->(s:Solution)
+WITH issues, collect(DISTINCT s) AS solutions
+UNWIND issues + solutions AS t
+MATCH (e:Evidence)-[:SUPPORTS|REFUTES]->(t)
+WITH collect(DISTINCT t) + collect(DISTINCT e) AS targets
+UNWIND targets AS t
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+LIMIT $limit
+""" + _EVIDENCE_COLUMNS
+
+# Q41, record-wide. The evidence most supported by other evidence (then least refuted, then submitted
+# by most posts), with the edges into it and its own edges out.
+TOP_EVIDENCE = """
+MATCH (top:Evidence)
+WITH top, COUNT { (:Evidence)-[:SUPPORTS]->(top) } AS supported,
+     COUNT { (:Evidence)-[:REFUTES]->(top) } AS refuted, COUNT { (:Person)-[:SUBMIT]->(top) } AS submitted
+ORDER BY supported DESC, refuted ASC, submitted DESC, top.created_at ASC
+LIMIT $limit
+CALL (top) {
+  MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(top)
+  RETURN e, r, top AS t
+  UNION
+  MATCH (top)-[r:SUPPORTS|REFUTES]->(t)
+  RETURN top AS e, r, t
+}
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+""" + _EVIDENCE_COLUMNS
+
+
+def issue_stances(key: str, limit: int = SOLUTION_LIMIT) -> list[dict[str, Any]]:
+    """Q40."""
+    return _read(ISSUE_STANCES, key=key, limit=limit, stance_limit=STANCE_LIMIT)
+
+
+def top_solutions(limit: int = 10) -> list[dict[str, Any]]:
+    """Q42."""
+    return _read(TOP_SOLUTIONS, limit=limit, stance_limit=STANCE_LIMIT)
+
+
+def issue_evidence(key: str, limit: int = EDGE_LIMIT) -> list[dict[str, Any]]:
+    """Q41 for an issue: one row per evidence edge, oldest first."""
+    return _read(ISSUE_EVIDENCE, key=key, limit=limit)
+
+
+def top_evidence(limit: int = EVIDENCE_LIMIT) -> list[dict[str, Any]]:
+    """Q41 record-wide: one row per evidence edge into or out of the top evidence, oldest first."""
+    return _read(TOP_EVIDENCE, limit=limit)
