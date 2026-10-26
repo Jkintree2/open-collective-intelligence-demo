@@ -20,7 +20,7 @@ app/graph_stances.py one stance per person and solution (Q23)
 app/graph_own_posts.py own posts: Q24, Q25 and the feed's yes or no flags (Q7)
 app/graph_search.py keyword search (Q26, Q27)
 app/graph_tidy.py  move, rename, merge and their change record (Q28 to Q32)
-app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts, one post's stored readings (Q35), and the issue page's source confidence read (Q39)
+app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts (5b also carries `answers`, issue 29), one post's stored readings (Q35) and statements answering a page (Q35b), and the issue page's source confidence read (Q39)
 app/graph_ask.py   Phase 3: Ask the record's reads: stances with their posts and dates (Q40), evidence on evidence for an issue and record-wide (Q41), top solutions record-wide (Q42)
 app/graph_places.py Phase 3: issues near a place and the Near filter's prefill (Q43), places of a page of posts (Q44)
 app/backup.py      portable export format version 2 (version 1 still restores), typed values and validation; passwords and links never in a copy
@@ -48,6 +48,7 @@ app/fetch_page.py  Phase 2: reads the page behind an evidence link (public addre
 app/fetch_pdf.py   Phase 2 revision round: the text of a PDF (pypdf, in a separate process that sends each page as it reads it, stopped after 25 seconds keeping the pages read, and held to 384 MB on Linux; 15 MB, first 40 pages; date from its own information), arXiv's abstract to paper addresses; no Cypher
 app/fetch_video.py Phase 2 revision round: a YouTube video's captions through YouTube's player data (public addresses only, pinned, no redirects, 2 MB and 8 seconds a request), or a transcript the writer pasted (never kept); the quote's time; logs "reader": "youtube" and the outcome; no Cypher
 app/check.py       Phase 2: one reading per evidence link (supports, partly, refutes or unclear, with a quote that must be on the page; the claim is judged first, and the writer's supports or refutes is never sent), the writer's own sentence, source facts, suggestions, and the process cache the write path confirms checks against; no Cypher
+app/sides.py       Phase 2, issue 29: when a kept reading takes the other side from the writer's, the row's statement (its name, key and side) so the post stores the page on its side and the writer's statement on theirs; statements() for the card's sentences and the write path; no Cypher, no I/O
 app/issue_groups.py inclusive issue counts and sorting; no Cypher
 app/confidence.py  Phase 2: source confidence on the issue page (Q39's rows to one line per piece of evidence: type, date, age, primary or secondary, agreement, and the disagreement line); no Cypher
 app/text.py        normalise(), make_key(), clean_name(), sentences(payload, display_name)

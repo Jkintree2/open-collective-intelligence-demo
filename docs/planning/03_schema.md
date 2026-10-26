@@ -6,6 +6,8 @@
 
 > **Extended 26 October 2026 for Phase 3 (Talking to the record).** Added: three place properties on `Post` and their indexes, queries Q40 to Q46, what is never stored and what is logged; the Post statement, Q24 and Q25 carry the place. No new label, relationship type or constraint. See "Phase 3: talking to the record" at the end. Everything in it ships behind its own switch.
 
+> **Extended 26 October 2026 for GitHub issue 29.** A page read as taking the other side from the writer's is stored on its own side, with the writer's statement as a second piece of evidence on theirs: one edge property, `answers`, and Q35b; statement 5b, Q39 and Q41 carry it. See "Revision round: the page's side and the writer's side" at the end of Phase 2. Behind `EVIDENCE_CHECK_ENABLED`.
+
 Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kickoff decisions require: sub-issues, an anonymous flag on relationships, a source link on Evidence, timestamps, and a Post node so every edge traces back to the text that produced it.
 
 ## Node labels
@@ -1088,6 +1090,54 @@ Q35 also returns `r.check_quote_at` and `r.check_pasted` (an edit keeps them wit
 **Source facts for a video.** The type says what the channel is: `news`, `organisation` (a government channel counts as an organisation) or `other`; any other type the reading guesses becomes `other`. The date is the upload date. On the card and the issue page a video's type reads "news video", "organisation's video" or "video".
 
 **Export and restore.** These travel in export version 2 with no format change. Restore checks `check_quote_at` is text and `check_pasted` a boolean.
+
+
+### Revision round: the page's side and the writer's side (GitHub issue 29, added 26 October 2026)
+
+From John's issue 29: he cited the Wikipedia article on climate change about the issue "Climate change"; his statement said the rise in CO2 was minuscule, so he chose refutes, but the page itself supports the issue. "Could it be posted as refutes for the statement, and supports for the source?" Eston chose to store both. One property only, still behind `EVIDENCE_CHECK_ENABLED`; no new label, relationship type, constraint or index.
+
+**When a row splits.** An evidence row with a link whose kept reading (`check.kept_checks`: one this process made, or, on an edit, the one this post's edge already holds) is `supports` or `refutes` and is not the row's own `stance`. Every other row is written exactly as before, as one edge on the writer's side: a `partly`, `unclear` or `unread` reading, no reading, a reading the site did not make, and the same side. With the flag unset statements 5 and 5b are Phase 1's, whatever the card says. The writer avoids the split by choosing the page's side. `app/sides.py` decides in Python, before the transaction; `graph_posts.write_payload` writes.
+
+**What a split row writes**, in the same transaction, in this order:
+
+1. The page, by statements 5 and 5b extended exactly as before, except that 5b's `{rel}` is the reading's side (`SUPPORTS` for `supports`). The reading's properties go on that edge as before, and the source facts on the Evidence.
+2. The writer's statement: a second Evidence, by statement 5 extended with `$url` and `$source` null (so no link and no source facts) and the post's own `SUBMIT`, then statement 5b extended with `{rel}` the writer's side, to the same target, every reading property and `personal` null, and `answers` set.
+
+| Property | On | Type | Meaning |
+|---|---|---|---|
+| `answers` | the statement's `SUPPORTS` or `REFUTES` edge | string or absent | The key of the Evidence whose page was read the other way, written by the same post. Null (so not stored) on every other edge. |
+
+```cypher
+// 5b, extended again ({rel} and {label} from whitelists, as before). $answers is null on every row but a statement.
+MATCH (e:Evidence {key: $evidence_key}), (t:{label} {key: $target_key})
+CREATE (e)-[:{rel} {post_id: $post_id, created_at: $now,
+                    check: $check, check_quote: $check_quote, checked_at: $checked_at,
+                    check_claim: $check_claim, check_reason: $check_reason, personal: $personal,
+                    check_quote_at: $check_quote_at, check_pasted: $check_pasted, answers: $answers}]->(t)
+```
+
+**The statement's name** is the writer's own sentence about the page, as the reading kept it (`check_claim`, which is in the statement saved with the post), through `clean_name()`; when the reading kept none, "Statement on {the page's evidence name}", for example "Statement on En.wikipedia.org/wiki/Climate_change". It never takes the key of another row on the same card, of an earlier statement on it, or of evidence the record holds with a link (Q8's evidence candidates, the 200 newest), so it can never gain a link; when neither name is free the row does not split. The name rule is the usual one: two posts whose statements have the same name share one Evidence, each with its own edges.
+
+**Not personal.** The statement's edge never carries `personal`: that tick is the writer saying the evidence is something they saw or lived through, ticked by hand on a row with no link (revision round of 22 October). The statement is their reading of the page, so it must not read "From personal experience."; `answers` marks it instead.
+
+**Editing (Q24, Q25).** The edit card reads the post's statements:
+
+```cypher
+// Q35b. The statements one post wrote beside a page read the other way.
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WHERE r.post_id = $post_id AND r.answers IS NOT NULL
+RETURN e.key AS evidence_key, r.answers AS answers, t.key AS target_key, type(r) AS stance
+```
+
+Each statement is left off the card, and the page's row shows the statement's side, the writer's, with the reading the page's edge holds, so the card looks as it did before posting. Saving runs the same rule again (the stored reading is kept as before), and Q25 step 1 removes every edge the post wrote, the statement's included, before the card is written again under the same post id; orphans go after, so an unchanged edit reuses the same statement and adds nothing. An edit that chooses the page's side writes one edge, and the statement, now with no edges, is removed as an orphan. Q35b lives in `app/graph_evidence.py` and is read only with the flag set; unset, the edit card shows the post's edges as they are (two rows) and saves them as Phase 1 rows.
+
+**Deleting (Q11).** Unchanged: it removes every edge carrying the post's id, so both pieces, and orphans after.
+
+**Reads.** Q39 also returns `r.answers`. Source confidence (`app/confidence.py`) never counts a statement as another piece of evidence saying the same or disagreeing, on either side, and gives it no source line; in place of "No source given." it says whose words they are and which page they answer (04_interface.md). Q41 (both forms) also returns `r.answers`, and the digest marks the piece `"writers_own_words_beside": "E1"` (the page's id, or `true` when the page is not among the digest's pieces); it has no link and no source line, so it is never described as a page that was read. Q1, Q4, Q5, Q6 and Q7 are unchanged: the statement is a piece of evidence on what the row was about, shown under the writer's side and counted in the issue's pieces of evidence, and the feed's sentences under the post name both.
+
+**Export and restore.** `answers` travels in export version 2 with no format change. Restore checks it is text.
+
+**Logging.** The `merge` line gains `both_sides`, the number of rows that split, beside `checks_kept`.
 
 
 ## Change of email (no-cost extra X2, added 20 October 2026)
