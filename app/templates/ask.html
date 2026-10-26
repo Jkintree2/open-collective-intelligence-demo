@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{% if issue %}Ask about this issue{% else %}Ask the record{% endif %} · {{ site_name }}{% endblock %}
+{% block content %}{% if issue %}
+<p class="crumbs"><a href="/issues">Issues</a> › <a href="/issues/{{ issue.key|urlencode }}">{{ issue.name or issue.key }}</a></p>
+<h1 id="ask-title">Ask about this issue</h1>
+{% else %}
+<h1 id="ask-title">Ask the record</h1>
+<p class="ask-lead">Ask a question in plain words. The answer is built only from what people have posted here, and names the posts it comes from.</p>
+{% endif %}
+{% set ask_issue = issue %}{% set ask_page = true %}{% set ask_result = result %}{% set ask_question = question %}{% set ask_earlier = earlier %}{% include "_ask.html" %}
+{% endblock %}

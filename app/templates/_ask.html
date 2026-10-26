@@ -1,0 +1,27 @@
+{# Phase 3: the Ask box, on /ask (ask_issue none) and on an issue page (ask_issue the issue). Shown only
+   with ASK_ENABLED. Without JavaScript the form posts to /ask and the answer comes back there. #}
+<section class="ask" data-ask{% if ask_issue %} data-issue="{{ ask_issue.key }}"{% endif %}>
+  {% if not ask_page %}<h2 id="ask-title">Ask about this issue</h2>{% endif %}
+  <form class="ask-form" method="post" action="/ask">
+    {% if ask_issue %}<input type="hidden" name="issue" value="{{ ask_issue.key }}">{% endif %}
+    {% for earlier in ask_earlier or [] %}<input type="hidden" name="earlier" value="{{ earlier }}">{% endfor %}
+    <textarea name="question" rows="2" aria-labelledby="ask-title" placeholder="{% if ask_issue %}For example: Why do people oppose these solutions?{% else %}For example: What do people say about the Security Council veto?{% endif %}">{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
+    <button class="primary" type="submit">Ask</button>
+  </form>
+  {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues.</p>{% endif %}
+  <p class="ask-note">Answers sum up what is in the record, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up; nothing is kept after you leave.</p>
+  <p class="ask-status" data-ask-status aria-live="polite">{% if ask_result and not ask_result.status %}{{ ask_result.message }}{% endif %}</p>
+  <div class="ask-answers" data-ask-answers aria-live="polite">{% if ask_result and ask_result.status %}
+    <div class="ask-answer">
+      <p class="ask-question">{{ ask_question }}</p>
+      {% if ask_result.message %}<p class="ask-message">{{ ask_result.message }}</p>{% endif %}
+      {% for paragraph in ask_result.paragraphs %}<p class="ask-paragraph">{{ paragraph.text }}<span class="ask-refs">{% for n in paragraph.refs %} [{{ n }}]{% endfor %}</span></p>
+      {% endfor %}{% if ask_result.partial %}<p class="ask-partial">{{ ask_result.partial }}</p>{% endif %}
+      {% if ask_result.sources %}<h3 class="ask-sources-title">Sources</h3>
+      <ol class="ask-sources">{% for source in ask_result.sources %}
+        <li>{% if source.kind == "post" %}{{ source.name }}{% if source.when %}, {{ source.when }}{% endif %}{% if source.text %}: “{{ source.text }}”{% endif %}{% else %}{{ "Solution" if source.kind == "solution" else "Evidence" }}: {{ source.name }}.{% endif %}{% if source.issue and source.href %} On <a href="{{ source.href }}">{{ source.issue }}</a>{% endif %}</li>{% endfor %}
+      </ol>{% endif %}
+    </div>
+  {% endif %}</div>
+</section>
+<script src="/static/ask.js?v={{ asset_version }}" defer></script>

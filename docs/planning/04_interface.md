@@ -969,7 +969,13 @@ After ten seconds, one more line until the answer comes:
 >
 > 1. {name or Anonymous}, {date}: "{the first 200 characters of the post}…" On {issue name}
 
-Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
+A source that is a solution or a piece of evidence (a count line cites these) reads, on an issue page and on the Ask page alike (added 26 October 2026 after the walk):
+
+> 2. Solution: {solution name}. On {issue name}
+
+> 3. Evidence: {evidence name}. On {issue name}
+
+"On {issue name}" is left off when the evidence belongs to no issue. Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
 
 **When the record had more than one answer can read,** under the answer:
 
