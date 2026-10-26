@@ -1,7 +1,8 @@
-"""Keyword search on the Issues page (03_schema.md, Phase 1, Q26 and Q27; GitHub issue 2).
-Search by meaning and event dates are Phase 3."""
+"""Keyword search on the Issues page (03_schema.md, Phase 1, Q26 and Q27; GitHub issue 2), and the
+looser query that finds what a question asked of the whole record is about (Phase 3)."""
 
 import re
+import string
 from urllib.parse import quote
 
 from app import graph_search
@@ -22,6 +23,44 @@ def lucene_query(text: str) -> str | None:
             continue
         escaped = _SPECIAL.sub(r"\\\1", word)
         terms.append(f"+({escaped} {escaped}*)")
+    return " ".join(terms) or None
+
+
+# A question is read up to here (the ask box takes 500 characters); the word cap is the same.
+QUESTION_CHARS = 500
+# Words that say nothing about what a question is about (Phase 3, ask the record).
+STOP_WORDS = frozenset("""
+a about above after again against all also am an and any are as at be because been before being below
+between both but by can could did do does doing done down during each either else ever every few for
+from further get gets got had has have having he her here hers herself him himself his how however i if
+in into is it its itself just let like many may me might more most much must my myself no nor not now of
+off on once one only or other our ours ourselves out over own per please same say says she should so
+some such tell than that the their theirs them themselves then there these they this those through to
+too under until up upon us very was we were what whats when where whether which while who whom whose why
+will with within without would yet you your yours yourself yourselves
+whos hows wheres whens whys theres thats dont doesnt didnt isnt arent wasnt werent cant couldnt wont
+wouldnt shouldnt ive im youre theyre weve lets
+""".split())
+_EDGES = string.punctuation + "“”‘’«»…"
+
+
+def question_query(text: str) -> str | None:
+    """A question in sentences: stop words dropped and the rest ORed, each as written or as the start
+    of a word, so a post or name needs only some of the words to be found. Punctuation around a word
+    is dropped (a question ends in "?"); what remains is escaped as in lucene_query, so nothing typed
+    can change what the query means. At most MAX_WORDS terms; None when no word is left."""
+    terms: list[str] = []
+    for word in text[:QUESTION_CHARS].lower().split():
+        word = word.strip(_EDGES)
+        # A word of one character ("c" left from "c++") would match every word that starts with it.
+        if len(word) < 2 or not _WORDY.search(word) or word.replace("'", "").replace("’", "") in STOP_WORDS:
+            continue
+        escaped = _SPECIAL.sub(r"\\\1", word)
+        term = f"({escaped} {escaped}*)"
+        if term not in terms:
+            terms.append(term)
+        if len(terms) == MAX_WORDS:
+            break
     return " ".join(terms) or None
 
 
