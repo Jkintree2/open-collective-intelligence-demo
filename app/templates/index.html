@@ -58,6 +58,8 @@
   anon.addEventListener('change', syncName); syncName();
 </script>
 {% if evidence_check %}<script src="/static/evidence_check.js?v={{ asset_version }}" defer></script>{% endif %}
+{% if switches().follow_ups %}<script src="/static/followups.js?v={{ asset_version }}" defer></script>{% endif -%}
+{% if switches().places %}<script src="/static/place.js?v={{ asset_version }}" defer></script>{% endif -%}
 <script src="/static/card.js?v={{ asset_version }}" defer></script>
 <script src="/static/dictation.js?v={{ asset_version }}" defer></script>
 <script src="/static/app.js?v={{ asset_version }}" defer></script>

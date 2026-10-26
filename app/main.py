@@ -72,6 +72,15 @@ templates.env.globals["asset_version"] = hashlib.sha256(
 ).hexdigest()[:10]
 templates.env.filters["anchor"] = solution_anchor
 
+
+def switches() -> dict[str, bool]:
+    """Phase 3's switches for templates, read when the page is drawn (tests replace main.settings)."""
+    return {"ask": settings.ask_enabled, "follow_ups": settings.follow_ups_enabled,
+            "places": settings.places_enabled, "about": settings.about_enabled}
+
+
+templates.env.globals["switches"] = switches
+
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
 FEED_LIMIT = 60
