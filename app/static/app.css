@@ -453,3 +453,8 @@ form.search button { min-height: 44px; }
 /* Phase 3: the Near filter on the Issues page, and the place under a post. */
 
 /* Phase 3: the About page. */
+.about a { color: var(--accent); overflow-wrap: anywhere; }
+.about .guiding { margin-top: 20px; }
+.about .guiding h3 { font-weight: bold; margin-bottom: 8px; }
+/* The documents keep the line breaks of their files. */
+.about .guiding-text { white-space: pre-line; overflow-wrap: anywhere; font-size: 0.95rem; }
