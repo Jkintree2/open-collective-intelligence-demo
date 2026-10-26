@@ -67,5 +67,14 @@
             {"row": "evidence", "name": "Insurers stopped covering homes on our street"}],
    "least": 1, "most": 3, "fixed": 1, "call": true,
    "never": [["solution", "who"]],
-   "expect": "At most 3, the fixed question among them."}
+   "expect": "At most 3, the fixed question among them."},
+  {"id": "F11", "name": "Two new issues, a new solution and evidence with no link, where, who and how all said (the walk's bus statement, 26 Oct)",
+   "text": "Bus services in small towns keep getting cut, so older people without cars cannot reach the doctor. A survey by our county council found that half the village routes were dropped in the last five years. The county should fund a demand responsive minibus that people can book by phone.",
+   "rows": [{"row": "issue", "name": "Bus service cuts in small towns"},
+            {"row": "issue", "name": "Older people without cars cannot reach the doctor"},
+            {"row": "solution", "name": "Fund a demand responsive minibus bookable by phone"},
+            {"row": "evidence", "name": "County council survey on dropped village routes"}],
+   "least": 2, "most": 3, "fixed": 1, "call": true,
+   "never": [["solution", "who"], ["solution", "how"]],
+   "expect": "The fixed question and at least one question on an issue or the solution that the statement leaves open (why, who causes it, by when)."}
 ]
