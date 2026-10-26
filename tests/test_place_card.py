@@ -169,3 +169,35 @@ def test_a_copy_checks_the_place_properties():
                 {"place_area": "x" * 81}, {"place_area": ["x"]}, {"place_area_key": 5}):
         with pytest.raises(InvalidBackup):
             properties(bad)
+
+
+def test_the_place_indexes_are_made_only_with_the_switch(monkeypatch):
+    """Startup runs the schema statements; with PLACES_ENABLED unset the two place indexes are not among them."""
+    import asyncio
+    import importlib
+    from types import SimpleNamespace
+
+    from app import graph
+    ran = []
+    monkeypatch.setattr(graph, "driver", lambda: SimpleNamespace(execute_query=lambda q, **kw: ran.append(q)))
+    monkeypatch.setattr(graph, "database", lambda: "neo4j")
+    graph.ensure_constraints()
+    assert ran == list(graph.CONSTRAINTS) and not any("place" in statement for statement in ran)
+    ran.clear()
+    graph.ensure_constraints(places=True)
+    assert ran == list(graph.CONSTRAINTS + graph.PLACE_INDEXES)
+
+    # The app's startup passes the switch.
+    from dataclasses import replace
+    main = importlib.import_module("app.main")
+    asked = []
+    monkeypatch.setattr(graph, "open_driver", lambda settings: None)
+    monkeypatch.setattr(graph, "close_driver", lambda: None)
+    monkeypatch.setattr(graph, "ensure_constraints", lambda places=False: asked.append(places))
+
+    async def start(enabled):
+        monkeypatch.setattr(main, "settings", replace(main.settings, places_enabled=enabled))
+        async with main.lifespan(main.app):
+            pass
+    asyncio.run(start(False)); asyncio.run(start(True))
+    assert asked == [False, True]

@@ -25,7 +25,7 @@ def test_no_dashes_in_the_names_people_read():
 
 
 @pytest.mark.parametrize("text, code", [
-    ("Germany", "DE"), ("germany ", "DE"), ("DE", "DE"), ("de", "DE"),
+    ("Germany", "DE"), ("germany ", "DE"), ("DE", "DE"), (" DE ", "DE"),
     ("United States", "US"), ("USA", "US"), ("U.S.A.", "US"), ("US", "US"), ("United States of America", "US"),
     ("America", "US"), ("UK", "GB"), ("U.K.", "GB"), ("Great Britain", "GB"), ("England", "GB"),
     ("Scotland", "GB"), ("the Netherlands", "NL"), ("Holland", "NL"), ("The Bahamas", "BS"), ("The Gambia", "GM"),
@@ -38,7 +38,8 @@ def test_country_code_reads_the_usual_ways_of_writing_a_country(text, code):
     assert places.country_code(text) == code
 
 
-@pytest.mark.parametrize("text", [None, "", "   ", "Korea", "Deutschland", "Narnia", "Europe", "St. Louis"])
+@pytest.mark.parametrize("text", [None, "", "   ", "Korea", "Deutschland", "Narnia", "Europe", "St. Louis",
+                                  "de", "us", "No", "In", "Me", "To", "By", "no", "in", "IT'S"])
 def test_country_code_is_none_for_what_it_cannot_be_sure_of(text):
     assert places.country_code(text) is None
 

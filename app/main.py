@@ -129,7 +129,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _configure_logging()
     graph.open_driver(settings)
     try:
-        graph.ensure_constraints()
+        graph.ensure_constraints(places=settings.places_enabled)
     except RecordAsleep as exc:
         log.warning(json.dumps({"event": "constraints_skipped", "error": str(exc)}))
     yield
