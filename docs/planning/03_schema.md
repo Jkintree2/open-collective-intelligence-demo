@@ -1169,76 +1169,137 @@ Two single range indexes rather than one composite, so Q43 by country alone uses
 
 **Export and restore.** The three properties travel in export version 2 with no format change. Restore checks they are text or null, `place_country` two upper-case letters, `place_area` at most 80 characters.
 
-### Q40. Stances on an issue's solutions, with their posts and dates
+### Q40. An issue's solutions, with their stances, posts and dates
 
-For Ask the record (record scope and issue scope). `$keys`: the issue asked about and its sub-issues (from Q2), or on the record scope the up to three issues the search picked and their sub-issues. One row per stance edge. Person keys are never returned: a stance edge is one per person and solution (MERGE), so rows per solution and type count people as Q4 does, a 0.1 Person holding both stances counting once each way.
+For Ask the record. `$key`: the issue asked about; the query covers its sub-issues itself. On the record scope it runs once for each of the up to three issues the search picked. One row per solution, ranked by net support as Q4 revised ranks them, so a solution nobody has taken a stance on is still listed. `$limit` is 20 solutions; `$stance_limit` 20 dated stances under one solution, newest first. The counts are always whole: `COUNT {}` over every stance, never over the listed ones. Person keys are never returned: proposers are counted as in Q4 (by account and anonymity, D2), and a stance comes as its type, its date and the posts that took it.
 
 ```cypher
-// Q40. $keys: issue keys; $limit: 400.
-MATCH (i:Issue)-[:HAVE_PROPOSED]->(s:Solution)<-[r:APPROVE|OPPOSE]-(:Person)
-WHERE i.key IN $keys
-WITH DISTINCT s, r
-RETURN s.key AS solution_key, s.name AS solution_name, type(r) AS stance,
-       r.created_at AS created_at, coalesce(r.last_post_id, r.post_id) AS post_id,
-       coalesce(r.anonymous, false) AS anonymous, r.source AS source
-ORDER BY s.key, r.created_at DESC
+// Q40. $key: the issue; $limit: 20; $stance_limit: 20.
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
+WITH i, collect(child) AS children
+UNWIND [i] + children AS x
+MATCH (x)-[:HAVE_PROPOSED]->(s:Solution)
+WITH DISTINCT s
+WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 LIMIT $limit
+CALL (s) {
+  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
+  WITH home ORDER BY home.created_at
+  RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
+}
+CALL (s) {
+  OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
+  RETURN count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+         [x IN collect(DISTINCT pr.post_id) WHERE x IS NOT NULL] AS proposed_in
+}
+CALL (s) {
+  OPTIONAL MATCH (:Person)-[st:APPROVE|OPPOSE]->(s)
+  WITH st ORDER BY st.created_at DESC
+  RETURN [x IN collect({stance: toLower(type(st)), date: toString(date(st.created_at)),
+                        post_ids: [p IN [st.post_id, st.last_post_id] WHERE p IS NOT NULL]})
+          WHERE x.stance IS NOT NULL][..$stance_limit] AS stances
+}
+RETURN s.key AS key, s.name AS name, issues, proposers, proposed_in, approves, opposes, stances
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 ```
 
-`post_id` is the newest post that took or repeated the stance (`last_post_id`, else `post_id`); null for a click stance (`source = 'click'`). The digest gives each solution its approve and oppose counts and each stance's date ("approved by 5, opposed by 2, as of 30 October"), and lists the posts behind the stances (the reasons) first among the posts. A stance's own `anonymous` flag decides nothing in the digest beyond what the post shows: names come only from `Post.display_name`, which is null on an anonymous post.
+`proposed_in` is the posts that proposed the solution. A stance's `post_ids` holds the post that took it and, when a later post said the same (`last_post_id`), that one too, so the first reason is kept with the later one; it is empty for a click stance. The digest gives each solution its approve and oppose counts and each stance's date ("approved by 5, opposed by 2, as of 30 October"), and lists the posts behind the stances (the reasons) first among the posts. Names come only from `Post.display_name`, which is null on an anonymous post.
 
-### Q41. Evidence on evidence
+### Q41. Evidence, and evidence on evidence
 
-For Ask the record: "evidence most supported by other evidence" (John's question d). Two reads, one per scope.
+For Ask the record, so answers say how well backed a point is, and for "evidence most supported by other evidence" (John's question d). Two forms with one column list: one row per evidence edge, with the evidence's name, link and source facts (Phase 2), what it is about, which way, the reading kept on the edge and the personal tick.
 
 ```cypher
-// Q41, issue scope. $keys as in Q40. Evidence about the issues or their solutions,
-// and every edge into it from other evidence.
-MATCH (i:Issue) WHERE i.key IN $keys
-OPTIONAL MATCH (i)-[:HAVE_PROPOSED]->(s:Solution)
-WITH collect(DISTINCT i) + collect(DISTINCT s) AS targets
-UNWIND targets AS t
+// Q41, for an issue. $key: the issue; $limit: 300 rows. Every evidence edge into the issue, its
+// sub-issues or their solutions, then every edge from other evidence into that evidence (one step).
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
+WITH i, collect(child) AS children
+WITH [i] + children AS issues
+UNWIND issues AS x
+OPTIONAL MATCH (x)-[:HAVE_PROPOSED]->(s:Solution)
+WITH issues, collect(DISTINCT s) AS solutions
+UNWIND issues + solutions AS t
 MATCH (e:Evidence)-[:SUPPORTS|REFUTES]->(t)
-WITH DISTINCT e
-MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(e)
-RETURN e.key AS evidence_key, e.name AS evidence_name,
-       other.key AS by_key, other.name AS by_name, other.url AS by_url,
-       type(r) AS stance, r.check AS check, r.post_id AS post_id, r.created_at AS created_at
-ORDER BY e.key, r.created_at
-LIMIT 200
-
-// Q41, record scope. The ten pieces of evidence with the most support from other evidence.
-MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(e:Evidence)
-WITH e, count(DISTINCT CASE WHEN type(r) = 'SUPPORTS' THEN other.key END) AS supported_by,
-        count(DISTINCT CASE WHEN type(r) = 'REFUTES' THEN other.key END) AS refuted_by
-RETURN e.key AS evidence_key, e.name AS evidence_name, e.url AS url, supported_by, refuted_by
-ORDER BY supported_by - refuted_by DESC, supported_by DESC, toLower(e.name) ASC
-LIMIT 10
+WITH collect(DISTINCT t) + collect(DISTINCT e) AS targets
+UNWIND targets AS t
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+LIMIT $limit
+RETURN e.key AS key, e.name AS name, e.url AS url,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published,
+       e.source_cites AS source_cites,
+       CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END AS target_kind,
+       t.key AS target_key, t.name AS target_name, t.url AS target_url,
+       toLower(type(r)) AS stance, r.check AS check, r.personal AS personal, r.post_id AS post_id,
+       r.created_at AS created_at
 ```
 
-Evidence about the issue itself and its solutions, with readings and source confidence, comes from Q39 (one call per issue key, unchanged), so answers can say how well backed a point is.
+```cypher
+// Q41, record-wide. $limit: 10. The evidence most supported by other evidence (then least refuted,
+// then submitted by most posts), with the edges into it and its own edges out.
+MATCH (top:Evidence)
+WITH top, COUNT { (:Evidence)-[:SUPPORTS]->(top) } AS supported,
+     COUNT { (:Evidence)-[:REFUTES]->(top) } AS refuted, COUNT { (:Person)-[:SUBMIT]->(top) } AS submitted
+ORDER BY supported DESC, refuted ASC, submitted DESC, top.created_at ASC
+LIMIT $limit
+CALL (top) {
+  MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(top)
+  RETURN e, r, top AS t
+  UNION
+  MATCH (top)-[r:SUPPORTS|REFUTES]->(t)
+  RETURN top AS e, r, t
+}
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+RETURN e.key AS key, e.name AS name, e.url AS url,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published,
+       e.source_cites AS source_cites,
+       CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END AS target_kind,
+       t.key AS target_key, t.name AS target_name, t.url AS target_url,
+       toLower(type(r)) AS stance, r.check AS check, r.personal AS personal, r.post_id AS post_id,
+       r.created_at AS created_at
+```
+
+Python (`app/ask.py`, with `confidence.py`'s words) turns the rows into the digest's evidence: side, readings, the source confidence line, and which other evidence supports or refutes it. Q39 is not read for asking: it covers one issue key and returns no names or links.
 
 ### Q42. Top solutions record-wide
 
-For Ask the record, record scope only: ranked by net support as Q4 revised, so "the most approved solutions" reads the same on both scopes.
+For Ask the record, record scope only. The same columns as Q40, ranked the same way, so "the most approved solutions" reads the same on both scopes. No floor on stances, so the list fills to 10.
 
 ```cypher
-// Q42. The ten solutions with the most net support, with up to three issues each.
+// Q42. $limit: 10; $stance_limit: 20.
 MATCH (s:Solution)
-OPTIONAL MATCH (p:Person)-[r:APPROVE|OPPOSE]->(s)
-WITH s, count(DISTINCT CASE WHEN type(r) = 'APPROVE' THEN p.key END) AS approves,
-        count(DISTINCT CASE WHEN type(r) = 'OPPOSE' THEN p.key END) AS opposes,
-        max(r.created_at) AS last_stance_at
-WHERE approves + opposes > 0
-OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
-WITH s, approves, opposes, last_stance_at,
-     [h IN collect(DISTINCT home) | {key: h.key, name: h.name}][..3] AS issues
-RETURN s.key AS solution_key, s.name AS solution_name, approves, opposes, last_stance_at, issues
+WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
 ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
-LIMIT 10
+LIMIT $limit
+CALL (s) {
+  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
+  WITH home ORDER BY home.created_at
+  RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
+}
+CALL (s) {
+  OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
+  RETURN count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
+         [x IN collect(DISTINCT pr.post_id) WHERE x IS NOT NULL] AS proposed_in
+}
+CALL (s) {
+  OPTIONAL MATCH (:Person)-[st:APPROVE|OPPOSE]->(s)
+  WITH st ORDER BY st.created_at DESC
+  RETURN [x IN collect({stance: toLower(type(st)), date: toString(date(st.created_at)),
+                        post_ids: [p IN [st.post_id, st.last_post_id] WHERE p IS NOT NULL]})
+          WHERE x.stance IS NOT NULL][..$stance_limit] AS stances
+}
+RETURN s.key AS key, s.name AS name, issues, proposers, proposed_in, approves, opposes, stances
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 ```
 
-The posts behind these stances, when the digest has room, come from Q40 with `$keys` set to the solutions' issues.
+The digest also reads, unchanged: Q3 (counts only), Q6 (the posts, up to 200 per issue), Q7's post flags with `$me` null (edit dates only), and Q26 and Q27 with `search.question_query` for questions on the whole record. No new index.
 
 ### Q43. Issues near a place
 

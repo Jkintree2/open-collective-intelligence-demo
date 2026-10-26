@@ -301,9 +301,9 @@ John's statement of purpose, then the Universal Declaration of Human Rights and 
 
 Compact JSON built in code, with short ids the answer cites: `S` for solutions, `E` for evidence, `P` for posts. Filled in this order until the cap of 32,000 characters (about 8,000 tokens):
 
-1. **The record's structure.** The issues (name, parent, sub-issues); their solutions by net support, with approve and oppose counts and the date of each stance (Q4 or Q4 revised, as the issue page, and Q40); evidence about each issue and solution, with its side, its readings and the source confidence line (Q39 and `confidence.py`), and evidence on evidence (Q41). Record scope adds the top 10 solutions (Q42) and the top 10 pieces of evidence by support from other evidence (Q41, record scope). At most 20 solutions and 30 pieces of evidence; never cut by the cap.
-2. **Posts that took a stance** on those solutions (Q40's post ids), newest first: the reasons.
-3. **Other posts about the issues** (Q6), newest first, without those in 2.
+1. **The record's structure.** The issues (name, parent, sub-issues; counts from Q3); their solutions by net support, with approve and oppose counts and the date of each stance (Q40); evidence about each issue and solution, with its side, its readings and the source confidence line (`confidence.py`'s words), and evidence on evidence (Q41, for an issue). Record scope adds the top 10 solutions (Q42) and the top 10 pieces of evidence by support from other evidence (Q41, record-wide). At most 20 solutions and 30 pieces of evidence; never cut by the cap.
+2. **Posts that took a stance** on those solutions, or proposed them (Q40's `post_ids` and `proposed_in`), newest first: the reasons.
+3. **Other posts about the issues** (Q6, up to 200 an issue), newest first, without those in 2.
 
 Posts go in whole, in order, until the next would pass the cap; the rest are counted in `left_out`. A post is `{"id": "P3", "by": "Beth" | "Anonymous", "date": "2026-10-28", "edited": true, "stances": ["S1 approve"], "text": "…"}`. An anonymous post has no name and no key; no person key, email, account country, postal code or post place ever enters the digest.
 
