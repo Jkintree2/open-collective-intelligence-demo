@@ -6,7 +6,15 @@
   <label for="q">Search:</label>
   <input id="q" name="q" type="search" value="{{ q }}" placeholder="A word or two, for example: housing" maxlength="200" enterkeyhint="search">
   <button type="submit">Search</button>
-</form>
+</form>{% if near %}
+<form class="near" method="get" action="/issues">
+  <label for="near-country">Near:</label>
+  <select id="near-country" name="country"><option value=""></option>{% for code, name in near.countries %}<option value="{{ code }}"{% if code == near.country %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+  <input id="near-area" name="area" type="text" value="{{ near.area }}" placeholder="Town or area, optional" aria-label="Town or area, optional" maxlength="80">{% if sort != "people" %}
+  <input type="hidden" name="sort" value="{{ sort }}">{% endif %}
+  <button type="submit">Show</button>
+</form>{% if near.no_country %}
+<p class="notice" role="alert">Please choose the country for this town or area.</p>{% endif %}{% endif %}
 {% if results is not none %}
 <h2>Results for {{ q }}</h2>
 {% set found = results.issues or results.solutions or results.evidence or results.posts %}
@@ -18,10 +26,12 @@
 <section class="feed">{% for post in results.posts %}{% include "_post.html" %}{% endfor %}</section>{% endif %}
 {% if not found %}<p class="empty">Nothing matches {{ q }}. Try another word, or fewer words.</p>{% endif %}
 <p class="search-links"><a href="/issues">Show all issues</a></p>
-{% else %}
+{% else %}{% if near and near.place and issues %}
+<h2>Issues near {{ near.place }}</h2>
+<p class="search-links"><a href="/issues">Show all issues</a></p>{% endif %}
 <nav class="sorts" aria-label="Sort"><span class="counts">Sort by</span>
   {% for value, label in sorts %}
-  <a href="/issues?sort={{ value }}"{% if value == sort %} aria-current="page"{% endif %}>{{ label }}</a>
+  <a href="/issues?sort={{ value }}{{ near.query if near }}"{% if value == sort %} aria-current="page"{% endif %}>{{ label }}</a>
   {% endfor %}
 </nav>
 {% for issue in issues %}
@@ -39,8 +49,9 @@
   </ul>
   {% endif %}
 </section>
-{% else %}
-<p class="empty">No issues yet. Write something on the front page and it will appear here.</p>
+{% else %}{% if near and near.place %}
+<p class="empty">No statements have been placed in {{ near.place }} yet. <a href="/issues">Show all issues</a></p>{% else %}
+<p class="empty">No issues yet. Write something on the front page and it will appear here.</p>{% endif %}
 {% endfor %}
 {% endif %}
 {% if member %}<p class="counts search-links"><a href="/changes">Changes to the issues</a></p>{% endif %}

@@ -47,6 +47,10 @@ def pages(member_app, switch, monkeypatch):
         monkeypatch.setattr(graph, name, lambda key: [])
     monkeypatch.setattr(graph, "issue_solutions", lambda key, me=None, ranked=False: [])
     monkeypatch.setattr("app.graph_accounts.who_entered", lambda key: None)
+    # PLACES_ENABLED reads places (W4); none here.
+    monkeypatch.setattr("app.graph_places.post_places", lambda ids: {})
+    monkeypatch.setattr("app.graph_places.last_place", lambda me: None)
+    monkeypatch.setattr("app.graph_places.issues_near", lambda country, area_key: set())
     member_app.own_posts.append(dict(POST))
     return member_app
 

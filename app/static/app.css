@@ -451,5 +451,10 @@ form.search button { min-height: 44px; }
 /* Phase 3: the Place row on the card. */
 
 /* Phase 3: the Near filter on the Issues page, and the place under a post. */
+form.near { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0 0 1rem; }
+form.near select { flex: 1 1 10rem; min-width: 0; }
+form.near input { flex: 1 1 10rem; min-width: 0; min-height: 40px; }
+form.near button { min-height: 44px; }
+.post .place { margin: 4px 0 0; font-size: 0.9rem; color: var(--ink-soft); }
 
 /* Phase 3: the About page. */
