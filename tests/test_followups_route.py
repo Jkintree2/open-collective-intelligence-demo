@@ -1,7 +1,6 @@
 """POST /api/follow-ups: behind FOLLOW_UPS_ENABLED, gated, only new rows, and silent without a reading service."""
 
 import importlib
-from dataclasses import dataclass
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,12 +13,6 @@ from app.followups import MISSING_SOURCE, FollowUps
 REAL = followups.follow_ups
 
 
-@dataclass(frozen=True)
-class Switched(Settings):
-    # The switch itself comes with the Phase 3 scaffolding (config.py); until then the tests carry it.
-    follow_ups_enabled: bool = False
-
-
 ROWS = [{"row": "issue", "name": "Rent rises", "existing": False},
         {"row": "issue", "name": "Housing", "existing": True},
         {"row": "evidence", "name": "A survey", "existing": False, "url": None, "personal": False},
@@ -30,7 +23,7 @@ ROWS = [{"row": "issue", "name": "Rent rises", "existing": False},
 def api(monkeypatch):
     def make(**changes):
         values = {"app_env": "local", "llm_api_key": "offline test key", "follow_ups_enabled": True, **changes}
-        return Switched("test passphrase", "test secret", "test admin", "neo4j://localhost:7687", "neo4j", "test",
+        return Settings("test passphrase", "test secret", "test admin", "neo4j://localhost:7687", "neo4j", "test",
                         **values)
     holder = {"settings": make()}
     monkeypatch.setattr("app.config.get_settings", lambda: holder["settings"])

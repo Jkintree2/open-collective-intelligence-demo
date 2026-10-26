@@ -447,6 +447,12 @@ form.search button { min-height: 44px; }
 /* Phase 3: Ask the record, on /ask and in the box on each issue page. */
 
 /* Phase 3: follow-up questions under new rows on the card. */
+.follow-up { margin-top: 8px; padding: 8px 0 0 10px; border-left: 3px solid var(--rule); }
+.follow-up p { margin: 4px 0; font-size: 0.94rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+.follow-up label.follow-up-question { display: block; margin: 4px 0; color: var(--ink); overflow-wrap: anywhere; }
+.follow-up input[type="text"] { height: 44px; }
+.follow-up-actions { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 6px; }
+.follow-up-actions button:not(.quiet) { min-height: 44px; padding: 0 14px; border: 1px solid var(--accent); border-radius: 6px; background: var(--input); color: var(--ink); font: inherit; }
 
 /* Phase 3: the Place row on the card. */
 

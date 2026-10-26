@@ -168,3 +168,38 @@ test('a failed request shows nothing, and a reply for an earlier opening is igno
   await page.flush();
   assert.equal(page.boxes(page.groups.issues[0]).length, 1);
 });
+
+// Through the real card (page_harness with followups.js before card.js, as index.html loads it).
+const {setup} = require('./page_harness.js');
+const CANDIDATES = {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}};
+const READING = {payload: {found: true, language_ok: true, issues: [{name: 'Flooding'}, {name: 'Erosion'}],
+  solutions: [{name: 'Sea walls', for_issue: 'Erosion'}], evidence: [{name: 'Tide gauges', about: 'Erosion'}]},
+  source: 'model', extraction_raw: '{}', model: 'reader', latency_ms: 5};
+
+test('on the real card: asked once the card opens, answered into the statement, the card kept as it is', async () => {
+  const p = await setup(undefined, CANDIDATES, {before: ['followups.js']}); await p.flush();
+  await p.type('Flooding is getting worse and the coast is eroding');
+  await p.get('compose').emit('submit');
+  p.requests.find(r => r.url === '/api/extract').resolve(READING);
+  await p.flush();
+  const asked = p.requests.filter(r => r.url === '/api/follow-ups');
+  assert.equal(asked.length, 1);
+  const body = JSON.parse(asked[0].options.body);
+  assert.deepEqual(body.rows.map(row => [row.row, row.name]), [['issue', 'Erosion'], ['solution', 'Sea walls'], ['evidence', 'Tide gauges']]);
+  asked[0].resolve({questions: [
+    {row: 'evidence', name: 'Tide gauges', kind: 'where', text: MISSING, fixed: true},
+    {row: 'solution', name: 'Sea walls', kind: 'who', text: 'Who would build the sea walls?', fixed: false}]});
+  await p.flush();
+  const extracts = p.requests.filter(r => r.url === '/api/extract').length;
+  const walls = p.get('solution-rows').children[0];
+  const box = walls.children.find(child => child.className === 'follow-up');
+  assert.ok(box);
+  const walk = element => [element, ...(element.children || []).flatMap(child => typeof child === 'object' ? walk(child) : [])];
+  walk(box).find(element => element.tag === 'input').value = 'The county';
+  await walk(box).find(element => element.textContent === 'Add to my statement').emit('click');
+  assert.equal(p.get('text').value, 'Flooding is getting worse and the coast is eroding\nWho would build the sea walls? The county');
+  assert.equal(p.get('card').hidden, false);
+  assert.deepEqual(p.get('issue-rows').children.map(row => row.children.find(c => c.className === 'name').value), ['Flooding', 'Erosion']);
+  assert.equal(p.requests.filter(r => r.url === '/api/extract').length, extracts);  // not read again
+  assert.ok(p.get('evidence-rows').children[0].children.some(child => child.className === 'follow-up'));
+});
