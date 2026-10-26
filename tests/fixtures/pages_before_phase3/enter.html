@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open Collective Intelligence</title>
+  <link rel="stylesheet" href="/static/app.css?v=ASSET">
+  <script src="/static/once.js?v=ASSET" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-name" href="/">Open Collective Intelligence</a>
+    
+  </header>
+  <main class="column">
+    
+<section class="card gate">
+  <h1>Open Collective Intelligence</h1>
+  <p>An invitation-only test of a shared database of issues, solutions, and evidence that people are claiming, proposing, submitting.</p>
+  <p>Everything written here is merged into a free instance of the Neo4j Aura graph database that other testers can read. It is not a private conversation. Use it for things you are happy to say in public.</p>
+<p>A language model run by an outside company, DeepSeek, reads what you write when you enter statements. In the future, we would like to provide the option of using a small language model that runs on personal computers such as smartphones.</p>
+  
+  <form method="post" action="/enter">
+    <input type="hidden" name="next" value="/">
+    <label for="passphrase">Passphrase:</label>
+    <input id="passphrase" name="passphrase" type="password" autocomplete="off" required autofocus>
+    <button type="submit" class="primary">Enter</button>
+  </form>
+</section>
+
+  </main>
+</body>
+</html>

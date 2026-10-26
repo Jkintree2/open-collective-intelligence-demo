@@ -54,6 +54,12 @@ class Settings:
     evidence_check_enabled: bool = False
     deepseek_fetch: bool = True
     email_change_enabled: bool = False
+    # Phase 3, each off unless set in the Render dashboard: Ask the record, follow-up questions on the card,
+    # a place on each post (and the Near filter), the About page.
+    ask_enabled: bool = False
+    follow_ups_enabled: bool = False
+    places_enabled: bool = False
+    about_enabled: bool = False
 
     @property
     def is_local(self) -> bool:
@@ -66,6 +72,10 @@ def _site_url_ok(url: str, local: bool) -> bool:
         return True
     parts = urlsplit(url)
     return local and parts.scheme == "http" and parts.hostname in ("localhost", "127.0.0.1")
+
+
+def _on(env: dict[str, str], name: str) -> bool:
+    return (env.get(name) or "").strip().lower() in ("1", "true", "yes")
 
 
 def load_settings(env: dict[str, str] | None = None) -> Settings:
@@ -110,6 +120,10 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         evidence_check_enabled=(env.get("EVIDENCE_CHECK_ENABLED") or "").strip().lower() in ("1", "true", "yes"),
         deepseek_fetch=(env.get("DEEPSEEK_FETCH") or "1").strip() != "0",
         email_change_enabled=(env.get("EMAIL_CHANGE_ENABLED") or "").strip().lower() in ("1", "true", "yes"),
+        ask_enabled=_on(env, "ASK_ENABLED"),
+        follow_ups_enabled=_on(env, "FOLLOW_UPS_ENABLED"),
+        places_enabled=_on(env, "PLACES_ENABLED"),
+        about_enabled=_on(env, "ABOUT_ENABLED"),
     )
 
 

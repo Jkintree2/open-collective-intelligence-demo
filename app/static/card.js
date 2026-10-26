@@ -249,6 +249,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     find(group === 'issues' ? 'issue-rows' : group === 'solutions' ? 'solution-rows' : 'evidence-rows').append(row.element);
     refresh();
     for (const name of ['parent', 'for_issue', 'about']) if (row[name] && item[name]) row[name].value = item[name];
+    extras.forEach(extra => extra.row?.(group, row, item));
     changed();
     return row;
   }
@@ -277,6 +278,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       if (row) row.position = held;
     }
     if (!state.groups.issues.length) addRow('issues');
+    extras.forEach(extra => extra.opened?.(payload, meta));
     changed();
   }
   // Posting the text with no structure: the card opens with its issue rows emptied.
@@ -356,5 +358,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   const evidence = form.dataset?.evidenceCheck !== undefined && window.ociEvidenceCheck
     ? window.ociEvidenceCheck({find, request, node, text, changed, addRow, removeRow, reading: form.dataset.noReading === undefined})
     : null;
+  // Phase 3: card scripts that load before this one (followups.js, place.js) push a function onto
+  // window.ociCardExtras; each gets the same helpers and may answer {row(group, row, item), opened(payload, meta)}.
+  const extras = (window.ociCardExtras || []).map(extra => extra({find, request, node, text, state, changed, addRow, removeRow, updateText}) || {});
   return {state, grow, identity, changed, addRow, openCard, openPlain, noteShortened, loadCandidates, post, setPositionOnExisting};
 };

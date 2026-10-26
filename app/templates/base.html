@@ -10,7 +10,7 @@
 <body>
   <header class="site-header">
     <a class="site-name" href="/">{{ site_name }}</a>
-    {% block nav %}<nav><a href="/">Write</a><a href="/issues">Issues</a>{% if member %}<a href="/people">Enter a person</a><a href="/my-statements">My statements</a><a href="/account">My account</a>{% endif %}</nav>{% endblock %}
+    {% block nav %}<nav><a href="/">Write</a><a href="/issues">Issues</a>{% if switches().ask %}<a href="/ask">Ask</a>{% endif %}{% if member %}<a href="/people">Enter a person</a><a href="/my-statements">My statements</a><a href="/account">My account</a>{% endif %}{% if switches().about %}<a href="/about">About</a>{% endif %}</nav>{% endblock %}
   </header>
   <main class="column">
     {% block content %}{% endblock %}

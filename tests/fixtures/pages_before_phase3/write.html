@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open Collective Intelligence</title>
+  <link rel="stylesheet" href="/static/app.css?v=ASSET">
+  <script src="/static/once.js?v=ASSET" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="site-name" href="/">Open Collective Intelligence</a>
+    <nav><a href="/">Write</a><a href="/issues">Issues</a><a href="/people">Enter a person</a><a href="/my-statements">My statements</a><a href="/account">My account</a></nav>
+  </header>
+  <main class="column">
+    
+
+<p class="sentence">Write what you think about an issue that matters to you. We will pull out the issue, your claim, any evidence and any solution, show you what we found, and add it to a record everyone here shares.</p>
+
+<form method="post" action="/posts" class="write" id="compose" data-member="Ada Tester">
+  
+  
+  <div class="text-label">
+    <label for="text">Write or dictate your statement in the box.</label>
+    <button type="button" id="dictate" class="quiet" aria-pressed="false" hidden>🎙 Dictate</button>
+  </div>
+  <textarea id="text" name="text" rows="4" maxlength="4000" required autofocus></textarea>
+  
+  <p id="counter" hidden></p>
+  <p id="compose-message" class="notice" role="status" aria-live="polite"></p>
+  
+  <div class="anonymous-row">
+    <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
+    <p class="counts">Your name is not shown to others. The record still knows the post is yours, so you can edit or delete it later.</p>
+  </div>
+  
+  <div class="compose-actions">
+    <button type="submit" class="primary" id="read">Post</button>
+    <button type="button" id="stop" class="quiet" hidden>Stop and fill it in myself</button>
+    <button type="button" id="retry" class="quiet" hidden>Try again</button>
+  </div>
+  <section id="card" class="card" hidden aria-labelledby="card-title">
+    <h2 id="card-title">Here is what we found</h2>
+    <p id="card-message" class="notice" role="status"></p>
+    <p id="card-note" class="counts"></p>
+    <h3>Issue</h3><div id="issue-rows"></div>
+    <p class="counts">To add a sub-issue, write it here and choose the issue it is part of.</p>
+    <button type="button" class="quiet" id="add-issue">+ another issue</button>
+    <h3>Solutions</h3><div id="solution-rows"></div>
+    <button type="button" class="quiet" id="add-solution">+ add a solution</button>
+    <h3>Evidence</h3><div id="evidence-rows"></div>
+    <button type="button" class="quiet" id="add-evidence">+ add evidence</button>
+    <h3>What this will add</h3><ul id="sentences" aria-live="polite"></ul>
+    <p id="card-errors" class="notice" role="status"></p>
+    <button type="button" id="post" class="primary" disabled>Post</button>
+    <button type="button" id="discard" class="quiet">Discard</button>
+    <button type="button" id="plain" class="quiet">post it as a plain statement anyway</button>
+    <p id="credit" class="counts"></p>
+  </section>
+</form>
+<script>
+  var anon = document.getElementById('anonymous'), nameField = document.getElementById('display_name');
+  function syncName() { if (!nameField) return; if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
+  anon.addEventListener('change', syncName); syncName();
+</script>
+
+<script src="/static/card.js?v=ASSET" defer></script>
+<script src="/static/dictation.js?v=ASSET" defer></script>
+<script src="/static/app.js?v=ASSET" defer></script>
+<script src="/static/about_issue.js?v=ASSET" defer></script>
+
+<section class="feed" id="feed">
+  <h2>Recent posts</h2>
+
+<article class="post">
+  <p class="byline">Bob · <time datetime="2026-10-01T12:00:00+00:00" title="2026-10-01 12:00 UTC">3 days ago</time></p>
+  <p class="own-post"><a href="/posts/p1/edit">Edit</a> <a href="/posts/p1/delete">Delete</a></p>
+  <p class="statement">The veto blocks action.</p>
+  
+  
+</article>
+
+</section>
+
+  </main>
+</body>
+</html>
