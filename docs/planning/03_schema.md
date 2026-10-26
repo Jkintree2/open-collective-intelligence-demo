@@ -1163,7 +1163,7 @@ MATCH (post:Post {id: $id})
 SET post.place_country = $place_country, post.place_area = $place_area, post.place_area_key = $place_area_key
 ```
 
-**Indexes,** added to the startup list with the Post statement, idempotent like the others:
+**Indexes,** made at startup only when `PLACES_ENABLED` is set (`graph.PLACE_INDEXES`, through `ensure_constraints(places=True)`), so an unset switch leaves the database as it was; idempotent like the others:
 
 ```cypher
 CREATE INDEX post_place_country IF NOT EXISTS FOR (p:Post) ON (p.place_country);
@@ -1313,17 +1313,25 @@ The digest also reads, unchanged: Q2 (the issue's header), Q3 (counts only), Q6 
 The Issues page's "Near" filter. `$country` is an ISO code; `$area_key` the `make_key` of the town or area, or null. Same area key when given, else same country. An issue is near when a post placed there touches it, by the same rule as Q6 (any edge carrying the post's id, or a stance on one of its solutions).
 
 ```cypher
-// Q43. Keys of the issues a placed post touches.
-MATCH (post:Post)
+// Q43. Keys of the issues a placed post touches. $post_limit: 1000; $issue_limit: 500.
+MATCH (person:Person)-[:POSTED]->(post:Post)
 WHERE post.place_country = $country
   AND ($area_key IS NULL OR post.place_area_key = $area_key)
-WITH collect(post.id) AS ids
-MATCH (i:Issue)
-WHERE EXISTS { MATCH (i)-[r]-() WHERE r.post_id IN ids }
-   OR EXISTS { MATCH (i)-[:HAVE_PROPOSED]->(:Solution)<-[r:APPROVE|OPPOSE]-(:Person)
-               WHERE r.post_id IN ids OR r.last_post_id IN ids }
-RETURN i.key AS key
+WITH person, post ORDER BY post.created_at DESC LIMIT $post_limit
+WITH person, collect(post.id) AS ids
+MATCH (person)-[a:CLAIM|PROPOSE|SUBMIT|APPROVE|OPPOSE]->(n)
+WHERE a.post_id IN ids OR (type(a) IN ['APPROVE', 'OPPOSE'] AND a.last_post_id IN ids)
+WITH a, n, type(a) IN ['APPROVE', 'OPPOSE'] AS stance,
+     CASE WHEN a.post_id IN ids THEN a.post_id ELSE a.last_post_id END AS id
+UNWIND CASE WHEN n:Issue THEN [n] ELSE [] END
+     + [(n)-[r:PART_OF]-(i:Issue) WHERE r.post_id = id | i]
+     + [(n)-[r:SUPPORTS|REFUTES]->(i:Issue) WHERE r.post_id = id | i]
+     + [(i:Issue)-[r:HAVE_PROPOSED]->(n) WHERE stance OR r.post_id = id | i] AS i
+RETURN DISTINCT i.key AS key
+LIMIT $issue_limit
 ```
+
+It starts from the placed posts (the `place_country` range index) and reads each writer's own edges once, so its cost follows the posts placed there, not the size of the record. Every edge a post writes hangs off its writer: `CLAIM` to the issue, `PART_OF` from it, `PROPOSE` to a solution its `HAVE_PROPOSED` joins, `SUBMIT` to evidence whose `SUPPORTS` or `REFUTES` points at an issue, and a stance on a solution (a later post's stance carries `last_post_id`), which makes every issue that has proposed it near. It reads the newest 1000 placed posts (`NEAR_POSTS`) and returns at most 500 issues (`NEAR_ISSUES`). A live test checks it finds what the first, issue-first form of Q43 found.
 
 Python then keeps Q1's rows for these keys and groups and sorts them with `group_issues()` exactly as the full list: a top-level issue shows when it or one of its sub-issues is near, with only its near sub-issues under it; counts are Q1's, over the whole record, so "near" chooses which issues show, never what they count.
 
