@@ -45,3 +45,12 @@ def test_the_operators_guide_is_plain_and_covers_phase_1():
                    "Forgot your password?", "My account", "My statements", "Sending email", "Tidy this issue",
                    "Changes to the issues", "Sending email from your Gmail"):
         assert phrase in guide, phrase
+
+
+def test_the_operators_guide_covers_phase_3():
+    guide = section("docs/operators-guide.md", "Talking to the record")
+    for phrase in ("`ASK_ENABLED`", "`FOLLOW_UPS_ENABLED`", "`PLACES_ENABLED`", "`ABOUT_ENABLED`", "Add to my statement",
+                   "part of the public statement", "Near", "start again when the site sleeps", "half a US cent",
+                   "a third of a US cent", "After switching it on", "app/guiding/udhr.txt"):
+        assert phrase in guide, phrase
+    assert guide.count("**After switching it on:**") == 4

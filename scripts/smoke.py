@@ -5,8 +5,10 @@ signed in, read by the model or written to the record, so it is safe against pro
 
 Signed out it checks the sign-in page, that every page behind it sends you there, the back room's
 password prompt, and that the served scripts and style are exactly the ones in --ref (the hash the
-pages put on their links, and each file's bytes). With OCI_SMOKE_COOKIE set to an `oci_member`
-cookie copied from a signed-in browser, it also opens the signed-in pages. The cookie is never printed.
+pages put on their links, and each file's bytes). The pages behind a Phase 3 switch (`/about`, `/ask`)
+pass either way, not found while the switch is off or the page when it is on, and the line says which.
+With OCI_SMOKE_COOKIE set to an `oci_member` cookie copied from a signed-in browser, it also opens the
+signed-in pages. The cookie is never printed.
 """
 
 import argparse
@@ -24,6 +26,10 @@ import httpx
 GATED = ("/", "/issues", "/people", "/my-statements", "/account", "/changes")
 SIGNED_IN = {"/": "Recent posts", "/issues": "Issues", "/my-statements": "<h1>My statements</h1>",
              "/account": "<h1>My account</h1>"}
+# Pages behind a switch in the Render dashboard, not found while it is off. /about opens signed out;
+# /ask, like the gated pages, sends a signed-out reader to sign in and shows its heading signed in.
+ABOUT = ("/about", "<h1>About this site</h1>")
+ASK = ("/ask", '<h1 id="ask-title">Ask the record</h1>')
 WAKE_SECONDS = 90  # a free Render service asleep takes most of a minute to answer
 
 
@@ -52,6 +58,13 @@ def _sends_to_sign_in(response: httpx.Response) -> bool:
     return response.status_code == 303 and path in ("/sign-in", "/enter")
 
 
+def _switched(name: str, response: httpx.Response, on: bool) -> Check:
+    """A page behind a switch: not found means off and passes; anything else must be the page as it is on."""
+    if response.status_code == 404:
+        return Check(f"{name} (switched off)", True)
+    return Check(f"{name} (switched on)", on, f"answered {response.status_code}")
+
+
 def run(client: httpx.Client, static: dict[str, bytes], cookie: str | None = None) -> list[Check]:
     checks: list[Check] = []
     sign_in = client.get("/sign-in", timeout=WAKE_SECONDS)
@@ -76,11 +89,17 @@ def run(client: httpx.Client, static: dict[str, bytes], cookie: str | None = Non
                         and "basic" in admin.headers.get("www-authenticate", "").lower(), f"answered {admin.status_code}"))
     missing = client.get("/no-such-page-smoke-check")
     checks.append(Check("unknown page is not found", missing.status_code == 404, f"answered {missing.status_code}"))
+    about = client.get(ABOUT[0])
+    checks.append(_switched("/about opens signed out", about, about.status_code == 200 and ABOUT[1] in about.text))
+    ask = client.get(ASK[0])
+    checks.append(_switched("/ask signed out goes to sign in", ask, _sends_to_sign_in(ask)))
     if cookie:
         for path, marker in SIGNED_IN.items():
             response = client.get(path, headers={"Cookie": f"oci_member={cookie}"})
             checks.append(Check(f"{path} signed in", response.status_code == 200 and marker in response.text,
                                 f"answered {response.status_code}" + ("" if response.status_code != 200 else ", marker missing")))
+        ask = client.get(ASK[0], headers={"Cookie": f"oci_member={cookie}"})
+        checks.append(_switched("/ask signed in", ask, ask.status_code == 200 and ASK[1] in ask.text))
     return checks
 
 
