@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncIterator, Literal
 from dataclasses import asdict
-from urllib.parse import quote, unquote
+from urllib.parse import quote, unquote, urlencode
 
 from fastapi import Depends, FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -55,7 +55,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app import graph_own_posts
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
-from app import check, confidence, graph_accounts, graph_evidence, places, search, tidy
+from app import check, confidence, graph_accounts, graph_evidence, graph_places, places, search, tidy
 
 settings = get_settings()
 
@@ -192,6 +192,8 @@ def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
     structure = graph.post_structure([post["id"] for post in posts])
     # Only a member has own posts (with accounts off `me` is None and the record is asked nothing more).
     flags = graph_own_posts.post_flags(me, [post["id"] for post in posts]) if me else {}
+    # Phase 3: the place under a post (Q44), read only with PLACES_ENABLED.
+    placed = graph_places.post_places([post["id"] for post in posts]) if settings.places_enabled else {}
     for post in posts:
         created = post.get("created_at")
         post["when"] = relative_time(created, now) if created else ""
@@ -200,6 +202,8 @@ def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
         flag = flags.get(post["id"], {})
         post["mine"] = bool(flag.get("mine")) and not post.get("seed")
         post["edited"] = flag.get("edited_at") is not None
+        if post["id"] in placed:
+            post["place"] = places.place_text(placed[post["id"]]["country"], placed[post["id"]]["area"])
         rows = structure.get(post["id"], [])
         issue_keys = [r["to_key"] for r in rows if r["rel"] == "CLAIM"]
         first_issue = issue_keys[0] if issue_keys else None
@@ -278,21 +282,64 @@ def _render_index(
     )
 
 
+def _near(request: Request, country: str | None, area: str | None) -> dict:
+    """The Issues page's Near filter (Phase 3). Asked (Show pressed): the place it filters by, or none. Not
+    asked: the form starts at the member's last placed post (Q43), else the account's country."""
+    asked = country is not None or area is not None
+    # The list sends a code; country_code() takes a code only in capitals (a lower-case "de" could be a word).
+    country = country.strip().upper() if country and len(country.strip()) == 2 else country
+    code, area = places.country_code(country), places.clean_area(area) or ""
+    me = member_key(request)
+    if not asked and me:
+        last = graph_places.last_place(me)
+        if last:
+            code, area = last["country"], last["area"] or ""
+        else:
+            code = places.country_code((graph_accounts.own_details(me) or {}).get("country"))
+    near = {"countries": places.choices(), "country": code or "", "area": area, "place": None, "query": "",
+            "no_country": asked and bool(area) and not code}
+    if asked and code:
+        near["area_key"] = places.area_key(area)
+        near["area"] = area if near["area_key"] else ""
+        near["place"] = places.place_text(code, near["area"])
+        area = near["area"]
+        near["query"] = "&" + urlencode({"country": code, "area": area})
+    return near
+
+
+def _only_near(grouped: list[dict], keys: set[str]) -> list[dict]:
+    """A top-level issue that is near, or has a near sub-issue, with only its near sub-issues; counts unchanged."""
+    kept = []
+    for issue in grouped:
+        children = [child for child in issue["children"] if child["key"] in keys]
+        if issue["key"] in keys or children:
+            kept.append({**issue, "children": children})
+    return kept
+
+
 @app.get("/issues", response_class=HTMLResponse, dependencies=[Depends(require_access)])
-def issues_page(request: Request, sort: str = Query("people"), q: str = Query("")) -> Response:
+def issues_page(request: Request, sort: str = Query("people"), q: str = Query(""),
+                country: str | None = Query(None), area: str | None = Query(None)) -> Response:
     sort = sort if sort in graph.SORTS else "people"
     words = " ".join(q.split())[:search.MAX_CHARS]
+    near = _near(request, country, area) if settings.places_enabled else None
     if words:
         results = search.run(words, lambda posts: _decorate_posts(posts, me=member_key(request)))
-        return templates.TemplateResponse(
-            request, "issues.html", {"issues": [], "sort": sort, "sorts": SORTS, "q": words, "results": results})
+        return templates.TemplateResponse(request, "issues.html", {
+            "issues": [], "sort": sort, "sorts": SORTS, "q": words, "results": results, "near": near})
     grouped = graph.group_issues(graph.list_issues(), sort)
     for issue in grouped:
         issue["line"] = count_line(issue)
         for child in issue["children"]:
             child["line"] = count_line(child)
-    return templates.TemplateResponse(
-        request, "issues.html", {"issues": grouped, "sort": sort, "sorts": SORTS, "q": "", "results": None})
+    if near and near["place"]:
+        started = time.monotonic()
+        grouped = _only_near(grouped, graph_places.issues_near(near["country"], near["area_key"]))
+        log.info(json.dumps({"event": "near", "request_id": _request_id(request),
+                             "by": "area" if near["area_key"] else "country", "issues": len(grouped),
+                             "latency_ms": round((time.monotonic() - started) * 1000)}))
+    return templates.TemplateResponse(request, "issues.html", {
+        "issues": grouped, "sort": sort, "sorts": SORTS, "q": "", "results": None, "near": near})
 
 
 @app.get("/issues/{key}", response_class=HTMLResponse, dependencies=[Depends(require_access)])
