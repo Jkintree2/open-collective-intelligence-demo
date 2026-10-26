@@ -4,6 +4,8 @@
 
 > **Extended 4 October 2026 for Phase 1 (People and positions, SOW 0.2).** Added: accounts on `Person`, the `ENTERED`, `MADE` and `CHANGED` relationships, the `Change` label, one stance per person, `Post.edited_at`, full-text indexes, and queries Q12 to Q33; Q1, Q4, Q7, Q10, the write path's stance statement and the export format are revised. See "Phase 1: people and positions" at the end. Everything in that section ships behind the `ACCOUNTS_ENABLED` setting except search.
 
+> **Extended 26 October 2026 for Phase 3 (Talking to the record).** Added: three place properties on `Post` and their indexes, queries Q40 to Q44, what is never stored and what is logged; the Post statement, Q24 and Q25 carry the place. No new label, relationship type or constraint. See "Phase 3: talking to the record" at the end. Everything in it ships behind its own switch.
+
 Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kickoff decisions require: sub-issues, an anonymous flag on relationships, a source link on Evidence, timestamps, and a Post node so every edge traces back to the text that produced it.
 
 ## Node labels
@@ -1136,3 +1138,163 @@ RETURN p.key AS key, free, old, new
 Q15 (open a link) also returns `pending_email`; the back room's account list (Q20) also returns `previous_emails` and `previous_emails_until`.
 
 **Export and restore.** `pending_email` joins the properties never in a copy (with the link it belongs to). `previous_emails` and `previous_emails_until` travel; restore checks they are a list of strings and a list of datetimes of the same length. No new format version: version 2 already carries any other property.
+
+
+## Phase 3: talking to the record
+
+Added 26 October 2026, before any Phase 3 code. This section is the binding spec for the Phase 3 Cypher; nothing in it is built before it is agreed here. **No new label, relationship type or constraint**: three place properties on `Post` and two range indexes; everything else reads the record as it is. Four switches, each off unless set in the Render dashboard, like `EVIDENCE_CHECK_ENABLED`: `ASK_ENABLED` (Ask the record), `FOLLOW_UPS_ENABLED` (follow-up questions on the card), `PLACES_ENABLED` (a place on each post and "issues near me"), `ABOUT_ENABLED` (the About page). Unset, nothing here is read or written and the site is the Phase 2 site. New Cypher lives in `app/graph_ask.py` (Q40 to Q42) and `app/graph_places.py` (Q43, Q44); the place properties join the Post statements already in `graph.py` and `graph_own_posts.py`.
+
+### A place on each post
+
+Written only with `PLACES_ENABLED` set, only by posting and by editing one's own post, only from the card's Place row. Absent on every post written before (read queries treat absent as null), on seed posts, and on every post written while the switch is unset.
+
+| Property | Type | Meaning |
+|---|---|---|
+| `place_country` | string or null | ISO 3166 two-letter code, upper case (`US`, `DE`), from `places.country_code()`; null for "Not about one place". Never read from the statement text: chosen by the writer. |
+| `place_area` | string or null | The town or area as typed, through `text.clean_name()`, at most 80 characters; null when empty. Kept only with a country: when `place_country` is null, `place_area` and `place_area_key` are null too. |
+| `place_area_key` | string or null | `text.make_key(place_area)`, so "St. Louis" and "st louis" match; null when `place_area` is null or its key is rejected. |
+
+The card prefills the country from the account's `country` (through `places.country_code()`, else empty) for a named post, and leaves both fields empty for an anonymous one (a town can name someone in a small group). The account's `country` and `postal_code` are never copied onto a post by the server, and postal codes are never used for places.
+
+**Write path, revised.** The Post statement (`CREATE_POST`, statement 2 of the write path) gains `place_country: $place_country, place_area: $place_area, place_area_key: $place_area_key`, each null unless the switch is set and the card carries a valid place. **Q24, revised:** `OWN_POST` also returns `post.place_country AS place_country, post.place_area AS place_area`, so the edit card shows the place. **Q25, revised:** step 4's `SET` also sets the three properties from the edited card; with the switch unset it leaves them as they are (an edit never clears a place it cannot show).
+
+**Indexes,** added to the startup list with the Post statement, idempotent like the others:
+
+```cypher
+CREATE INDEX post_place_country IF NOT EXISTS FOR (p:Post) ON (p.place_country);
+CREATE INDEX post_place_area    IF NOT EXISTS FOR (p:Post) ON (p.place_area_key);
+```
+
+Two single range indexes rather than one composite, so Q43 by country alone uses one too.
+
+**Export and restore.** The three properties travel in export version 2 with no format change. Restore checks they are text or null, `place_country` two upper-case letters, `place_area` at most 80 characters.
+
+### Q40. Stances on an issue's solutions, with their posts and dates
+
+For Ask the record (record scope and issue scope). `$keys`: the issue asked about and its sub-issues (from Q2), or on the record scope the up to three issues the search picked and their sub-issues. One row per stance edge. Person keys are never returned: a stance edge is one per person and solution (MERGE), so rows per solution and type count people as Q4 does, a 0.1 Person holding both stances counting once each way.
+
+```cypher
+// Q40. $keys: issue keys; $limit: 400.
+MATCH (i:Issue)-[:HAVE_PROPOSED]->(s:Solution)<-[r:APPROVE|OPPOSE]-(:Person)
+WHERE i.key IN $keys
+WITH DISTINCT s, r
+RETURN s.key AS solution_key, s.name AS solution_name, type(r) AS stance,
+       r.created_at AS created_at, coalesce(r.last_post_id, r.post_id) AS post_id,
+       coalesce(r.anonymous, false) AS anonymous, r.source AS source
+ORDER BY s.key, r.created_at DESC
+LIMIT $limit
+```
+
+`post_id` is the newest post that took or repeated the stance (`last_post_id`, else `post_id`); null for a click stance (`source = 'click'`). The digest gives each solution its approve and oppose counts and each stance's date ("approved by 5, opposed by 2, as of 30 October"), and lists the posts behind the stances (the reasons) first among the posts. A stance's own `anonymous` flag decides nothing in the digest beyond what the post shows: names come only from `Post.display_name`, which is null on an anonymous post.
+
+### Q41. Evidence on evidence
+
+For Ask the record: "evidence most supported by other evidence" (John's question d). Two reads, one per scope.
+
+```cypher
+// Q41, issue scope. $keys as in Q40. Evidence about the issues or their solutions,
+// and every edge into it from other evidence.
+MATCH (i:Issue) WHERE i.key IN $keys
+OPTIONAL MATCH (i)-[:HAVE_PROPOSED]->(s:Solution)
+WITH collect(DISTINCT i) + collect(DISTINCT s) AS targets
+UNWIND targets AS t
+MATCH (e:Evidence)-[:SUPPORTS|REFUTES]->(t)
+WITH DISTINCT e
+MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(e)
+RETURN e.key AS evidence_key, e.name AS evidence_name,
+       other.key AS by_key, other.name AS by_name, other.url AS by_url,
+       type(r) AS stance, r.check AS check, r.post_id AS post_id, r.created_at AS created_at
+ORDER BY e.key, r.created_at
+LIMIT 200
+
+// Q41, record scope. The ten pieces of evidence with the most support from other evidence.
+MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(e:Evidence)
+WITH e, count(DISTINCT CASE WHEN type(r) = 'SUPPORTS' THEN other.key END) AS supported_by,
+        count(DISTINCT CASE WHEN type(r) = 'REFUTES' THEN other.key END) AS refuted_by
+RETURN e.key AS evidence_key, e.name AS evidence_name, e.url AS url, supported_by, refuted_by
+ORDER BY supported_by - refuted_by DESC, supported_by DESC, toLower(e.name) ASC
+LIMIT 10
+```
+
+Evidence about the issue itself and its solutions, with readings and source confidence, comes from Q39 (one call per issue key, unchanged), so answers can say how well backed a point is.
+
+### Q42. Top solutions record-wide
+
+For Ask the record, record scope only: ranked by net support as Q4 revised, so "the most approved solutions" reads the same on both scopes.
+
+```cypher
+// Q42. The ten solutions with the most net support, with up to three issues each.
+MATCH (s:Solution)
+OPTIONAL MATCH (p:Person)-[r:APPROVE|OPPOSE]->(s)
+WITH s, count(DISTINCT CASE WHEN type(r) = 'APPROVE' THEN p.key END) AS approves,
+        count(DISTINCT CASE WHEN type(r) = 'OPPOSE' THEN p.key END) AS opposes,
+        max(r.created_at) AS last_stance_at
+WHERE approves + opposes > 0
+OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
+WITH s, approves, opposes, last_stance_at,
+     [h IN collect(DISTINCT home) | {key: h.key, name: h.name}][..3] AS issues
+RETURN s.key AS solution_key, s.name AS solution_name, approves, opposes, last_stance_at, issues
+ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
+LIMIT 10
+```
+
+The posts behind these stances, when the digest has room, come from Q40 with `$keys` set to the solutions' issues.
+
+### Q43. Issues near a place
+
+The Issues page's "Near" filter. `$country` is an ISO code; `$area_key` the `make_key` of the town or area, or null. Same area key when given, else same country. An issue is near when a post placed there touches it, by the same rule as Q6 (any edge carrying the post's id, or a stance on one of its solutions).
+
+```cypher
+// Q43. Keys of the issues a placed post touches.
+MATCH (post:Post)
+WHERE post.place_country = $country
+  AND ($area_key IS NULL OR post.place_area_key = $area_key)
+WITH collect(post.id) AS ids
+MATCH (i:Issue)
+WHERE EXISTS { MATCH (i)-[r]-() WHERE r.post_id IN ids }
+   OR EXISTS { MATCH (i)-[:HAVE_PROPOSED]->(:Solution)<-[r:APPROVE|OPPOSE]-(:Person)
+               WHERE r.post_id IN ids OR r.last_post_id IN ids }
+RETURN i.key AS key
+```
+
+Python then keeps Q1's rows for these keys and groups and sorts them with `group_issues()` exactly as the full list: a top-level issue shows when it or one of its sub-issues is near, with only its near sub-issues under it; counts are Q1's, over the whole record, so "near" chooses which issues show, never what they count.
+
+```cypher
+// Q43, the prefill: the member's last placed post.
+MATCH (:Person {key: $me})-[:POSTED]->(post:Post)
+WHERE post.place_country IS NOT NULL
+RETURN post.place_country AS country, post.place_area AS area
+ORDER BY post.created_at DESC
+LIMIT 1
+```
+
+With no placed post the filter prefills from the account's `country` (through `places.country_code()`), else empty. An anonymous post counts for the prefill too: it is the member's own place, shown only to them.
+
+### Q44. Places of a page of posts
+
+Read once per list, inside `main._decorate_posts`, beside the post structure, only with `PLACES_ENABLED` set. So Q6, `LIST_POSTS`, Q27 and Q36 keep their columns, and every list (feed, issue page, search, My statements) shows the place line.
+
+```cypher
+// Q44. $post_ids: the page's post ids.
+MATCH (post:Post)
+WHERE post.id IN $post_ids AND post.place_country IS NOT NULL
+RETURN post.id AS id, post.place_country AS country, post.place_area AS area
+```
+
+Python turns the code into the country's name from `app/places.py`: "In St. Louis, United States", or "In Germany" with no area.
+
+### What is never stored
+
+Questions asked, answers, digests and their source lists, the questions of a visit sent with the next one (they stay in the open browser tab), and follow-up questions. A follow-up's answer is stored only as a line the writer added to their statement text, so it is part of the post like any other words. Nothing here is cached across requests, in the database or in process memory.
+
+### Logging
+
+One line per call at INFO, JSON, as for extraction and the evidence check: the request id, sizes, tokens and cache hits, latency, counts; never a question, answer, digest, statement or place text above DEBUG.
+
+```
+{"event": "ask", "request_id": "…", "scope": "issue", "chars": 84, "history": 2, "issues": 1, "digest_chars": 21400, "posts_in": 31, "posts_left_out": 6, "status": "ok", "latency_ms": 14200, "prompt_tokens": 14100, "prompt_cache_hit_tokens": 6912, "completion_tokens": 420, "in_record": true, "paragraphs": 4, "paragraphs_dropped": 1, "sources_kept": 9, "sources_dropped": 1}
+{"event": "follow_ups", "request_id": "…", "chars": 212, "new_rows": 2, "status": "ok", "latency_ms": 3900, "prompt_tokens": 8600, "prompt_cache_hit_tokens": 6912, "completion_tokens": 120, "questions": 2, "questions_dropped": 1, "missing_source": 1}
+{"event": "near", "request_id": "…", "by": "area", "issues": 4, "latency_ms": 38}
+```
+
+`status` is `ok`, `unconfigured`, `timeout`, `http`, `bad_reply` or `limited`. The raw reply goes to DEBUG only.
