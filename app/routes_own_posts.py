@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
-from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts
+from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts, sides
 from app.extract import CardPayload, ResolvedPayload, resolve_payload
 from app.members import Member, posting_identity, require_member, require_same_origin
 from app.pages import page
@@ -54,15 +54,19 @@ def delete(request: Request, post_id: str, member: Member = Depends(require_memb
 
 
 def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict],
-              checks: dict[tuple[str, str], dict] | None = None) -> dict:
+              checks: dict[tuple[str, str], dict] | None = None, statements: list[dict] | None = None) -> dict:
     """The card for editing a post, built from the edges the post holds now (Q7's structure query), so
     an issue renamed or merged since shows under its current name and nothing comes back. `issues`
     maps issue keys to their Q2 header (`name`, `parent_name`). The stored payload gives only each
     evidence link's address. A solution's position is the stance edge this post still holds: one a
     click has since replaced, or one the person already held before the post, shows as no position, so
     an unchanged edit never undoes a later click (Q25: a position left off the card is not withdrawn).
-    `checks` (Phase 2, post_checks) puts each row's stored reading on it, for the card to show."""
+    `checks` (Phase 2, post_checks) puts each row's stored reading on it, for the card to show.
+    `statements` (issue 29, Q35b) are the writer's statements this post wrote beside a page read the other
+    way: each is left off the card and its page's row shows the writer's side again, so saving rebuilds
+    the same two pieces of evidence."""
     stored = json.loads(stored_json or "{}")
+    beside = {row["evidence_key"] for row in statements or []}
     urls = {row["key"]: row.get("url") for row in stored.get("evidence", [])}
     personal = {row["key"] for row in stored.get("evidence", []) if row.get("personal")}
     stored_homes = {row["key"]: row.get("for_issue_key") for row in stored.get("solutions", [])}
@@ -87,6 +91,8 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
                                               "stance": "none"})
             if rel != "PROPOSE":
                 item["stance"] = rel.lower()
+        elif (rel == "SUBMIT" and row["to_key"] in beside) or (rel in ("SUPPORTS", "REFUTES") and row["from_key"] in beside):
+            continue  # the writer's statement beside a page (issue 29): the save writes it again
         elif rel == "SUBMIT":
             evidence.setdefault(row["to_key"], {"name": row["to_name"], "url": urls.get(row["to_key"]),
                                                 "stance": "supports", "about": None})
@@ -103,6 +109,9 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
                                  "quote_at": stored.get("check_quote_at"), "pasted": pasted, "video": video,
                                  "line": check.source_words(_source(stored), video=video, pasted=pasted)
                                  if stored["check"] != "unread" else None}
+    for row in statements or []:
+        if (item := evidence.get(row["answers"])) is not None:
+            item["stance"] = row["stance"].lower()  # the writer's side; the page's edge took the page's
     return {"issues": list(claimed.values()), "solutions": list(solutions.values()),
             "evidence": list(evidence.values())}
 
@@ -136,7 +145,24 @@ def current_card(post_id: str, stored_json: str | None, *, readings: bool = Fals
     for row in rows:
         if row["rel"] == "HAVE_PROPOSED":
             own.setdefault(row["to_key"], set()).add(row["from_key"])
-    return edit_card(rows, stored_json, issues, stored_checks(post_id, stored_json) if readings else None), own
+    if not readings:
+        return edit_card(rows, stored_json, issues), own
+    return edit_card(rows, stored_json, issues, stored_checks(post_id, stored_json),
+                     graph_evidence.post_statements(post_id)), own
+
+
+def edit_checks(post_id: str, stored_json: str | None, items: list, resolved: ResolvedPayload,
+                text: str) -> dict | None:
+    """Phase 2, for saving or previewing an edit: each row's kept reading (made now, or stored on this
+    post's edge for the same evidence, target and link), with the writer's statement beside a page read
+    the other way (issue 29); None with EVIDENCE_CHECK_ENABLED unset."""
+    from app import main as site
+    if not site.settings.evidence_check_enabled:
+        return None
+    # A card whose rows claim no reading keeps none, so the record is not asked for the stored ones.
+    stored = stored_checks(post_id, stored_json) if any(getattr(item, "check", None) for item in items) else None
+    kept = check.kept_checks(items, resolved.evidence, text, stored)
+    return sides.attach(resolved.evidence, kept, lambda: graph.candidates().evidence_links.values())
 
 
 def resolve_edit(data: CardPayload, own: dict[str, set[str]]) -> tuple[ResolvedPayload, CardPayload]:
@@ -158,12 +184,11 @@ def _save(member: Member, row: dict, post_id: str, text: str, resolved: Resolved
     from app import main as site
     # Q25 and R4: the edit takes the name or Anonymous chosen on the edit page, at any time (D2's one rule).
     _, _, hidden, shown = posting_identity(member, anonymous)
-    statement = text or (". ".join(sentences(card, shown or "Anonymous", resolved)) + ".")[:site.TEXT_MAX]
     # Phase 2: a row keeps its reading when the card still carries one the site made (now, or stored on
     # this post's edge for the same evidence, target and link); otherwise it is saved without one.
-    checks = None
-    if site.settings.evidence_check_enabled:
-        checks = check.kept_checks(items, resolved.evidence, text, stored_checks(post_id, row["payload"]))
+    checks = edit_checks(post_id, row["payload"], items, resolved, text)
+    statement = text or (". ".join(sentences(card, shown or "Anonymous", resolved, sides.statements(checks)))
+                         + ".")[:site.TEXT_MAX]
     return graph_own_posts.edit_own_post(member.key, post_id, resolved, text=statement,
                                          now=datetime.now(timezone.utc), anonymous=hidden, display_name=shown,
                                          checks=checks, place=place, **reading_fields)
@@ -236,7 +261,11 @@ def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, car
     if getattr(data, "place", None) is not None:  # Phase 3: a town with no country holds Save back
         from app import main as site
         valid = valid and not site.place_problem(data)
-    return {"sentences": sentences(card, shown or "Anonymous", resolved), "valid": valid, "dropped": resolved.dropped,
+    both = {}
+    if any(getattr(item, "check", None) for item in data.evidence):  # only a row with a reading can split (issue 29)
+        both = sides.statements(edit_checks(row.get("id"), row.get("payload"), data.evidence, resolved,
+                                            getattr(data, "text", "")))
+    return {"sentences": sentences(card, shown or "Anonymous", resolved, both), "valid": valid, "dropped": resolved.dropped,
             "corrected": resolved.corrected, "payload": card.model_dump()}
 
 

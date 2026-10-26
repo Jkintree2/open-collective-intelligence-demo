@@ -42,8 +42,28 @@ test('once the writer chooses, the reading does not change it and says they diff
   stance.value = 'supports'; await stance.emit('change');
   checks(p)[0].resolve({verdict: 'refutes', quote: QUOTE, line: null, suggested: {}}); await p.flush();
   assert.equal(stance.value, 'supports');
-  assert.equal(lines(row).at(-1), 'You chose differently from the reading. That is fine; others will see both.');
+  assert.equal(lines(row).at(-1), BOTH_REFUTES);
   stance.value = 'refutes'; await stance.emit('change');
+  assert.equal(lines(row).at(-1), '');
+});
+
+// Issue 29: a page read as taking a side the writer did not choose is added on its own side, and the
+// writer's statement on theirs; the row says so, and choosing the page's side adds the page alone.
+const BOTH_REFUTES = 'The page refutes this and your statement supports it, so both will be added, each on its own side. To add only the page, choose refutes.';
+const BOTH_SUPPORTS = 'The page supports this and your statement refutes it, so both will be added, each on its own side. To add only the page, choose supports.';
+
+test('a page that agrees under a writer who refutes says both will be added, until the writer matches it', async () => {
+  const p = await setup(undefined, undefined, {evidenceCheck: true}); await p.flush();
+  const [row] = await readWith(p, [{name: 'Climate change article', url: URL, stance: 'refutes', about: 'Coastal flooding'}]);
+  const {stance} = fields(row);
+  stance.value = 'refutes'; await stance.emit('change');
+  checks(p)[0].resolve({verdict: 'supports', quote: QUOTE, line: null, suggested: {}}); await p.flush();
+  assert.equal(stance.value, 'refutes');                         // the writer's side stays theirs
+  assert.equal(lines(row).at(-1), BOTH_SUPPORTS);
+  await p.runTimer(200);
+  const preview = JSON.parse(p.requests.at(-1).options.body).evidence[0];
+  assert.deepEqual([preview.stance, preview.check], ['refutes', {verdict: 'supports', quote: QUOTE}]);
+  stance.value = 'supports'; await stance.emit('change');
   assert.equal(lines(row).at(-1), '');
 });
 
@@ -130,7 +150,7 @@ test('a post being edited shows the reading it holds, and lists what else the pa
   p.load('edit_post.js'); await p.flush();
   const [row] = p.get('evidence-rows').children;
   assert.deepEqual(lines(row), ['Contradicts', `The page says: "${QUOTE}"`, stored.line,
-    'You chose differently from the reading. That is fine; others will see both.']);
+    BOTH_REFUTES]);
   assert.equal(fields(row).stance.value, 'supports');  // the writer's choice stays
   // The page is read again only for what else it mentions (Beth, 22 October 2026): the stored reading stands,
   // whatever the fresh one says, and the list appears under it.
@@ -139,7 +159,7 @@ test('a post being edited shows the reading it holds, and lists what else the pa
     suggested: {issues: [{name: 'Sea walls not keeping pace', existing: false}], solutions: [], evidence: []}});
   await p.flush();
   assert.deepEqual(lines(row), ['Contradicts', `The page says: "${QUOTE}"`, stored.line,
-    'You chose differently from the reading. That is fine; others will see both.']);
+    BOTH_REFUTES]);
   assert.equal(fields(row).stance.value, 'supports');
   const also = box(row).children.find(c => c.tag === 'fieldset');
   assert.equal(also.children[0].textContent, 'The page also mentions');

@@ -136,7 +136,7 @@ def properties(value):
                    "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
                    "relationship", "kind", "details", "check_quote", "source_type",
                    "source_published", "check_claim", "check_reason", "check_quote_at",
-                   "place_country", "place_area", "place_area_key"} and not isinstance(item, str):
+                   "place_country", "place_area", "place_area_key", "answers"} and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
         if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary",
                    "source_cites", "personal", "check_pasted"} and type(item) is not bool:

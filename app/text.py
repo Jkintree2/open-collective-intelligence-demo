@@ -85,12 +85,14 @@ def count_line(row: dict) -> str:
 TARGET_WORDS = {"Issue": "issue of", "Solution": "solution of", "Evidence": "evidence of"}
 
 
-def sentences(payload, display_name: str, resolved=None) -> list[str]:
+def sentences(payload, display_name: str, resolved=None, both_sides: dict | None = None) -> list[str]:
     """The card's sentences, in the order of the acceptance examples, in John's words of 23 October
     2026: "proposes solution", "submits evidence", "supports issue of" (or solution of, evidence of).
     An issue already in the record reads "claims about existing issue" (John, 24 October 2026; from 23 to
     24 October its line was left out whenever the card added anything else).
-    `resolved` is the card's ResolvedPayload; without it the card is resolved against an empty record."""
+    `resolved` is the card's ResolvedPayload; without it the card is resolved against an empty record.
+    `both_sides` (issue 29, sides.statements) maps an evidence key to the writer's statement written
+    beside it: the page's line then takes the page's side, and the statement's lines follow the page's."""
     if resolved is None:
         from app.payload import Candidates, resolve_payload  # payload imports this module
 
@@ -104,8 +106,20 @@ def sentences(payload, display_name: str, resolved=None) -> list[str]:
     rest = [f"{name} proposes solution {item.name}" for item in proposed]
     rest.extend(f"{item.for_issue} has proposed {item.name}" for item in proposed)
     rest.extend(f"{name} {item.stance}s {item.name}" for item in payload.solutions if item.stance != "none")
-    rest.extend(f"{name} submits evidence {item.name}" for item in payload.evidence)
+    both_sides = both_sides or {}
+
+    def beside(item) -> dict | None:
+        return both_sides.get(make_key(item.name) or "")
+
+    for item in payload.evidence:
+        rest.append(f"{name} submits evidence {item.name}")
+        if (statement := beside(item)):
+            rest.append(f"{name} submits evidence {statement['name']}")
     for item in payload.evidence:
         kind = kinds.get(make_key(item.about or "") or "")
-        rest.append(f"{item.name} {item.stance} {TARGET_WORDS[kind] + ' ' if kind else ''}{item.about}")
+        about = f"{TARGET_WORDS[kind] + ' ' if kind else ''}{item.about}"
+        statement = beside(item)
+        rest.append(f"{item.name} {statement['page'] if statement else item.stance} {about}")
+        if statement:
+            rest.append(f"{statement['name']} {statement['stance']} {about}")
     return claims + rest

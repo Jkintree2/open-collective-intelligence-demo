@@ -823,6 +823,39 @@ While it is read: "Reading the transcript…". The result is one of the same lin
 
 **On the issue page**, a video's reading says "The video says at 4:12:" instead of "The page says:", and a reading from a pasted transcript "The transcript says:" followed by "Read from a transcript the writer pasted."
 
+### Revision round: the page's side and the writer's side (GitHub issue 29, added 26 October 2026)
+
+**Awaiting John's yes.** Every quote below is a **client-facing** draft; he may replace any of it. Behind `EVIDENCE_CHECK_ENABLED`, like all of Phase 2. No dashes, none of the forbidden words.
+
+John asked (issue 29) whether supports or refutes is about the statement or the source, and whether a post could be "refutes for the statement, and supports for the source". It now is. When the page is read as "Agrees" and the writer chose refutes, or as "Contradicts" and the writer chose supports, the post adds two pieces of evidence: the page, on the side it was read as taking, and the writer's own statement about it, with no link, on the writer's side. "Partly agrees", "The page does not clearly say either way." and a page that could not be opened stay as they are, one piece on the writer's side.
+
+**On the card, under the row**, in place of "You chose differently from the reading. That is fine; others will see both." (which stays for "Partly agrees"):
+
+> The page supports this and your statement refutes it, so both will be added, each on its own side. To add only the page, choose supports.
+
+> The page refutes this and your statement supports it, so both will be added, each on its own side. To add only the page, choose refutes.
+
+Choosing the page's side clears the line, and only the page is added.
+
+**What this will add** lists both, each in John's format, the page's line first. The statement is named with the writer's own sentence about the page when the reading found one in the statement, and otherwise "Statement on {the page's name}". For John's example:
+
+> John Kintree submits evidence En.wikipedia.org/wiki/Climate_change
+> John Kintree submits evidence The rise in CO2 is minuscule
+> En.wikipedia.org/wiki/Climate_change supports issue of Climate change
+> The rise in CO2 is minuscule refutes issue of Climate change
+
+The feed's sentences under the post read the same way.
+
+**On the issue page** the page is listed under its side with its reading and source line as before, and the statement under the writer's side. It is not counted as another piece of evidence saying the same or disagreeing. Under it, in place of "No source given.":
+
+> The writer's own words about {the page's name}, which was read as agreeing with this.
+
+under "Refuted by", or under "Supported by":
+
+> The writer's own words about {the page's name}, which was read as contradicting this.
+
+**Editing the post.** The edit card shows one row again, the page on the writer's side with its reading and the line above; saving adds the same two pieces again, never a third.
+
 ### My statements (`/my-statements`; no-cost extra, John 17 October 2026)
 
 First at the foot of Your account; since 22 October 2026 (Beth's request, John's yes) a page of its own, linked from the menu between "Enter a person" and "My account". **Client-facing**:

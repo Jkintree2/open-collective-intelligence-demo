@@ -26,6 +26,12 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
   const SLOW = 'Still reading. A slow page can take up to a minute.';
   const SLOW_AFTER_MS = 10000;
   const DIFFERENT = 'You chose differently from the reading. That is fine; others will see both.';
+  // Issue 29, drafts awaiting John's yes: a page read as taking the other side from the writer's is added on
+  // its own side, and the writer's statement on theirs (app/sides.py). Partly agrees keeps DIFFERENT.
+  const BOTH = {
+    supports: 'The page supports this and your statement refutes it, so both will be added, each on its own side. To add only the page, choose supports.',
+    refutes: 'The page refutes this and your statement supports it, so both will be added, each on its own side. To add only the page, choose refutes.'
+  };
   const ALSO_HINT = 'Tick any you want to add to your statement; you can edit it before you post. Evidence you tick keeps this page\'s link.';
   const KINDS = [['issues', 'Issue'], ['solutions', 'Solution'], ['evidence', 'Evidence']];
   // Verdicts a post may carry; the server keeps one only when it made that reading itself.
@@ -46,7 +52,7 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
   function different(row) {
     if (!row.differentLine) return;
     const side = SIDE[row.verdict];
-    row.differentLine.textContent = side && row.stance.value !== side ? DIFFERENT : '';
+    row.differentLine.textContent = side && row.stance.value !== side ? BOTH[row.verdict] || DIFFERENT : '';
   }
   function suggestions(row, suggested) {
     const items = KINDS.flatMap(([group, label]) => (suggested[group] || []).map(item => ({group, label, name: item.name})));

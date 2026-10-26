@@ -55,7 +55,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app import graph_own_posts
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
-from app import check, confidence, graph_accounts, graph_evidence, graph_places, places, search, tidy
+from app import check, confidence, graph_accounts, graph_evidence, graph_places, places, search, sides, tidy
 
 settings = get_settings()
 
@@ -554,16 +554,26 @@ def _card_result(data: PostRequest):
     return candidates, resolved, card
 
 
+def _kept_checks(data: PostRequest, resolved, candidates) -> dict | None:
+    """Phase 2: each evidence row's reading, kept only when this site made it (03_schema.md), with the
+    writer's statement beside a page read the other way (issue 29); None with the flag unset."""
+    if not settings.evidence_check_enabled:
+        return None
+    kept = check.kept_checks(data.evidence, resolved.evidence, data.text)
+    return sides.attach(resolved.evidence, kept, lambda: candidates.evidence_links.values())
+
+
 @app.post("/api/preview", dependencies=[Depends(require_access), Depends(require_same_origin)])
 def preview_card(request: Request, data: PostRequest) -> Response:
     error = _text_error(data.text, allow_empty=True)
     if error is not None:
         return error
-    _, resolved, card = _card_result(data)
+    candidates, resolved, card = _card_result(data)
     name, _ = _poster(data, current_member(request))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     valid = valid and not place_problem(data)
-    return JSONResponse({"sentences": sentences(card, name or "Anonymous", resolved), "valid": valid,
+    both = sides.statements(_kept_checks(data, resolved, candidates))
+    return JSONResponse({"sentences": sentences(card, name or "Anonymous", resolved, both), "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
                          "payload": card.model_dump()})
 
@@ -590,9 +600,11 @@ def post_card(request: Request, data: PostRequest) -> Response:
     if not post_spacing.take(person_key):
         return JSONResponse({"message": WAIT_BEFORE_POSTING}, status_code=429)
     source = data.source if not resolved.is_empty else "manual"
+    checks = _kept_checks(data, resolved, candidates)
     # An empty box means the statement is composed from the form, so the post is the tester's own
     # however the card was first filled in; its sentences become the statement and the source is manual.
-    statement = data.text.strip() or (". ".join(sentences(card, name or "Anonymous", resolved)) + ".")[:TEXT_MAX]
+    statement = data.text.strip() or (". ".join(sentences(card, name or "Anonymous", resolved,
+                                                          sides.statements(checks))) + ".")[:TEXT_MAX]
     if not data.text.strip():
         source = "manual"
     edited = False
@@ -602,8 +614,6 @@ def post_card(request: Request, data: PostRequest) -> Response:
             edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
         except ValueError:
             edited = True
-    # Phase 2: each evidence row's reading is kept only when this site made it (03_schema.md).
-    checks = check.kept_checks(data.evidence, resolved.evidence, data.text) if settings.evidence_check_enabled else None
     # What the reading service returned is kept whenever it returned something, even when the tester
     # emptied the card or the box, so "it did something weird" can be answered from the one post.
     post_id = graph.merge_post(person_key, name, anonymous, name,
