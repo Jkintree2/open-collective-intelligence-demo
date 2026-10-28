@@ -262,3 +262,22 @@ def test_a_use_can_be_given_back():
     limit.give_back("a")  # nothing left to give back: no error
     assert limit.uses == {}
     limit.give_back("never")
+
+
+# Call of 28 October: a menu under the issue's name, so everything on the page (Ask above all) is seen at once.
+def menu(page):
+    links = page.split('<nav class="issue-menu" aria-label="On this page">', 1)[1].split("</nav>", 1)[0]
+    return re.findall(r'href="#([a-z-]+)">([^<]+)</a>', links)
+
+
+def test_the_issue_page_menu_links_to_each_part(asking, switch, monkeypatch):
+    page = asking.client.get("/issues/veto").text
+    assert menu(page) == [("solutions", "Solutions (0)"), ("evidence", "Evidence (0)"), ("ask-title", "Ask"),
+                          ("posts", "Posts")]
+    assert all(f'id="{target}"' in page for target, _ in menu(page))
+    children = [{"key": "a", "name": "A"}, {"key": "b", "name": "B"}]
+    monkeypatch.setattr(asking.main.graph, "issue_header", lambda key: {**ISSUE, "children": children})
+    page = asking.client.get("/issues/veto").text
+    assert menu(page)[0] == ("sub-issues", "Sub-issues (2)") and 'id="sub-issues"' in page
+    switch(ask_enabled=False)
+    assert ("ask-title", "Ask") not in menu(asking.client.get("/issues/veto").text)

@@ -3,7 +3,7 @@ import pytest
 ISSUE = {"key": "veto", "name": "Security Council veto", "parent_key": None, "parent_name": None,
          "children": [], "created_at": None, "seed": False}
 # Today's "Proposed solutions" section for one solution, rendered from issue.html at phase-1 c48bfe5.
-TODAY_SOLUTIONS = ('<h2>Proposed solutions</h2>\n\n<section class="solution">\n  <h3>Abolish the veto</h3>\n'
+TODAY_SOLUTIONS = ('<h2 id="solutions">Proposed solutions</h2>\n\n<section class="solution">\n  <h3>Abolish the veto</h3>\n'
                    '  <p class="counts">proposed by 1 · approved by 2 · opposed by 1</p>\n  \n  \n  \n  \n'
                    '</section>\n\n\n')
 
@@ -122,7 +122,7 @@ def test_without_accounts_the_issue_page_is_todays(issue_page, monkeypatch):
     issue_page.client.post("/enter", data={"passphrase": "gate words"})
     page = issue_page.client.get("/issues/veto").text
     assert issue_page.asked[-1] == {"me": None, "ranked": False}
-    assert page[page.index("<h2>Proposed solutions</h2>"):page.index("<h2>Evidence about this issue</h2>")] == TODAY_SOLUTIONS
+    assert page[page.index('<h2 id="solutions">Proposed solutions</h2>'):page.index('<h2 id="evidence">Evidence about this issue</h2>')] == TODAY_SOLUTIONS
     assert '<main class="column">\n    \n<p class="crumbs">' in page  # nothing on the content block's first line
     assert "stances.js" not in page and "Listed by" not in page
 

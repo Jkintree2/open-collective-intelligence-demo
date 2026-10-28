@@ -308,6 +308,21 @@ h3 {
 }
 .sorts a[aria-current] { background: var(--paper-2); color: var(--ink); }
 
+/* The issue page's own menu: one tap to each part of the page. */
+.issue-menu { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.issue-menu a {
+  color: var(--accent);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+.issue-menu a:hover { background: var(--paper-2); }
+#sub-issues, #solutions, #evidence, #ask-title, #posts, #tidy { scroll-margin-top: 12px; }
+
 .issue-card {
   padding: 14px 0;
   border-bottom: 1px solid var(--rule);
