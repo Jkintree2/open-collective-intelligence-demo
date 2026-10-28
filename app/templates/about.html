@@ -33,7 +33,7 @@
 <p>On Render's free plan, with the record in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page{% if on.ask %} or question{% endif %} after one can take up to a minute.</p>
 
 <h2>Guiding principles</h2>
-<p>The reading service is given these three documents, in this order, at the start of its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own card.</p>
+<p>The reading service is given the Statement of purpose, and the full text of the Universal Declaration of Human Rights and the Earth Charter at the start of the system prompt, its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own card.</p>
 {% for title, text in documents %}
 <section class="guiding">
 <h3>{{ title }}</h3>
