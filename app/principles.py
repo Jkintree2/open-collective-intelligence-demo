@@ -21,6 +21,12 @@ UDHR = _read("udhr.txt")
 EARTH_CHARTER = _read("earth_charter.txt")
 
 
+# The three documents as the About page shows them (its anchor, its title) and Ask cites them (D1 to D3).
+DOCUMENTS = (("purpose", "Statement of purpose", PURPOSE),
+             ("udhr", "Universal Declaration of Human Rights", UDHR),
+             ("earth-charter", "The Earth Charter", EARTH_CHARTER))
+
+
 def guiding_block() -> str:
     """The purpose, the Universal Declaration of Human Rights and the Earth Charter in full,
     then the line that hands over to the task's own instructions."""

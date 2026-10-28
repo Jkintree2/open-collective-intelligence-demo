@@ -76,6 +76,20 @@ test('an answer shows in place, as text, with its numbered sources', async () =>
   assert.equal('aria-busy' in p.attrs, false);
 });
 
+test('a guiding document links to its place on the About page, or reads as text when About is off', async () => {
+  const p = page();
+  p.ask('What does the UDHR say about privacy?');
+  p.requests[0].resolve(json({...ANSWER, paragraphs: [{text: 'Article 12 protects privacy.', refs: [1, 2]}],
+    sources: [{kind: 'document', name: 'Universal Declaration of Human Rights', when: null, text: null, issue: null, href: '/about#udhr'},
+              {kind: 'document', name: 'The Earth Charter', when: null, text: null, issue: null, href: null}]}));
+  await p.flush();
+  const sources = p.answers.children[0].find('ask-sources');
+  assert.equal(sources.children[0].text, 'Guiding document: Universal Declaration of Human Rights.');
+  assert.equal(sources.children[0].children[1].href, '/about#udhr');
+  assert.equal(sources.children[1].text, 'Guiding document: The Earth Charter.');
+  assert.equal(sources.children[1].children.some(c => typeof c === 'object' && c.href), false);
+});
+
 test('the last three questions go with the next one, never the answers', async () => {
   const p = page();
   for (const q of ['one?', 'two?', 'three?', 'four?']) {

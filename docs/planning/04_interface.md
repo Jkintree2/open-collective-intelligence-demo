@@ -970,7 +970,7 @@ Two menu items, each behind its switch: "Ask" after "Issues", for anyone who can
 
 > **Ask the record**
 >
-> Ask a question in plain words. The answer is built only from what people have posted here, and names the posts it comes from.
+> Ask a question in plain words. The answer is built only from what people have posted here and the three guiding documents, and names where each part comes from.
 >
 > [ input, placeholder "For example: What do people say about the Security Council veto?" ]
 > [ Ask ]
@@ -982,7 +982,7 @@ Two menu items, each behind its switch: "Ask" after "Issues", for anyone who can
 > [ input, placeholder "For example: Why do people oppose these solutions?" ]
 > [ Ask ]
 >
-> Answers come only from the posts about this issue and its sub-issues.
+> Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.
 
 Under either box, small:
 
@@ -1008,13 +1008,19 @@ A source that is a solution or a piece of evidence (a count line cites these) re
 
 > 3. Evidence: {evidence name}. On {issue name}
 
+A guiding document (added 28 October 2026, John: answers quote the Declaration and the Charter when a question asks) reads:
+
+> 4. Guiding document: {Statement of purpose, Universal Declaration of Human Rights or The Earth Charter}.
+
+Its name links to the document on the About page while About is switched on; otherwise it is plain text.
+
 "On {issue name}" is left off when the evidence belongs to no issue. Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
 
 **When the record had more than one answer can read,** under the answer:
 
 > There are more posts on this than one answer can read, so this answer may leave some out.
 
-**When the record holds nothing on it,** or nothing in the answer could be tied to a post:
+**When the record holds nothing on it,** or nothing in the answer could be tied to a post or a guiding document (a question that names a document, an article or a principle is always answered from the documents):
 
 > The record does not say anything about this yet.
 
@@ -1101,7 +1107,7 @@ With a town or area, near means posts placed in the same town or area; with a co
 >
 > A language model fills in the form from the statement. Nothing joins the database until the writer has checked the form and posted it.
 >
-> When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and each part of the answer names the posts it comes from. A part that names no post is left out. Questions and answers are not kept.
+> When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and from the guiding documents below when a question asks about them. Each part of the answer names the posts or the document it comes from; a part that names neither is left out. Questions and answers are not kept.
 >
 > **The language model**
 >

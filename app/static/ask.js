@@ -26,6 +26,17 @@
   const KINDS = {solution: 'Solution: ', evidence: 'Evidence: '};
   function sourceLine(source) {
     const item = el('li');
+    // A guiding document (John, 28 October): "Guiding document: {name}.", the name linked to the About page.
+    if (source.kind === 'document') {
+      item.append(document.createTextNode('Guiding document: '));
+      if (source.href) {
+        const link = el('a', '', source.name);
+        link.href = source.href;
+        item.append(link);
+      } else item.append(document.createTextNode(source.name));
+      item.append(document.createTextNode('.'));
+      return item;
+    }
     const words = source.kind === 'post'
       ? source.name + (source.when ? ', ' + source.when : '') + (source.text ? ': \u201c' + source.text + '\u201d' : '')
       : (KINDS[source.kind] || '') + source.name + '.';

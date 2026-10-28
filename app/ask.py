@@ -2,7 +2,7 @@
 guard on its reply (03_schema.md, Phase 3, Q40 to Q42; 05_extraction.md, Phase 3, answering). No Cypher.
 
 The digest is compact JSON built in code, with ids the answer cites: S for a solution, E for a piece
-of evidence, P for a post. It is filled in this order until DIGEST_CHARS:
+of evidence, P for a post. The three guiding documents at the start of the instructions are D1 to D3. It is filled in this order until DIGEST_CHARS:
 1. the issue (its parent and sub-issues), its solutions by net support with their counts and the date
    of each stance, and its evidence with the readings, what each page says about itself and evidence
    on evidence. Asked of the whole record, the top solutions and evidence of the record join them;
@@ -27,7 +27,7 @@ from app.check import MONTHS, source_words
 from app.config import Settings
 from app.extract import call_model
 from app.fetch_video import is_video
-from app.principles import guiding_block
+from app.principles import DOCUMENTS as GUIDING, guiding_block
 
 log = logging.getLogger("oci")
 
@@ -48,11 +48,11 @@ READ_AS = {"supports": "agrees", "partly": "partly agrees", "refutes": "contradi
 class Source:
     """What the page shows for one id an answer cites."""
     id: str
-    kind: str  # post, solution or evidence
-    name: str  # the writer's name or Anonymous; the solution's or evidence's name
+    kind: str  # post, solution, evidence or document
+    name: str  # the writer's name or Anonymous; the solution's, evidence's or document's name
     date: str | None = None
     text: str | None = None  # a post's first SNIPPET characters
-    href: str | None = None  # its issue page
+    href: str | None = None  # its issue page; a document's place on the About page
     issue: str | None = None  # that issue's name
 
     @property
@@ -80,6 +80,25 @@ class Digest:
     def empty(self) -> bool:
         """No post and no solution: nothing an answer could rest on, so the reading service is not asked."""
         return not any(sid[0] in "PS" for sid in self.sources)
+
+
+# John, 28 October: answers may quote the guiding documents, cited as D1 to D3 in the order the
+# instructions give them. They sit beside every digest's sources, never inside its text.
+DOCUMENTS = {f"D{n}": Source(f"D{n}", "document", title, href=f"/about#{anchor}")
+             for n, (anchor, title, _) in enumerate(GUIDING, 1)}
+_DOCUMENT_TEXT = {f"D{n}": text for n, (_, _, text) in enumerate(GUIDING, 1)}
+# A question that names a document, an article or a principle is answered even when the record holds nothing.
+_NAMES_DOCUMENT = re.compile(r"\b(?:udhr|declaration|human rights|charter|statement of purpose|guiding|"
+                             r"articles?|principles?)\b", re.IGNORECASE)
+
+
+def names_document(question: str) -> bool:
+    return bool(_NAMES_DOCUMENT.search(question))
+
+
+def known(digest: Digest) -> dict[str, Source]:
+    """What an answer may cite: the digest's own ids and the three documents."""
+    return {**digest.sources, **DOCUMENTS}
 
 
 def _dumps(value: Any) -> str:
@@ -400,14 +419,21 @@ it. "supported_by" and "refuted_by" list the other evidence that speaks to a pie
 newest first, each with its id (P1, P2 ...), its writer ("by"), its date, the date it was edited if
 it was, and the stances it took. "left_out" says how many more posts there were than you were given.
 
-1. Use only the record. If it holds nothing that answers the question, return
-   {"in_record": false, "answer": []}. Never add facts, numbers or views from anywhere else.
+The three guiding documents at the start of these instructions have ids too: D1 the Statement of
+purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
+
+1. Use only the record and the three guiding documents. If neither holds anything that answers the
+   question, return {"in_record": false, "answer": []}. Never add facts, numbers or views from
+   anywhere else.
 2. Sum up; do not lecture. Give each point of view the record holds and how many people hold it.
    Never give one verdict and never your own view. This is a conversation, not a lecture.
    Numbers of people who approve or oppose come only from "approved_by" and "opposed_by".
 3. Every paragraph lists in "sources" the ids it rests on, and at least one post id (P).
-   The one exception is a line of counts, which may cite only the solution (S) or evidence (E)
-   it counts, for example: "Approved by 5, opposed by 2, as of 30 October."
+   There are two exceptions. A line of counts may cite only the solution (S) or evidence (E)
+   it counts, for example: "Approved by 5, opposed by 2, as of 30 October." A paragraph that
+   quotes or sums up a guiding document cites it (D1, D2 or D3) and needs no post. Cite only
+   the ids a paragraph really rests on; when no post speaks to the question, say so in the
+   document's paragraph rather than citing a post that does not.
    A point about a piece of evidence cites the evidence (E) and the post that cited it (the
    "post" in its "about"). Never write an id in the text itself; ids go only in "sources".
 4. Say how well backed a point is: how its evidence pages were read, what kind of source each
@@ -430,21 +456,27 @@ it was, and the stances it took. "left_out" says how many more posts there were 
    he, she, him or her. "Anonymous" stays Anonymous; never guess who wrote a post.
 10. Respect the rights in the Declaration and the principles in the Charter. Do not judge a post
     against them unless the question asks; name an article or a principle only when the question
-    or a post does.
+    or a post does. When the question names a document, an article or a principle, or asks what
+    one says, quote the article or principle that answers it word for word in quotation marks,
+    with its number, and cite the document. When it asks whether a solution or an issue in the
+    record fits an article or principle, quote it, say plainly where the solution's own words
+    meet what it asks for and where they do not, and give the views and counts the record holds;
+    leave the verdict to the reader.
 11. Earlier questions only tell you what the new question refers to; answer the new question.
 12. English only, plain words. At most 5 short paragraphs of one to three sentences each, under
     1,000 characters in all, the most important point first. Call what you were given "the record";
     never "digest", "JSON", "data", "excerpt" or "ids".
 
 Return exactly:
-{"in_record": true, "answer": [{"text": "one short paragraph", "sources": ["P3", "P7"]}]}
+{"in_record": true, "answer": [{"text": "one short paragraph", "sources": ["P3", "P7"]},
+                               {"text": "one short paragraph", "sources": ["D2"]}]}
 """
 
 # The same bytes on every call, after the guiding block, so the reading service's cache holds them.
 SYSTEM_PROMPT = "\n" + guiding_block() + "\n" + ANSWERING_RULES
-_IDS_IN_BRACKETS = re.compile(r"\s*[\[(]\s*(?:[PSE]\d{1,3}\s*[,;]?\s*(?:and\s+)?)+[\])]")
-_BARE_ID = re.compile(r"\b[PSE]\d{1,3}\b")
-_SOURCE_ID = re.compile(r"^[PSE]\d{1,4}$")
+_IDS_IN_BRACKETS = re.compile(r"\s*[\[(]\s*(?:[PSED]\d{1,3}\s*[,;]?\s*(?:and\s+)?)+[\])]")
+_BARE_ID = re.compile(r"\b[PSED]\d{1,3}\b")
+_SOURCE_ID = re.compile(r"^[PSED]\d{1,4}$")
 _DIGEST = re.compile(r"\bdigests?\b", re.IGNORECASE)
 # A count line holds a figure, or a count in words beside what it counts: "Approved by 5", "No evidence here is
 # supported by other evidence" (the walk of 26 October: that line cited only E ids and was dropped), but not
@@ -487,9 +519,9 @@ def parse_answer(content: str) -> dict[str, Any]:
 
 def _clean(text: str, digest: Digest) -> str:
     """One paragraph of plain text. Ids belong in "sources" and show as numbers, so ids in brackets are
-    taken out, and a bare solution or evidence id reads as its name, a bare post id as "a post"."""
+    taken out, and a bare solution, evidence or document id reads as its name, a bare post id as "a post"."""
     def name(match: re.Match) -> str:
-        source = digest.sources.get(match.group(0))
+        source = known(digest).get(match.group(0))
         return source.name if source and source.kind != "post" else "a post"
 
     text = _BARE_ID.sub(name, _IDS_IN_BRACKETS.sub("", text))
@@ -498,24 +530,51 @@ def _clean(text: str, digest: Digest) -> str:
     return re.sub(r"\(\s*\)|\[\s*\]", "", text).strip()
 
 
-def guard(reply: dict[str, Any], digest: Digest) -> tuple[list[dict[str, Any]], dict[str, int]]:
+_QUOTED = re.compile(r"[\u201c\"]([^\u201c\u201d\"]+)[\u201d\"]")
+_ELLIPSIS = re.compile(r"\u2026|\.\.\.|\[\s*\.*\s*\]")
+
+
+def _plain(text: str) -> str:
+    return " ".join(text.replace("\u2019", "'").replace('\\"', '"').lower().split())
+
+
+def _quotes_hold(text: str, cited: list[str], digest: Digest) -> bool:
+    """Every quote in a paragraph that cites a guiding document is found, word for word, in a document it
+    cites or in the record it was given; a quote may be cut short or split by an ellipsis."""
+    within = _plain(" ".join([_DOCUMENT_TEXT[sid] for sid in cited if sid in _DOCUMENT_TEXT] + [digest.text]))
+    for quote in _QUOTED.findall(text):
+        for piece in _ELLIPSIS.split(quote):
+            piece = _plain(piece).strip(" .,;:")
+            if len(piece) >= 12 and piece not in within:
+                return False
+    return True
+
+
+def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
+          ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """The paragraphs the page may show, each {"text", "sources"} with ids from the digest only, and
     the counts that are logged. A paragraph keeps a P id, or is a count line: at most 200 characters,
-    a figure, or a count in words beside what it counts, citing S or E only; any other is dropped. At most 5 paragraphs, kept in order while
-    the total stays within 1,200 characters; the one that would pass it is dropped with the rest."""
+    a figure, or a count in words beside what it counts, citing S or E only; or cites a guiding document
+    (D), whose quotes must then be found in it; any other is dropped. With `documents` false (no question
+    named a document) a D id counts as not in the digest. At most 5 paragraphs, kept in order
+    while the total stays within 1,200 characters; the one that would pass it is dropped with the rest."""
     counts = {"paragraphs_dropped": 0, "sources_kept": 0, "sources_dropped": 0}
     kept: list[dict[str, Any]] = []
     if not reply.get("in_record"):
         return kept, counts
     total, full = 0, False
+    citable = known(digest) if documents else digest.sources
     for item in reply["answer"]:
         ids = [str(raw).strip().upper() for raw in item.get("sources") or [] if isinstance(raw, (str, int))]
-        sources = list(dict.fromkeys(i for i in ids if _SOURCE_ID.match(i) and i in digest.sources))
+        sources = list(dict.fromkeys(i for i in ids if _SOURCE_ID.match(i) and i in citable))
         counts["sources_dropped"] += len(ids) - len(sources)
         text = _clean(item["text"], digest)
         posts = any(i.startswith("P") for i in sources)
         count_line = bool(sources) and len(text) <= COUNT_LINE_CHARS and bool(_COUNTED.search(text))
-        usable = bool(text) and (posts or count_line)
+        documents = [i for i in sources if i in DOCUMENTS]
+        usable = bool(text) and (posts or count_line or bool(documents))
+        if usable and documents and not _quotes_hold(text, documents, digest):
+            usable = False
         full = full or len(kept) == PARAGRAPHS_MAX or (usable and total + len(text) > ANSWER_CHARS)
         if full or not usable:
             counts["paragraphs_dropped"] += 1
@@ -534,7 +593,8 @@ def numbered(paragraphs: list[dict[str, Any]], digest: Digest) -> tuple[list[dic
         for sid in paragraph["sources"]:
             order.setdefault(sid, len(order) + 1)
         shown.append({"text": paragraph["text"], "refs": [order[sid] for sid in paragraph["sources"]]})
-    return shown, [digest.sources[sid] for sid in order]
+    citable = known(digest)
+    return shown, [citable[sid] for sid in order]
 
 
 def build_messages(question: str, earlier: list[str], digest: Digest) -> list[dict[str, str]]:
@@ -546,7 +606,7 @@ def build_messages(question: str, earlier: list[str], digest: Digest) -> list[di
 def answer(question: str, earlier: list[str], digest: Digest, settings: Settings, *,
            request_id: str | None = None, scope: str = "issue", transport: Any = None) -> Answer:
     """One attempt, 40 seconds. Without a reading service the route never gets here."""
-    if digest.empty:
+    if digest.empty and not names_document(question):
         return Answer("empty")
     started = time.perf_counter()
     earlier = [text[:QUESTION_MAX] for text in earlier if isinstance(text, str) and text.strip()][-EARLIER_MAX:]
@@ -561,7 +621,9 @@ def answer(question: str, earlier: list[str], digest: Digest, settings: Settings
         result = Answer("failed")
         entry["status"] = "failed"
     else:
-        paragraphs, counts = guard(reply.payload, digest)
+        # Rule 10: an article or a principle only when the question names one (or an earlier one did).
+        named = any(names_document(text) for text in [question, *earlier])
+        paragraphs, counts = guard(reply.payload, digest, documents=named)
         shown, sources = numbered(paragraphs, digest)
         result = Answer("answered" if shown else "empty", shown, sources, partial=bool(shown and digest.posts_left_out))
         usage = reply.usage or {}

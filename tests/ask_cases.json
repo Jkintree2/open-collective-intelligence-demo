@@ -87,6 +87,24 @@
       "issue": "global climate coordination",
       "question": "What does Dana Reyes think, and what does Ada Okafor think?",
       "expect": "Names them or says they; never he or she (walk finding 5). Never says digest (finding 4)."
+    },
+    {
+      "id": "A15",
+      "issue": null,
+      "question": "What does the UDHR say about privacy?",
+      "expect": "Quotes Article 12 of the Declaration word for word and cites D2, even though no post speaks of privacy (John, 28 October). Never says the record holds nothing."
+    },
+    {
+      "id": "A16",
+      "issue": null,
+      "question": "Is the proposed solution of a global carbon tax consistent with the Earth Charter, Article 7d?",
+      "expect": "Quotes Earth Charter principle 7d (internalize the full environmental and social costs) citing D3, says where the carbon tax's own words meet it, and gives the record's views and counts on the tax with their posts; no verdict of its own (John, 28 October)."
+    },
+    {
+      "id": "A17",
+      "issue": null,
+      "question": "Does the lack of a global carbon tax violate the Universal Declaration of Human Rights?",
+      "expect": "Quotes only articles that bear on it, citing D2, with the record's views on the tax; says plainly when no article speaks to it; no verdict (John, 28 October)."
     }
   ]
 }

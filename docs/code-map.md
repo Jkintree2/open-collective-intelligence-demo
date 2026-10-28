@@ -37,9 +37,9 @@ app/routes_ask.py  Phase 3: /ask and the issue page's ask box, with or without J
 app/routes_followups.py Phase 3: POST /api/follow-ups (behind FOLLOW_UPS_ENABLED; new rows only)
 app/routes_about.py Phase 3: /about (behind ABOUT_ENABLED; open without signing in; the three guiding documents from app/guiding/)
 app/search.py      the safe keyword query and grouped results; since Phase 3 also question_query(), the words of a question OR'ed for Ask the record
-app/ask.py         Phase 3: the digest (in order, to the cap, with the left out count), the answering rules, the call and the guard on sources and paragraphs; no Cypher
+app/ask.py         Phase 3: the digest (in order, to the cap, with the left out count), the answering rules, the call and the guard on sources and paragraphs; no Cypher; since 28 October the three guiding documents as sources D1 to D3, with the quote check
 app/followups.py   Phase 3: the follow-up rules, the call, the guard, and the fixed missing source question; no Cypher
-app/principles.py  Phase 3: guiding_block(), the purpose, the Declaration and the Charter read once from app/guiding/*.txt, first in every prompt that carries them
+app/principles.py  Phase 3: guiding_block(), the purpose, the Declaration and the Charter read once from app/guiding/*.txt, first in every prompt that carries them; DOCUMENTS, their About anchors and titles, which About shows and Ask cites as D1 to D3
 app/places.py      Phase 3: the country list, country_code() with common aliases, cleaning a town or area; no I/O
 app/tidy.py        who may tidy, tidying copy and change sentences, tidied_names() for reloading the seed
 app/extract.py     prompt, model call with one retry, last_model_error, Extraction; re-exports CardPayload and resolution

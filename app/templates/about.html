@@ -14,7 +14,7 @@
 <h2>How statements are read{% if on.ask %} and questions are answered{% endif %}</h2>
 <p>A language model fills in the form from the statement. Nothing joins the database until the writer has checked the form and posted it.</p>
 {% if on.ask %}
-<p>When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and each part of the answer names the posts it comes from. A part that names no post is left out. Questions and answers are not kept.</p>
+<p>When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and from the guiding documents below when a question asks about them. Each part of the answer names the posts or the document it comes from; a part that names neither is left out. Questions and answers are not kept.</p>
 {% endif %}
 
 <h2>The language model</h2>
@@ -35,8 +35,8 @@
 
 <h2>Guiding principles</h2>
 <p>The language model is given the Statement of purpose, and the full text of the Universal Declaration of Human Rights and the Earth Charter at the start of the system prompt, its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own form.</p>
-{% for title, text in documents %}
-<section class="guiding">
+{% for anchor, title, text in documents %}
+<section class="guiding" id="{{ anchor }}">
 <h3>{{ title }}</h3>
 <div class="guiding-text">{{ text }}</div>
 </section>

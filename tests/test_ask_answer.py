@@ -177,3 +177,88 @@ def test_the_timeout_is_forty_seconds(monkeypatch):
 def test_the_rules_have_no_dashes_where_a_reader_could_see_them():
     for line in (ask.EMPTY, ask.PARTIAL, ask.FAILED):
         assert "-" not in line and "\u2014" not in line and "\u2013" not in line
+
+
+# John, 28 October: Ask must answer from the guiding documents too ("what does the UDHR say about privacy",
+# "is a global carbon tax consistent with Earth Charter 7d"). They are cited as D1 to D3.
+ARTICLE_12 = ("No one shall be subjected to arbitrary interference with his privacy, family, home or "
+              "correspondence, nor to attacks upon his honour and reputation.")
+
+
+def test_the_rules_name_the_three_documents_and_their_ids():
+    rules = " ".join(ask.ANSWERING_RULES.split())
+    assert "D1 the Statement of purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter" in rules
+    assert ask.SYSTEM_PROMPT.startswith("\n" + guiding_block() + "\n")
+
+
+def test_a_paragraph_quoting_a_document_needs_no_post():
+    paragraphs, counts = kept((f"Article 12 of the Declaration says: “{ARTICLE_12}”", ["D2"]))
+    assert paragraphs == [{"text": f"Article 12 of the Declaration says: “{ARTICLE_12}”", "sources": ["D2"]}]
+    assert counts == {"paragraphs_dropped": 0, "sources_kept": 1, "sources_dropped": 0}
+
+
+def test_a_quote_cut_short_or_split_by_an_ellipsis_still_counts():
+    text = ("Article 12 says \"No one shall be subjected to arbitrary interference with his privacy… "
+            "nor to attacks upon his honour and reputation.\"")
+    assert kept((text, ["D2"]))[0] == [{"text": text, "sources": ["D2"]}]
+
+
+def test_a_quote_the_document_does_not_hold_is_dropped():
+    paragraphs, counts = kept(("Article 12 says: “Everyone has the right to a private carbon budget.”", ["D2"]),
+                              (f"The Charter says: “{ARTICLE_12}”", ["D3"]))
+    assert paragraphs == [] and counts["paragraphs_dropped"] == 2
+
+
+def test_only_the_three_documents_can_be_cited():
+    paragraphs, counts = kept(("The Declaration speaks of privacy in Article 12.", ["D2", "D4", "D0"]))
+    assert paragraphs == [{"text": "The Declaration speaks of privacy in Article 12.", "sources": ["D2"]}]
+    assert counts["sources_dropped"] == 2
+
+
+def test_a_document_and_the_record_can_be_cited_together():
+    text = "Earth Charter 7d asks that full environmental and social costs be internalized; Ada wants a carbon tax."
+    paragraphs, _ = kept((text, ["D3", "P1", "S1"]))
+    shown, sources = ask.numbered(paragraphs, DIGEST)
+    assert shown == [{"text": text, "refs": [1, 2, 3]}]
+    assert [(s.id, s.kind, s.name, s.href) for s in sources][0] == (
+        "D3", "document", "The Earth Charter", "/about#earth-charter")
+
+
+def test_a_bare_document_id_in_the_text_reads_as_its_name():
+    paragraphs, _ = kept(("D2 Article 12 protects privacy.", ["D2"]))
+    assert paragraphs[0]["text"] == "Universal Declaration of Human Rights Article 12 protects privacy."
+
+
+@pytest.mark.parametrize("question, names", [
+    ("What does the UDHR say about privacy?", True),
+    ("Is a global carbon tax consistent with Earth Charter 7d?", True),
+    ("Does the lack of a carbon tax violate the Universal Declaration of Human Rights?", True),
+    ("Which article of the Declaration covers asylum?", True),
+    ("What does the statement of purpose say?", True),
+    ("Which principle speaks to this?", True),
+    ("Why do people oppose the veto?", False),
+    ("What is the evidence for a carbon tax?", False)])
+def test_a_question_that_names_a_guiding_document(question, names):
+    assert ask.names_document(question) is names
+
+
+def test_an_empty_record_still_asks_when_the_question_names_a_document():
+    empty = ask.Digest('{"asked_about":"the whole record","issues":[]}', {}, issue_keys=[])
+    calls = []
+    content = json.dumps(reply((f"Article 12 says: “{ARTICLE_12}”", ["D2"])))
+    result = ask.answer("What does the UDHR say about privacy?", [], empty, SETTINGS, transport=service(content, calls))
+    assert len(calls) == 1 and result.status == "answered"
+    assert [s.id for s in result.sources] == ["D2"]
+    assert ask.answer("Why oppose the veto?", [], empty, SETTINGS, transport=service(content, calls)).status == "empty"
+    assert len(calls) == 1
+
+
+def test_a_document_is_cited_only_when_a_question_names_one():
+    """The live run of 28 October: "Is a carbon tax a good idea?" got an Earth Charter paragraph nobody asked for."""
+    calls = []
+    content = json.dumps(reply(("Ada wants a tax.", ["P1"]), ("The Charter asks that costs be internalized.", ["D3"])))
+    result = ask.answer("Is a carbon tax a good idea?", [], DIGEST, SETTINGS, transport=service(content, calls))
+    assert [p["text"] for p in result.paragraphs] == ["Ada wants a tax."] and [s.id for s in result.sources] == ["P1"]
+    result = ask.answer("And under 7d?", ["Is a carbon tax consistent with the Earth Charter?"], DIGEST, SETTINGS,
+                        transport=service(content, calls))
+    assert [s.id for s in result.sources] == ["P1", "D3"]
