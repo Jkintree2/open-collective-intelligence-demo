@@ -138,8 +138,8 @@ test('a late, refused or unreadable reply says so; a limit says its own line', a
 test('no reading service: the line shows and the question is not kept', async () => {
   const p = page();
   p.ask('Why?');
-  p.requests[0].resolve(json({message: 'Asking needs the reading service, which is not set up.'})); await p.flush();
-  assert.equal(p.answers.children[0].find('ask-message').textContent, 'Asking needs the reading service, which is not set up.');
+  p.requests[0].resolve(json({message: 'Asking needs the language model, which is not set up.'})); await p.flush();
+  assert.equal(p.answers.children[0].find('ask-message').textContent, 'Asking needs the language model, which is not set up.');
   p.ask('Again?');
   assert.deepEqual(p.requests[1].body.earlier, []);
 });

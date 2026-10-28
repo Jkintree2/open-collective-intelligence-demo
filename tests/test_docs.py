@@ -32,7 +32,8 @@ def test_schema_in_brief_names_every_label_and_relationship_type():
     assert [name for name in [*LABEL_KEYS, *DIRECTIONS] if f"`{name}" not in brief] == []
 
 
-TECHNICAL = re.compile(r"\b(node|edge|graph|cypher|model|extraction|entity)s?\b", re.I)
+# "language model" is John's own word for the reading service since 28 October (CLAUDE.md rule 5).
+TECHNICAL = re.compile(r"\b(node|edge|graph|cypher|(?<!language )model|extraction|entity)s?\b", re.I)
 
 
 def test_the_operators_guide_is_plain_and_covers_phase_1():

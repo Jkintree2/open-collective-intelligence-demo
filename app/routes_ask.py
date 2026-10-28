@@ -25,7 +25,7 @@ NO_QUESTION = "Please write a question."
 TOO_LONG = "Please keep the question under 500 characters."
 PERSON_LIMIT = "You have asked 30 questions today. Please ask again tomorrow."
 SITE_LIMIT = "The site has answered as many questions as it can today. Please ask again tomorrow."
-NO_SERVICE = "Asking needs the reading service, which is not set up."
+NO_SERVICE = "Asking needs the language model, which is not set up."
 
 # 30 questions a person a day and 300 for the site, held in this process: a restart or a wake from
 # Render's sleep starts both counts again, so they are a ceiling per waking (the logs hold the real count).

@@ -76,7 +76,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 **Text box.** Label **client-facing**: "Write or dictate your statement in the box." (John's wording, 17 October 2026), with the Dictate button on the same line. The box is empty, with no example text, and the cursor is in it when the write page opens (not on the edit page). Four rows, grows with content, hard limit 4,000 characters with a counter that appears after 3,500.
 
-**Buttons.** "Dictate" with a microphone glyph, beside the label (hidden when the browser has no speech recognition). With an account, the "Post anonymously" box and its line sit between the text box and "Read my statement". "Read my statement" is the primary button, disabled until the box has text. There is no button to skip the reading: when the reading service is slow or down, the card opens empty to fill in by hand.
+**Buttons.** "Dictate" with a microphone glyph, beside the label (hidden when the browser has no speech recognition). With an account, the "Post anonymously" box and its line sit between the text box and "Read my statement". "Read my statement" is the primary button, disabled until the box has text. There is no button to skip the reading: when the language model is slow or down, the card opens empty to fill in by hand.
 
 **Dictation.** Press Dictate, the button turns red and reads "Listening… press to stop". Recognised text is appended to the box as it arrives. Press again to stop. The tester edits the text as normal before pressing Read my statement. Nothing is sent anywhere until they do.
 
@@ -101,7 +101,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 **When the model found nothing.** The card opens with all sections empty and this line at the top, **client-facing**: "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again." The Post button is disabled until the tester types into a field or clicks a second link, "post it as a plain statement anyway", which posts the text into the feed with no structure. Greetings and tests then stay out of the feed unless someone means it.
 
-**When the model is slow or down.** Same empty card, **client-facing**: "The reading service is not answering right now. You can fill in the form by hand, or try again in a minute." A "Try again" link re-sends the same text.
+**When the model is slow or down.** Same empty card, **client-facing**: "The language model is not answering right now. You can fill in the form by hand, or try again in a minute." A "Try again" link re-sends the same text.
 
 **When the model returns something wrong.** The tester edits or removes it. That is the whole design; there is no second model call to fix the first.
 
@@ -140,7 +140,7 @@ Empty state **client-facing**: "No issues yet. Write something on the front page
 
 ## Screen 5: admin (`/admin`)
 
-Not linked from anywhere. Protected by HTTP basic auth (any username, the admin token as the password; the browser remembers it). Shows node and relationship counts, one line for the last reading-service error ("Reading service: insufficient balance since 3 October", or "none"), and three buttons:
+Not linked from anywhere. Protected by HTTP basic auth (any username, the admin token as the password; the browser remembers it). Shows node and relationship counts, one line for the last reading-service error ("Language model: insufficient balance since 3 October", or "none"), and three buttons:
 
 * "Reload seed": re-runs the seed merge without deleting anything. Safe.
 * "Reset to seed": deletes everything and reloads the seed, behind a confirm that requires typing RESET.
@@ -151,7 +151,7 @@ And a list of the last fifty posts with a "delete" link each (removes the post, 
 ## Copy rules for every screen
 
 * John's node words only: issue, claim, evidence, solution, person. Never node, edge, graph, Cypher, model name, extraction, entity.
-* The model is "the reading service" or just "we" in copy. It is never named.
+* The model is "the language model" or just "we" in copy (John, 28 October 2026; it was "the reading service"). The provider is named only on About.
 * Sentences in the card use the display name, a lowercase verb, the node name, nothing else.
 * No exclamation marks. No "oops". Errors say what happened and what to do next.
 * Numbers are raw counts of people and posts. Nothing is a percentage, a score or a trend.
@@ -176,7 +176,7 @@ Signed in, the header links read "Write", "Issues", "Enter a person", "My statem
 
 ### Sign in (`/sign-in`)
 
-Replaces Screen 1. The two paragraphs about the shared record and the reading service stay exactly as they read on the live passphrase page.
+Replaces Screen 1. The two paragraphs about the shared record and the language model stay exactly as they read on the live passphrase page.
 
 > **{SITE_NAME}**
 >
@@ -189,6 +189,8 @@ Replaces Screen 1. The two paragraphs about the shared record and the reading se
 > [ Sign in ]
 >
 > Forgot your password?
+>
+> About this site *(only with `ABOUT_ENABLED`; John, call of 28 October)*
 >
 > New here? Someone already taking part must enter you, and you get an email from John Kintree with a link to choose your password.
 
@@ -491,7 +493,7 @@ The "Post anonymously" box starts at the post's own choice and can be changed at
 
 Note for the builder: while editing, the reading buttons and the "post it as a plain statement anyway" button are hidden; the card is the edit.
 
-A row with a link the post already holds a reading for shows that reading (Phase 2); what else the page mentions is not kept with the post, so the page is read again quietly and "The page also mentions" appears under the stored reading when it arrives. The stored reading and the writer's supports or refutes stand whatever the fresh reading says; a page that cannot be opened now adds nothing. With the flag on but no reading service, nothing is asked (Beth's note of 22 October 2026, that the list did not show when she added a link while editing; added 24 October 2026).
+A row with a link the post already holds a reading for shows that reading (Phase 2); what else the page mentions is not kept with the post, so the page is read again quietly and "The page also mentions" appears under the stored reading when it arrives. The stored reading and the writer's supports or refutes stand whatever the fresh reading says; a page that cannot be opened now adds nothing. With the flag on but no language model, nothing is asked (Beth's note of 22 October 2026, that the list did not show when she added a link while editing; added 24 October 2026).
 
 > Your post is updated.
 
@@ -602,7 +604,7 @@ Notices:
 
 The line above appears when a back room email would pass the per address limit that "Forgot your password?" and "Send the invitation again" also use; the back room has no per minute limit, since only John can reach it. John's own row reads "{name} · {email} · first account" followed by its state, because nobody entered him; it offers neither Withdraw nor Switch off. Switch off is offered only to accounts that have joined; someone not yet accepted is withdrawn instead.
 
-A "Sending email" line, like the reading service line:
+A "Sending email" line, like the language model line:
 
 > No problems recorded.
 
@@ -628,7 +630,7 @@ When the time of the failure is not known:
 
 ## Phase 2: evidence that checks itself
 
-Added 20 October 2026, before any Phase 2 code. Everything here shows only when `EVIDENCE_CHECK_ENABLED` is set and the reading service is configured; otherwise the card is exactly the Phase 1 card. Everything in a quote is **client-facing**. John approved the card and source confidence wording as proposed in the source confidence note (20 October 2026, 14:16 UTC: "Please proceed with building the display as you described it"); the change of email copy (X2) has not been shown to him yet. No dashes, none of the forbidden words.
+Added 20 October 2026, before any Phase 2 code. Everything here shows only when `EVIDENCE_CHECK_ENABLED` is set and the language model is configured; otherwise the card is exactly the Phase 1 card. Everything in a quote is **client-facing**. John approved the card and source confidence wording as proposed in the source confidence note (20 October 2026, 14:16 UTC: "Please proceed with building the display as you described it"); the change of email copy (X2) has not been shown to him yet. No dashes, none of the forbidden words.
 
 ### On the card, under each evidence row with a link
 
@@ -952,7 +954,7 @@ On each person's line in People, after the email, for each earlier one:
 
 ### Not client-facing
 
-The reading takes a few seconds per link; rows fill in as they arrive. A link is read once for the same claim and statement; the reading is kept for the life of the running site (up to 500 readings), so reading it again costs nothing until the site restarts. With the reading service unset, no line appears at all.
+The reading takes a few seconds per link; rows fill in as they arrive. A link is read once for the same claim and statement; the reading is kept for the life of the running site (up to 500 readings), so reading it again costs nothing until the site restarts. With the language model unset, no line appears at all.
 
 ## Phase 3: talking to the record
 
@@ -974,7 +976,7 @@ Since 28 October 2026 every line here says "database" where it said "record" (Jo
 >
 > Ask a question in plain words. The answer is built only from what people have posted here and the three guiding documents, and names where each part comes from.
 >
-> [ input, placeholder "For example: What do people say about the Security Council veto?" ]
+> [ input, empty, with the cursor in it (`autofocus`), like the Write page; no example question (John, call of 28 October) ]
 > [ Ask ]
 
 **On each issue page,** under the evidence and above the posts:
@@ -1036,7 +1038,7 @@ Its name links to the document on the About page while About is switched on; oth
 
 > The site has answered as many questions as it can today. Please ask again tomorrow.
 
-> Asking needs the reading service, which is not set up.
+> Asking needs the language model, which is not set up.
 
 > The question could not be answered just now. Please try again in a minute.
 
@@ -1144,6 +1146,6 @@ The three documents are shown from the same files the instructions use, so the p
 
 > No language model is set up at the moment, so forms are filled in by hand and questions cannot be asked.
 
-This page's words are John's own (his edits of 28 October): "database" for the record, "form" for the card and "language model" for the reading service, rule 5 notwithstanding. The rest of the site still says record, card and reading service until the wording is changed throughout.
+This page's words are John's own (his edits of 28 October): "database" for the record, "form" for the card and "language model" for what was called the reading service. Since 28 October the rest of the site says "database" and "language model" too (John's emails of that day); code names such as `card.js` keep "card".
 
 `{repository address}` is John's repository, as the README names it; nothing personal to the builder (CLAUDE.md rule 8).

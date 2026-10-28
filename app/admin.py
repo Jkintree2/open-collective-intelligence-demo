@@ -14,9 +14,9 @@ from scripts import seed
 
 log = logging.getLogger("oci")
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
-ERRORS = {401: "The reading service did not accept its access key.",
-          402: "The reading service balance needs a top up.",
-          403: "The reading service refused access."}
+ERRORS = {401: "The language model did not accept its access key.",
+          402: "The language model balance needs a top up.",
+          403: "The language model refused access."}
 LABEL_NAMES = {"Person": "People", "Issue": "Issues", "Solution": "Solutions",
                "Evidence": "Pieces of evidence", "Post": "Posts"}
 REL_NAMES = {"POSTED": "Posts credited", "CLAIM": "Claims", "SUBMIT": "Citations",
@@ -50,7 +50,7 @@ def reading_error() -> str:
     error = extract.last_model_error
     if not error:
         return "none"
-    message = ERRORS.get(error.get("http"), "The reading service could not complete a request.")
+    message = ERRORS.get(error.get("http"), "The language model could not complete a request.")
     when = _utc(error.get("time"))
     return f"{message} Last recorded: {when}." if when else message
 

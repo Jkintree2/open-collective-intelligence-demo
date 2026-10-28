@@ -2,7 +2,7 @@
 {% block title %}About · {{ site_name }}{% endblock %}
 {% block content %}
 {# Only what is switched on is described (Ask the record, follow-up questions, the evidence check).
-   John's wording since 28 October: database, form and language model, here only for now. #}
+   John's wording since 28 October, now site wide: database, form and language model. #}
 {% set on = switches() %}
 {% macro and_list(items) %}{{ items[:-1]|join(", ") }}{% if items|length > 1 %} and {% endif %}{{ items[-1] }}{% endmacro %}
 <article class="about">

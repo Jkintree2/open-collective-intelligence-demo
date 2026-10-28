@@ -4,7 +4,7 @@
   const find = id => document.getElementById(id);
   const form = find('compose'), text = find('text'), dictate = find('dictate');
   if (!form) return;
-  const unavailable = 'The reading service is not answering right now. You can fill in the form by hand, or try again in a minute.';
+  const unavailable = 'The language model is not answering right now. You can fill in the form by hand, or try again in a minute.';
   const tooLong = 'That is longer than this demo can read at once. Please shorten it to a few paragraphs.';
   let readController, slowTimer, abandonTimer;
   async function request(url, body, signal) {

@@ -155,3 +155,12 @@ def test_a_signed_in_member_gets_the_whole_menu_here_too(about, switch):
 def test_signed_out_it_keeps_the_short_menu(about):
     nav = re.search(r"<nav>.*?</nav>", about.client.get("/about").text).group(0)
     assert "/my-statements" not in nav and "/account" not in nav and "/people" not in nav
+
+
+# John, call of 28 October: someone without an invitation can find About from the sign in page.
+def test_the_sign_in_page_links_here(about):
+    assert '<p><a href="/about">About this site</a></p>' in about.client.get("/sign-in").text
+
+
+def test_switched_off_the_sign_in_page_has_no_link(member_app):
+    assert 'href="/about"' not in member_app.client.get("/sign-in").text

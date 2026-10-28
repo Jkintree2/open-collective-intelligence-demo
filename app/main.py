@@ -104,7 +104,7 @@ YEAR_SECONDS = 365 * 86400
 # Client facing copy, word for word from docs/planning/04_interface.md.
 WRONG_PASSPHRASE = "That passphrase did not match. Check the message from John and try again."
 TOO_LONG = "That is longer than this demo can read at once. Please shorten it to a few paragraphs."
-NOT_ANSWERING = "The reading service is not answering right now. You can fill in the form by hand, or try again in a minute."
+NOT_ANSWERING = "The language model is not answering right now. You can fill in the form by hand, or try again in a minute."
 NOT_FOUND = "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again."
 ENGLISH_ONLY = "This demo reads English only for now."
 READING_LIMIT = "Too many requests. Please wait a minute or fill in the form by hand."

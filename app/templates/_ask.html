@@ -5,7 +5,8 @@
   <form class="ask-form" method="post" action="/ask">
     {% if ask_issue %}<input type="hidden" name="issue" value="{{ ask_issue.key }}">{% endif %}
     {% for earlier in ask_earlier or [] %}<input type="hidden" name="earlier" value="{{ earlier }}">{% endfor %}
-    <textarea name="question" rows="2" aria-labelledby="ask-title" placeholder="{% if ask_issue %}For example: Why do people oppose these solutions?{% else %}For example: What do people say about the Security Council veto?{% endif %}">{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
+    {# John, 28 October: on Ask the database the box is empty with the cursor in it, like the Write page. #}
+    <textarea name="question" rows="2" aria-labelledby="ask-title"{% if ask_issue %} placeholder="For example: Why do people oppose these solutions?"{% else %} autofocus{% endif %}>{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
     <button class="primary" type="submit">Ask</button>
   </form>
   {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.</p>{% endif %}
