@@ -1,6 +1,6 @@
 """Phase 3: the About page (04_interface.md, "About"), behind ABOUT_ENABLED. It opens without signing in,
-reads nothing from the record and calls no reading service; the three guiding documents come from the same
-text that app/principles.py puts at the start of the instructions."""
+reads nothing from the record but the signed-in account (for the menu) and calls no reading service; the
+three guiding documents come from the same text that app/principles.py puts at the start of the instructions."""
 
 from urllib.parse import urlparse
 
@@ -9,6 +9,7 @@ from fastapi.responses import Response
 
 from app import config, principles
 from app.config import Settings
+from app.members import current_member
 from app.pages import page
 
 router = APIRouter()
@@ -17,9 +18,9 @@ router = APIRouter()
 REPOSITORY = "https://github.com/Jkintree2/open-collective-intelligence-demo"
 
 # Client facing copy, word for word from docs/planning/04_interface.md.
-NO_READING_SERVICE = "No reading service is set up at the moment, so cards are filled in by hand and questions cannot be asked."
+NO_READING_SERVICE = "No language model is set up at the moment, so forms are filled in by hand and questions cannot be asked."
 # The same line without Ask the record (ASK_ENABLED unset), which then has no questions to speak of.
-NO_READING_SERVICE_CARDS = "No reading service is set up at the moment, so cards are filled in by hand."
+NO_READING_SERVICE_CARDS = "No language model is set up at the moment, so forms are filled in by hand."
 
 PROVIDERS = {"deepseek": "DeepSeek", "openai": "OpenAI", "openrouter": "OpenRouter", "groq": "Groq",
              "mistral": "Mistral", "together": "Together AI"}
@@ -48,6 +49,8 @@ def reading_service(settings: Settings) -> dict[str, str] | None:
 @router.get("/about", dependencies=[Depends(about_on)])
 def about(request: Request) -> Response:
     settings = config.get_settings()
+    # The page opens without signing in, so require_access never looked; a signed-in member gets the whole menu.
+    current_member(request)
     return page(request, "about.html", {
         "service": reading_service(settings),
         "no_service": NO_READING_SERVICE,

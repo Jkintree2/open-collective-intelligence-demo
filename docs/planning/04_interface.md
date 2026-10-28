@@ -1095,33 +1095,33 @@ With a town or area, near means posts placed in the same town or area; with a co
 >
 > **What it is for**
 >
-> {SITE_NAME} is a small test of a shared record. People write statements about issues they care about. The site reads each one into a short card of the issue, the evidence and the solutions it mentions; the writer checks and corrects the card; and it joins a record that everyone here can read, ask questions of, and build on.
+> {SITE_NAME} is a small test of a shared database. People write statements about issues they care about. The site reads each one into a short form of the issue, the evidence and the solutions it mentions; the writer checks and corrects the form; and it joins a database that everyone here can read, ask questions of, and build on.
 >
 > **How statements are read and questions are answered**
 >
-> A reading service fills in the card from the statement. Nothing joins the record until the writer has checked the card and posted it.
+> A language model fills in the form from the statement. Nothing joins the database until the writer has checked the form and posted it.
 >
-> When you ask a question, the site gathers what the record holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The reading service writes a short answer from that alone, and each part of the answer names the posts it comes from. A part that names no post is left out. Questions and answers are not kept.
+> When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and each part of the answer names the posts it comes from. A part that names no post is left out. Questions and answers are not kept.
 >
-> **The reading service**
+> **The language model**
 >
 > {provider}, version {version}. It reads statements, answers questions and suggests follow-up questions, with the guiding principles below at the start of its instructions each time. When it checks the page behind an evidence link it is given no principles, so that each link stays quick and cheap to read.
 >
-> **What is sent to the reading service**
+> **What is sent to the language model**
 >
-> The statement being written and its card; the question and your earlier questions on the page; and what the record holds that an answer is built from: posts under the name they were posted with, or none when anonymous, and the names of issues, solutions and evidence. Never an email address, a password, or an account's country or postal code.
+> The statement being written and its form; the question and your earlier questions on the page; and what the database holds that an answer is built from: posts under the name they were posted with, or none when anonymous, and the names of issues, solutions and evidence. Never an email address, a password, or an account's country or postal code.
 >
 > **Software**
 >
-> The site is written in Python with FastAPI and keeps the record in a Neo4j database. Its code is open, under the MIT licence, in John Kintree's repository: {repository address}.
+> The site is written in Python with FastAPI and keeps the records in a Neo4j database. Its code is open, under the MIT licence, in John Kintree's repository: {repository address}.
 >
 > **Where it runs**
 >
-> On Render's free plan, with the record in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page or question after one can take up to a minute.
+> On Render's free plan, with the records in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page or question after one can take up to a minute.
 >
 > **Guiding principles**
 >
-> The reading service is given these three documents, in this order, at the start of its instructions for reading statements, answering questions and asking follow-up questions. They guide it; they are not a test that posts must pass. It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does. Each person still checks their own card.
+> The language model is given the Statement of purpose, and the full text of the Universal Declaration of Human Rights and the Earth Charter at the start of the system prompt, its instructions for reading statements, answering questions and asking follow-up questions. They guide it; they are not a test that posts must pass. It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does. Each person still checks their own form.
 >
 > **Statement of purpose**
 > {purpose, in full}
@@ -1132,8 +1132,10 @@ With a town or area, near means posts placed in the same town or area; with a co
 > **The Earth Charter**
 > {the Charter, in full}
 
-The three documents are shown from the same files the instructions use, so the page and the instructions can never differ. `{provider}` and `{version}` come from `LLM_BASE_URL` and `LLM_MODEL` (DeepSeek, deepseek-v4-flash). Without `LLM_API_KEY` the reading service paragraph reads:
+The three documents are shown from the same files the instructions use, so the page and the instructions can never differ. `{provider}` and `{version}` come from `LLM_BASE_URL` and `LLM_MODEL` (DeepSeek, deepseek-v4-flash). Without `LLM_API_KEY` the language model paragraph reads:
 
-> No reading service is set up at the moment, so cards are filled in by hand and questions cannot be asked.
+> No language model is set up at the moment, so forms are filled in by hand and questions cannot be asked.
+
+This page's words are John's own (his edits of 28 October): "database" for the record, "form" for the card and "language model" for the reading service, rule 5 notwithstanding. The rest of the site still says record, card and reading service until the wording is changed throughout.
 
 `{repository address}` is John's repository, as the README names it; nothing personal to the builder (CLAUDE.md rule 8).

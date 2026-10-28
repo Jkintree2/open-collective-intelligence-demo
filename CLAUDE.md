@@ -62,7 +62,7 @@ Display verbs: claims, submits evidence, proposes solution, has proposed, suppor
 2. **No new dependency without a one-line reason in the commit message.** The allowed set is in `requirements.txt`. A CDN script counts as a dependency.
 3. **Every push deploys, so every push must work.** Tests green, local site opened, then push.
 4. **The model is optional.** Any change to compose must be checked once with `LLM_API_KEY` unset.
-5. **Copy is John's.** Interface words come from `04_interface.md`. Never write node, edge, graph, Cypher, model, extraction or entity where a tester can read it. No dashes in client-facing text.
+5. **Copy is John's.** Interface words come from `04_interface.md`. Never write node, edge, graph, Cypher, model, extraction or entity where a tester can read it. The one exception is John's own "language model" on the About page (28 October). No dashes in client-facing text.
 6. **Cypher lives in the `graph*.py` modules only** (`graph.py`, and since Phase 1 `graph_accounts.py`, `graph_stances.py`, `graph_own_posts.py`, `graph_search.py`, `graph_tidy.py`, since Phase 2 `graph_evidence.py`, and since Phase 3 `graph_ask.py` and `graph_places.py`). Relationship types and labels are substituted from whitelists, never from user input.
 7. **Secrets never touch the repo, logs or templates.** Log the request id, sizes, latencies and counts; log text only at DEBUG.
 8. **Nothing personal to the builder in the repo.** No URLs, emails or account names. LICENSE and README name John.
