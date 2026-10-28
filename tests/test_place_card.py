@@ -193,10 +193,41 @@ def test_the_place_indexes_are_made_only_with_the_switch(monkeypatch):
     asked = []
     monkeypatch.setattr(graph, "open_driver", lambda settings: None)
     monkeypatch.setattr(graph, "close_driver", lambda: None)
-    monkeypatch.setattr(graph, "ensure_constraints", lambda places=False: asked.append(places))
+    monkeypatch.setattr(graph, "ensure_constraints", lambda places=False, asking=False: asked.append(places))
 
     async def start(enabled):
         monkeypatch.setattr(main, "settings", replace(main.settings, places_enabled=enabled))
+        async with main.lifespan(main.app):
+            pass
+    asyncio.run(start(False)); asyncio.run(start(True))
+    assert asked == [False, True]
+
+
+# John, 28 October: the questions' key and index, like the places', are made only with their switch.
+def test_the_question_indexes_are_made_only_with_the_ask_switch(monkeypatch):
+    import asyncio
+    import importlib
+    from types import SimpleNamespace
+
+    from app import graph
+    ran = []
+    monkeypatch.setattr(graph, "driver", lambda: SimpleNamespace(execute_query=lambda q, **kw: ran.append(q)))
+    monkeypatch.setattr(graph, "database", lambda: "neo4j")
+    graph.ensure_constraints()
+    assert not any("Question" in statement for statement in ran)
+    ran.clear()
+    graph.ensure_constraints(asking=True)
+    assert ran == list(graph.CONSTRAINTS + graph.QUESTION_INDEXES)
+
+    from dataclasses import replace
+    main = importlib.import_module("app.main")
+    asked = []
+    monkeypatch.setattr(graph, "open_driver", lambda settings: None)
+    monkeypatch.setattr(graph, "close_driver", lambda: None)
+    monkeypatch.setattr(graph, "ensure_constraints", lambda places=False, asking=False: asked.append(asking))
+
+    async def start(enabled):
+        monkeypatch.setattr(main, "settings", replace(main.settings, ask_enabled=enabled))
         async with main.lifespan(main.app):
             pass
     asyncio.run(start(False)); asyncio.run(start(True))

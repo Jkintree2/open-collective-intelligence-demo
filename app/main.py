@@ -129,7 +129,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     _configure_logging()
     graph.open_driver(settings)
     try:
-        graph.ensure_constraints(places=settings.places_enabled)
+        graph.ensure_constraints(places=settings.places_enabled, asking=settings.ask_enabled)
     except RecordAsleep as exc:
         log.warning(json.dumps({"event": "constraints_skipped", "error": str(exc)}))
     yield
@@ -351,6 +351,7 @@ def issue_page(request: Request, key: str) -> Response:
     evidence = graph.issue_evidence(key)
     if settings.evidence_check_enabled:
         confidence.annotate(key, evidence, solutions, graph_evidence.issue_confidence(key))
+    from app.routes_ask import recent_questions  # the router's own reader; imported here, as routers load last
     return templates.TemplateResponse(
         request,
         "issue.html",
@@ -361,6 +362,7 @@ def issue_page(request: Request, key: str) -> Response:
             "evidence": evidence,
             "posts": _decorate_posts(graph.issue_posts(key, FEED_LIMIT), me=member_key(request)),
             "tidy": tidy.page_context(request, header),
+            "recent_questions": recent_questions(key) if settings.ask_enabled else [],
         },
     )
 

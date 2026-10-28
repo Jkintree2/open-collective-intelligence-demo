@@ -23,6 +23,7 @@ app/graph_tidy.py  move, rename, merge and their change record (Q28 to Q32)
 app/graph_evidence.py Phase 2: statements 5 and 5b with the check and source facts (5b also carries `answers`, issue 29), one post's stored readings (Q35) and statements answering a page (Q35b), and the issue page's source confidence read (Q39)
 app/graph_ask.py   Phase 3: Ask the record's reads: stances with their posts and dates (Q40), evidence on evidence for an issue and record-wide (Q41), top solutions record-wide (Q42)
 app/graph_places.py Phase 3: issues near a place and the Near filter's prefill (Q43), places of a page of posts (Q44)
+app/graph_questions.py Phase 3: the questions people asked, kept once answered and without who asked (Q47), the latest for the Ask box (Q48)
 app/backup.py      portable export format version 2 (version 1 still restores), typed values and validation; passwords and links never in a copy
 app/admin.py       Basic-auth back room routes, the reading service and sending email lines
 app/routes_accounts.py /sign-in, /sign-out, /account (My account), /my-statements (X1, its own page and menu item), /forgot-password, /reset/{link}
