@@ -60,7 +60,7 @@ test('an answer shows in place, as text, with its numbered sources', async () =>
   assert.equal(event.prevented, true);
   assert.equal(p.requests.length, 1);
   assert.deepEqual(p.requests[0].body, {question: 'Why do people oppose it?', earlier: [], issue: 'veto'});
-  assert.equal(p.status.textContent, 'Reading the record… The first question after a quiet spell can take a minute.');
+  assert.equal(p.status.textContent, 'Reading the database… The first question after a quiet spell can take a minute.');
   assert.equal(p.attrs['aria-busy'], 'true');
   p.requests[0].resolve(json(ANSWER)); await p.flush();
   assert.equal(p.status.textContent, '');
@@ -115,7 +115,7 @@ test('a second line after ten seconds, and the browser gives up after fifty', as
   p.ask('Why?');
   assert.deepEqual([...p.timers.values()].map(t => t.delay).sort((a, b) => a - b), [10000, 50000]);
   p.fire(10000);
-  assert.equal(p.status.textContent, 'Reading the record… The first question after a quiet spell can take a minute. '
+  assert.equal(p.status.textContent, 'Reading the database… The first question after a quiet spell can take a minute. '
     + 'Still reading. A long issue can take up to a minute.');
   p.fire(50000);
   assert.equal(p.requests[0].options.signal.aborted, true);
@@ -147,9 +147,9 @@ test('no reading service: the line shows and the question is not kept', async ()
 test('an empty answer shows the empty line', async () => {
   const p = page();
   p.ask('Mars?');
-  p.requests[0].resolve(json({status: 'empty', message: 'The record does not say anything about this yet.', paragraphs: [], sources: []}));
+  p.requests[0].resolve(json({status: 'empty', message: 'The database does not say anything about this yet.', paragraphs: [], sources: []}));
   await p.flush();
-  assert.equal(p.answers.children[0].find('ask-message').textContent, 'The record does not say anything about this yet.');
+  assert.equal(p.answers.children[0].find('ask-message').textContent, 'The database does not say anything about this yet.');
 });
 
 test('signed out on the way goes to the door', async () => {

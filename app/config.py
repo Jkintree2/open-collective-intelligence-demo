@@ -14,7 +14,7 @@ DEFAULT_SITE_NAME = "Open Collective Intelligence"
 DEFAULT_SITE_SENTENCE = (
     "Write what you think about an issue that matters to you. We will pull out the issue, "
     "your claim, any evidence and any solution, show you what we found, and add it to a "
-    "record everyone here shares."
+    "database everyone here shares."
 )
 DEFAULT_LLM_BASE_URL = "https://api.deepseek.com"
 DEFAULT_LLM_MODEL = "deepseek-v4-flash"

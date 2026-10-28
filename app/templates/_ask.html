@@ -9,7 +9,7 @@
     <button class="primary" type="submit">Ask</button>
   </form>
   {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.</p>{% endif %}
-  <p class="ask-note">Answers sum up what is in the record, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up; nothing is kept after you leave.</p>
+  <p class="ask-note">Answers sum up what is in the database, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up; nothing is kept after you leave.</p>
   <p class="ask-status" data-ask-status aria-live="polite">{% if ask_result and not ask_result.status %}{{ ask_result.message }}{% endif %}</p>
   <div class="ask-answers" data-ask-answers aria-live="polite">{% if ask_result and ask_result.status %}
     <div class="ask-answer">

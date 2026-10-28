@@ -4,13 +4,13 @@ This guide is for the person who runs the site. It covers the everyday jobs, the
 
 ## What the site is
 
-The site is a closed test of a shared record. A small group of people write short statements about issues they care about. A reading service suggests the issue, the claim, any evidence and any solution in each statement. The writer checks and corrects that, then posts it. Every post joins one record that everyone taking part can read.
+The site is a closed test of a shared database. A small group of people write short statements about issues they care about. A reading service suggests the issue, the claim, any evidence and any solution in each statement. The writer checks and corrects that, then posts it. Every post joins one database that everyone taking part can read.
 
 The site lives in three places, all in your name:
 
 * **GitHub** keeps the code.
 * **Render** runs the website and gives it its address.
-* **Neo4j Aura** keeps the record itself, like a notebook.
+* **Neo4j Aura** keeps the database itself, like a notebook.
 
 A fourth company, **DeepSeek**, runs the reading service. You pay it a few cents as statements are read.
 
@@ -62,15 +62,15 @@ The sentence at the top of the page and the site name live in Render, not in the
 3. To change the sentence at the top of the page, edit `SITE_SENTENCE`. The site name is `SITE_NAME`.
 4. Click **Save**. Render restarts the site. This takes a few minutes.
 
-The passphrase from the test weeks, `DEMO_PASSPHRASE`, no longer lets anyone in. Leave it where it is. If accounts ever had to be switched off in a hurry, changing `ACCOUNTS_ENABLED` to false in the same place brings the passphrase page back, and nothing in the record is lost. Then tell whoever helps you with the site.
+The passphrase from the test weeks, `DEMO_PASSPHRASE`, no longer lets anyone in. Leave it where it is. If accounts ever had to be switched off in a hurry, changing `ACCOUNTS_ENABLED` to false in the same place brings the passphrase page back, and nothing in the database is lost. Then tell whoever helps you with the site.
 
 ## The back room
 
-The back room is where you look after the record. Add `/admin` to the end of the site address. Your browser asks for a username and a password. Type any username. The password is your back room password (see "Where the back room password is"). It is not the password of your own account. Keep both to yourself.
+The back room is where you look after the database. Add `/admin` to the end of the site address. Your browser asks for a username and a password. Type any username. The password is your back room password (see "Where the back room password is"). It is not the password of your own account. Keep both to yourself.
 
 The page shows how many records and connections there are, the last problem the reading service reported, the last email that could not be sent, everyone with an account, and the latest fifty posts. The two problem lines clear themselves when the site restarts.
 
-**Download a copy** saves the whole record to your computer as one file. Do this often, and always before a reset. Keep the file somewhere private, because it holds everything people wrote.
+**Download a copy** saves the whole database to your computer as one file. Do this often, and always before a reset. Keep the file somewhere private, because it holds everything people wrote.
 
 **Reload seed** adds back any of the starting statements that are missing. It does not remove anything.
 
@@ -78,7 +78,7 @@ The page shows how many records and connections there are, the last problem the 
 
 **Delete** next to a post removes that statement and the claims, citations, proposals and evidence links it created. An issue, solution or piece of evidence goes too, but only when that post touched it, it is not a starting item, and nothing else is linked to it. People and starting items always stay. Links between solutions and issues, approvals, oppositions and the way issues sit inside each other also stay, even when they began with the deleted post.
 
-A developer can put a downloaded copy back into an empty record. There is no button for that yet. A copy never holds passwords, so after a copy is put back everyone chooses a new password with **Forgot your password?**.
+A developer can put a downloaded copy back into an empty database. There is no button for that yet. A copy never holds passwords, so after a copy is put back everyone chooses a new password with **Forgot your password?**.
 
 ### People
 
@@ -127,9 +127,9 @@ On the free plan, Render puts the site to sleep after about fifteen minutes with
 
 If you want the site to answer at once every time, see "What costs money" below.
 
-## When the page says the record is asleep
+## When the page says the database is asleep
 
-If the notebook at Neo4j Aura has nobody using it for three days, Aura pauses it. The site then shows a page that says the record is asleep.
+If the notebook at Neo4j Aura has nobody using it for three days, Aura pauses it. The site then shows a page that says the database is asleep.
 
 To wake it:
 
@@ -145,7 +145,7 @@ To wake it:
 A few kinds of email need action. Always sign in by typing the company's address into your browser yourself, rather than clicking a link in the email. That way a fake email cannot trick you.
 
 * **From Neo4j, about a paused instance or a planned deletion.** Wake the instance as described above.
-* **From UptimeRobot, saying the site is down.** Open the site yourself. If it loads after about thirty seconds, it was only asleep and you can ignore the alert. If it shows the "asleep" page, wake the record. If it shows an error for more than ten minutes, contact whoever helps you with the site.
+* **From UptimeRobot, saying the site is down.** Open the site yourself. If it loads after about thirty seconds, it was only asleep and you can ignore the alert. If it shows the "asleep" page, wake the database. If it shows an error for more than ten minutes, contact whoever helps you with the site.
 * **From Google, saying an app can now send email for you, or that its access was removed.** One arrives right after the setup call; that one is expected. If one arrives at any other time and you did nothing, ask whoever helps you with the site.
 
 Emails that need nothing from you: receipts from DeepSeek, notices from Render that the site was deployed, newsletters from any of the four companies, and a later UptimeRobot email saying the site is up again. Replies from people you entered are ordinary emails to you.
@@ -182,7 +182,7 @@ The site was built for a small, trusted group. Before you let many more people i
 
 * It is a closed test. Nobody gets in without an account, and every account is entered by someone already taking part, who vouches for them.
 * DeepSeek, an outside company, reads every statement that goes through "Read my statement". People should not write anything they would not want a company to store.
-* Each post is credited to the name on the account. Entering someone vouches for them, but names are not checked against anything, so the record cannot prove that every account is a different person.
+* Each post is credited to the name on the account. Entering someone vouches for them, but names are not checked against anything, so the database cannot prove that every account is a different person.
 * "Post anonymously" hides the name from other people, but the post still belongs to its account. The copies you download from the back room show whose post it is, so keep those copies private.
 * The address ends in onrender.com. It works, but it is not your own web address yet.
 
@@ -191,13 +191,13 @@ The site was built for a small, trusted group. Before you let many more people i
 Nothing, by default.
 
 * **Render** is free. The Starter plan, about 7 US dollars a month, removes the slow first visit. You can change the plan on the service page in Render at any time.
-* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs about a tenth of a US cent each time, about one US dollar per thousand links; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read. Asking the record costs at most about half a US cent a question, and a follow-up question about a third of a cent a statement; see "Talking to the record".
+* **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs about a tenth of a US cent each time, about one US dollar per thousand links; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read. Asking the database costs at most about half a US cent a question, and a follow-up question about a third of a cent a statement; see "Talking to the database".
 * **Neo4j Aura** is free. Never upgrade to Aura Professional for this site. It is far more than a test needs and it costs real money every month.
 * **UptimeRobot** and **GitHub** are free.
 
-## If the record is ever lost
+## If the database is ever lost
 
-If Aura deletes your instance, the site shows an error and your record is gone from Aura. The last copy you downloaded is what you can get back. This is why regular copies matter.
+If Aura deletes your instance, the site shows an error and your database is gone from Aura. The last copy you downloaded is what you can get back. This is why regular copies matter.
 
 1. In the Aura console, create a new free instance. Download the credentials file straight away, because the password is shown only once.
 2. In Render, under Environment, fill in `NEO4J_URI`, `NEO4J_PASSWORD` and `NEO4J_DATABASE` from that file. The database name is the instance id, a short code, not the word neo4j. Save.
@@ -236,7 +236,7 @@ A piece of evidence with no link says "No source given." under it, on the form a
 
 On the issue page, each piece of evidence then carries one line in plain words: the kind of page and its date, "More than five years old." when it is, primary or secondary, and how many other pieces of evidence on the same issue or solution say the same or disagree. For a reference work such as Wikipedia, the date is when the page was last updated. Anything not known is left out. Under that line, each statement's reading of the page is shown in the same words as on the form: "Agrees", "Partly agrees" or "Contradicts", then what the statement says and what the page says, side by side, and for "Partly agrees" what the page does not say. When the writer kept "supports" but the page was read as contradicting it, everyone sees "The page was read as contradicting this." (and under "Refuted by", "The page was read as agreeing with this."). Five years is easy to change; ask whoever helps you with the site.
 
-Reading links is switched on in Render, under Environment, as `EVIDENCE_CHECK_ENABLED` set to true. To switch it off, set it to false and save. The form and the issue page then look as they did before, and nothing in the record is lost.
+Reading links is switched on in Render, under Environment, as `EVIDENCE_CHECK_ENABLED` set to true. To switch it off, set it to false and save. The form and the issue page then look as they did before, and nothing in the database is lost.
 
 ## Dictation
 
@@ -244,7 +244,7 @@ If your browser offers Dictate, press it and speak. The button says "Listeningâ€
 
 ## A few things testers may notice
 
-The site asks each person to wait twenty seconds between posts, so nobody can flood the record. A tester who posts twice quickly sees a short message asking them to wait a moment.
+The site asks each person to wait twenty seconds between posts, so nobody can flood the database. A tester who posts twice quickly sees a short message asking them to wait a moment.
 
 The Write page is kept simple: the introduction, the box for writing or dictating, **Post anonymously**, and **Read my statement**, with the recent statements below. **Read my statement** always opens the form: when the reading service is slow or down, the form opens empty and the tester fills it in by hand. Everything in the form can be changed before posting.
 
@@ -261,11 +261,11 @@ The Issues page has a search box. It finds issues, solutions, evidence and posts
 Two things can only be seen from your side, in Render and in the back room. Neither is urgent.
 
 1. **What the site could read.** Sign in to Render, open your service and choose **Logs**. Search for `"reader"`. A line with `"reader": "youtube"` says whether YouTube let the site read a video's captions: `ok` when it did, `refused` when it turned the site away and the writer was asked to paste the transcript. A line with `"reader": "deepseek"` is a page the site could not open itself, so DeepSeek's own page reader tried instead; if Wikipedia links show up there often, tell whoever helps you with the site.
-2. **A copy of the record.** In the back room, press **Download a copy** once. It should save one file, as before. If it says there was a problem instead, tell whoever helps you with the site.
+2. **A copy of the database.** In the back room, press **Download a copy** once. It should save one file, as before. If it says there was a problem instead, tell whoever helps you with the site.
 
-## Talking to the record
+## Talking to the database
 
-Four parts let people ask the record questions, make their statements clearer as they write, say which place a statement is about, and read how the site works. Each part has its own switch in Render and stays off until you switch it on. Until then the site looks exactly as it did before.
+Four parts let people ask the database questions, make their statements clearer as they write, say which place a statement is about, and read how the site works. Each part has its own switch in Render and stays off until you switch it on. Until then the site looks exactly as it did before.
 
 To switch a part on:
 
@@ -273,7 +273,7 @@ To switch a part on:
 2. Click **Environment**.
 3. Add the switch below with the value `true`, then click **Save**. Render restarts the site. This takes a few minutes.
 
-To switch a part off again, set its value to false and save. The site then looks as it did before, and nothing in the record is lost.
+To switch a part off again, set its value to false and save. The site then looks as it did before, and nothing in the database is lost.
 
 * `ABOUT_ENABLED` shows the **About** page, last in the menu at the top of the page.
 * `PLACES_ENABLED` shows the **Place** row on the form, the place under each post, and **Near** on the Issues page.
@@ -284,7 +284,7 @@ About and places cost nothing to run, so they are a good first pair. With everyt
 
 ### The About page
 
-The About page says what the site is for, how statements are read and questions answered, which reading service is used and its version, what is sent to it (never an email address, a password, or an account's country or postal code), the software, and where the site runs. Then it shows the three guiding documents in full: your statement of purpose, the Universal Declaration of Human Rights and the Earth Charter. Anyone can open it, signed in or not, because it holds nothing from the record.
+The About page says what the site is for, how statements are read and questions answered, which reading service is used and its version, what is sent to it (never an email address, a password, or an account's country or postal code), the software, and where the site runs. Then it shows the three guiding documents in full: your statement of purpose, the Universal Declaration of Human Rights and the Earth Charter. Anyone can open it, signed in or not, because it holds nothing from the database.
 
 The reading service is given the same three documents, word for word, at the start of its instructions each time it reads a statement, answers a question or suggests a follow-up question. They guide it; they are not a test that posts must pass. They live on GitHub as three plain text files, `app/guiding/purpose.txt`, `app/guiding/udhr.txt` and `app/guiding/earth_charter.txt`. Edit one there and the page and the instructions change together. After an edit, tell whoever helps you with the site, because one of the site's own checks holds a fingerprint of those words and needs the new one. The Declaration keeps the line breaks it has in its file, so on a wide screen some of its lines end early.
 
@@ -302,7 +302,7 @@ Places cost nothing on the reading service.
 
 ### Follow-up questions
 
-Once the form has opened, a new issue, solution or piece of evidence (never one already in the record) may get one short question under it, such as "When did this happen?", with a box for the answer, **Add to my statement** and **Skip**. A form gets at most three. A piece of evidence with no link and no **From my own experience** tick always gets "Where did you read or hear this?"; that one needs no reading service, so it shows even when DeepSeek is not set up.
+Once the form has opened, a new issue, solution or piece of evidence (never one already in the database) may get one short question under it, such as "When did this happen?", with a box for the answer, **Add to my statement** and **Skip**. A form gets at most three. A piece of evidence with no link and no **From my own experience** tick always gets "Where did you read or hear this?"; that one needs no reading service, so it shows even when DeepSeek is not set up.
 
 **An answer becomes part of the public statement.** **Add to my statement** adds the question and the answer as one line at the end of the statement ("When did this happen? In 2023."), so everyone who reads the post sees it, and search, editing, asking and the copies you download all carry it. When the post is anonymous, so is the answer. The form says this beside the button. A question never holds back Post, and **Skip** removes it.
 
@@ -310,23 +310,23 @@ Once the form has opened, a new issue, solution or piece of evidence (never one 
 
 **After switching it on:** write a statement with a piece of evidence and no link, and press **Read my statement**. Check that "Where did you read or hear this?" appears under the evidence. Type an answer, press **Add to my statement**, and check that the line is added at the end of the statement before you post.
 
-### Asking the record
+### Asking the database
 
-**Ask**, in the menu, opens a page for questions about the whole record. Each issue page also has a box, **Ask about this issue**, under the evidence and above the posts, for questions about that issue and the issues that are part of it. Anyone who can read the record can ask, in plain words.
+**Ask**, in the menu, opens a page for questions about the whole database. Each issue page also has a box, **Ask about this issue**, under the evidence and above the posts, for questions about that issue and the issues that are part of it. Anyone who can read the database can ask, in plain words.
 
-The answer is a few short paragraphs that sum up what the record holds, including views that differ and how many people hold each one. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown.
+The answer is a few short paragraphs that sum up what the database holds, including views that differ and how many people hold each one. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown.
 
-The three guiding documents can be asked about too. A question that names the Declaration, the Charter, the statement of purpose, an article or a principle, such as "What does the UDHR say about privacy?", is answered with the article or principle quoted word for word, and the source reads "Guiding document: Universal Declaration of Human Rights.", linked to that document on the About page. Asked whether a solution fits an article or a principle, the answer quotes it, says where the solution's own words meet it and where they do not, and gives the views people have posted; it leaves the verdict to the reader. A quotation that is not word for word in the document is never shown. When the record holds nothing on the question, the answer says "The record does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
+The three guiding documents can be asked about too. A question that names the Declaration, the Charter, the statement of purpose, an article or a principle, such as "What does the UDHR say about privacy?", is answered with the article or principle quoted word for word, and the source reads "Guiding document: Universal Declaration of Human Rights.", linked to that document on the About page. Asked whether a solution fits an article or a principle, the answer quotes it, says where the solution's own words meet it and where they do not, and gives the views people have posted; it leaves the verdict to the reader. A quotation that is not word for word in the document is never shown. When the database holds nothing on the question, the answer says "The database does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
 
 Nothing is kept. Questions and answers live only in the open page and are gone when it is closed. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go. The first question after a quiet spell can take up to a minute, because the site may be waking up.
 
 **Cost:** a question costs at most about half a US cent, and less after the first question of a spell, because DeepSeek charges less for the long opening instructions it has just read. Each person can ask 30 questions a day, and the site answers 300 a day in all, so a full day at the limit costs at most about 1.50 US dollars.
 
-**The daily limits start again when the site sleeps.** They are kept in the site's working memory, not in the record. When the site goes to sleep after a quiet spell (see "The slow first visit") and wakes again, or restarts after a change in Render, both counts start again from zero. So 300 is a ceiling for each time the site is awake, not a firm total for the day. If DeepSeek's usage page ever shows more than you expect, switch asking off and tell whoever helps you with the site.
+**The daily limits start again when the site sleeps.** They are kept in the site's working memory, not in the database. When the site goes to sleep after a quiet spell (see "The slow first visit") and wakes again, or restarts after a change in Render, both counts start again from zero. So 300 is a ceiling for each time the site is awake, not a firm total for the day. If DeepSeek's usage page ever shows more than you expect, switch asking off and tell whoever helps you with the site.
 
 Without a DeepSeek key, the page says "Asking needs the reading service, which is not set up." If an answer says "The question could not be answered just now", wait a minute and ask again. If it keeps saying so, check your DeepSeek balance and the reading service line in the back room, as in "When reading stops".
 
-**After switching it on:** open an issue with a few posts and ask one of your own questions, for example which solutions have the most approvals, or why people oppose them. Check that the answer names its sources and that each source links to its issue. Then ask about something the record does not hold, and check that it says "The record does not say anything about this yet." Last, ask what the Declaration says about privacy, and check that the answer quotes Article 12.
+**After switching it on:** open an issue with a few posts and ask one of your own questions, for example which solutions have the most approvals, or why people oppose them. Check that the answer names its sources and that each source links to its issue. Then ask about something the database does not hold, and check that it says "The database does not say anything about this yet." Last, ask what the Declaration says about privacy, and check that the answer quotes Article 12.
 
 ### After switching anything on
 

@@ -105,7 +105,7 @@ def test_a_seed_failure_after_a_reset_reports_the_empty_record(admin_client, mon
     assert response.status_code == 303 and response.headers["location"] == "/admin?done=empty"
     assert ("reset",) in calls
     page = client.get("/admin?done=empty", auth=AUTH)
-    assert "The record was cleared, but the seed statements did not all load. Press Reload seed." in page.text
+    assert "The database was cleared, but the seed statements did not all load. Press Reload seed." in page.text
 
 
 def test_a_seed_failure_on_reload_leaves_the_record_alone(admin_client, monkeypatch):
@@ -169,7 +169,7 @@ def test_reload_uses_existing_seed_loader(monkeypatch):
 def test_reset_copy_says_accounts_stay(admin_client):
     client, _, _ = admin_client
     assert ("This deletes every post and restores the seed statements. Accounts, and who entered whom, "
-            "stay. Download a copy first if you want to keep the current record.") in client.get("/admin", auth=AUTH).text
+            "stay. Download a copy first if you want to keep the current database.") in client.get("/admin", auth=AUTH).text
 
 
 def test_sending_email_line_says_when_the_last_email_failed(admin_client, monkeypatch):

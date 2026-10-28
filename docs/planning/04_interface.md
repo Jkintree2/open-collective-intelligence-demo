@@ -44,7 +44,7 @@ Top to bottom:
 
 **The sentence.** One line in the serif face under the site name, read from `SITE_SENTENCE` so John can change it on Render's Environment tab without touching code. John supplies it (see `QUESTIONS.md`). Default draft, **client-facing**:
 
-> Write what you think about an issue that matters to you. We will pull out the issue, your claim, any evidence and any solution, show you what we found, and add it to a record everyone here shares.
+> Write what you think about an issue that matters to you. We will pull out the issue, your claim, any evidence and any solution, show you what we found, and add it to a database everyone here shares.
 
 **Name row.** Label "Your name", text input, placeholder "optional". Beside it a checkbox "Post anonymously". Ticking it clears and greys the name field, and the post is stored with no name at all. The name is remembered in a cookie only when a post is made under it, and prefilled next time; anonymous is never remembered, it is a choice per post.
 
@@ -52,7 +52,7 @@ Top to bottom:
 
 **Already on record.** When the page is opened from an issue chip or link (`/?issue=<key>`), a panel appears between the sentence and the text box, showing what the record already holds for that issue, so a tester adds to it instead of repeating it. It is absent when there is no `issue` in the address or the issue is unknown. All **client-facing**:
 
-> Already on record for <issue name>
+> Already in the database for <issue name>
 > Part of <parent issue name>
 > Sub-issues
 > Proposed solutions
@@ -84,9 +84,9 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 **The card.** Appears under the text box. Heading **client-facing**: "Here is what we found". When a name was too long and was shortened, a note under the heading reads, **client-facing**: "A long name was shortened to 300 characters. You can edit it." Then, in this order, each section editable:
 
-* **Issue.** One text input with autocomplete from existing issue names, and below it a select "Part of" listing top-level issues, shorter first: names already on this form, then, when the page was opened for an issue, that issue's family, then all issues. The choices are grouped under **client-facing** headings: "On this form", "About <issue name>", "All issues". The empty choice reads, **client-facing**: "none, this is a new top level issue", or "none, this is already a top level issue" when the name matches an existing top level issue. A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Since 24 October 2026 (John's email of that day) a line under the row also says so, **client-facing**: "This issue is already in the record." Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three. When the page was not opened from an issue chip or link (no "Already on record" panel above), a line under the issue rows reads, **client-facing**: "To add a sub-issue, write it here and choose the issue it is part of."
+* **Issue.** One text input with autocomplete from existing issue names, and below it a select "Part of" listing top-level issues, shorter first: names already on this form, then, when the page was opened for an issue, that issue's family, then all issues. The choices are grouped under **client-facing** headings: "On this form", "About <issue name>", "All issues". The empty choice reads, **client-facing**: "none, this is a new top level issue", or "none, this is already a top level issue" when the name matches an existing top level issue. A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Since 24 October 2026 (John's email of that day) a line under the row also says so, **client-facing**: "This issue is already in the database." Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three. When the page was not opened from an issue chip or link (no "Already on record" panel above), a line under the issue rows reads, **client-facing**: "To add a sub-issue, write it here and choose the issue it is part of."
 * **Solutions.** Zero or more rows. Each row: name input with autocomplete, a "for issue" select (defaults to the first issue) grouped the same shorter-first way ("On this form", "About <issue name>", "All issues"; empty choice **client-facing**: "Choose an issue"), and three radio buttons: "no position", "I approve this", "I oppose this". The model pre-selects a position only when the text states one. "+ add a solution" link.
-* **Evidence.** Zero or more rows. Each row: name input with autocomplete, a link input (optional), a select "supports / refutes", and a select "claim about" (John, 23 October 2026; "about" before) listing the issues and solutions in the card plus existing nodes, grouped **client-facing**: "On this form", "About <issue name>", "All issues", "Solutions", "Evidence" (empty choice **client-facing**: "Choose what this is about"). "+ add evidence" link. The badge beside the name reads "existing" when the name is already in the record, and since 24 October 2026 also when the link is: the same link counts as the same evidence (the scheme, a leading www., a trailing slash, the fragment and utm_ parameters do not count; the rest of the address does), so a row whose link the record already holds takes that piece of evidence's name and shows one line under the row, **client-facing**: "This evidence is already in the record." The writer may still change the name; a name already in the record then decides as before, and any other name still joins the evidence the link belongs to.
+* **Evidence.** Zero or more rows. Each row: name input with autocomplete, a link input (optional), a select "supports / refutes", and a select "claim about" (John, 23 October 2026; "about" before) listing the issues and solutions in the card plus existing nodes, grouped **client-facing**: "On this form", "About <issue name>", "All issues", "Solutions", "Evidence" (empty choice **client-facing**: "Choose what this is about"). "+ add evidence" link. The badge beside the name reads "existing" when the name is already in the record, and since 24 October 2026 also when the link is: the same link counts as the same evidence (the scheme, a leading www., a trailing slash, the fragment and utm_ parameters do not count; the rest of the address does), so a row whose link the record already holds takes that piece of evidence's name and shows one line under the row, **client-facing**: "This evidence is already in the database." The writer may still change the name; a name already in the record then decides as before, and any other name still joins the evidence the link belongs to.
 * **What this will add.** A read-only list of sentences generated live from the fields, in John's format, for example:
 
   > John Kintree claims Drug dealing problem
@@ -97,7 +97,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
   Since 23 October 2026 (John's email of that day) the verbs are "proposes solution", "submits evidence" and "supports issue of" / "solution of" / "evidence of" (likewise refutes); the feed's sentences under a post read the same way. When the issue is already in the record its line reads "{name} claims about existing issue {issue}" (John, 24 October 2026; from 23 to 24 October the line was left out whenever the card added anything else). Anonymous posts read "Anonymous claims …". A row is removed by clearing its name or pressing its "remove from this form" button, and the sentence list updates.
 * **Buttons.** "Post" (primary; disabled while any solution lacks an issue, any evidence lacks a target, or both the text box and the card are empty) and "Discard". With a filled card and an empty text box the card's own sentences are posted as the statement, and this line appears at the top of the card, **client-facing**: "No statement written. The lines under "What this will add" will be posted as your statement." The "post it as a plain statement anyway" link needs text, so it is disabled while the box is empty.
-* **Footnote** **client-facing**: "Posting adds this to the shared record, credited to John Kintree." or "… listed as Anonymous."
+* **Footnote** **client-facing**: "Posting adds this to the shared database, credited to John Kintree." or "… listed as Anonymous."
 
 **When the model found nothing.** The card opens with all sections empty and this line at the top, **client-facing**: "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again." The Post button is disabled until the tester types into a field or clicks a second link, "post it as a plain statement anyway", which posts the text into the feed with no structure. Greetings and tests then stay out of the feed unless someone means it.
 
@@ -107,7 +107,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 **When the text is too long or not English.** Before any model call, over 4,000 characters: "That is longer than this demo can read at once. Please shorten it to a few paragraphs." If the model reports the text is not mostly English: "This demo reads English only for now."
 
-**After Post.** The card and text box clear, a green line reads "Added to the record" for a few seconds, and the new post appears at the top of the feed without a page reload (the feed section is re-fetched).
+**After Post.** The card and text box clear, a green line reads "Added to the database" for a few seconds, and the new post appears at the top of the feed without a page reload (the feed section is re-fetched).
 
 **A second post too soon after the first from the same tester.** The post is refused, **client-facing**: "Please wait a moment before posting again." (C12)
 
@@ -160,7 +160,7 @@ And a list of the last fifty posts with a "delete" link each (removes the post, 
 
 **Error** (any unhandled failure), **client-facing**: "Something went wrong. Please try again in a minute."
 
-**Asleep** (the database is paused), **client-facing**: "The record is asleep. John needs to press Play in the Neo4j console, and it wakes up in a few minutes." With the console link for John's benefit. The app keeps running while the database is paused; only this page is served.
+**Asleep** (the database is paused), **client-facing**: "The database is asleep. John needs to press Play in the Neo4j console, and it wakes up in a few minutes." With the console link for John's benefit. The app keeps running while the database is paused; only this page is served.
 
 ## Note on John's artifact
 
@@ -214,7 +214,7 @@ The same "did not match" line answers a wrong password, an unknown email, an inv
 
 The "Your name" field goes; posts are credited to the account's name. The "Post anonymously" box moves to just above "Read my statement", with a line under it:
 
-> Your name is not shown to others. The record still knows the post is yours, so you can edit or delete it later.
+> Your name is not shown to others. The database still knows the post is yours, so you can edit or delete it later.
 
 The card's footnote is unchanged ("credited to {name}" or "listed as Anonymous").
 
@@ -614,7 +614,7 @@ When the time of the failure is not known:
 
 "Reset to seed" now reads:
 
-> This deletes every post and restores the seed statements. Accounts, and who entered whom, stay. Download a copy first if you want to keep the current record.
+> This deletes every post and restores the seed statements. Accounts, and who entered whom, stay. Download a copy first if you want to keep the current database.
 
 ### Phone and browser details (not client-facing)
 
@@ -966,9 +966,11 @@ Two menu items, each behind its switch: "Ask" after "Issues", for anyone who can
 
 ### Ask the record (`/ask`, and a box on each issue page)
 
+Since 28 October 2026 every line here says "database" where it said "record" (John: "shared database" instead of "shared record"); the part keeps its name, Ask the record, in these documents and the code.
+
 **On `/ask`,** for the whole record:
 
-> **Ask the record**
+> **Ask the database**
 >
 > Ask a question in plain words. The answer is built only from what people have posted here and the three guiding documents, and names where each part comes from.
 >
@@ -986,11 +988,11 @@ Two menu items, each behind its switch: "Ask" after "Issues", for anyone who can
 
 Under either box, small:
 
-> Answers sum up what is in the record, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up; nothing is kept after you leave.
+> Answers sum up what is in the database, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up; nothing is kept after you leave.
 
 **While it reads:**
 
-> Reading the record… The first question after a quiet spell can take a minute.
+> Reading the database… The first question after a quiet spell can take a minute.
 
 After ten seconds, one more line until the answer comes:
 
@@ -1022,7 +1024,7 @@ Its name links to the document on the About page while About is switched on; oth
 
 **When the record holds nothing on it,** or nothing in the answer could be tied to a post or a guiding document (a question that names a document, an article or a principle is always answered from the documents):
 
-> The record does not say anything about this yet.
+> The database does not say anything about this yet.
 
 **When it cannot go ahead:**
 

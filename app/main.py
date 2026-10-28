@@ -622,7 +622,7 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 latency_ms=data.latency_ms,
                                 request_id=_request_id(request), edited=edited,
                                 one_stance=settings.accounts_enabled, checks=checks, place=card_place(data))
-    response = JSONResponse({"id": post_id, "message": "Added to the record"}, status_code=201)
+    response = JSONResponse({"id": post_id, "message": "Added to the database"}, status_code=201)
     if member is None:
         if anonymous:
             _set_cookie(response, ANON_COOKIE, anon_id, YEAR_SECONDS)
@@ -660,7 +660,7 @@ async def record_asleep(request: Request, exc: RecordAsleep) -> Response:
     if request.url.path == "/health":
         return JSONResponse({"ok": False}, status_code=503)
     if request.url.path.startswith("/api/"):
-        return JSONResponse({"message": "The record is asleep. John needs to press Play in the Neo4j console, and it wakes up in a few minutes."}, status_code=503)
+        return JSONResponse({"message": "The database is asleep. John needs to press Play in the Neo4j console, and it wakes up in a few minutes."}, status_code=503)
     return templates.TemplateResponse(request, "asleep.html", {}, status_code=503)
 
 

@@ -53,7 +53,7 @@ def test_error_and_asleep_pages_use_exact_copy(state_client, monkeypatch, asleep
     monkeypatch.setattr(main.graph, "list_posts", fail)
     response = client.get("/")
     assert response.status_code == (503 if asleep else 500)
-    expected = "The record is asleep. John needs to press Play in the Neo4j console, and it wakes up in a few minutes." if asleep else "Something went wrong. Please try again in a minute."
+    expected = "The database is asleep. John needs to press Play in the Neo4j console, and it wakes up in a few minutes." if asleep else "Something went wrong. Please try again in a minute."
     assert expected in response.text
     assert "offline fixture" not in response.text
 
@@ -106,7 +106,7 @@ def test_write_about_shows_the_issue_summary_above_the_form(state_client, monkey
     monkeypatch.setattr(main.graph, "issue_evidence", lambda key: [{"key": "syria", "name": "Syria vetoes", "url": None, "stance": "SUPPORTS", "submitted_by": ["Seed"]}])
     page = client.get("/?issue=veto")
     assert page.status_code == 200
-    assert "Already on record for Security Council veto" in page.text
+    assert "Already in the database for Security Council veto" in page.text
     assert "Abolish the veto" in page.text and "I approve this" in page.text
     assert 'href="/issues/veto"' in page.text
     assert client.get("/?issue=nowhere").status_code == 200

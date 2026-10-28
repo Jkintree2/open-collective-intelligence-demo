@@ -7,7 +7,7 @@
   const lines = {
     noQuestion: 'Please write a question.',
     tooLong: 'Please keep the question under 500 characters.',
-    waiting: 'Reading the record… The first question after a quiet spell can take a minute.',
+    waiting: 'Reading the database… The first question after a quiet spell can take a minute.',
     still: 'Still reading. A long issue can take up to a minute.',
     failed: 'The question could not be answered just now. Please try again in a minute.',
   };

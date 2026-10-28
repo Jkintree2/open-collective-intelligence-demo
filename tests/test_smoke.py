@@ -27,7 +27,7 @@ def site(static=STATIC, version=None, cookie_ok="good", gate=lambda path: "/sign
             return httpx.Response(200, text=about if isinstance(about, str) else "<h1>About this site</h1>")
         if path == "/ask" and ask:
             if cookie == f"oci_member={cookie_ok}" or ask == "open":
-                return httpx.Response(200, text='<h1 id="ask-title">Ask the record</h1>')
+                return httpx.Response(200, text='<h1 id="ask-title">Ask the database</h1>')
             return httpx.Response(303, headers={"location": "https://site.example/sign-in?next=/ask"})
         if path in GATED:
             if cookie == f"oci_member={cookie_ok}":

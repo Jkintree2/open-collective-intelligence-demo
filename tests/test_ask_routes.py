@@ -65,11 +65,11 @@ def test_switched_off_a_stranger_gets_not_found_not_the_door(asking, switch):
 
 def test_the_ask_page_and_the_issue_box(asking):
     page = asking.client.get("/ask").text
-    assert "<h1 id=\"ask-title\">Ask the record</h1>" in page
+    assert "<h1 id=\"ask-title\">Ask the database</h1>" in page
     assert "Ask a question in plain words. The answer is built only from what people have posted here and the three " \
            "guiding documents, and names where each part comes from." in page
     assert 'placeholder="For example: What do people say about the Security Council veto?"' in page
-    assert "Answers sum up what is in the record, including views that differ." in page
+    assert "Answers sum up what is in the database, including views that differ." in page
     assert '<script src="/static/ask.js?v=' in page and "data-issue" not in page
     issue = asking.client.get("/issues/veto").text
     assert '<h2 id="ask-title">Ask about this issue</h2>' in issue and 'data-issue="veto"' in issue
@@ -221,7 +221,7 @@ def test_five_a_minute_for_the_site_and_the_person_is_not_charged(asking, monkey
 def test_an_empty_record_answers_the_empty_line_with_no_call_and_no_count(asking, monkeypatch):
     monkeypatch.setattr(ask, "issue_digest", lambda key, **kw: ask.Digest("{}", {}, issue_keys=[key]))
     body = post(asking.client, {"question": "Why?", "issue": "veto"}).json()
-    assert body["status"] == "empty" and body["message"] == "The record does not say anything about this yet."
+    assert body["status"] == "empty" and body["message"] == "The database does not say anything about this yet."
     assert [call for call in asking.calls if call[0] == "answer"] == [] and routes_ask.person_limit.uses == {}
 
 

@@ -168,7 +168,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     const waiting = state.previewSettle; state.previewSettle = null; state.previewPending = null;
     refresh();
     const poster = identity();
-    find('credit').textContent = poster.anonymous ? 'Posting adds this to the shared record, listed as Anonymous.' : `Posting adds this to the shared record, credited to ${poster.display_name}.`;
+    find('credit').textContent = poster.anonymous ? 'Posting adds this to the shared database, listed as Anonymous.' : `Posting adds this to the shared database, credited to ${poster.display_name}.`;
     const payload = collect();
     const incomplete = payload.solutions.some(item => !item.for_issue) || payload.evidence.some(item => !item.about);
     const filled = payload.issues.length || payload.solutions.length || payload.evidence.length;
@@ -215,7 +215,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     if (group === 'issues') {
       field(row, 'parent', 'Part of', 'select');
       // John, 24 October 2026: an issue the record holds says so under the row, not only in the badge.
-      row.issueNote = node('p', 'This issue is already in the record.', 'issue-note'); row.issueNote.hidden = true;
+      row.issueNote = node('p', 'This issue is already in the database.', 'issue-note'); row.issueNote.hidden = true;
       row.element.append(row.issueNote);
     }
     if (group === 'solutions') {
@@ -237,7 +237,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       ['supports', 'refutes'].forEach(value => row.stance.add(new Option(value, value)));
       row.stance.value = item.stance || 'supports';
       field(row, 'about', 'claim about', 'select');
-      row.linkNote = node('p', 'This evidence is already in the record.', 'link-note'); row.linkNote.hidden = true;
+      row.linkNote = node('p', 'This evidence is already in the database.', 'link-note'); row.linkNote.hidden = true;
       row.element.append(row.linkNote);
       evidence?.watch(row, item);
     }
@@ -315,14 +315,14 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       if (state.editing) { location.href = '/?done=edited'; return; }
       card.hidden = true; text.value = ''; state.metadata = {source: 'manual'};
       extras.forEach(extra => extra.posted?.());  // the next statement starts afresh (place.js)
-      find('compose-message').textContent = 'Added to the record';
-      setTimeout(() => { if (find('compose-message').textContent === 'Added to the record') find('compose-message').textContent = ''; }, 6000);
+      find('compose-message').textContent = 'Added to the database';
+      setTimeout(() => { if (find('compose-message').textContent === 'Added to the database') find('compose-message').textContent = ''; }, 6000);
       try {
         const response = await fetch('/feed');
         if (!response.ok || response.redirected) throw new Error();
         find('feed').innerHTML = await response.text();
         showNewest();
-      } catch { find('compose-message').textContent = 'Added to the record. Reload the page to see the updated record.'; }
+      } catch { find('compose-message').textContent = 'Added to the database. Reload the page to see the updated database.'; }
       loadCandidates();
     } catch (error) { find('card-errors').textContent = error.message; failed = true; }
     finally {

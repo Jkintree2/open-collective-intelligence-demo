@@ -211,4 +211,4 @@ def read_record(path):
         validate_record(data)
         return data
     except (OSError, UnicodeError, ValueError, RecursionError) as exc:
-        raise InvalidBackup("The file is not a valid shared record export.") from exc
+        raise InvalidBackup("The file is not a valid shared database export.") from exc

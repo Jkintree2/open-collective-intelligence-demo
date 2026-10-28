@@ -4,7 +4,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {setup} = require('./page_harness.js');
 
-const NOTE = 'This issue is already in the record.';
+const NOTE = 'This issue is already in the database.';
 const candidates = {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}};
 
 async function cardWith(issues) {

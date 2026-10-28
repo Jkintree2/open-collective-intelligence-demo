@@ -4,7 +4,7 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {setup} = require('./page_harness.js');
 
-const NOTE = 'This evidence is already in the record.';
+const NOTE = 'This evidence is already in the database.';
 const candidates = {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {},
   evidence: {'old report': 'Old report', 'other report': 'Other report'},
   evidence_links: {'example.org/report': 'old report', 'example.org/other': 'other report'}};

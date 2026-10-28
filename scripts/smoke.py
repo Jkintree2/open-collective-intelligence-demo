@@ -29,7 +29,7 @@ SIGNED_IN = {"/": "Recent posts", "/issues": "Issues", "/my-statements": "<h1>My
 # Pages behind a switch in the Render dashboard, not found while it is off. /about opens signed out;
 # /ask, like the gated pages, sends a signed-out reader to sign in and shows its heading signed in.
 ABOUT = ("/about", "<h1>About this site</h1>")
-ASK = ("/ask", '<h1 id="ask-title">Ask the record</h1>')
+ASK = ("/ask", '<h1 id="ask-title">Ask the database</h1>')
 WAKE_SECONDS = 90  # a free Render service asleep takes most of a minute to answer
 
 

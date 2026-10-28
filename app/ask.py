@@ -398,7 +398,7 @@ COUNT_LINE_CHARS = 200
 TIMEOUT = 40  # seconds; one attempt. The browser waits 50.
 MAX_TOKENS = 700
 # Client facing copy, word for word from docs/planning/04_interface.md.
-EMPTY = "The record does not say anything about this yet."
+EMPTY = "The database does not say anything about this yet."
 PARTIAL = "There are more posts on this than one answer can read, so this answer may leave some out."
 FAILED = "The question could not be answered just now. Please try again in a minute."
 
@@ -464,8 +464,8 @@ purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
     leave the verdict to the reader.
 11. Earlier questions only tell you what the new question refers to; answer the new question.
 12. English only, plain words. At most 5 short paragraphs of one to three sentences each, under
-    1,000 characters in all, the most important point first. Call what you were given "the record";
-    never "digest", "JSON", "data", "excerpt" or "ids".
+    1,000 characters in all, the most important point first. Call what you were given "the database";
+    never "the record", "digest", "JSON", "data", "excerpt" or "ids".
 
 Return exactly:
 {"in_record": true, "answer": [{"text": "one short paragraph", "sources": ["P3", "P7"]},
@@ -478,6 +478,8 @@ _IDS_IN_BRACKETS = re.compile(r"\s*[\[(]\s*(?:[PSED]\d{1,3}\s*[,;]?\s*(?:and\s+)
 _BARE_ID = re.compile(r"\b[PSED]\d{1,3}\b")
 _SOURCE_ID = re.compile(r"^[PSED]\d{1,4}$")
 _DIGEST = re.compile(r"\bdigests?\b", re.IGNORECASE)
+# John, 28 October: readers see "the database", never "the record" (the rules' word for what was read).
+_RECORD = re.compile(r"\b(the|The) [Rr]ecord\b")
 # A count line holds a figure, or a count in words beside what it counts: "Approved by 5", "No evidence here is
 # supported by other evidence" (the walk of 26 October: that line cited only E ids and was dropped), but not
 # "One solution is to ban cars." (the final review: a number word alone let a claim through on an S id).
@@ -525,7 +527,8 @@ def _clean(text: str, digest: Digest) -> str:
         return source.name if source and source.kind != "post" else "a post"
 
     text = _BARE_ID.sub(name, _IDS_IN_BRACKETS.sub("", text))
-    text = _DIGEST.sub("record", text)  # the rules' own word for what was read never reaches a reader
+    text = _DIGEST.sub("database", text)  # the rules' own words for what was read never reach a reader
+    text = _RECORD.sub(r"\1 database", text)
     text = re.sub(r"\s+([.,;:!?])", r"\1", " ".join(text.split()))
     return re.sub(r"\(\s*\)|\[\s*\]", "", text).strip()
 

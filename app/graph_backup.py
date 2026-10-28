@@ -15,7 +15,7 @@ def _transaction(work, *, write=False):
         with graph.driver().session(database=graph.database()) as session:
             return (session.execute_write if write else session.execute_read)(work)
     except ServiceUnavailable as exc:
-        raise graph.RecordAsleep("The record cannot be reached.") from exc
+        raise graph.RecordAsleep("The database cannot be reached.") from exc
 
 
 def delete_post(post_id):
@@ -30,7 +30,7 @@ def delete_post(post_id):
 
 def _reference(labels, props):
     if len(labels) != 1 or labels[0] not in LABEL_KEYS:
-        raise InvalidBackup("The record contains unsupported labels.")
+        raise InvalidBackup("The database contains unsupported labels.")
     return {"label": labels[0], "identity": props.get(LABEL_KEYS[labels[0]])}
 
 
