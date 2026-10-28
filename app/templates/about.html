@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% block title %}About · {{ site_name }}{% endblock %}
 {% block content %}
-{# Only what is switched on is described (Ask the record, follow-up questions, the evidence check). #}
+{# Only what is switched on is described (Ask the record, follow-up questions, the evidence check).
+   John's wording since 28 October: database, form and language model, here only for now. #}
 {% set on = switches() %}
 {% macro and_list(items) %}{{ items[:-1]|join(", ") }}{% if items|length > 1 %} and {% endif %}{{ items[-1] }}{% endmacro %}
 <article class="about">
@@ -30,10 +31,10 @@
 <p>The site is written in Python with FastAPI and keeps the records in a Neo4j database. Its code is open, under the MIT licence, in John Kintree's repository: <a href="{{ repository }}" rel="noopener noreferrer">{{ repository }}</a>.</p>
 
 <h2>Where it runs</h2>
-<p>On Render's free plan, with the record in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page{% if on.ask %} or question{% endif %} after one can take up to a minute.</p>
+<p>On Render's free plan, with the records in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page{% if on.ask %} or question{% endif %} after one can take up to a minute.</p>
 
 <h2>Guiding principles</h2>
-<p>The reading service is given the Statement of purpose, and the full text of the Universal Declaration of Human Rights and the Earth Charter at the start of the system prompt, its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own card.</p>
+<p>The language model is given the Statement of purpose, and the full text of the Universal Declaration of Human Rights and the Earth Charter at the start of the system prompt, its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own form.</p>
 {% for title, text in documents %}
 <section class="guiding">
 <h3>{{ title }}</h3>
