@@ -244,6 +244,8 @@ If your browser offers Dictate, press it and speak. The button says "Listeningâ€
 
 ## A few things testers may notice
 
+Each issue page has a row of buttons under its name: **Sub-issues**, **Solutions** and **Evidence** with how many each holds, **Ask**, **Posts**, and **Tidy** for you. Each one jumps to that part of the page, so nothing on a long page is missed.
+
 The site asks each person to wait twenty seconds between posts, so nobody can flood the database. A tester who posts twice quickly sees a short message asking them to wait a moment.
 
 The Write page is kept simple: the introduction, the box for writing or dictating, **Post anonymously**, and **Read my statement**, with the recent statements below. **Read my statement** always opens the form: when the language model is slow or down, the form opens empty and the tester fills it in by hand. Everything in the form can be changed before posting.

@@ -18,7 +18,7 @@ ROWS = [
 # The solutions and evidence sections with the flag off, rendered from issue.html at phase-2 54391fd
 # (before source confidence): the flag off leaves it byte for byte as it was.
 TODAY_SECTIONS = (
-    '<h2>Proposed solutions</h2>\n'
+    '<h2 id="solutions">Proposed solutions</h2>\n'
     '<p class="counts">Listed by approvals minus oppositions.</p>\n'
     '\n'
     '<section class="solution" id="solution-abolish-the-veto">\n'
@@ -37,7 +37,7 @@ TODAY_SECTIONS = (
     '</section>\n'
     '\n'
     '\n'
-    '<h2>Evidence about this issue</h2>\n'
+    '<h2 id="evidence">Evidence about this issue</h2>\n'
     '\n'
     '\n'
     '<p class="ev-label">Supported by</p><ul class="evidence"><li><a href="https://example.org/report" target="_blank" rel="noopener noreferrer">UN report</a> <span class="by">submitted by Ada Tester</span></li><li>Open letter <span class="by">submitted by Anonymous</span></li></ul>\n'
@@ -86,7 +86,7 @@ def section(html, start, end):
 def test_with_the_flag_each_piece_of_evidence_says_its_source_confidence(page):
     html = page.get(True)
     assert page.asked == ["veto"]
-    about = section(html, "<h2>Evidence about this issue</h2>", '<section class="feed">')
+    about = section(html, '<h2 id="evidence">Evidence about this issue</h2>', '<section class="feed">')
     assert ('<span class="confidence">A news report from March 2018. More than five years old. Secondary source. '
             'One other piece of evidence here says the same.</span>'
             '<span class="confidence differs">The page was read as contradicting this.</span></li>') in about
@@ -102,4 +102,4 @@ def test_without_the_flag_the_issue_page_is_todays(page):
     html = page.get(False)
     assert page.asked == []
     assert "confidence" not in html
-    assert section(html, "<h2>Proposed solutions</h2>", '<section class="feed">') == TODAY_SECTIONS
+    assert section(html, '<h2 id="solutions">Proposed solutions</h2>', '<section class="feed">') == TODAY_SECTIONS
