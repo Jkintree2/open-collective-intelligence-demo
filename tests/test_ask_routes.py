@@ -3,6 +3,8 @@ no reading service: the digest and the answer are stubbed."""
 
 from datetime import datetime, timezone
 
+import re
+
 import pytest
 
 from app import ask, routes_ask
@@ -64,14 +66,14 @@ def test_switched_off_a_stranger_gets_not_found_not_the_door(asking, switch):
 def test_the_ask_page_and_the_issue_box(asking):
     page = asking.client.get("/ask").text
     assert "<h1 id=\"ask-title\">Ask the record</h1>" in page
-    assert "Ask a question in plain words. The answer is built only from what people have posted here, and names " \
-           "the posts it comes from." in page
+    assert "Ask a question in plain words. The answer is built only from what people have posted here and the three " \
+           "guiding documents, and names where each part comes from." in page
     assert 'placeholder="For example: What do people say about the Security Council veto?"' in page
     assert "Answers sum up what is in the record, including views that differ." in page
     assert '<script src="/static/ask.js?v=' in page and "data-issue" not in page
     issue = asking.client.get("/issues/veto").text
     assert '<h2 id="ask-title">Ask about this issue</h2>' in issue and 'data-issue="veto"' in issue
-    assert "Answers come only from the posts about this issue and its sub-issues." in issue
+    assert "Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them." in issue
     assert 'placeholder="For example: Why do people oppose these solutions?"' in issue
     # Under the evidence and above the posts.
     assert issue.index("Evidence about this issue") < issue.index("Ask about this issue") < issue.index(
@@ -221,6 +223,31 @@ def test_an_empty_record_answers_the_empty_line_with_no_call_and_no_count(asking
     body = post(asking.client, {"question": "Why?", "issue": "veto"}).json()
     assert body["status"] == "empty" and body["message"] == "The record does not say anything about this yet."
     assert [call for call in asking.calls if call[0] == "answer"] == [] and routes_ask.person_limit.uses == {}
+
+
+def test_an_empty_record_still_answers_a_question_about_a_guiding_document(asking, monkeypatch):
+    """John, 28 October: "What does the UDHR say about privacy?" found no post and got the empty line."""
+    monkeypatch.setattr(ask, "record_digest", lambda question, **kw: ask.Digest("{}", {}, issue_keys=[]))
+    body = post(asking.client, {"question": "What does the UDHR say about privacy?"}).json()
+    assert body["status"] == "answered"
+    assert asking.calls[-1][:2] == ("answer", "What does the UDHR say about privacy?")
+    assert len(routes_ask.person_limit.uses["acct:ada"]) == 1
+
+
+@pytest.mark.parametrize("about_on, href", [(True, "/about#udhr"), (False, None)])
+def test_a_document_source_links_to_the_about_page_only_while_it_is_on(asking, monkeypatch, switch, about_on, href):
+    document = ask.DOCUMENTS["D2"]
+    monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
+                        ask.Answer("answered", [{"text": "Article 12 protects privacy.", "refs": [1]}], [document]))
+    switch(about_enabled=about_on)
+    body = post(asking.client, {"question": "What does the UDHR say about privacy?"}).json()
+    assert body["sources"] == [{"id": "D2", "kind": "document", "name": "Universal Declaration of Human Rights",
+                                "date": None, "text": None, "href": href, "issue": None, "when": None}]
+    assert document.href == "/about#udhr"  # the shared source is never changed in place
+    page = asking.client.post("/ask", data={"question": "What does the UDHR say about privacy?"}, headers=SAME_SITE).text
+    line = re.search(r'<ol class="ask-sources">\s*<li>(.*?)</li>', page, flags=re.S).group(1)
+    assert line == ("Guiding document: <a href=\"/about#udhr\">Universal Declaration of Human Rights</a>." if about_on
+                    else "Guiding document: Universal Declaration of Human Rights.")
 
 
 def test_a_use_can_be_given_back():

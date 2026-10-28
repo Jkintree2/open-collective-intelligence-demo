@@ -350,14 +350,21 @@ it. "supported_by" and "refuted_by" list the other evidence that speaks to a pie
 newest first, each with its id (P1, P2 ...), its writer ("by"), its date, the date it was edited if
 it was, and the stances it took. "left_out" says how many more posts there were than you were given.
 
-1. Use only the record. If it holds nothing that answers the question, return
-   {"in_record": false, "answer": []}. Never add facts, numbers or views from anywhere else.
+The three guiding documents at the start of these instructions have ids too: D1 the Statement of
+purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
+
+1. Use only the record and the three guiding documents. If neither holds anything that answers the
+   question, return {"in_record": false, "answer": []}. Never add facts, numbers or views from
+   anywhere else.
 2. Sum up; do not lecture. Give each point of view the record holds and how many people hold it.
    Never give one verdict and never your own view. This is a conversation, not a lecture.
    Numbers of people who approve or oppose come only from "approved_by" and "opposed_by".
 3. Every paragraph lists in "sources" the ids it rests on, and at least one post id (P).
-   The one exception is a line of counts, which may cite only the solution (S) or evidence (E)
-   it counts, for example: "Approved by 5, opposed by 2, as of 30 October."
+   There are two exceptions. A line of counts may cite only the solution (S) or evidence (E)
+   it counts, for example: "Approved by 5, opposed by 2, as of 30 October." A paragraph that
+   quotes or sums up a guiding document cites it (D1, D2 or D3) and needs no post. Cite only
+   the ids a paragraph really rests on; when no post speaks to the question, say so in the
+   document's paragraph rather than citing a post that does not.
    A point about a piece of evidence cites the evidence (E) and the post that cited it (the
    "post" in its "about"). Never write an id in the text itself; ids go only in "sources".
 4. Say how well backed a point is: how its evidence pages were read, what kind of source each
@@ -380,29 +387,39 @@ it was, and the stances it took. "left_out" says how many more posts there were 
    he, she, him or her. "Anonymous" stays Anonymous; never guess who wrote a post.
 10. Respect the rights in the Declaration and the principles in the Charter. Do not judge a post
     against them unless the question asks; name an article or a principle only when the question
-    or a post does.
+    or a post does. When the question names a document, an article or a principle, or asks what
+    one says, quote the article or principle that answers it word for word in quotation marks,
+    with its number, and cite the document. When it asks whether a solution or an issue in the
+    record fits an article or principle, quote it, say plainly where the solution's own words
+    meet what it asks for and where they do not, and give the views and counts the record holds;
+    leave the verdict to the reader.
 11. Earlier questions only tell you what the new question refers to; answer the new question.
 12. English only, plain words. At most 5 short paragraphs of one to three sentences each, under
     1,000 characters in all, the most important point first. Call what you were given "the record";
     never "digest", "JSON", "data", "excerpt" or "ids".
 
 Return exactly:
-{"in_record": true, "answer": [{"text": "one short paragraph", "sources": ["P3", "P7"]}]}
+{"in_record": true, "answer": [{"text": "one short paragraph", "sources": ["P3", "P7"]},
+                               {"text": "one short paragraph", "sources": ["D2"]}]}
 ```
 
 #### Contract
 
 ```
 {"in_record": true | false,
- "answer": [{"text": "one short paragraph", "sources": ["P3", "P7"]}]}
+ "answer": [{"text": "one short paragraph", "sources": ["P3", "P7"]},
+            {"text": "one short paragraph", "sources": ["D2"]}]}
 ```
 
 #### Guard rails (in code, `ask.py`)
 
 * A reply that is not JSON of this shape, a refusal, a server error or a timeout is "not answered": the page says "The question could not be answered just now. Please try again in a minute.", never an error page.
-* A source id not in the digest is dropped (counted as `sources_dropped`).
+* A source id not in the digest, and not one of the three guiding documents `D1` (Statement of purpose), `D2` (Universal Declaration of Human Rights) and `D3` (Earth Charter), is dropped (counted as `sources_dropped`).
+* `D` ids are kept only when the question, or an earlier question on the page, names a document, an article or a principle (`ask.names_document`); otherwise they count as not in the digest (live run of 28 October: "Is a carbon tax a good idea?" got an Earth Charter paragraph unasked).
+* A paragraph that cites a guiding document needs no post (John, 28 October 2026: "what does the UDHR say about privacy" and "is a global carbon tax consistent with Earth Charter 7d" were answered "nothing in the record"). Every quotation in it (straight or curly quotation marks, 12 characters or more, an ellipsis splitting it into pieces) must be found word for word in a document it cites or in the digest, spaces and case aside; otherwise the paragraph is dropped. The article number itself is not checked.
+* A question that names a document, an article or a principle (`ask.names_document`: udhr, declaration, human rights, charter, statement of purpose, guiding, article, principle) goes to the call even when the digest holds no post and no solution, and is counted.
 * A paragraph keeps at least one `P` id, or it is dropped; the one exception is a count line, which may cite `S` or `E` ids only, recognised as a paragraph of at most 200 characters with a figure in it, or a count in words ("no", "none", "one" to "ten") beside what it counts (approved, opposed, people, posts, pieces, evidence, stances, supported, refuted), so "No evidence here is supported or refuted by other evidence." stands on the evidence it speaks of, and "One solution is to ban cars." on a solution id alone does not.
-* Ids written into the text are taken out: a bracketed list goes, a bare `S` or `E` id reads as its name, a bare `P` id as "a post". The numbers the page shows come from "sources" only. The word "digest" in an answer reads "record".
+* Ids written into the text are taken out: a bracketed list goes, a bare `S`, `E` or `D` id reads as its name, a bare `P` id as "a post". The numbers the page shows come from "sources" only. The word "digest" in an answer reads "record".
 * At most 5 paragraphs, kept in order while the total stays within 1,200 characters; the paragraph that would pass it is dropped with the rest.
 * `in_record` false, or no paragraph left: "The record does not say anything about this yet."
 * `left_out` above 0 and an answer shown: the page adds "There are more posts on this than one answer can read, so this answer may leave some out."
@@ -429,6 +446,9 @@ Return exactly:
 | A12 | On the veto issue, which holds evidence but none on evidence: "Which evidence here is most supported by other evidence?" (finding 2) | No evidence here is supported or refuted by other evidence; none named as backed. |
 | A13 | On `/ask`: "What reasons do people give for opposing solutions?" (finding 3) | The oppositions on the carbon tax and the veto with their reasons; no claim that posts were left out. |
 | A14 | "What does Dana Reyes think, and what does Ada Okafor think?" (finding 5) | Names or "they"; never he or she; never "digest". |
+| A15 | On `/ask`: "What does the UDHR say about privacy?" (John, 28 October) | Quotes Article 12 word for word, cites the Declaration; no post needed. |
+| A16 | On `/ask`: "Is the proposed solution of a global carbon tax consistent with the Earth Charter, Article 7d?" (John) | Quotes 7d, cites the Charter, sets the tax's own words and the record's views beside it; no verdict. |
+| A17 | On `/ask`: "Does the lack of a global carbon tax violate the Universal Declaration of Human Rights?" (John) | Quotes only articles that bear on it, with the record's views; no verdict. |
 
 Measured each run: sources outside the digest (must be 0), paragraphs not backed by their sources (hand count, reported to John), tokens in and out, cache hits.
 

@@ -314,7 +314,9 @@ Once the form has opened, a new issue, solution or piece of evidence (never one 
 
 **Ask**, in the menu, opens a page for questions about the whole record. Each issue page also has a box, **Ask about this issue**, under the evidence and above the posts, for questions about that issue and the issues that are part of it. Anyone who can read the record can ask, in plain words.
 
-The answer is a few short paragraphs that sum up what the record holds, including views that differ and how many people hold each one. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown. When the record holds nothing on the question, the answer says "The record does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
+The answer is a few short paragraphs that sum up what the record holds, including views that differ and how many people hold each one. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown.
+
+The three guiding documents can be asked about too. A question that names the Declaration, the Charter, the statement of purpose, an article or a principle, such as "What does the UDHR say about privacy?", is answered with the article or principle quoted word for word, and the source reads "Guiding document: Universal Declaration of Human Rights.", linked to that document on the About page. Asked whether a solution fits an article or a principle, the answer quotes it, says where the solution's own words meet it and where they do not, and gives the views people have posted; it leaves the verdict to the reader. A quotation that is not word for word in the document is never shown. When the record holds nothing on the question, the answer says "The record does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
 
 Nothing is kept. Questions and answers live only in the open page and are gone when it is closed. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go. The first question after a quiet spell can take up to a minute, because the site may be waking up.
 
@@ -324,7 +326,7 @@ Nothing is kept. Questions and answers live only in the open page and are gone w
 
 Without a DeepSeek key, the page says "Asking needs the reading service, which is not set up." If an answer says "The question could not be answered just now", wait a minute and ask again. If it keeps saying so, check your DeepSeek balance and the reading service line in the back room, as in "When reading stops".
 
-**After switching it on:** open an issue with a few posts and ask one of your own questions, for example which solutions have the most approvals, or why people oppose them. Check that the answer names its sources and that each source links to its issue. Then ask about something the record does not hold, and check that it says "The record does not say anything about this yet."
+**After switching it on:** open an issue with a few posts and ask one of your own questions, for example which solutions have the most approvals, or why people oppose them. Check that the answer names its sources and that each source links to its issue. Then ask about something the record does not hold, and check that it says "The record does not say anything about this yet." Last, ask what the Declaration says about privacy, and check that the answer quotes Article 12.
 
 ### After switching anything on
 

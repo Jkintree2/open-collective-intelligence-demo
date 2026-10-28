@@ -57,7 +57,5 @@ def about(request: Request) -> Response:
         "no_service_cards": NO_READING_SERVICE_CARDS,
         "evidence_check": settings.evidence_check_enabled,
         "repository": REPOSITORY,
-        "documents": [("Statement of purpose", principles.PURPOSE),
-                      ("Universal Declaration of Human Rights", principles.UDHR),
-                      ("The Earth Charter", principles.EARTH_CHARTER)],
+        "documents": principles.DOCUMENTS,
     })

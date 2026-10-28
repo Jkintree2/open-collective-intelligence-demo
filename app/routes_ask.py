@@ -7,7 +7,7 @@ the request (the browser holds the visit's earlier questions)."""
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
@@ -57,6 +57,13 @@ def _take(key: str) -> str | None:
     return None
 
 
+def _linked(source: ask.Source, settings: config.Settings) -> ask.Source:
+    """A guiding document links to its place on the About page only while that page is switched on."""
+    if source.kind == "document" and not settings.about_enabled:
+        return replace(source, href=None)
+    return source
+
+
 def run(request: Request, question: str, earlier: list[str], issue: str | None) -> tuple[int, dict]:
     """The answer as the page shows it, with its status code. Checks run in the order the page lists its
     lines; the reading service is counted only when it is called."""
@@ -77,7 +84,9 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None) 
     digest = ask.issue_digest(issue) if issue else ask.record_digest(question)
     if digest is None:
         raise HTTPException(404)
-    if digest.empty:  # nothing to answer from: the empty line, with no call and no count
+    # Nothing to answer from: the empty line, with no call and no count. A question about a guiding
+    # document can still be answered from the document (John, 28 October).
+    if digest.empty and not ask.names_document(question):
         return 200, {"status": "empty", "message": ask.EMPTY, "paragraphs": [], "sources": [], "partial": None,
                      "issue": issue_name}
     if (refused := _take(reader_key(request))) is not None:
@@ -85,7 +94,7 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None) 
     result = ask.answer(question, earlier, digest, settings, scope="issue" if issue else "record",
                         request_id=getattr(request.state, "request_id", None))
     return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,
-                 "sources": [{**asdict(source), "when": source.when} for source in result.sources],
+                 "sources": [{**asdict(_linked(source, settings)), "when": source.when} for source in result.sources],
                  "partial": ask.PARTIAL if result.partial else None, "issue": issue_name}
 
 
