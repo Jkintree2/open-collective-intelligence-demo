@@ -66,7 +66,7 @@ scripts/follow_ups.py prints the follow-up questions for each case in tests/foll
 scripts/probe_reading.py one reading service preflight call; prints capability results, never credentials
 scripts/restore.py loads an admin export into an empty database
 scripts/smoke.py   read-only checks on the deployed site after each deploy (GET only; the served scripts and style match --ref; OCI_SMOKE_COOKIE adds the signed-in pages)
-tests/             offline by default (no network, no database); conftest.py (live_graph, member_app), page_harness.js (the fake page every *.cjs test drives); test_live_*.py are marked live and run only against the disposable Neo4j on port 7688; extraction_cases.json, check_cases.json, ask_cases.json and follow_up_cases.json (Phase 3), fixtures/ (ask_record.json, Phase 3; pages_before_phase3/, the pages as drawn before Phase 3, which test_phase3_switches.py holds every page to with all four switches off)
+tests/             offline by default (no network, no database); conftest.py (live_graph, member_app), page_harness.js (the fake page every *.cjs test drives); test_live_*.py are marked live and run only against the disposable Neo4j on port 7688; test_wording.py (John, 28 October: no page or page script says "the record"); extraction_cases.json, check_cases.json, ask_cases.json and follow_up_cases.json (Phase 3), fixtures/ (ask_record.json, Phase 3; pages_before_phase3/, the pages as drawn before Phase 3, which test_phase3_switches.py holds every page to with all four switches off)
 docs/operators-guide.md   client-facing guide for John
 docs/planning/     copies of the planning documents
 render.yaml        Render blueprint; SECRET_KEY and ADMIN_TOKEN are generateValue: true

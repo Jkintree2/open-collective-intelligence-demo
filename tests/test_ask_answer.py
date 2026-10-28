@@ -84,7 +84,13 @@ def test_ids_in_the_text_become_names_or_go():
 
 def test_the_word_digest_never_reaches_a_reader():
     paragraphs, _ = kept(("No other posts in the digest say so; this Digest is short.", ["P1"]))
-    assert paragraphs[0]["text"] == "No other posts in the record say so; this record is short."
+    assert paragraphs[0]["text"] == "No other posts in the database say so; this database is short."
+
+
+def test_an_answer_says_database_where_it_would_say_record():
+    """John, 28 October: "shared database" instead of "shared record", in answers too."""
+    paragraphs, _ = kept(("The record holds two views. Nothing in the record says why; the Record is short.", ["P1"]))
+    assert paragraphs[0]["text"] == "The database holds two views. Nothing in the database says why; the database is short."
 
 
 def test_sources_are_numbered_in_the_order_first_cited():
@@ -149,7 +155,7 @@ def test_one_attempt_and_a_failure_says_so():
 def test_an_empty_answer_and_a_partial_one():
     calls = []
     empty = ask.answer("Mars?", [], DIGEST, SETTINGS, transport=service(json.dumps(reply(in_record=False)), calls))
-    assert empty.status == "empty" and empty.message == "The record does not say anything about this yet."
+    assert empty.status == "empty" and empty.message == "The database does not say anything about this yet."
     partial_digest = ask.Digest(DIGEST.text, SOURCES, posts_in=2, posts_left_out=4)
     partial = ask.answer("Why?", [], partial_digest, SETTINGS,
                          transport=service(json.dumps(reply(("Ada wants a tax.", ["P1"]))), calls))
@@ -163,7 +169,7 @@ def test_an_empty_record_is_never_sent(monkeypatch):
     for digest in (nothing, only_evidence):
         assert digest.empty
         result = ask.answer("Why?", [], digest, SETTINGS)
-        assert result.status == "empty" and result.message == "The record does not say anything about this yet."
+        assert result.status == "empty" and result.message == "The database does not say anything about this yet."
     assert not DIGEST.empty
 
 

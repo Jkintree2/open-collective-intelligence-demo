@@ -24,7 +24,7 @@ REL_NAMES = {"POSTED": "Posts credited", "CLAIM": "Claims", "SUBMIT": "Citations
              "SUPPORTS": "Statements of support", "REFUTES": "Statements against",
              "APPROVE": "Approvals", "OPPOSE": "Oppositions", "PART_OF": "Sub issues"}
 NOTICES = {"reload": "Seed reloaded.", "reset": "Reset to seed.", "delete": "Post deleted.",
-           "empty": "The record was cleared, but the seed statements did not all load. "
+           "empty": "The database was cleared, but the seed statements did not all load. "
                     "Press Reload seed."}
 
 # Client facing copy, word for word from docs/planning/04_interface.md ("Back room additions").

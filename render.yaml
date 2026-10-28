@@ -28,7 +28,7 @@ services:
       - key: SITE_NAME
         value: Open Collective Intelligence
       - key: SITE_SENTENCE
-        value: Write what you think about an issue that matters to you. We will pull out the issue, your claim, any evidence and any solution, show you what we found, and add it to a record everyone here shares.
+        value: Write what you think about an issue that matters to you. We will pull out the issue, your claim, any evidence and any solution, show you what we found, and add it to a database everyone here shares.
       - key: APP_ENV
         value: production
       # Reading service. The key is typed into the dashboard; without it the card is filled by hand.

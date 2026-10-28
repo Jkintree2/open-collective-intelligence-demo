@@ -3,9 +3,9 @@
 {% block content %}
 <h1>Back room</h1>
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
-<h2>The shared record</h2>
+<h2>The shared database</h2>
 <dl>{% for label, count in counts %}<dt>{{ label }}</dt><dd>{{ count }}</dd>{% endfor %}</dl>
-<details><summary class="quiet">Connections in the record</summary>
+<details><summary class="quiet">Connections in the database</summary>
 <dl>{% for label, count in relations %}<dt>{{ label }}</dt><dd>{{ count }}</dd>{% endfor %}</dl>
 </details>
 <h2>Reading service</h2><p>{{ reading_error }}</p>
@@ -14,12 +14,12 @@
 <h2>Seed statements</h2>
 <form action="/admin/reload" method="post">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <p>Add any missing seed statements to the record.</p><button class="primary" type="submit">Reload seed</button>
+  <p>Add any missing seed statements to the database.</p><button class="primary" type="submit">Reload seed</button>
 </form>
 <details><summary class="quiet">Reset to seed</summary>
   <form action="/admin/reset" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <p>This deletes every post and restores the seed statements. Accounts, and who entered whom, stay. Download a copy first if you want to keep the current record.</p>
+    <p>This deletes every post and restores the seed statements. Accounts, and who entered whom, stay. Download a copy first if you want to keep the current database.</p>
     <label for="confirmation">Type RESET to confirm</label>
     <input type="text" id="confirmation" name="confirmation" required pattern="RESET" autocomplete="off">
     <button class="primary" type="submit">Reset to seed</button>

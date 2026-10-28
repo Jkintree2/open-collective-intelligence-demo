@@ -14,7 +14,7 @@ RETRY_SECONDS = 10.0
 
 
 class RecordAsleep(Exception):
-    """The record cannot be reached."""
+    """The database cannot be reached."""
 
 
 def database() -> str:
