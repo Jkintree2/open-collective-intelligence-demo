@@ -990,7 +990,14 @@ Since 28 October 2026 every line here says "database" where it said "record" (Jo
 
 Under either box, small:
 
-> Answers sum up what is in the database, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up; nothing is kept after you leave.
+> Answers sum up what is in the database, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone, without your name; answers are not kept.
+
+**Under the answers, the latest questions** (John, 28 October, after the call; the headings are drafts for John). On `/ask`, the ten questions most recently answered anywhere; under an issue's box, the five asked about that issue. A question asked again moves to the top. Each is a button; a tap puts it in the box, ready to ask or change. On `/ask`, a question asked on an issue says which, linked. Never a name. Hidden until there is one; a question answered on the page joins the top at once.
+
+> **Questions people are asking** (on `/ask`) or **Questions asked about this issue** (on an issue page)
+>
+> [ What reasons do people give for opposing the carbon tax? ] On Global climate coordination
+> [ What does the UDHR say about privacy? ]
 
 **While it reads:**
 
@@ -1111,7 +1118,7 @@ With a town or area, near means posts placed in the same town or area; with a co
 >
 > A language model fills in the form from the statement. Nothing joins the database until the writer has checked the form and posted it.
 >
-> When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and from the guiding documents below when a question asks about them. Each part of the answer names the posts or the document it comes from; a part that names neither is left out. Questions and answers are not kept.
+> When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and from the guiding documents below when a question asks about them. Each part of the answer names the posts or the document it comes from; a part that names neither is left out. A question that gets an answer is kept and listed under the Ask box for everyone here, without the name of who asked. Answers are not kept.
 >
 > **The language model**
 >

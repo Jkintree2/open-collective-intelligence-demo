@@ -306,3 +306,21 @@ def test_the_revision_round_properties_restore_with_their_types():
     for bad in ({"check_claim": 3}, {"check_reason": True}, {"personal": "yes"}, {"source_cites": 1}, {"check": "agrees"}):
         with pytest.raises(InvalidBackup):
             properties(bad)
+
+
+# John, 28 October: a copy carries the questions people asked, which have no edges and no asker.
+def question_node(**props):
+    base = {"key": "veto|why the veto", "text": "Why the veto?", "issue_key": "veto", "asked": 2,
+            "created_at": encode_value(DateTime(2026, 10, 28, 20, 0, 0, tzinfo=None)),
+            "asked_at": encode_value(DateTime(2026, 10, 29, 9, 0, 0, tzinfo=None))}
+    return {"label": "Question", "identity": "veto|why the veto", "properties": {**base, **props}}
+
+
+def test_a_question_travels_in_a_copy():
+    validate_record({"format": "oci-record", "version": VERSION, "nodes": [question_node()], "relationships": []})
+
+
+@pytest.mark.parametrize("bad", [{"asked": 0}, {"asked": "2"}, {"issue_key": 3}, {"asked_at": "yesterday"}])
+def test_a_malformed_question_is_refused(bad):
+    with pytest.raises(InvalidBackup):
+        validate_record({"format": "oci-record", "version": VERSION, "nodes": [question_node(**bad)], "relationships": []})

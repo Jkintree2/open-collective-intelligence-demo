@@ -8,8 +8,10 @@ const path = require('node:path');
 
 class Node {
   constructor(tag) { this.tag = tag; this.children = []; this.textContent = ''; this.className = ''; this.attrs = {}; }
-  append(...kids) { this.children.push(...kids); }
-  prepend(...kids) { this.children.unshift(...kids); }
+  append(...kids) { for (const k of kids) if (typeof k === 'object') k.parent = this; this.children.push(...kids); }
+  prepend(...kids) { for (const k of kids) if (typeof k === 'object') k.parent = this; this.children.unshift(...kids); }
+  remove() { this.parent.children.splice(this.parent.children.indexOf(this), 1); }
+  querySelector(selector) { return this.find(selector.replace(/^\./, '')); }
   get text() { return this.textContent + this.children.map(c => typeof c === 'string' ? c : c.text).join(''); }
   find(className) {
     if (this.className === className) return this;
@@ -18,9 +20,10 @@ class Node {
   }
 }
 
-function page(issue, carried = []) {
+function page(issue, carried = [], recent = undefined) {
   const status = new Node('p'), answers = new Node('div'), field = {value: ''};
-  const box = {dataset: issue ? {issue} : {}, querySelector: s => ({'[data-ask-status]': status, '[data-ask-answers]': answers})[s]};
+  const box = {dataset: issue ? {issue} : {}, querySelector: s => ({'[data-ask-status]': status, '[data-ask-answers]': answers,
+    '[data-ask-recent]': recent, 'form.ask-form textarea': field})[s]};
   const attrs = {};
   const form = {matches: s => s === 'form.ask-form', closest: () => box, querySelector: () => field,
     querySelectorAll: s => s === '[name=earlier]' ? carried.map(value => ({value})) : [],
@@ -28,10 +31,10 @@ function page(issue, carried = []) {
     requestSubmit() { this.submitted = (this.submitted || 0) + 1; }};
   field.form = form;
   field.matches = s => s === 'form.ask-form textarea';
-  let submit, keydown; const requests = [], timers = new Map(); let timerId = 0;
+  let submit, keydown, click; const requests = [], timers = new Map(); let timerId = 0;
   const location = {href: '/issues/veto', pathname: '/issues/veto', search: ''};
   const context = {
-    document: {addEventListener: (name, fn) => { if (name === 'submit') submit = fn; if (name === 'keydown') keydown = fn; },
+    document: {addEventListener: (name, fn) => { if (name === 'submit') submit = fn; if (name === 'keydown') keydown = fn; if (name === 'click') click = fn; },
       createElement: tag => new Node(tag), createTextNode: text => text},
     location, AbortController,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
@@ -45,7 +48,7 @@ function page(issue, carried = []) {
   const fire = delay => { for (const [id, t] of [...timers]) if (t.delay === delay) { timers.delete(id); t.fn(); } };
   const key = (name, extra = {}) => { const event = {key: name, target: field, prevented: false, ...extra,
     preventDefault() { this.prevented = true; }}; keydown(event); return event; };
-  return {ask, status, answers, field, form, requests, flush, fire, timers, attrs, location, key};
+  return {ask, status, answers, field, form, requests, flush, fire, timers, attrs, location, key, box, click: event => click(event)};
 }
 const json = (data, status = 200) => ({ok: status < 400, status, json: async () => data});
 const ANSWER = {status: 'answered', message: null, partial: null,
@@ -182,4 +185,43 @@ test('questions carried by the page without JavaScript start the list', async ()
   p.requests[0].resolve(json(ANSWER)); await p.flush();
   p.ask('four?');
   assert.deepEqual(p.requests[1].body.earlier, ['one?', 'two?', 'three?']);
+});
+
+
+// John, 28 October: answered questions are listed under the box for everyone.
+function recentList(...texts) {
+  const list = new Node('ul');
+  for (const text of texts) { const item = new Node('li'), again = new Node('button'); again.className = 'ask-again'; again.textContent = text; item.append(again); list.append(item); }
+  return {hidden: texts.length === 0, list, querySelector: s => s === 'ul' ? list : null};
+}
+const listedTexts = recent => recent.list.children.map(item => item.querySelector('.ask-again').textContent);
+
+test('an answered question goes to the top of the list, once, and shows the list', async () => {
+  const recent = recentList();
+  const p = page(null, [], recent);
+  p.ask('Why the veto?'); p.requests[0].resolve(json(ANSWER)); await p.flush();
+  assert.deepEqual(listedTexts(recent), ['Why the veto?']);
+  assert.equal(recent.hidden, false);
+  p.ask('Who opposes it?'); p.requests[1].resolve(json(ANSWER)); await p.flush();
+  p.ask('why the veto'); p.requests[2].resolve(json(ANSWER)); await p.flush();
+  assert.deepEqual(listedTexts(recent), ['why the veto', 'Who opposes it?']);
+});
+
+test('a question with nothing to answer from is not listed', async () => {
+  const recent = recentList('Who opposes it?');
+  const p = page('veto', [], recent);
+  p.ask('What about Mars?'); p.requests[0].resolve(json({...ANSWER, status: 'empty', paragraphs: [], sources: []})); await p.flush();
+  assert.deepEqual(listedTexts(recent), ['Who opposes it?']);
+});
+
+test('a tap on a listed question puts it in the box', () => {
+  const p = page(null, [], recentList('Who opposes it?'));
+  let focused = false;
+  p.field.focus = () => { focused = true; };
+  const again = {textContent: 'Who opposes it?', closest: () => p.box};
+  p.click({target: {closest: s => s === '.ask-again' ? again : null}});
+  assert.equal(p.field.value, 'Who opposes it?');
+  assert.equal(focused, true);
+  p.click({target: {closest: () => null}});  // anywhere else: nothing happens
+  assert.equal(p.field.value, 'Who opposes it?');
 });

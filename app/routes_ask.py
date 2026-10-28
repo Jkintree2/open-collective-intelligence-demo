@@ -2,24 +2,29 @@
 
 GET /ask is the page for the whole record; the box on each issue page is the same form with the issue's
 key. ask.js posts to /api/ask and shows the answer in place; without JavaScript the form posts to /ask
-and the answer comes back on the Ask page. Nothing is kept: questions, answers and digests live only in
-the request (the browser holds the visit's earlier questions)."""
+and the answer comes back on the Ask page. A question that was answered is kept, without who asked, for
+the list under the box (John, 28 October); answers and digests live only in the request (the browser
+holds the visit's earlier questions)."""
 
 from __future__ import annotations
 
+import json
+import logging
 from dataclasses import asdict, replace
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import ask, config, graph
+from app import ask, config, graph, graph_questions
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.members import require_access, require_same_origin
 from app.pages import page
 from app.routes_evidence import reader_key
 
 router = APIRouter()
+log = logging.getLogger("oci")
 # Client facing copy, word for word from docs/planning/04_interface.md.
 NO_QUESTION = "Please write a question."
 TOO_LONG = "Please keep the question under 500 characters."
@@ -93,14 +98,35 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None) 
         return 429, {"message": refused}
     result = ask.answer(question, earlier, digest, settings, scope="issue" if issue else "record",
                         request_id=getattr(request.state, "request_id", None))
+    if result.status == "answered":
+        _keep(request, question, issue)
     return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,
                  "sources": [{**asdict(_linked(source, settings)), "when": source.when} for source in result.sources],
                  "partial": ask.PARTIAL if result.partial else None, "issue": issue_name}
 
 
+def _keep(request: Request, question: str, issue: str | None) -> None:
+    """The answer is shown whatever happens here: a question that cannot be kept is only logged."""
+    try:
+        graph_questions.keep(question, issue, datetime.now(timezone.utc))
+    except Exception as exc:  # noqa: BLE001
+        log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
+                                "error": type(exc).__name__}))
+
+
+def recent_questions(issue: str | None) -> list[dict]:
+    """The list under the box; a page without it is still the Ask page."""
+    try:
+        return graph_questions.recent(issue, graph_questions.RECENT_ON_ISSUE if issue else graph_questions.RECENT)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(json.dumps({"event": "questions_not_read", "error": type(exc).__name__}))
+        return []
+
+
 @router.get("/ask", dependencies=[Depends(ask_on), Depends(require_access)])
 def ask_page(request: Request) -> Response:
-    return page(request, "ask.html", {"result": None, "question": "", "issue": None, "earlier": []})
+    return page(request, "ask.html", {"result": None, "question": "", "issue": None, "earlier": [],
+                                      "recent_questions": recent_questions(None)})
 
 
 @router.post("/ask", dependencies=[Depends(ask_on), Depends(require_access), Depends(require_same_origin)])
@@ -114,7 +140,8 @@ def ask_form(request: Request, question: str = Form("", max_length=5000),
     asked = " ".join(question.split())
     carried = (earlier + [asked])[-ask.EARLIER_MAX:] if body.get("status") else earlier
     return page(request, "ask.html", {"result": body, "question": asked, "earlier": carried,
-                                      "issue": {"key": issue, "name": body.get("issue")} if issue else None},
+                                      "issue": {"key": issue, "name": body.get("issue")} if issue else None,
+                                      "recent_questions": recent_questions(issue or None)},
                 status_code=status)
 
 

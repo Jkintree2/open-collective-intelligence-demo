@@ -20,7 +20,8 @@ VERSIONS = (1, 2)
 # Never in a copy (03_schema.md Q33): a restored account chooses a new password by link.
 # X2's pending_email belongs to the link and goes with it.
 SECRET_PROPERTIES = frozenset({"password_hash", "token_hash", "token_purpose", "token_expires_at", "pending_email"})
-LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id", "Change": "id"}
+LABEL_KEYS = {"Person": "key", "Issue": "key", "Solution": "key", "Evidence": "key", "Post": "id", "Change": "id",
+              "Question": "key"}
 DIRECTIONS = {
     "POSTED": ("Person", {"Post"}), "CLAIM": ("Person", {"Issue"}),
     "SUBMIT": ("Person", {"Evidence"}), "PROPOSE": ("Person", {"Solution"}),
@@ -136,14 +137,17 @@ def properties(value):
                    "model", "payload", "post_id", "last_post_id", "email", "country", "postal_code",
                    "relationship", "kind", "details", "check_quote", "source_type",
                    "source_published", "check_claim", "check_reason", "check_quote_at",
-                   "place_country", "place_area", "place_area_key", "answers"} and not isinstance(item, str):
+                   "place_country", "place_area", "place_area_key", "answers", "issue_key"} \
+                and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
         if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary",
                    "source_cites", "personal", "check_pasted"} and type(item) is not bool:
             raise InvalidBackup("A boolean property has the wrong type.")
         if key == "latency_ms" and (type(item) is not int or item < 0):
             raise InvalidBackup("A latency property has the wrong type.")
-        if key in {"created_at", "accepted_at", "edited_at", "checked_at", "source_checked_at"} \
+        if key == "asked" and (type(item) is not int or item < 1):
+            raise InvalidBackup("A count of questions has the wrong type.")
+        if key in {"created_at", "accepted_at", "edited_at", "checked_at", "source_checked_at", "asked_at"} \
                 and not isinstance(item, DateTime):
             raise InvalidBackup("A timestamp property has the wrong type.")
         if key == "check" and item not in CHECKS:

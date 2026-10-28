@@ -1453,9 +1453,32 @@ RETURN post.id AS id, post.text AS text, post.display_name AS display_name, post
        post.created_at AS created_at, post.seed AS seed, post.edited_at AS edited_at
 ```
 
+### Q47 and Q48. The questions people asked
+
+Added 28 October 2026, after the call: John asked for the latest questions under the Ask box, as the Write page lists the latest statements. The one new label of Phase 3, with no relationship type: `Question {key, text, issue_key, created_at, asked_at, asked}`. A question is kept only when Ask answered it (status `answered`), never when it was refused, empty or failed, and never with who asked: no `Person`, no account key, no edge. `key` is the issue key (empty for the whole database), a bar and the question's words in lower case with spacing and a closing question mark or full stop dropped (`graph_questions.question_key`), so asking the same question again on the same issue moves it to the top and counts it. With `ASK_ENABLED`, startup makes a unique constraint on `Question.key` and a range index on `asked_at`. Copies carry it (`backup.LABEL_KEYS`); a restore needs no switch.
+
+```cypher
+// Q47. $key, $text (at most 500 characters), $issue_key (null for the whole database), $now.
+MERGE (q:Question {key: $key})
+ON CREATE SET q.created_at = datetime($now), q.asked = 0
+SET q.text = $text, q.issue_key = $issue_key, q.asked_at = datetime($now), q.asked = q.asked + 1
+```
+
+```cypher
+// Q48. $issue_key: null on Ask the database (every question), an issue's key under its box; $limit: 10 or 5.
+MATCH (q:Question)
+WHERE $issue_key IS NULL OR q.issue_key = $issue_key
+WITH q ORDER BY q.asked_at DESC LIMIT $limit
+OPTIONAL MATCH (i:Issue {key: q.issue_key})
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name
+ORDER BY q.asked_at DESC
+```
+
+A question whose issue was merged or renamed keeps its old `issue_key`; it still lists on Ask the database, without the issue's name. A failed write or read is logged (`question_not_kept`, `questions_not_read`) and never stops an answer or the page.
+
 ### What is never stored
 
-Questions asked, answers, digests and their source lists, the questions of a visit sent with the next one (they stay in the open browser tab), and follow-up questions. A follow-up's answer is stored only as a line the writer added to their statement text, so it is part of the post like any other words. Nothing here is cached across requests, in the database or in process memory.
+Answers, digests and their source lists, the questions of a visit sent with the next one (they stay in the open browser tab), and follow-up questions. A follow-up's answer is stored only as a line the writer added to their statement text, so it is part of the post like any other words. Nothing here is cached across requests, in the database or in process memory.
 
 ### Logging
 

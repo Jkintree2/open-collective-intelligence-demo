@@ -1,8 +1,8 @@
 // Phase 3: ask the record, on /ask and in the box on each issue page (04_interface.md, "Ask the
 // record"). Without this file the box is a plain form that posts to /ask. With it the answer shows in
 // place, under the box, newest first, and the visit's last three questions on this page go with the
-// next one (never the answers). Nothing is kept after the page is left. Every piece of text is set
-// as text, never as markup.
+// next one (never the answers). The server keeps an answered question for the list under the box
+// (never who asked); the answers are not kept. Every piece of text is set as text, never as markup.
 (() => {
   const lines = {
     noQuestion: 'Please write a question.',
@@ -112,13 +112,40 @@
     }
     if (!response.ok) { status.textContent = data.message; return; }  // a question too long, a limit
     status.textContent = '';
-    if (data.status) {  // the reading service was asked: this question goes with the next one
+    if (data.status) {  // the language model was asked: this question goes with the next one
       asked.push(question);
       earlier.set(box, asked.slice(-EARLIER));
       field.value = '';
     }
+    if (data.status === 'answered') listed(box, question);
     answers.prepend(answerBlock(question, data));
   }
+
+  // John, 28 October: an answered question is kept and listed for everyone; show it at the top here too.
+  function listed(box, question) {
+    const recent = box.querySelector('[data-ask-recent]');
+    if (!recent) return;
+    const list = recent.querySelector('ul');
+    const same = text => text.toLowerCase().replace(/[?.!\s]+$/, '');
+    for (const item of [...list.children]) {
+      if (same(item.querySelector('.ask-again').textContent) === same(question)) item.remove();
+    }
+    const item = el('li');
+    const again = el('button', 'ask-again', question);
+    again.type = 'button';
+    item.append(again);
+    list.prepend(item);
+    recent.hidden = false;
+  }
+
+  // A tap on a listed question puts it in the box, ready to ask or change.
+  document.addEventListener('click', event => {
+    const again = event.target.closest && event.target.closest('.ask-again');
+    if (!again) return;
+    const field = again.closest('[data-ask]').querySelector('form.ask-form textarea');
+    field.value = again.textContent;
+    field.focus();
+  });
 
   document.addEventListener('submit', submit);
   // Enter asks; Shift and Enter starts a new line.

@@ -43,6 +43,11 @@ PLACE_INDEXES = (
     "CREATE INDEX post_place_country IF NOT EXISTS FOR (p:Post) ON (p.place_country)",
     "CREATE INDEX post_place_area    IF NOT EXISTS FOR (p:Post) ON (p.place_area_key)",
 )
+# Phase 3: the questions people asked (John, 28 October). Made only with ASK_ENABLED.
+QUESTION_INDEXES = (
+    "CREATE CONSTRAINT question_key IF NOT EXISTS FOR (q:Question) REQUIRE q.key IS UNIQUE",
+    "CREATE INDEX question_asked    IF NOT EXISTS FOR (q:Question) ON (q.asked_at)",
+)
 
 # The write path, statement by statement, from docs/planning/03_schema.md.
 
@@ -348,11 +353,12 @@ MATCH (a:{source_label} {{{source_key}: $source}}),
 CREATE (a)-[r:{type}]->(b) SET r = $properties
 """
 
-def ensure_constraints(places: bool = False) -> None:
+def ensure_constraints(places: bool = False, asking: bool = False) -> None:
     """Run the schema statements from docs/planning/03_schema.md. Idempotent. `places` adds Phase 3's
-    two place indexes (PLACES_ENABLED), so an unset switch leaves the database as it was."""
+    two place indexes (PLACES_ENABLED) and `asking` the questions' two (ASK_ENABLED), so an unset
+    switch leaves the database as it was."""
     try:
-        for statement in CONSTRAINTS + (PLACE_INDEXES if places else ()):
+        for statement in CONSTRAINTS + (PLACE_INDEXES if places else ()) + (QUESTION_INDEXES if asking else ()):
             driver().execute_query(statement, database_=database())
     except ServiceUnavailable as exc:
         raise RecordAsleep(str(exc)) from exc

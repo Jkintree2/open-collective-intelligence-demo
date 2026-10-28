@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from app import ask, routes_ask
+from app import ask, graph_questions, routes_ask
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 
 ISSUE = {"key": "veto", "name": "Security Council veto", "parent_key": None, "parent_name": None, "children": []}
@@ -38,6 +38,9 @@ def asking(member_app, switch, monkeypatch):
     monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
                         calls.append(("answer", question, earlier, kw["scope"])) or ANSWERED)
     member_app.calls = calls
+    member_app.kept, member_app.listed = [], []
+    monkeypatch.setattr(graph_questions, "keep", lambda text, issue, now: member_app.kept.append((text, issue)))
+    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10: list(member_app.listed))
     member_app.sign_in()
     switch(ask_enabled=True, llm_api_key="test-key")
     return member_app
@@ -262,3 +265,63 @@ def test_a_use_can_be_given_back():
     limit.give_back("a")  # nothing left to give back: no error
     assert limit.uses == {}
     limit.give_back("never")
+
+
+
+# John, 28 October: an answered question is kept, without who asked, and the latest are listed under the box.
+def test_an_answered_question_is_kept_without_who_asked(asking):
+    post(asking.client, {"question": "  Why   the veto? ", "issue": "veto"})
+    post(asking.client, {"question": "Who opposes it?"})
+    assert asking.kept == [("Why the veto?", "veto"), ("Who opposes it?", None)]
+
+
+def test_a_question_not_answered_is_not_kept(asking, monkeypatch, switch):
+    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("failed"))
+    post(asking.client, {"question": "Why?"})
+    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("empty"))
+    post(asking.client, {"question": "Why?"})
+    switch(llm_api_key="")
+    post(asking.client, {"question": "Why?"})
+    post(asking.client, {"question": ""})
+    assert asking.kept == []
+
+
+def test_an_answer_still_shows_when_the_question_cannot_be_kept(asking, monkeypatch, caplog):
+    def broken(*args):
+        raise RuntimeError("asleep")
+    monkeypatch.setattr(graph_questions, "keep", broken)
+    assert post(asking.client, {"question": "Why?"}).json()["status"] == "answered"
+    assert "question_not_kept" in caplog.text and "Why?" not in caplog.text
+
+
+def test_the_ask_page_lists_the_latest_questions_and_their_issues(asking):
+    assert 'data-ask-recent hidden' in asking.client.get("/ask").text  # none yet: the list waits, hidden
+    asking.listed[:] = [{"text": "Why the <veto>?", "issue_key": "veto", "issue_name": "Security Council veto"},
+                        {"text": "Who pays?", "issue_key": None, "issue_name": None}]
+    page = asking.client.get("/ask").text
+    assert "<h3>Questions people are asking</h3>" in page and "data-ask-recent hidden" not in page
+    assert '<button type="button" class="ask-again">Why the &lt;veto&gt;?</button> <span class="counts">On ' \
+           '<a href="/issues/veto">Security Council veto</a></span>' in page
+    assert '<button type="button" class="ask-again">Who pays?</button></li>' in page
+    assert "A question that gets an answer is listed here for everyone, without your name; answers are not kept." in page
+
+
+def test_the_issue_box_lists_its_own_questions(asking, monkeypatch):
+    seen = []
+    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10: seen.append((issue, limit)) or
+                        [{"text": "Why the veto?", "issue_key": "veto", "issue_name": "Security Council veto"}])
+    page = asking.client.get("/issues/veto").text
+    assert seen == [("veto", 5)] and "<h3>Questions asked about this issue</h3>" in page
+    assert '<button type="button" class="ask-again">Why the veto?</button></li>' in page  # no "On" on its own issue
+
+
+def test_switched_off_no_question_is_read(asking, monkeypatch, switch):
+    switch(ask_enabled=False)
+    monkeypatch.setattr(graph_questions, "recent", lambda *a, **kw: pytest.fail("questions read with Ask off"))
+    assert "data-ask-recent" not in asking.client.get("/issues/veto").text
+
+
+def test_the_same_question_is_one_question_on_each_issue():
+    key = graph_questions.question_key
+    assert key("Why the veto?", "veto") == key("  why THE   veto ", "veto") == "veto|why the veto"
+    assert key("Why the veto?", None) == "|why the veto" != key("Why the veto?", "climate")
