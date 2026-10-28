@@ -23,6 +23,7 @@ After PR 44 Render emailed "deploy failed" and "Blueprint Sync Failed". Not John
 
 Nothing is left to build from John's 28 October emails; these wait on his answers.
 
+**Reply sent 28 October, 12:03 UTC**, on the "Turning on Phase 3" thread (it also answers his separate "Turning on Phase 3, system prompt" mail). It tells John all three fixes are live and asks him two questions: should Ask give a yes or no for "is X consistent with article Y", and should the rest of the site say "language model" instead of "reading service". It also asks him to send wording changes rather than edit on GitHub. Next session: read his answer on that thread before changing `app/ask.py` or the copy.
 
 * "Language model" beyond About: the rest of the site still says "reading service".
 * For "is X consistent with article Y", Ask now quotes the article, sets the solution's words and the record's views beside it and leaves the verdict to the reader (rule 2: never one verdict). If John wants a yes or no, that is a change to rules 2 and 10 in `app/ask.py`.
