@@ -132,6 +132,7 @@ Empty state **client-facing**: "No issues yet. Write something on the front page
 
 * Breadcrumb: "Issues › Need for world government › Security Council veto" when the issue is a sub-issue.
 * Name as the page title. Under it: "Claimed by 3 people (5 claims)" and the names, anonymous ones shown as "Anonymous".
+* Under that, a row of buttons to each part of the page (call of 28 October, labels are drafts for John): "Sub-issues (5)" when there are any, "Solutions (3)", "Evidence (2)", "Ask" with `ASK_ENABLED`, "Posts", and "Tidy" for John. Each jumps to its heading; there are no tabs and nothing is hidden.
 * "Sub-issues" list if any, each linking.
 * "Proposed solutions". Each solution: name, then "proposed by 2 · approved by 3 · opposed by 1", then its evidence as two short lists, "Supported by" and "Refuted by", each item a name and, if present, a link that opens in a new tab with `rel="noopener noreferrer"`.
 * "Evidence about this issue". Same two lists for evidence attached to the issue directly.

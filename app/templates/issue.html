@@ -5,15 +5,24 @@
 <h1>{{ issue.name }}</h1>
 <a class="write-issue" href="/?issue={{ issue.key|urlencode }}">Write about this issue</a>
 <p class="claimed">Claimed by {{ claimants.people }} {{ "person" if claimants.people == 1 else "people" }} ({{ claimants.claims }} {{ "claim" if claimants.claims == 1 else "claims" }}){% if claimants.names %}: {{ claimants.names|join(", ") }}{% endif %}</p>
+{# Call of 28 October: everything the page holds, at first glance, so Ask is not missed further down. #}
+<nav class="issue-menu" aria-label="On this page">
+  {% if issue.children %}<a href="#sub-issues">Sub-issues ({{ issue.children|length }})</a>{% endif %}
+  <a href="#solutions">Solutions ({{ solutions|length }})</a>
+  <a href="#evidence">Evidence ({{ evidence|length }})</a>
+  {% if switches().ask %}<a href="#ask-title">Ask</a>{% endif %}
+  <a href="#posts">Posts</a>
+  {% if tidy %}<a href="#tidy">Tidy</a>{% endif %}
+</nav>
 
 {% if issue.children %}
-<h2>Sub-issues</h2>
+<h2 id="sub-issues">Sub-issues</h2>
 <ul class="sub-issues plain">
   {% for child in issue.children %}<li><a href="/issues/{{ child.key|urlencode }}">{{ child.name }}</a></li>{% endfor %}
 </ul>
 {% endif %}
 
-<h2>Proposed solutions</h2>{% if member and solutions %}
+<h2 id="solutions">Proposed solutions</h2>{% if member and solutions %}
 <p class="counts">Listed by approvals minus oppositions.</p>{% endif %}
 {% for solution in solutions %}
 <section class="solution"{% if member %} id="{{ solution.key|anchor }}"{% endif %}>
@@ -28,7 +37,7 @@
 <p class="empty">No solutions proposed yet.</p>
 {% endfor %}
 
-<h2>Evidence about this issue</h2>
+<h2 id="evidence">Evidence about this issue</h2>
 {% set supports = evidence|selectattr("stance", "equalto", "SUPPORTS")|list %}
 {% set refutes = evidence|selectattr("stance", "equalto", "REFUTES")|list %}
 {% if supports %}<p class="ev-label">Supported by</p><ul class="evidence">{% for item in supports %}<li>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener noreferrer">{{ item.name }}</a>{% else %}{{ item.name }}{% endif %}{% if item.submitted_by %} <span class="by">submitted by {{ item.submitted_by|join(", ") }}</span>{% endif %}{% include "_confidence.html" %}</li>{% endfor %}</ul>{% endif %}
@@ -37,7 +46,7 @@
 
 {% if switches().ask %}{% set ask_issue = issue %}{% include "_ask.html" %}
 {% endif %}<section class="feed">
-  <h2>Posts about this issue</h2>
+  <h2 id="posts">Posts about this issue</h2>
   {% for post in posts %}
   {% include "_post.html" %}
   {% else %}
