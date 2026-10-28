@@ -59,7 +59,7 @@ def test_error_and_asleep_pages_use_exact_copy(state_client, monkeypatch, asleep
 
 
 @pytest.mark.parametrize("state, expected", [
-    ("unavailable", "The reading service is not answering right now. You can fill in the form by hand, or try again in a minute."),
+    ("unavailable", "The language model is not answering right now. You can fill in the form by hand, or try again in a minute."),
     ("not_found", "We could not find an issue, a claim, evidence or a solution in that. If you meant to make one, fill in the form below, or change the text and read it again."),
     ("english", "This demo reads English only for now."),
 ])

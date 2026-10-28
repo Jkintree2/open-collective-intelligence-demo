@@ -4,7 +4,7 @@ This guide is for the person who runs the site. It covers the everyday jobs, the
 
 ## What the site is
 
-The site is a closed test of a shared database. A small group of people write short statements about issues they care about. A reading service suggests the issue, the claim, any evidence and any solution in each statement. The writer checks and corrects that, then posts it. Every post joins one database that everyone taking part can read.
+The site is a closed test of a shared database. A small group of people write short statements about issues they care about. A language model suggests the issue, the claim, any evidence and any solution in each statement. The writer checks and corrects that, then posts it. Every post joins one database that everyone taking part can read.
 
 The site lives in three places, all in your name:
 
@@ -12,7 +12,7 @@ The site lives in three places, all in your name:
 * **Render** runs the website and gives it its address.
 * **Neo4j Aura** keeps the database itself, like a notebook.
 
-A fourth company, **DeepSeek**, runs the reading service. You pay it a few cents as statements are read.
+A fourth company, **DeepSeek**, runs the language model. You pay it a few cents as statements are read.
 
 ## Letting someone in
 
@@ -68,7 +68,7 @@ The passphrase from the test weeks, `DEMO_PASSPHRASE`, no longer lets anyone in.
 
 The back room is where you look after the database. Add `/admin` to the end of the site address. Your browser asks for a username and a password. Type any username. The password is your back room password (see "Where the back room password is"). It is not the password of your own account. Keep both to yourself.
 
-The page shows how many records and connections there are, the last problem the reading service reported, the last email that could not be sent, everyone with an account, and the latest fifty posts. The two problem lines clear themselves when the site restarts.
+The page shows how many records and connections there are, the last problem the language model reported, the last email that could not be sent, everyone with an account, and the latest fifty posts. The two problem lines clear themselves when the site restarts.
 
 **Download a copy** saves the whole database to your computer as one file. Do this often, and always before a reset. Keep the file somewhere private, because it holds everything people wrote.
 
@@ -155,7 +155,7 @@ Emails that need nothing from you: receipts from DeepSeek, notices from Render t
 If "Read my statement" stops filling in the form, testers can still fill it in by hand and post. Nothing is lost. To get reading working again:
 
 1. **Check your DeepSeek balance first.** Sign in to the DeepSeek platform. If the balance is at or near zero, add a few dollars.
-2. **Then look at the reading service line in the back room.** It shows the last problem DeepSeek reported. A problem with the key or the balance shows there.
+2. **Then look at the language model line in the back room.** It shows the last problem DeepSeek reported. A problem with the key or the balance shows there.
 3. If you made a new DeepSeek key, put it in Render under Environment as `LLM_API_KEY` and save.
 
 ## Sending email from your Gmail
@@ -246,7 +246,7 @@ If your browser offers Dictate, press it and speak. The button says "Listeningâ€
 
 The site asks each person to wait twenty seconds between posts, so nobody can flood the database. A tester who posts twice quickly sees a short message asking them to wait a moment.
 
-The Write page is kept simple: the introduction, the box for writing or dictating, **Post anonymously**, and **Read my statement**, with the recent statements below. **Read my statement** always opens the form: when the reading service is slow or down, the form opens empty and the tester fills it in by hand. Everything in the form can be changed before posting.
+The Write page is kept simple: the introduction, the box for writing or dictating, **Post anonymously**, and **Read my statement**, with the recent statements below. **Read my statement** always opens the form: when the language model is slow or down, the form opens empty and the tester fills it in by hand. Everything in the form can be changed before posting.
 
 Names for issues, claims, evidence and solutions can be up to three hundred characters. A long one wraps onto more lines rather than being cut off. If a tester's long name was shortened to fit, the form says so and they can edit it.
 
@@ -284,11 +284,13 @@ About and places cost nothing to run, so they are a good first pair. With everyt
 
 ### The About page
 
-The About page says what the site is for, how statements are read and questions answered, which reading service is used and its version, what is sent to it (never an email address, a password, or an account's country or postal code), the software, and where the site runs. Then it shows the three guiding documents in full: your statement of purpose, the Universal Declaration of Human Rights and the Earth Charter. Anyone can open it, signed in or not, because it holds nothing from the database.
+The About page says what the site is for, how statements are read and questions answered, which language model is used and its version, what is sent to it (never an email address, a password, or an account's country or postal code), the software, and where the site runs. Then it shows the three guiding documents in full: your statement of purpose, the Universal Declaration of Human Rights and the Earth Charter. Anyone can open it, signed in or not, because it holds nothing from the database.
 
-The reading service is given the same three documents, word for word, at the start of its instructions each time it reads a statement, answers a question or suggests a follow-up question. They guide it; they are not a test that posts must pass. They live on GitHub as three plain text files, `app/guiding/purpose.txt`, `app/guiding/udhr.txt` and `app/guiding/earth_charter.txt`. Edit one there and the page and the instructions change together. After an edit, tell whoever helps you with the site, because one of the site's own checks holds a fingerprint of those words and needs the new one. The Declaration keeps the line breaks it has in its file, so on a wide screen some of its lines end early.
+The language model is given the same three documents, word for word, at the start of its instructions each time it reads a statement, answers a question or suggests a follow-up question. They guide it; they are not a test that posts must pass. They live on GitHub as three plain text files, `app/guiding/purpose.txt`, `app/guiding/udhr.txt` and `app/guiding/earth_charter.txt`. Edit one there and the page and the instructions change together. After an edit, tell whoever helps you with the site, because one of the site's own checks holds a fingerprint of those words and needs the new one. The Declaration keeps the line breaks it has in its file, so on a wide screen some of its lines end early.
 
-**After switching it on:** open the site address with `/about` at the end, signed out. Check that **The reading service** names DeepSeek and a version, and that the three documents are there in full. If it says "No reading service is set up at the moment", the DeepSeek key is missing in Render.
+The sign in page links to it (**About this site**), so someone without an invitation can read about the site before asking you for one.
+
+**After switching it on:** open the site address with `/about` at the end, signed out. Check that **The language model** names DeepSeek and a version, and that the three documents are there in full. If it says "No language model is set up at the moment", the DeepSeek key is missing in Render.
 
 ### Places and Near
 
@@ -296,17 +298,17 @@ The form gains a **Place** row before Post: a list of countries, whose first cho
 
 A post with a place says so under it, for example "In St. Louis, United States" or "In Germany", in the recent statements, on issue pages, in search and on My statements. On the Issues page, **Near** takes a country, a town or area if wanted, and **Show**. It lists the issues that have posts placed there: the same town or area when one is typed (St. Louis and st louis count as the same), otherwise the same country. There are no distances and no maps. Posts written before places were switched on have no place, so Near finds only newer posts at first.
 
-Places cost nothing on the reading service.
+Places cost nothing on the language model.
 
 **After switching it on:** write a statement, choose a country and type a town, and post. Check that the post shows the town and country under it, and that **Near** on the Issues page, with that town, lists its issue.
 
 ### Follow-up questions
 
-Once the form has opened, a new issue, solution or piece of evidence (never one already in the database) may get one short question under it, such as "When did this happen?", with a box for the answer, **Add to my statement** and **Skip**. A form gets at most three. A piece of evidence with no link and no **From my own experience** tick always gets "Where did you read or hear this?"; that one needs no reading service, so it shows even when DeepSeek is not set up.
+Once the form has opened, a new issue, solution or piece of evidence (never one already in the database) may get one short question under it, such as "When did this happen?", with a box for the answer, **Add to my statement** and **Skip**. A form gets at most three. A piece of evidence with no link and no **From my own experience** tick always gets "Where did you read or hear this?"; that one needs no language model, so it shows even when DeepSeek is not set up.
 
 **An answer becomes part of the public statement.** **Add to my statement** adds the question and the answer as one line at the end of the statement ("When did this happen? In 2023."), so everyone who reads the post sees it, and search, editing, asking and the copies you download all carry it. When the post is anonymous, so is the answer. The form says this beside the button. A question never holds back Post, and **Skip** removes it.
 
-**Cost:** each form with something new on it makes one small extra request to the reading service, about a third of a US cent at DeepSeek's busiest hours, and less when it comes soon after another one, because DeepSeek charges less for the long opening instructions it has just read. The site makes at most 300 of these a day; after that only "Where did you read or hear this?" shows. Like the question limits below, that count starts again when the site wakes from sleep.
+**Cost:** each form with something new on it makes one small extra request to the language model, about a third of a US cent at DeepSeek's busiest hours, and less when it comes soon after another one, because DeepSeek charges less for the long opening instructions it has just read. The site makes at most 300 of these a day; after that only "Where did you read or hear this?" shows. Like the question limits below, that count starts again when the site wakes from sleep.
 
 **After switching it on:** write a statement with a piece of evidence and no link, and press **Read my statement**. Check that "Where did you read or hear this?" appears under the evidence. Type an answer, press **Add to my statement**, and check that the line is added at the end of the statement before you post.
 
@@ -316,7 +318,7 @@ Once the form has opened, a new issue, solution or piece of evidence (never one 
 
 The answer is a few short paragraphs that sum up what the database holds, including views that differ and how many people hold each one. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown.
 
-The three guiding documents can be asked about too. A question that names the Declaration, the Charter, the statement of purpose, an article or a principle, such as "What does the UDHR say about privacy?", is answered with the article or principle quoted word for word, and the source reads "Guiding document: Universal Declaration of Human Rights.", linked to that document on the About page. Asked whether a solution fits an article or a principle, the answer quotes it, says where the solution's own words meet it and where they do not, and gives the views people have posted; it leaves the verdict to the reader. A quotation that is not word for word in the document is never shown. When the database holds nothing on the question, the answer says "The database does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
+The three guiding documents can be asked about too. A question that names the Declaration, the Charter, the statement of purpose, an article or a principle, such as "What does the UDHR say about privacy?", is answered with the article or principle quoted word for word, and the source reads "Guiding document: Universal Declaration of Human Rights.", linked to that document on the About page. Asked whether a solution fits an article or a principle, the answer quotes it, says plainly whether it fits (yes, partly or no) judged by the words alone, says where the solution's own words meet it and where they do not, and gives the views people have posted. A quotation that is not word for word in the document is never shown. When the database holds nothing on the question, the answer says "The database does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
 
 Nothing is kept. Questions and answers live only in the open page and are gone when it is closed. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go. The first question after a quiet spell can take up to a minute, because the site may be waking up.
 
@@ -324,7 +326,7 @@ Nothing is kept. Questions and answers live only in the open page and are gone w
 
 **The daily limits start again when the site sleeps.** They are kept in the site's working memory, not in the database. When the site goes to sleep after a quiet spell (see "The slow first visit") and wakes again, or restarts after a change in Render, both counts start again from zero. So 300 is a ceiling for each time the site is awake, not a firm total for the day. If DeepSeek's usage page ever shows more than you expect, switch asking off and tell whoever helps you with the site.
 
-Without a DeepSeek key, the page says "Asking needs the reading service, which is not set up." If an answer says "The question could not be answered just now", wait a minute and ask again. If it keeps saying so, check your DeepSeek balance and the reading service line in the back room, as in "When reading stops".
+Without a DeepSeek key, the page says "Asking needs the language model, which is not set up." If an answer says "The question could not be answered just now", wait a minute and ask again. If it keeps saying so, check your DeepSeek balance and the language model line in the back room, as in "When reading stops".
 
 **After switching it on:** open an issue with a few posts and ask one of your own questions, for example which solutions have the most approvals, or why people oppose them. Check that the answer names its sources and that each source links to its issue. Then ask about something the database does not hold, and check that it says "The database does not say anything about this yet." Last, ask what the Declaration says about privacy, and check that the answer quotes Article 12.
 

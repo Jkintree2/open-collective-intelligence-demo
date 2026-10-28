@@ -138,7 +138,7 @@ test('a reply that is not ours reads as the reading service not answering', asyn
   requests[0].fail(502);
   await flush();
   assert.equal(get('card').hidden, false);
-  assert.equal(get('card-message').textContent, 'The reading service is not answering right now. You can fill in the form by hand, or try again in a minute.');
+  assert.equal(get('card-message').textContent, 'The language model is not answering right now. You can fill in the form by hand, or try again in a minute.');
   assert.equal(get('retry').hidden, false);
 });
 

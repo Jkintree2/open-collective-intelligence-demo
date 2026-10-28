@@ -68,7 +68,9 @@ def test_the_ask_page_and_the_issue_box(asking):
     assert "<h1 id=\"ask-title\">Ask the database</h1>" in page
     assert "Ask a question in plain words. The answer is built only from what people have posted here and the three " \
            "guiding documents, and names where each part comes from." in page
-    assert 'placeholder="For example: What do people say about the Security Council veto?"' in page
+    # John, 28 October: an empty box with the cursor in it, no example question.
+    assert '<textarea name="question" rows="2" aria-labelledby="ask-title" autofocus>' in page
+    assert "For example" not in page
     assert "Answers sum up what is in the database, including views that differ." in page
     assert '<script src="/static/ask.js?v=' in page and "data-issue" not in page
     issue = asking.client.get("/issues/veto").text
@@ -127,7 +129,7 @@ def test_without_the_reading_service_nothing_is_called_or_counted(asking, switch
     switch(llm_api_key=None)
     for _ in range(35):
         body = post(asking.client, {"question": "Why?"}).json()
-    assert body == {"message": "Asking needs the reading service, which is not set up."}
+    assert body == {"message": "Asking needs the language model, which is not set up."}
     assert asking.calls == [] and routes_ask.person_limit.uses == {}
 
 
@@ -177,7 +179,7 @@ def test_the_page_copy_has_no_dashes_or_forbidden_words(asking):
              routes_ask.NO_SERVICE, ask.EMPTY, ask.PARTIAL, ask.FAILED)
     page = asking.client.get("/ask").text + asking.client.get("/issues/veto").text
     for text in words + (page,):
-        lowered = text.lower()
+        lowered = text.lower().replace("language model", "")  # John's own words since 28 October (rule 5)
         for word in (" node", " edge", " graph", "cypher", " model", "extraction", " entity"):
             assert word not in lowered, word
     for text in words:

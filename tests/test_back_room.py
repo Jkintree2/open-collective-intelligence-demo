@@ -161,7 +161,7 @@ def test_the_page_never_receives_link_fields(back_room):
 def test_the_sending_email_line_sits_beside_the_reading_service_line(back_room, monkeypatch):
     page = back_room.page()
     assert "<h2>Sending email</h2><p>No problems recorded.</p>" in page
-    assert page.index("<h2>Reading service</h2>") < page.index("<h2>Sending email</h2>") < page.index('id="people"')
+    assert page.index("<h2>Language model</h2>") < page.index("<h2>Sending email</h2>") < page.index('id="people"')
     monkeypatch.setattr("app.mailer.last_mail_error", {"time": "2026-10-04T14:02:00+00:00", "http": 400})
     assert "The last email could not be sent, on 4 October 2026, 14:02 UTC." in back_room.page()
 
@@ -172,7 +172,7 @@ def test_without_accounts_the_back_room_is_as_before(back_room, monkeypatch):
     monkeypatch.setattr("app.auth.get_settings", lambda: off)
     monkeypatch.setattr("app.graph_accounts.all_accounts", lambda: pytest.fail("no accounts are read with accounts off"))
     page = back_room.page()
-    assert 'id="people"' not in page and "Sending email" not in page and "<h2>Reading service</h2>" in page
+    assert 'id="people"' not in page and "Sending email" not in page and "<h2>Language model</h2>" in page
 
 
 def link_in(text, kind):
