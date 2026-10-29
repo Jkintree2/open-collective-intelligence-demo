@@ -139,6 +139,14 @@ def test_the_whole_record_digest_picks_issues_from_the_question(record):
     assert "United Nations Parliamentary Assembly" in names and len(names) == len(set(names))
 
 
+def test_a_question_naming_the_documents_reads_the_issue_it_is_about(record):
+    """John, 29 October: the documents' names found the evidence and solutions named after them, so the
+    three issues read were about supreme law and the climate issue was not read at all."""
+    built = ask.record_digest("How does the issue of climate change relate to the principles of the Universal "
+                              "Declaration of Human Rights and the Earth Charter?", today=TODAY)
+    assert built.issue_keys[0] == CLIMATE
+
+
 def test_a_question_with_no_words_still_reads_the_top_of_the_record(record):
     built = ask.record_digest("What is it?", today=TODAY)
     assert built.issue_keys and json.loads(built.text)["solutions"]

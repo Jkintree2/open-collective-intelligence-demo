@@ -198,3 +198,16 @@ def test_whole_record_issues_are_picked_by_rank_in_names_and_posts():
     assert ask.pick_issues(names, posts, structure, limit=5) == ["climate", "veto", "housing", "flooding"]
     assert ask.pick_issues(names[3:], posts, structure) == ["housing", "veto", "flooding"]
     assert ask.pick_issues([], [], {}) == []
+
+
+def test_a_whole_record_question_looks_for_its_topic_not_the_documents_it_names(monkeypatch):
+    """John, 29 October: the names and the posts are both found with ask.issue_query."""
+    searched = []
+    monkeypatch.setattr(ask.graph_search, "search_posts", lambda query: searched.append(query) or [])
+    monkeypatch.setattr(ask.graph_search, "search_names", lambda query: searched.append(query) or [])
+    monkeypatch.setattr(ask.graph, "post_structure", lambda ids: {})
+    for name in ("top_solutions", "top_opposed", "top_evidence"):
+        monkeypatch.setattr(ask.graph_ask, name, lambda limit: [])
+    monkeypatch.setattr(ask.graph_ask, "posts_by_ids", lambda ids: [])
+    ask.record_digest("How does climate change relate to the Earth Charter?")
+    assert searched == ["(climate climate*) (change change*) (relate relate*)"] * 2

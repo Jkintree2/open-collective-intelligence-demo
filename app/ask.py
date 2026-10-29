@@ -96,6 +96,19 @@ def names_document(question: str) -> bool:
     return bool(_NAMES_DOCUMENT.search(question))
 
 
+# The guiding documents' own names, which say what a question quotes, not what it is about.
+_DOCUMENT_NAME = re.compile(r"\b(?:universal\s+declaration\s+of\s+human\s+rights|udhr|earth\s+charter|"
+                            r"statement\s+of\s+purpose|guiding\s+documents?)\b", re.IGNORECASE)
+
+
+def issue_query(question: str) -> str | None:
+    """The search that picks a whole-record question's issues. Searched, a guiding document's name finds the
+    evidence and solutions named after the document first (John, 29 October: climate change and the Earth
+    Charter read three issues about supreme law, not climate), so it is left out. A question with nothing
+    else to look for is searched whole, as before."""
+    return search.question_query(_DOCUMENT_NAME.sub(" ", question)) or search.question_query(question)
+
+
 def known(digest: Digest) -> dict[str, Source]:
     """What an answer may cite: the digest's own ids and the three documents."""
     return {**digest.sources, **DOCUMENTS}
@@ -353,9 +366,9 @@ def pick_issues(name_rows: list[dict[str, Any]], post_rows: list[dict[str, Any]]
 
 def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None = None) -> Digest:
     """The digest for a question asked of the whole record: the issues the question's words find (up
-    to three, then the homes of the top solutions), the top and the most opposed solutions with the posts
-    behind their stances, and the top evidence."""
-    query = search.question_query(question)
+    to three, then the homes of the top solutions; issue_query), the top and the most opposed solutions with
+    the posts behind their stances, and the top evidence."""
+    query = issue_query(question)
     keys: list[str] = []
     if query is not None:
         post_rows = graph_search.search_posts(query)
