@@ -13,7 +13,7 @@
     <label class="check"><input id="anonymous" name="anonymous" type="checkbox"> Post anonymously</label>
   </div>
   {% endif %}
-  {% if about %}{% include "_about_issue.html" %}{% endif %}
+  {% if about %}{% include "_about_" ~ (about.kind or "issue") ~ ".html" %}{% endif %}
   <div class="text-label">
     <label for="text">Write or dictate your statement in the box.</label>
     <button type="button" id="dictate" class="quiet" aria-pressed="false" hidden>🎙 Dictate</button>
@@ -38,7 +38,7 @@
     <p id="card-message" class="notice" role="status"></p>
     <p id="card-note" class="counts"></p>
     <h3>Issue</h3><div id="issue-rows"></div>
-    {% if not about %}<p class="counts">To add a sub-issue, write it here and choose the issue it is part of.</p>{% endif %}
+    {% if not about or about.kind %}<p class="counts">To add a sub-issue, write it here and choose the issue it is part of.</p>{% endif %}
     <button type="button" class="quiet" id="add-issue">+ another issue</button>
     <h3>Solutions</h3><div id="solution-rows"></div>
     <button type="button" class="quiet" id="add-solution">+ add a solution</button>

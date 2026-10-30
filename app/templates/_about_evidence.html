@@ -1,0 +1,11 @@
+{# GitHub issue 55: the write page opened from a piece of evidence's page (/?evidence=<key>). The card starts from
+   the issue the evidence first speaks to, directly or through a solution (data-issue-key). #}
+<section class="about-issue" id="about-issue" data-issue="{{ about.issue_name }}" data-issue-key="{{ about.issue_key }}">
+  <h2>Already in the database for {{ about.evidence.name }}</h2>
+  {% if about.evidence.url %}<p class="counts source-line">Source: <a href="{{ about.evidence.url }}" target="_blank" rel="noopener noreferrer">{{ about.evidence.url }}</a></p>{% endif %}
+  <p class="ev-label">What it supports or refutes</p>
+  {% if about.evidence.targets %}<ul class="evidence">{% for item in about.evidence.targets %}<li>{{ item.verb|capitalize }} {{ item.kind }} of {{ item.name }}</li>{% endfor %}</ul>{% else %}<p class="empty">Nothing yet.</p>{% endif %}
+  {% if about.evidence.evidence %}<p class="ev-label">Evidence about this evidence</p>
+  <ul class="evidence">{% for item in about.evidence.evidence %}<li>{{ item.name }} ({{ "supports" if item.stance == "SUPPORTS" else "refutes" }})</li>{% endfor %}</ul>{% endif %}
+  <p><a href="{{ about.href }}">Open the full page for this evidence</a></p>
+</section>

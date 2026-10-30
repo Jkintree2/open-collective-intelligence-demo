@@ -8,6 +8,8 @@
 
 > **Extended 26 October 2026 for GitHub issue 29.** A page read as taking the other side from the writer's is stored on its own side, with the writer's statement as a second piece of evidence on theirs: one edge property, `answers`, and Q35b; statement 5b, Q39 and Q41 carry it. See "Revision round: the page's side and the writer's side" at the end of Phase 2. Behind `EVIDENCE_CHECK_ENABLED`.
 
+> **Extended 30 October 2026 for GitHub issue 55 (a page for each solution and each piece of evidence).** Added: queries Q50 to Q54, a third form of Q40 and two more forms of Q41 for Ask on those pages, and two properties on `Question` (`solution_key`, `evidence_key`) with Q47 to Q49 revised to carry them. No new label, relationship type, constraint or index. See "GitHub issue 55" at the end. No switch: the pages are part of the site; their Ask box shows only with `ASK_ENABLED`.
+
 Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kickoff decisions require: sub-issues, an anonymous flag on relationships, a source link on Evidence, timestamps, and a Post node so every edge traces back to the text that produced it.
 
 ## Node labels
@@ -1503,3 +1505,183 @@ One line per call at INFO, JSON, as for extraction and the evidence check: the r
 ```
 
 `status` on the `ask` line is `ok` (a reply came, whatever the guard kept) or `failed` (no usable reply: late, refused or unreadable). No `ask` line is written when the question is refused before the call (empty, too long, no reading service, a limit); the page says why. On the `follow_ups` line it is `ok`, `none` (no new row left for the reading service, the card full with fixed questions, or an empty statement: no call), `unconfigured` (no `LLM_API_KEY`: the fixed questions only), `limited` (a per person or site limit: no call), `failed` (no reply) or `bad_reply` (a reply that is not the contract). Each call also writes `call_model`'s own line (`"event": "ask_call"` or `"follow_ups_call"`), whose `status` is `ok`, `timeout`, `http`, `auth` (401, 402 or 403), `network` or `invalid`, as for extraction. The raw reply goes to DEBUG only (`ask_raw`, `follow_ups_raw`).
+
+
+## GitHub issue 55: a page for each solution and each piece of evidence
+
+Added 30 October 2026 (John's GitHub issue 55, quoted and agreed the same day). `/solutions/<key>` and `/evidence/<key>` read the record as it is: **no new label, relationship type, constraint or index.** New Cypher lives in `app/graph_item_pages.py` (Q50 to Q54); the Ask forms join their siblings in `app/graph_ask.py`. Names behind anonymous edges are never read: a proposer or a submitter who posted anonymously comes back as "Anonymous", and proposers are counted by account and anonymity as Q3 counts claimants (D2).
+
+"The posts that mention" a solution or a piece of evidence are, as Q6 reads an issue's, every post whose id is on an edge that touches it (`post_id`, or `last_post_id` for a later post that said the same): the post that proposed a solution, posts that took a stance on it, posts that cited evidence for or against it; for evidence, the post that submitted it, posts that cited it and posts that cited other evidence about it. A click stance has no post.
+
+### Q50. A solution's page
+
+Its issues in the order they took it up, each with its parent for the breadcrumbs; who proposed it; its stance counts and the member's own (`$me` null matches nothing); its evidence, one row per piece and side.
+
+```cypher
+// Q50. $key: the solution; $me: the member's key or null.
+MATCH (s:Solution {key: $key})
+CALL (s) {
+  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
+  OPTIONAL MATCH (home)-[:PART_OF]->(parent:Issue)
+  WITH home, parent ORDER BY home.created_at
+  RETURN [h IN collect({key: home.key, name: home.name, parent_key: parent.key, parent_name: parent.name})
+          WHERE h.key IS NOT NULL] AS issues
+}
+CALL (s) {
+  OPTIONAL MATCH (p:Person)-[pr:PROPOSE]->(s)
+  WITH p.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END AS who,
+       CASE WHEN coalesce(pr.anonymous, false) THEN 'Anonymous' ELSE p.name END AS shown
+  RETURN count(DISTINCT who) AS proposers, collect(DISTINCT shown) AS proposed_by
+}
+CALL (s) {
+  OPTIONAL MATCH (:Person {key: $me})-[mine:APPROVE|OPPOSE]->(s)
+  RETURN head(collect(type(mine))) AS my_stance
+}
+CALL (s) {
+  OPTIONAL MATCH (ev:Evidence)-[r:SUPPORTS|REFUTES]->(s)
+  WITH DISTINCT ev, type(r) AS stance
+  ORDER BY ev.created_at
+  RETURN [x IN collect({key: ev.key, name: ev.name, url: ev.url, stance: stance}) WHERE x.key IS NOT NULL]
+         AS evidence
+}
+RETURN s.key AS key, s.name AS name, issues, proposers, proposed_by,
+       COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes,
+       my_stance, evidence
+```
+
+### Q51 and Q53. The posts that mention a solution or a piece of evidence
+
+Shaped like the feed (Q7), newest first. `$limit`: 60, as on an issue page.
+
+```cypher
+// Q51. $key: the solution. Q53 starts MATCH (x:Evidence {key: $key}) instead.
+MATCH (x:Solution {key: $key})
+UNWIND [(x)-[r]-() | r] AS r
+UNWIND [r.post_id, r.last_post_id] AS pid
+WITH DISTINCT pid
+WHERE pid IS NOT NULL
+MATCH (post:Post {id: pid})
+RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
+       post.anonymous AS anonymous, post.created_at AS created_at, post.seed AS seed
+ORDER BY post.created_at DESC
+LIMIT $limit
+```
+
+### Q52. A piece of evidence's page
+
+Who submitted it; what it supports or refutes (an issue; a solution, with the issue that first took it up; or other evidence), with that issue's parent for the breadcrumbs; the evidence on it; whether a writer gave it as personal experience; the page it answers when it is a writer's own words beside a page read the other way (issue 29); and what its page says about itself (Phase 2).
+
+```cypher
+// Q52. $key: the evidence.
+MATCH (e:Evidence {key: $key})
+CALL (e) {
+  OPTIONAL MATCH (p:Person)-[sub:SUBMIT]->(e)
+  RETURN collect(DISTINCT CASE WHEN sub.anonymous THEN 'Anonymous' ELSE p.name END) AS submitted_by
+}
+CALL (e) {
+  OPTIONAL MATCH (e)-[r:SUPPORTS|REFUTES]->(t)
+  WITH DISTINCT t, type(r) AS stance
+  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(t)
+  WITH t, stance, home ORDER BY home.created_at
+  WITH t, stance, head(collect(home)) AS home
+  WITH t, stance, home, CASE WHEN t:Issue THEN t ELSE home END AS issue
+  OPTIONAL MATCH (issue)-[:PART_OF]->(parent:Issue)
+  WITH t, stance, home, parent ORDER BY t.created_at
+  RETURN [x IN collect({kind: CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END,
+                        key: t.key, name: t.name, stance: stance, home_key: home.key, home_name: home.name,
+                        parent_key: parent.key, parent_name: parent.name})
+          WHERE x.key IS NOT NULL] AS targets
+}
+CALL (e) {
+  OPTIONAL MATCH (other:Evidence)-[r:SUPPORTS|REFUTES]->(e)
+  WITH DISTINCT other, type(r) AS stance
+  ORDER BY other.created_at
+  RETURN [x IN collect({key: other.key, name: other.name, url: other.url, stance: stance}) WHERE x.key IS NOT NULL]
+         AS evidence
+}
+CALL (e) {
+  OPTIONAL MATCH (e)-[r:SUPPORTS|REFUTES]->()
+  WITH collect(r) AS edges
+  OPTIONAL MATCH (page:Evidence {key: head([r IN edges WHERE r.answers IS NOT NULL | r.answers])})
+  RETURN any(r IN edges WHERE r.personal) AS personal, page.key AS answers_key, page.name AS answers_name
+}
+RETURN e.key AS key, e.name AS name, e.url AS url, submitted_by, targets, evidence, personal,
+       answers_key, answers_name,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published, e.source_cites AS source_cites
+```
+
+### Q54. Source confidence on the evidence page
+
+Only with `EVIDENCE_CHECK_ENABLED`. Q39's columns for every evidence edge into what this piece supports or refutes, so agreement there is counted exactly as the issue page counts it (`confidence.mark_targets`). The page's own source line is shown once, under its source link (`confidence.own_source`). On a solution's page the evidence lines come from Q39 for the solution's first issue, which holds every edge into the solution.
+
+```cypher
+// Q54. $key: the evidence.
+MATCH (:Evidence {key: $key})-[:SUPPORTS|REFUTES]->(t)
+WITH DISTINCT t
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+RETURN CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END AS target_kind,
+       t.key AS target_key, e.key AS evidence_key, type(r) AS stance, r.check AS check,
+       r.check_quote AS check_quote, r.check_claim AS check_claim, r.check_reason AS check_reason,
+       r.personal AS personal, r.check_quote_at AS check_quote_at, r.check_pasted AS check_pasted,
+       r.answers AS answers,
+       e.source_checked_at IS NOT NULL AS source_known, e.source_type AS source_type,
+       e.source_primary AS source_primary, e.source_published AS source_published,
+       e.source_cites AS source_cites
+```
+
+### Ask on these pages: Q40, third form, and Q41, two more forms
+
+A question asked in the box on a solution's page is answered from that solution with its stances (Q40's columns for the one solution), its evidence and the evidence on that (Q41 for a solution), the posts that mention it (Q51), and its issues (Q2 and Q3, up to three) as context. On a piece of evidence's page: the edges into it and out of it (Q41 for a piece of evidence, as the record-wide form reads each top piece), the posts that mention it (Q53), and the issues it bears on as context; no solution rows. The digest's `asked_about` names the solution or the evidence. In an answer's sources a solution or a piece of evidence links to its own page (`page`), beside the link to its issue.
+
+```cypher
+// Q40, third form. $key: the solution; $stance_limit: 20. Then Q40's columns.
+MATCH (s:Solution {key: $key})
+WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
+```
+
+```cypher
+// Q41, for a solution. $key; $limit: 300. Then Q41's columns.
+MATCH (s:Solution {key: $key})
+OPTIONAL MATCH (piece:Evidence)-[:SUPPORTS|REFUTES]->(s)
+WITH s, collect(DISTINCT piece) AS pieces
+UNWIND [s] + pieces AS t
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+LIMIT $limit
+```
+
+```cypher
+// Q41, for a piece of evidence. $key; $limit: 300. Then Q41's columns.
+MATCH (top:Evidence {key: $key})
+CALL (top) {
+  MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(top)
+  RETURN e, r, top AS t
+  UNION
+  MATCH (top)-[r:SUPPORTS|REFUTES]->(t)
+  RETURN top AS e, r, t
+}
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+LIMIT $limit
+```
+
+### Questions asked on these pages: Q47 to Q49, revised
+
+A question answered in the box on a solution's or a piece of evidence's page is kept like any other, with `solution_key` or `evidence_key` set and `issue_key` null; its `key` starts `solution:<key>|` or `evidence:<key>|` (a key never holds a colon, so it cannot read as an issue's). Q47 sets both properties (null for a question asked on an issue or the whole database). Q48 lists, under a solution's box, only the questions asked there (`$solution_key`), and likewise for evidence; on Ask the database it lists every question with the name of what it was asked on. Q49 returns those names too, so an earlier answer says "Asked about" the solution or the evidence while it still exists. A copy checks both as text. A kept answer's solution and evidence sources carry `page`; post and document sources are kept exactly as before.
+
+```cypher
+// Q48. $issue_key, $solution_key, $evidence_key: at most one set (none on Ask the database); $limit: 10 or 5.
+MATCH (q:Question)
+WHERE ($issue_key IS NULL OR q.issue_key = $issue_key)
+  AND ($solution_key IS NULL OR q.solution_key = $solution_key)
+  AND ($evidence_key IS NULL OR q.evidence_key = $evidence_key)
+WITH q ORDER BY q.asked_at DESC LIMIT $limit
+OPTIONAL MATCH (i:Issue {key: q.issue_key})
+OPTIONAL MATCH (s:Solution {key: q.solution_key})
+OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
+       q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name
+ORDER BY q.asked_at DESC
+```

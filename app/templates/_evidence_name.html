@@ -1,0 +1,1 @@
+{# GitHub issue 55: a piece of evidence's name opens its own page; its source link stays beside it, in a new tab. #}<a href="/evidence/{{ item.key|urlencode }}">{{ item.name }}</a>{% if item.url %} <a class="source-link" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">source</a>{% endif %}

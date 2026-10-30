@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import ask, config, graph, graph_ask, graph_questions
+from app import ask, config, graph, graph_ask, graph_item_pages, graph_questions
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.members import require_access, require_same_origin
 from app.pages import page
@@ -56,6 +56,9 @@ class AskRequest(BaseModel):
     question: str = Field(default="", max_length=5000)
     earlier: list[str] = Field(default_factory=list, max_length=20)
     issue: str | None = Field(default=None, max_length=200)
+    # GitHub issue 55: the box on a solution's or a piece of evidence's page.
+    solution: str | None = Field(default=None, max_length=400)
+    evidence: str | None = Field(default=None, max_length=400)
 
 
 def _take(key: str) -> str | None:
@@ -76,57 +79,97 @@ def _linked(source: ask.Source, settings: config.Settings) -> ask.Source:
     return source
 
 
+def _kept(source: ask.Source) -> dict[str, Any]:
+    """A source as an answer keeps it. Only a solution or a piece of evidence has a page of its own (GitHub issue
+    55), so a post or a document is kept as it was before."""
+    kept = asdict(source)
+    if kept["page"] is None:
+        del kept["page"]
+    return kept
+
+
 def _shown(source: ask.Source, settings: config.Settings) -> dict[str, Any]:
     """A source as the page shows it; a post's id stays on the server."""
-    shown = {**asdict(_linked(source, settings)), "when": source.when}
+    shown = {**_kept(_linked(source, settings)), "when": source.when}
     del shown["post_id"]
     return shown
 
 
-def run(request: Request, question: str, earlier: list[str], issue: str | None) -> tuple[int, dict]:
+def _about(issue: str | None, solution: str | None, evidence: str | None) -> dict[str, str] | None:
+    """What the question was asked on, {kind, key, name}, or None for the whole record; not found when it is
+    not in the record."""
+    if issue:
+        header = graph.issue_header(issue)
+        kind, key, name = "issue", issue, header and header["name"]
+    elif solution:
+        row = graph_item_pages.solution(solution)
+        kind, key, name = "solution", solution, row and row["name"]
+    elif evidence:
+        row = graph_item_pages.evidence(evidence)
+        kind, key, name = "evidence", evidence, row and row["name"]
+    else:
+        return None
+    if not name:
+        raise HTTPException(404)
+    return {"kind": kind, "key": key, "name": name}
+
+
+DIGESTS = {"issue": "issue_digest", "solution": "solution_digest", "evidence": "evidence_digest"}
+
+
+def _on(issue: str | None, solution: str | None, evidence: str | None) -> dict[str, str]:
+    """A box on a solution's or a piece of evidence's page: {"solution": key} or {"evidence": key}. An issue's box
+    sends neither, so an issue wins."""
+    if issue:
+        return {}
+    return {"solution": solution} if solution else {"evidence": evidence} if evidence else {}
+
+
+def run(request: Request, question: str, earlier: list[str], issue: str | None,
+        solution: str | None = None, evidence: str | None = None) -> tuple[int, dict]:
     """The answer as the page shows it, with its status code. Checks run in the order the page lists its
-    lines; the reading service is counted only when it is called."""
+    lines; the reading service is counted only when it is called. A question asked on a solution's or a
+    piece of evidence's page (GitHub issue 55) is answered from what it holds, and its body names it."""
     question = " ".join(question.split())
     if not question:
         return 400, {"message": NO_QUESTION}
     if len(question) > ask.QUESTION_MAX:
         return 400, {"message": TOO_LONG}
-    issue_name = None
-    if issue:
-        header = graph.issue_header(issue)
-        if header is None:
-            raise HTTPException(404)
-        issue_name = header["name"]
+    about = _about(issue, solution, evidence)
+    named = {"issue": about["name"] if about and about["kind"] == "issue" else None}
+    if about and about["kind"] != "issue":
+        named[about["kind"]] = about["name"]
     settings = config.get_settings()
     if not settings.llm_api_key:
         return 200, {"message": NO_SERVICE}
-    digest = ask.issue_digest(issue) if issue else ask.record_digest(question)
+    digest = getattr(ask, DIGESTS[about["kind"]])(about["key"]) if about else ask.record_digest(question)
     if digest is None:
         raise HTTPException(404)
     # Nothing to answer from: the empty line, with no call and no count. A question about a guiding
     # document can still be answered from the document (John, 28 October).
     if digest.empty and not ask.names_document(question):
         return 200, {"status": "empty", "message": ask.EMPTY, "paragraphs": [], "sources": [], "partial": None,
-                     "issue": issue_name}
+                     **named}
     if (refused := _take(reader_key(request))) is not None:
         return 429, {"message": refused}
-    result = ask.answer(question, earlier, digest, settings, scope="issue" if issue else "record",
+    result = ask.answer(question, earlier, digest, settings, scope=about["kind"] if about else "record",
                         request_id=getattr(request.state, "request_id", None))
     partial = ask.PARTIAL if result.partial else None
     question_id = None
     if result.status == "answered":
+        on = {f"{about['kind']}_key": about["key"]} if about and about["kind"] != "issue" else {}
         question_id = _keep(request, question, issue, {"paragraphs": result.paragraphs, "partial": partial,
-                                                       "sources": [asdict(source) for source in result.sources]})
+                                                       "sources": [_kept(source) for source in result.sources]}, **on)
     return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,
                  "sources": [_shown(source, settings) for source in result.sources],
-                 "partial": partial, "issue": issue_name, "question_id": question_id}
+                 "partial": partial, **named, "question_id": question_id}
 
 
-def _keep(request: Request, question: str, issue: str | None, answer: dict[str, Any]) -> str | None:
+def _keep(request: Request, question: str, issue: str | None, answer: dict[str, Any], **on: str) -> str | None:
     """The question's id. The answer is shown whatever happens here: a question that cannot be kept is only
-    logged, and listed without a link."""
+    logged, and listed without a link. `on` is a solution's or a piece of evidence's key (GitHub issue 55)."""
     try:
-        return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer)
+        return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer, **on)
     except Exception as exc:  # noqa: BLE001
         log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
                                 "error": type(exc).__name__}))
@@ -145,10 +188,12 @@ def _still_holds(answer: dict[str, Any], asked_at: datetime) -> bool:
                for pid, name in cited.items())
 
 
-def recent_questions(issue: str | None) -> list[dict]:
-    """The list under the box; a page without it is still the Ask page."""
+def recent_questions(issue: str | None, **on: str) -> list[dict]:
+    """The list under the box; a page without it is still the Ask page. `on` is solution_key or evidence_key for
+    the box on that page (GitHub issue 55)."""
     try:
-        return graph_questions.recent(issue, graph_questions.RECENT_ON_ISSUE if issue else graph_questions.RECENT)
+        return graph_questions.recent(issue, graph_questions.RECENT_ON_ISSUE if issue or on else graph_questions.RECENT,
+                                      **on)
     except Exception as exc:  # noqa: BLE001
         log.warning(json.dumps({"event": "questions_not_read", "error": type(exc).__name__}))
         return []
@@ -163,16 +208,23 @@ def ask_page(request: Request) -> Response:
 @router.post("/ask", dependencies=[Depends(ask_on), Depends(require_access), Depends(require_same_origin)])
 def ask_form(request: Request, question: str = Form("", max_length=5000),
              issue: str = Form("", max_length=200),
+             solution: str = Form("", max_length=400), evidence: str = Form("", max_length=400),
              earlier: list[str] = Form(default_factory=list, max_length=20)) -> Response:
-    """Without JavaScript: the answer on the Ask page, with a way back to the issue it was asked on. The
-    page carries the last three questions (never the answers) in hidden fields, as the box does with it."""
+    """Without JavaScript: the answer on the Ask page, with a way back to the issue, solution or piece of
+    evidence it was asked on. The page carries the last three questions (never the answers) in hidden fields,
+    as the box does with it."""
     earlier = [text[:ask.QUESTION_MAX] for text in earlier if text.strip()][-ask.EARLIER_MAX:]
-    status, body = run(request, question, earlier, issue or None)
+    issue = issue or None
+    on = _on(issue, solution, evidence)
+    status, body = run(request, question, earlier, issue, **on)
     asked = " ".join(question.split())
     carried = (earlier + [asked])[-ask.EARLIER_MAX:] if body.get("status") else earlier
+    about = {kind: {"key": key, "name": body.get(kind)} for kind, key in on.items()}
     return page(request, "ask.html", {"result": body, "question": asked, "earlier": carried,
                                       "issue": {"key": issue, "name": body.get("issue")} if issue else None,
-                                      "recent_questions": recent_questions(issue or None)},
+                                      "solution": about.get("solution"), "evidence": about.get("evidence"),
+                                      "recent_questions": recent_questions(
+                                          issue, **{f"{kind}_key": key for kind, key in on.items()})},
                 status_code=status)
 
 
@@ -190,10 +242,14 @@ def answer_page(request: Request, question_id: str) -> Response:
     return page(request, "ask_answer.html", {
         "question": kept["text"], "result": result, "changed": ANSWER_CHANGED,
         "answered_on": ANSWERED_ON.format(day=ask.day_words(kept["asked_at"].date())),
-        "issue": {"key": kept["issue_key"], "name": kept["issue_name"]} if kept["issue_name"] else None})
+        "issue": {"key": kept["issue_key"], "name": kept["issue_name"]} if kept["issue_name"] else None,
+        # GitHub issue 55: asked on a solution's or a piece of evidence's page, while it still exists.
+        "solution": {"key": kept["solution_key"], "name": kept["solution_name"]} if kept.get("solution_name") else None,
+        "evidence": {"key": kept["evidence_key"], "name": kept["evidence_name"]} if kept.get("evidence_name") else None})
 
 
 @router.post("/api/ask", dependencies=[Depends(ask_on), Depends(require_access), Depends(require_same_origin)])
 def ask_api(request: Request, data: AskRequest) -> Response:
-    status, body = run(request, data.question, data.earlier, data.issue)
+    status, body = run(request, data.question, data.earlier, data.issue,
+                       **_on(data.issue, data.solution, data.evidence))
     return JSONResponse(body, status_code=status)

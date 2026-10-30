@@ -115,7 +115,7 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 * First line: display name or "Anonymous", a dot, relative time ("2 hours ago"). Seed posts carry a small "seed" tag.
 * The statement, in the serif face.
-* Chips, one per distinct node the post touched, coloured by type, each an issue chip linking to that issue's page (solution and evidence chips link to the issue they belong to).
+* Chips, one per distinct node the post touched, coloured by type, each an issue chip linking to that issue's page (solution and evidence chips linked to the issue they belong to until 30 October 2026; since GitHub issue 55 each opens its own page, below).
 * A "show what was added" link that expands the sentence list for the post.
 
 Empty feed **client-facing**: "Nothing here yet. Be the first to write something."
@@ -508,7 +508,7 @@ Above "Sort by":
 
 > Search: [ input, placeholder "A word or two, for example: housing" ] [ Search ]
 
-Results replace the list, in groups that have results, each item linking to its issue page; posts look as in the feed:
+Results replace the list, in groups that have results, each item linking to its issue page (since GitHub issue 55 a solution or a piece of evidence links to its own page); posts look as in the feed:
 
 > **Results for {words}**
 > Issues · Solutions · Evidence · Posts
@@ -1173,3 +1173,120 @@ The three documents are shown from the same files the instructions use, so the p
 This page's words are John's own (his edits of 28 October): "database" for the record, "form" for the card and "language model" for what was called the reading service. Since 28 October the rest of the site says "database" and "language model" too (John's emails of that day); code names such as `card.js` keep "card".
 
 `{repository address}` is John's repository, as the README names it; nothing personal to the builder (CLAUDE.md rule 8).
+
+## GitHub issue 55: a page for each solution and each piece of evidence
+
+Added 30 October 2026 (John's GitHub issue 55, quoted and agreed the same day). Every quote below is **client-facing**; no dashes, none of the forbidden words. No switch: the pages are part of the site. Their Ask box shows only with `ASK_ENABLED`, and source confidence only with `EVIDENCE_CHECK_ENABLED`, as on an issue page. Not in this piece (Phase 4, SOW 0.3): a longer proposal text, editing it together, versions, and objections with reasons.
+
+### A solution's page (`/solutions/<key>`)
+
+Laid out like an issue page:
+
+* Breadcrumb to the first issue that took the solution up, then the solution's name: "Issues › Need for world government › Global climate coordination › Global carbon tax by referendum".
+* The name as the page title, then the link, as on an issue page:
+
+> Write about this solution
+
+* Who proposed it, anonymous posts as "Anonymous", counted as claimants are:
+
+> Proposed by 2 people: Ada Tester, Anonymous
+
+* The row of buttons to each part of the page: "Issues (1)", "Evidence (2)", "Ask" with `ASK_ENABLED`, "Posts".
+* The counts line and, for a member, the **Approve** and **Oppose** buttons with their lines, exactly as under the solution on its issue page (`_stance.html`). Without JavaScript the page reloads here, at the buttons.
+* **Proposed for**: each issue, linked, with "part of {parent}" beside a sub-issue.
+* **Evidence about this solution**: "Supported by" and "Refuted by", each name a link to that evidence's page, with its source link beside it (below). With `EVIDENCE_CHECK_ENABLED` each carries the same lines as on the issue page. None:
+
+> No evidence attached to this solution yet.
+
+* **Ask about this solution** (below), then **Posts about this solution**: every post that proposed it, took a position on it, or cited evidence for or against it, newest first, as on an issue page.
+
+### A piece of evidence's page (`/evidence/<key>`)
+
+* Breadcrumb to the first thing it speaks to: an issue, or a solution under its issue, or other evidence; then its name.
+* The name as the page title, then:
+
+> Write about this evidence
+
+* Its source, opening in a new tab, or the line the issue page gives evidence with no link:
+
+> Source: https://www.unep.org/resources/emissions-gap-report-2024
+
+> No source given.
+
+> From personal experience.
+
+> The writer's own words about {page}.
+
+* Who submitted it, anonymous ones as "Anonymous": "Submitted by Ada Tester, Anonymous".
+* With `EVIDENCE_CHECK_ENABLED`, once its page has been read, the source line as the issue page words it, for example "A research paper from 2019. More than five years old. Primary source."
+* The row of buttons: "Supports or refutes (2)", "Evidence (1)" when other evidence speaks to it, "Ask" with `ASK_ENABLED`, "Posts".
+* **What it supports or refutes**, one line each in John's display verbs, the name linked to its page; a solution says which issue it is on. With `EVIDENCE_CHECK_ENABLED`, each line carries the agreement there, the disagreement line and the readings, as on the issue page. None: "Nothing yet."
+
+> Refutes solution of Global carbon tax by referendum on Global climate coordination
+
+> Supports issue of Global climate coordination
+
+> Supports evidence of World Bank Carbon Pricing Dashboard
+
+* **Evidence about this evidence**, when other evidence supports or refutes it: "Supported by" and "Refuted by", each linked to its page.
+* **Ask about this evidence**, then **Posts about this evidence**: the post that submitted it, posts that cited it, and posts that cited other evidence about it.
+
+### Getting there
+
+* **The chips under a post**, on the Write page, issue pages, search and My statements: a solution chip opens the solution's page, an evidence chip the evidence's page; an issue chip still opens the issue page.
+* **Issue pages**: each solution's name links to its page. Each piece of evidence's name links to its page, and its source stays one tap away beside it, opening in a new tab:
+
+> source
+
+* **Search on the Issues page**: solutions and evidence open their own pages.
+* **Ask answers**: a source that is a solution or a piece of evidence names it as a link to its page, and still says which issue it is on: "Solution: {name}. On {issue name}". Answers kept before 30 October 2026 keep their plain names.
+* An unknown key goes to the Issues page, as an unknown issue does.
+
+### Writing from these pages (`/?solution=<key>`, `/?evidence=<key>`)
+
+"Write about this solution" and "Write about this evidence" open the Write page with a summary above the box, as "Write about this issue" does, and the reading is told what the writer came from (`writing_about`, 05_extraction.md), so the statement attaches there. The card starts from the solution's first issue, or the first issue the evidence speaks to, with that issue's family in its lists.
+
+For a solution:
+
+> Already in the database for {solution name}
+> Proposed for {issue names}
+> {solution name} approved by {n} · opposed by {n}
+> Your position
+> no position
+> I approve this
+> I oppose this
+> Evidence
+> {evidence name} (supports)
+> No evidence attached to this solution yet.
+> Open the full page for this solution
+
+A position chosen here works as on the issue summary: it adds the solution to the card with that position, which then records only the position.
+
+For a piece of evidence:
+
+> Already in the database for {evidence name}
+> Source: {link}
+> What it supports or refutes
+> Refutes solution of {name}
+> Nothing yet.
+> Evidence about this evidence
+> Open the full page for this evidence
+
+Under the card's issue rows the usual line shows: "To add a sub-issue, write it here and choose the issue it is part of."
+
+### Ask on these pages
+
+The box is the issue page's box (`_ask.html`), scoped to the solution or the evidence:
+
+> **Ask about this solution** or **Ask about this evidence**
+>
+> [ input, placeholder "For example: Why do people oppose this solution?" or "For example: What do people say about this evidence?" ]
+> [ Ask ]
+>
+> Answers come only from the posts about this solution, and from the guiding documents when a question asks about them.
+
+(or "about this evidence"). The note under the box is the same. Under it, the five latest questions asked there:
+
+> **Questions asked about this solution** or **Questions asked about this evidence**
+
+On Ask the database, such a question says where it was asked: "On {solution or evidence name}", linked. Its earlier answer says "Asked about {name}", linked, and Ask again asks it there again. Without JavaScript the answer comes on the Ask page under "Ask about this solution" or "Ask about this evidence", with the breadcrumb "Issues › {name}".

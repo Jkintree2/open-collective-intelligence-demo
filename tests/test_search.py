@@ -45,12 +45,13 @@ ROWS = [
 ]
 
 
-def test_results_link_to_their_issue_pages():
+def test_results_link_to_their_own_pages():
+    """GitHub issue 55: a solution or a piece of evidence opens its own page, even one that belongs to no issue."""
     assert search.group(ROWS) == {
         "issues": [{"name": "Housing costs", "href": "/issues/housing%20costs"}],
-        "solutions": [{"name": "Social housing", "href": "/issues/housing%20costs"}],
-        "evidence": [{"name": "Housing report", "href": "/issues/housing%20costs"},
-                     {"name": "Housing footnote", "href": None}]}
+        "solutions": [{"name": "Social housing", "href": "/solutions/social%20housing"}],
+        "evidence": [{"name": "Housing report", "href": "/evidence/report"},
+                     {"name": "Housing footnote", "href": "/evidence/footnote"}]}
 
 
 @pytest.fixture
@@ -76,8 +77,8 @@ def test_the_issues_page_searches_and_groups(searching):
     assert "Results for hous" in page
     for heading in ("<h3>Issues</h3>", "<h3>Solutions</h3>", "<h3>Evidence</h3>", "<h3>Posts</h3>"):
         assert heading in page
-    assert '<a href="/issues/housing%20costs">Social housing</a>' in page
-    assert "<li>Housing footnote</li>" in page
+    assert '<a href="/solutions/social%20housing">Social housing</a>' in page
+    assert '<li><a href="/evidence/footnote">Housing footnote</a></li>' in page
     assert "Rent is rising on our housing estate" in page
     assert '<a href="/issues">Show all issues</a>' in page
     assert 'placeholder="A word or two, for example: housing"' in page

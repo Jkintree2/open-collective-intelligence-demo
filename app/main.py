@@ -53,9 +53,10 @@ from app.members import (
 )
 from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
+from app.routes_item_pages import about_evidence, about_solution, evidence_href, solution_href
 from app import graph_own_posts
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
-from app import check, confidence, graph_accounts, graph_evidence, graph_places, places, search, sides, tidy
+from app import check, confidence, graph_accounts, graph_evidence, graph_item_pages, graph_places, places, search, sides, tidy
 
 settings = get_settings()
 
@@ -186,6 +187,9 @@ def _issue_href(key: str | None) -> str:
     return f"/issues/{quote(key, safe='')}" if key else "/issues"
 
 
+CHIP_PAGES = {"Issue": _issue_href, "Solution": solution_href, "Evidence": evidence_href}
+
+
 def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
     """Relative times, chips and the sentence list for a page of posts."""
     now = datetime.now(timezone.utc)
@@ -205,25 +209,15 @@ def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
         if post["id"] in placed:
             post["place"] = places.place_text(placed[post["id"]]["country"], placed[post["id"]]["area"])
         rows = structure.get(post["id"], [])
-        issue_keys = [r["to_key"] for r in rows if r["rel"] == "CLAIM"]
-        first_issue = issue_keys[0] if issue_keys else None
         chips: dict[tuple[str, str], dict] = {}
         sentences: list[str] = []
         for row in rows:
-            for label, key, name, home in (
-                (row["from_label"], row["from_key"], row["from_name"], None),
-                (row["to_label"], row["to_key"], row["to_name"], row.get("home_key")),
-            ):
-                if label not in ("Issue", "Solution", "Evidence") or not key or (label, key) in chips:
+            for label, key, name in ((row["from_label"], row["from_key"], row["from_name"]),
+                                     (row["to_label"], row["to_key"], row["to_name"])):
+                if label not in CHIP_PAGES or not key or (label, key) in chips:
                     continue
-                if label == "Issue":
-                    href = _issue_href(key)
-                elif label == "Solution":
-                    href = _issue_href(home or first_issue)
-                else:
-                    target = row["to_key"] if row["to_label"] == "Issue" else row.get("home_key")
-                    href = _issue_href(target or first_issue)
-                chips[(label, key)] = {"label": label, "key": key, "name": name, "href": href}
+                # GitHub issue 55: a solution or evidence chip opens its own page, as an issue chip does.
+                chips[(label, key)] = {"label": label, "key": key, "name": name, "href": CHIP_PAGES[label](key)}
             verb = VERBS.get(row["rel"])
             if verb:
                 subject = "Anonymous" if row["from_label"] == "Person" and row.get("anonymous") else row["from_name"]
@@ -399,8 +393,12 @@ def enter_submit(
 
 @app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_access)])
 def write_page(request: Request, issue: str | None = Query(None, max_length=200),
+               solution: str | None = Query(None, max_length=400), evidence: str | None = Query(None, max_length=400),
                done: str | None = Query(None, max_length=20)) -> Response:
-    return _render_index(request, about=_about_issue(issue), notice=write_notice(done, current_member(request)))
+    # GitHub issue 55: the write page opened from a solution's or a piece of evidence's page says what the
+    # database holds about it, as it does for an issue.
+    about = _about_issue(issue) if issue else about_solution(solution) if solution else about_evidence(evidence)
+    return _render_index(request, about=about, notice=write_notice(done, current_member(request)))
 
 
 def _valid_anon_id(value: str | None) -> str | None:
@@ -461,6 +459,26 @@ class ReadingRequest(BaseModel):
     display_name: str = Field(default="", max_length=120)
     anonymous: bool = False
     issue: str | None = Field(default=None, max_length=200)
+    # GitHub issue 55: the write page opened from a solution's or a piece of evidence's page.
+    solution: str | None = Field(default=None, max_length=400)
+    evidence: str | None = Field(default=None, max_length=400)
+
+
+def _writing_about(data: ReadingRequest, candidates: reading.Candidates) -> reading.WritingAbout:
+    """The issue's key, or since GitHub issue 55 ("solution", key) or ("evidence", key). One older than the newest
+    200 the candidates hold is added to them, so the reading sees it and the card finds it in the record."""
+    if data.issue or not (data.solution or data.evidence):
+        return data.issue
+    if data.solution:
+        if settings.llm_api_key and data.solution not in candidates.solutions \
+                and (row := graph_item_pages.solution(data.solution)):
+            candidates.solutions[data.solution] = row["name"]
+            candidates.solution_issues[data.solution] = [item["name"] for item in row["issues"]]
+        return ("solution", data.solution)
+    if settings.llm_api_key and data.evidence not in candidates.evidence \
+            and (row := graph_item_pages.evidence(data.evidence)):
+        candidates.evidence[data.evidence] = row["name"]
+    return ("evidence", data.evidence)
 
 
 class PostRequest(CardPayload):
@@ -539,7 +557,7 @@ def read_statement(request: Request, data: ReadingRequest) -> Response:
     name, _ = _poster(data, current_member(request))
     candidates = graph.candidates() if settings.llm_api_key else reading.Candidates.empty()
     result = reading.extract(data.text, name or "Anonymous", candidates, settings,
-                             request_id=_request_id(request), writing_about=data.issue)
+                             request_id=_request_id(request), writing_about=_writing_about(data, candidates))
     if result is None:
         return JSONResponse({"payload": {"found": False}, "message": NOT_ANSWERING, "source": "manual"})
     message = ENGLISH_ONLY if not result.payload.language_ok else NOT_FOUND if not result.payload.found else ""

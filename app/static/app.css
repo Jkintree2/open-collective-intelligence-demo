@@ -518,3 +518,12 @@ form.near button { min-height: 44px; }
 .about .guiding h3 { font-weight: bold; margin-bottom: 8px; }
 /* The documents keep the line breaks of their files. */
 .about .guiding-text { white-space: pre-line; overflow-wrap: anywhere; font-size: 0.95rem; }
+
+/* GitHub issue 55: a page for each solution and each piece of evidence, and the names that open them. */
+.solution h3 a { display: inline-block; min-height: 44px; color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.solution h3 a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+.evidence a.source-link { margin-left: 4px; font-size: 0.85rem; color: var(--ink-soft); }
+.source-line { margin: 0 0 8px; overflow-wrap: anywhere; }
+.source-line a { color: var(--accent); }
+.evidence li, .claimed, .crumbs { overflow-wrap: anywhere; }
+.solution-stances { border-bottom: 0; padding-top: 0; }
