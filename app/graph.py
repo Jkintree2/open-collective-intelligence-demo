@@ -47,6 +47,8 @@ PLACE_INDEXES = (
 QUESTION_INDEXES = (
     "CREATE CONSTRAINT question_key IF NOT EXISTS FOR (q:Question) REQUIRE q.key IS UNIQUE",
     "CREATE INDEX question_asked    IF NOT EXISTS FOR (q:Question) ON (q.asked_at)",
+    # John, 30 October: a listed question links to its answer by this id.
+    "CREATE CONSTRAINT question_id IF NOT EXISTS FOR (q:Question) REQUIRE q.id IS UNIQUE",
 )
 
 # The write path, statement by statement, from docs/planning/03_schema.md.

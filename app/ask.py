@@ -54,14 +54,16 @@ class Source:
     text: str | None = None  # a post's first SNIPPET characters
     href: str | None = None  # its issue page; a document's place on the About page
     issue: str | None = None  # that issue's name
+    post_id: str | None = None  # a post's id in the record, kept with the answer and never sent to the page
 
     @property
     def when(self) -> str | None:
-        """"28 October 2026", as the page shows the date."""
-        if not self.date:
-            return None
-        day = date.fromisoformat(self.date)
-        return f"{day.day} {MONTHS[day.month - 1]} {day.year}"
+        return day_words(date.fromisoformat(self.date)) if self.date else None
+
+
+def day_words(day: date) -> str:
+    """"28 October 2026", as the page shows a date."""
+    return f"{day.day} {MONTHS[day.month - 1]} {day.year}"
 
 
 @dataclass
@@ -298,7 +300,7 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
         sources[p_ids[post["id"]]] = Source(p_ids[post["id"]], "post", _who(post), _day(post.get("created_at")),
                                             _snippet(post.get("text") or ""),
                                             search.issue_href(issue_key) if issue_key else None,
-                                            names.get(issue_key))
+                                            names.get(issue_key), post["id"])
     for row in solutions:
         first = row["issues"][0] if row["issues"] else None
         sources[s_ids[row["key"]]] = Source(s_ids[row["key"]], "solution", row["name"],
@@ -438,7 +440,8 @@ purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
 1. Use only the record and the three guiding documents. If neither holds anything that answers the
    question, return {"in_record": false, "answer": []}. Never add facts, numbers or views from
    anywhere else.
-2. Sum up; do not lecture. Give each point of view the record holds and how many people hold it.
+2. Sum up; do not lecture. Give the points of view the record holds and how many people hold each;
+   when there are more than the answer has room for, give the most held and say there are others.
    Never your own view, and never one verdict on who is right; the one verdict you give is rule
    10's answer on whether something fits a guiding document. This is a conversation, not a lecture.
    Numbers of people who approve or oppose come only from "approved_by" and "opposed_by".
@@ -451,7 +454,8 @@ purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
    A point about a piece of evidence cites the evidence (E) and the post that cited it (the
    "post" in its "about"). Never write an id in the text itself; ids go only in "sources".
 4. Say how well backed a point is: how its evidence pages were read, what kind of source each
-   is, and what other evidence supports or refutes it. Say only what the record holds: where a
+   is, and what other evidence supports or refutes it; in a short answer, in a few words beside the
+   point, never a sentence of its own. Say only what the record holds: where a
    piece has no "page_read_as" or "source", say nothing about how it was read; at most one short
    clause in the whole answer may say the pages behind some evidence have not been read yet, never a
    paragraph of its own.
@@ -476,11 +480,14 @@ purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
     record fits an article or principle, quote it, then answer plainly in the next sentence: yes,
     partly or no, it fits, judged only by setting the solution's own words beside the words of the
     article or principle, never by whether the solution is good. Then say how: where its words meet
-    what the article or principle asks for and where they do not. Then give the views and counts
-    the record holds.
+    what the article or principle asks for and where they do not. Then, when the answer has room,
+    give the views and counts the record holds.
 11. Earlier questions only tell you what the new question refers to; answer the new question.
-12. English only, plain words. At most 5 short paragraphs of one to three sentences each, under
-    1,000 characters in all, the most important point first. Call what you were given "the database";
+12. English only, plain words. Two or three sentences in all, under 400 characters not counting a
+    quotation, the most important point first, in one paragraph, or two when one quotes a guiding
+    document: the main views and how many hold each; leave the rest for the reader to ask. Only when the question asks for more, as in
+    "tell me more", "in detail" or "list them all", write up to 5 short paragraphs of one to three
+    sentences each, under 1,000 characters in all. Call what you were given "the database";
     never "the record", "digest", "JSON", "data", "excerpt" or "ids".
 
 Return exactly:
@@ -503,6 +510,7 @@ _NUMBER = r"(?:no|none|zero|one|two|three|four|five|six|seven|eight|nine|ten)"
 _COUNTS = r"(?:approv\w*|oppos\w*|people|person|posts?|pieces?|evidence|stances?|support\w*|refut\w*)"
 _COUNTED = re.compile(rf"\d|\b{_NUMBER}\W+(?:\w+\W+){{0,2}}?{_COUNTS}\b|\b{_COUNTS}\W+(?:by\W+)?{_NUMBER}\b",
                       re.IGNORECASE)
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 
 
 @dataclass
@@ -572,8 +580,8 @@ def _quotes_hold(text: str, cited: list[str], digest: Digest) -> bool:
 def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
           ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """The paragraphs the page may show, each {"text", "sources"} with ids from the digest only, and
-    the counts that are logged. A paragraph keeps a P id, or is a count line: at most 200 characters,
-    a figure, or a count in words beside what it counts, citing S or E only; or cites a guiding document
+    the counts that are logged. A paragraph keeps a P id, or is a count line citing S or E only: each
+    sentence at most 200 characters with a figure, or a count in words beside what it counts; or cites a guiding document
     (D), whose quotes must then be found in it; any other is dropped. With `documents` false (no question
     named a document) a D id counts as not in the digest. At most 5 paragraphs, kept in order
     while the total stays within 1,200 characters; the one that would pass it is dropped with the rest."""
@@ -589,7 +597,9 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
         counts["sources_dropped"] += len(ids) - len(sources)
         text = _clean(item["text"], digest)
         posts = any(i.startswith("P") for i in sources)
-        count_line = bool(sources) and len(text) <= COUNT_LINE_CHARS and bool(_COUNTED.search(text))
+        # The case run of 30 October: a short answer may be only counts, a sentence for each solution.
+        count_line = bool(sources) and all(len(sentence) <= COUNT_LINE_CHARS and _COUNTED.search(sentence)
+                                           for sentence in _SENTENCE_END.split(text))
         documents = [i for i in sources if i in DOCUMENTS]
         usable = bool(text) and (posts or count_line or bool(documents))
         if usable and documents and not _quotes_hold(text, documents, digest):

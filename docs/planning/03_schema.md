@@ -1453,15 +1453,20 @@ RETURN post.id AS id, post.text AS text, post.display_name AS display_name, post
        post.created_at AS created_at, post.seed AS seed, post.edited_at AS edited_at
 ```
 
-### Q47 and Q48. The questions people asked
+### Q47 to Q49. The questions people asked, and the answer each got
 
 Added 28 October 2026, after the call: John asked for the latest questions under the Ask box, as the Write page lists the latest statements. The one new label of Phase 3, with no relationship type: `Question {key, text, issue_key, created_at, asked_at, asked}`. A question is kept only when Ask answered it (status `answered`), never when it was refused, empty or failed, and never with who asked: no `Person`, no account key, no edge. `key` is the issue key (empty for the whole database), a bar and the question's words in lower case with spacing and a closing question mark or full stop dropped (`graph_questions.question_key`), so asking the same question again on the same issue moves it to the top and counts it. With `ASK_ENABLED`, startup makes a unique constraint on `Question.key` and a range index on `asked_at`. Copies carry it (`backup.LABEL_KEYS`); a restore needs no switch.
 
+Since 30 October 2026 (John: "Each item in the list of questions asked definitely needs to be a link to the answer.") a question also keeps `id`, a uuid4 hex given the first time it is answered (a question kept before has none until it is answered again), with a unique constraint `question_id` made beside the other two, and `answer`, the JSON text of the answer it last got: `{"paragraphs": [{"text", "refs"}], "sources": [{"id", "kind", "name", "date", "text", "href", "issue", "post_id"}], "partial": text or null}`, as the page showed it, each post source with its post's id. Asking again replaces it; `asked_at` is when it was answered. `/ask/answers/<id>` shows it only while every post it cites is there, not edited since `asked_at` and under the same name (Q46 by id), because the answer may quote or name a post and must not keep what its writer took back; otherwise it shows the question, a line saying so and Ask again. A copy checks `answer` as text.
+
 ```cypher
-// Q47. $key, $text (at most 500 characters), $issue_key (null for the whole database), $now.
+// Q47. $key, $id (a new uuid4 hex, kept only if the question has none), $text (at most 500 characters),
+// $issue_key (null for the whole database), $now, $answer (JSON text).
 MERGE (q:Question {key: $key})
 ON CREATE SET q.created_at = datetime($now), q.asked = 0
-SET q.text = $text, q.issue_key = $issue_key, q.asked_at = datetime($now), q.asked = q.asked + 1
+SET q.id = coalesce(q.id, $id), q.text = $text, q.issue_key = $issue_key, q.asked_at = datetime($now),
+    q.asked = q.asked + 1, q.answer = $answer
+RETURN q.id AS id
 ```
 
 ```cypher
@@ -1470,15 +1475,22 @@ MATCH (q:Question)
 WHERE $issue_key IS NULL OR q.issue_key = $issue_key
 WITH q ORDER BY q.asked_at DESC LIMIT $limit
 OPTIONAL MATCH (i:Issue {key: q.issue_key})
-RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered
 ORDER BY q.asked_at DESC
+```
+
+```cypher
+// Q49. $id: a question's id, from its link.
+MATCH (q:Question {id: $id})
+OPTIONAL MATCH (i:Issue {key: q.issue_key})
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.answer AS answer, q.asked_at AS asked_at
 ```
 
 A question whose issue was merged or renamed keeps its old `issue_key`; it still lists on Ask the database, without the issue's name. A failed write or read is logged (`question_not_kept`, `questions_not_read`) and never stops an answer or the page.
 
 ### What is never stored
 
-Answers, digests and their source lists, the questions of a visit sent with the next one (they stay in the open browser tab), and follow-up questions. A follow-up's answer is stored only as a line the writer added to their statement text, so it is part of the post like any other words. Nothing here is cached across requests, in the database or in process memory.
+Digests, an answer to a question that was not answered (refused, empty or failed), the questions of a visit sent with the next one (they stay in the open browser tab), and follow-up questions. A follow-up's answer is stored only as a line the writer added to their statement text, so it is part of the post like any other words. Nothing here is cached across requests, in the database or in process memory, and a kept answer (Q47) is never sent to the language model or reused for a new question.
 
 ### Logging
 

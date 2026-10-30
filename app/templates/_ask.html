@@ -10,25 +10,18 @@
     <button class="primary" type="submit">Ask</button>
   </form>
   {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.</p>{% endif %}
-  <p class="ask-note">Answers sum up what is in the database, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone, without your name; answers are not kept.</p>
+  {# John, 30 October: answers are two or three sentences unless more is asked for, and kept with their question. #}
+  <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer one. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone with its answer, without your name.</p>
   <p class="ask-status" data-ask-status aria-live="polite">{% if ask_result and not ask_result.status %}{{ ask_result.message }}{% endif %}</p>
   <div class="ask-answers" data-ask-answers aria-live="polite">{% if ask_result and ask_result.status %}
-    <div class="ask-answer">
-      <p class="ask-question">{{ ask_question }}</p>
-      {% if ask_result.message %}<p class="ask-message">{{ ask_result.message }}</p>{% endif %}
-      {% for paragraph in ask_result.paragraphs %}<p class="ask-paragraph">{{ paragraph.text }}<span class="ask-refs">{% for n in paragraph.refs %} [{{ n }}]{% endfor %}</span></p>
-      {% endfor %}{% if ask_result.partial %}<p class="ask-partial">{{ ask_result.partial }}</p>{% endif %}
-      {% if ask_result.sources %}<h3 class="ask-sources-title">Sources</h3>
-      <ol class="ask-sources">{% for source in ask_result.sources %}
-        <li>{% if source.kind == "document" %}Guiding document: {% if source.href %}<a href="{{ source.href }}">{{ source.name }}</a>{% else %}{{ source.name }}{% endif %}.{% elif source.kind == "post" %}{{ source.name }}{% if source.when %}, {{ source.when }}{% endif %}{% if source.text %}: “{{ source.text }}”{% endif %}{% else %}{{ "Solution" if source.kind == "solution" else "Evidence" }}: {{ source.name }}.{% endif %}{% if source.issue and source.href %} On <a href="{{ source.href }}">{{ source.issue }}</a>{% endif %}</li>{% endfor %}
-      </ol>{% endif %}
-    </div>
+    {% include "_answer.html" %}
   {% endif %}</div>
-  {# John, 28 October: the latest questions, as the Write page lists the latest statements. A tap puts one in the box. #}
+  {# John, 28 October: the latest questions, as the Write page lists the latest statements. Since 30 October each
+     opens the answer it got; one kept before answers were has none, and a tap puts it in the box. #}
   <div class="ask-recent" data-ask-recent{% if not recent_questions %} hidden{% endif %}>
     <h3>{% if ask_issue %}Questions asked about this issue{% else %}Questions people are asking{% endif %}</h3>
     <ul>{% for asked in recent_questions or [] %}
-      <li><button type="button" class="ask-again">{{ asked.text }}</button>{% if not ask_issue and asked.issue_name %} <span class="counts">On <a href="/issues/{{ asked.issue_key|urlencode }}">{{ asked.issue_name }}</a></span>{% endif %}</li>{% endfor %}
+      <li>{% if asked.id and asked.answered %}<a class="ask-answered" href="/ask/answers/{{ asked.id }}">{{ asked.text }}</a>{% else %}<button type="button" class="ask-again">{{ asked.text }}</button>{% endif %}{% if not ask_issue and asked.issue_name %} <span class="counts">On <a href="/issues/{{ asked.issue_key|urlencode }}">{{ asked.issue_name }}</a></span>{% endif %}</li>{% endfor %}
     </ul>
   </div>
 </section>

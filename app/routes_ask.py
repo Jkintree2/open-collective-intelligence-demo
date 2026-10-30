@@ -3,21 +3,24 @@
 GET /ask is the page for the whole record; the box on each issue page is the same form with the issue's
 key. ask.js posts to /api/ask and shows the answer in place; without JavaScript the form posts to /ask
 and the answer comes back on the Ask page. A question that was answered is kept, without who asked, for
-the list under the box (John, 28 October); answers and digests live only in the request (the browser
-holds the visit's earlier questions)."""
+the list under the box (John, 28 October), with the answer it got, which GET /ask/answers/<id> shows while
+the posts it cites are as they were (John, 30 October). Digests live only in the request (the browser holds
+the visit's earlier questions)."""
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import ask, config, graph, graph_questions
+from app import ask, config, graph, graph_ask, graph_questions
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.members import require_access, require_same_origin
 from app.pages import page
@@ -31,6 +34,10 @@ TOO_LONG = "Please keep the question under 500 characters."
 PERSON_LIMIT = "You have asked 30 questions today. Please ask again tomorrow."
 SITE_LIMIT = "The site has answered as many questions as it can today. Please ask again tomorrow."
 NO_SERVICE = "Asking needs the language model, which is not set up."
+ANSWERED_ON = "Answered on {day}. The database may have changed since, so ask again for an answer from what it holds now."
+ANSWER_CHANGED = ("A post this answer rested on has been edited or removed since, so the answer is no longer shown. "
+                  "Ask again for an answer from what the database holds now.")
+_QUESTION_ID = re.compile(r"[0-9a-f]{32}")
 
 # 30 questions a person a day and 300 for the site, held in this process: a restart or a wake from
 # Render's sleep starts both counts again, so they are a ceiling per waking (the logs hold the real count).
@@ -69,6 +76,13 @@ def _linked(source: ask.Source, settings: config.Settings) -> ask.Source:
     return source
 
 
+def _shown(source: ask.Source, settings: config.Settings) -> dict[str, Any]:
+    """A source as the page shows it; a post's id stays on the server."""
+    shown = {**asdict(_linked(source, settings)), "when": source.when}
+    del shown["post_id"]
+    return shown
+
+
 def run(request: Request, question: str, earlier: list[str], issue: str | None) -> tuple[int, dict]:
     """The answer as the page shows it, with its status code. Checks run in the order the page lists its
     lines; the reading service is counted only when it is called."""
@@ -98,20 +112,37 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None) 
         return 429, {"message": refused}
     result = ask.answer(question, earlier, digest, settings, scope="issue" if issue else "record",
                         request_id=getattr(request.state, "request_id", None))
+    partial = ask.PARTIAL if result.partial else None
+    question_id = None
     if result.status == "answered":
-        _keep(request, question, issue)
+        question_id = _keep(request, question, issue, {"paragraphs": result.paragraphs, "partial": partial,
+                                                       "sources": [asdict(source) for source in result.sources]})
     return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,
-                 "sources": [{**asdict(_linked(source, settings)), "when": source.when} for source in result.sources],
-                 "partial": ask.PARTIAL if result.partial else None, "issue": issue_name}
+                 "sources": [_shown(source, settings) for source in result.sources],
+                 "partial": partial, "issue": issue_name, "question_id": question_id}
 
 
-def _keep(request: Request, question: str, issue: str | None) -> None:
-    """The answer is shown whatever happens here: a question that cannot be kept is only logged."""
+def _keep(request: Request, question: str, issue: str | None, answer: dict[str, Any]) -> str | None:
+    """The question's id. The answer is shown whatever happens here: a question that cannot be kept is only
+    logged, and listed without a link."""
     try:
-        graph_questions.keep(question, issue, datetime.now(timezone.utc))
+        return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer)
     except Exception as exc:  # noqa: BLE001
         log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
                                 "error": type(exc).__name__}))
+        return None
+
+
+def _still_holds(answer: dict[str, Any], asked_at: datetime) -> bool:
+    """A kept answer may quote or name the posts it cites, so it is shown only while each is there, unedited
+    since and under the same name: an answer must not keep what a writer has since taken back."""
+    cited = {source["post_id"]: source["name"] for source in answer["sources"] if source["kind"] == "post"}
+    if not cited:
+        return True
+    posts = {post["id"]: post for post in graph_ask.posts_by_ids(list(cited))}
+    return all(pid in posts and ask._who(posts[pid]) == name
+               and (posts[pid].get("edited_at") is None or posts[pid]["edited_at"] <= asked_at)
+               for pid, name in cited.items())
 
 
 def recent_questions(issue: str | None) -> list[dict]:
@@ -143,6 +174,23 @@ def ask_form(request: Request, question: str = Form("", max_length=5000),
                                       "issue": {"key": issue, "name": body.get("issue")} if issue else None,
                                       "recent_questions": recent_questions(issue or None)},
                 status_code=status)
+
+
+@router.get("/ask/answers/{question_id}", dependencies=[Depends(ask_on), Depends(require_access)])
+def answer_page(request: Request, question_id: str) -> Response:
+    """John, 30 October: a listed question opens the answer it got, with Ask again for a fresh one. Its issue
+    shows while it still exists; a question kept before answers were has no page."""
+    kept = graph_questions.one(question_id) if _QUESTION_ID.fullmatch(question_id) else None
+    if kept is None or not kept["answer"]:
+        raise HTTPException(404)
+    answer, settings = kept["answer"], config.get_settings()
+    result = {"status": "answered", "message": None, "paragraphs": answer["paragraphs"], "partial": answer["partial"],
+              "sources": [_shown(ask.Source(**source), settings) for source in answer["sources"]]} \
+        if _still_holds(answer, kept["asked_at"]) else None
+    return page(request, "ask_answer.html", {
+        "question": kept["text"], "result": result, "changed": ANSWER_CHANGED,
+        "answered_on": ANSWERED_ON.format(day=ask.day_words(kept["asked_at"].date())),
+        "issue": {"key": kept["issue_key"], "name": kept["issue_name"]} if kept["issue_name"] else None})
 
 
 @router.post("/api/ask", dependencies=[Depends(ask_on), Depends(require_access), Depends(require_same_origin)])

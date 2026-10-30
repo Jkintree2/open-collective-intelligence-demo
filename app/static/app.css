@@ -484,6 +484,10 @@ form.search button { min-height: 44px; }
 .ask-recent .counts { display: block; margin-top: -6px; }
 .ask-recent a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; display: inline-block; min-height: 44px; overflow-wrap: anywhere; }
 .ask-recent a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
+/* John, 30 October: a listed question opens the answer it got, on a page of its own with Ask again. */
+.ask-recent .ask-answered { display: block; padding: 10px 0 0; }
+.ask-lead a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+.ask-again-form { margin-top: 12px; }
 
 /* Phase 3: follow-up questions under new rows on the card. */
 .follow-up { margin-top: 8px; padding: 8px 0 0 10px; border-left: 3px solid var(--rule); }

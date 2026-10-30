@@ -194,7 +194,8 @@ function recentList(...texts) {
   for (const text of texts) { const item = new Node('li'), again = new Node('button'); again.className = 'ask-again'; again.textContent = text; item.append(again); list.append(item); }
   return {hidden: texts.length === 0, list, querySelector: s => s === 'ul' ? list : null};
 }
-const listedTexts = recent => recent.list.children.map(item => item.querySelector('.ask-again').textContent);
+const listedTexts = recent => recent.list.children.map(item => item.children[0].textContent);
+const ID = '0f'.repeat(16);
 
 test('an answered question goes to the top of the list, once, and shows the list', async () => {
   const recent = recentList();
@@ -205,6 +206,22 @@ test('an answered question goes to the top of the list, once, and shows the list
   p.ask('Who opposes it?'); p.requests[1].resolve(json(ANSWER)); await p.flush();
   p.ask('why the veto'); p.requests[2].resolve(json(ANSWER)); await p.flush();
   assert.deepEqual(listedTexts(recent), ['why the veto', 'Who opposes it?']);
+});
+
+// John, 30 October: "Each item in the list of questions asked definitely needs to be a link to the answer."
+test('a question kept with its answer is listed as a link to that answer', async () => {
+  const recent = recentList('Who opposes it?');
+  const p = page(null, [], recent);
+  p.ask('Why the veto?'); p.requests[0].resolve(json({...ANSWER, question_id: ID})); await p.flush();
+  const link = recent.list.children[0].children[0];
+  assert.equal(link.tag, 'a');
+  assert.equal(link.className, 'ask-answered');
+  assert.equal(link.href, '/ask/answers/' + ID);
+  assert.equal(link.textContent, 'Why the veto?');
+  // Asked again, the link replaces itself; a question that could not be kept stays a button that fills the box.
+  p.ask('why the veto'); p.requests[1].resolve(json({...ANSWER, question_id: null})); await p.flush();
+  assert.deepEqual(listedTexts(recent), ['why the veto', 'Who opposes it?']);
+  assert.equal(recent.list.children[0].children[0].className, 'ask-again');
 });
 
 test('a question with nothing to answer from is not listed', async () => {

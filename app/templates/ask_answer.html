@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{# John, 30 October: a listed question opens the answer it got, while every post it cites is as it was; Ask
+   again posts the question to /ask, as the box does without JavaScript. #}
+{% block title %}An earlier answer · {{ site_name }}{% endblock %}
+{% block content %}
+<h1 id="ask-title">An earlier answer</h1>
+{% if issue %}<p class="ask-lead">Asked about <a href="/issues/{{ issue.key|urlencode }}">{{ issue.name }}</a></p>{% endif %}
+<section class="ask">
+  {% if result %}{% set ask_result = result %}{% set ask_question = question %}{% include "_answer.html" %}
+  <p class="ask-note">{{ answered_on }}</p>
+  {% else %}<div class="ask-answer">
+    <p class="ask-question">{{ question }}</p>
+    <p class="ask-message">{{ changed }}</p>
+  </div>{% endif %}
+  <form class="ask-again-form" method="post" action="/ask">
+    <input type="hidden" name="question" value="{{ question }}">
+    {% if issue %}<input type="hidden" name="issue" value="{{ issue.key }}">{% endif %}
+    <button class="primary" type="submit">Ask again</button>
+  </form>
+</section>
+{% endblock %}

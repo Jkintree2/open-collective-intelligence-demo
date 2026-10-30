@@ -64,11 +64,13 @@ def _read(query: str, /, **params: Any) -> list[dict[str, Any]]:
     return [_native(record.data()) for record in result.records]
 
 
-def _write(query: str, **params: Any) -> None:
+def _write(query: str, **params: Any) -> list[dict[str, Any]]:
+    """The rows a write returns, if it returns any (Q47 returns the question's id)."""
     try:
-        driver().execute_query(query, params, database_=_database)
+        result = driver().execute_query(query, params, database_=_database)
     except ServiceUnavailable as exc:
         raise RecordAsleep(str(exc)) from exc
+    return [_native(record.data()) for record in result.records]
 
 
 def _native(row: dict[str, Any]) -> dict[str, Any]:
