@@ -1515,15 +1515,15 @@ Added 30 October 2026 (John's GitHub issue 55, quoted and agreed the same day). 
 
 ### Q50. A solution's page
 
-Its issues in the order they took it up, each with its parent for the breadcrumbs; who proposed it; its stance counts and the member's own (`$me` null matches nothing); its evidence, one row per piece and side.
+Its issues in the order they took it up, by the date of each `HAVE_PROPOSED` (the oldest issue first only on a tie), each with its parent for the breadcrumbs; who proposed it; its stance counts and the member's own (`$me` null matches nothing); its evidence, one row per piece and side. Its first issue, the one the breadcrumbs, the Write page's card and source confidence start from, is the first that took it up, not the oldest.
 
 ```cypher
 // Q50. $key: the solution; $me: the member's key or null.
 MATCH (s:Solution {key: $key})
 CALL (s) {
-  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
+  OPTIONAL MATCH (home:Issue)-[hp:HAVE_PROPOSED]->(s)
   OPTIONAL MATCH (home)-[:PART_OF]->(parent:Issue)
-  WITH home, parent ORDER BY home.created_at
+  WITH home, parent, hp ORDER BY hp.created_at, home.created_at
   RETURN [h IN collect({key: home.key, name: home.name, parent_key: parent.key, parent_name: parent.name})
           WHERE h.key IS NOT NULL] AS issues
 }
@@ -1569,7 +1569,7 @@ LIMIT $limit
 
 ### Q52. A piece of evidence's page
 
-Who submitted it; what it supports or refutes (an issue; a solution, with the issue that first took it up; or other evidence), with that issue's parent for the breadcrumbs; the evidence on it; whether a writer gave it as personal experience; the page it answers when it is a writer's own words beside a page read the other way (issue 29); and what its page says about itself (Phase 2).
+Who submitted it; what it supports or refutes, in the order this evidence was first cited for each (the earliest of its `SUPPORTS` or `REFUTES` edges there, `min(r.created_at)`; a piece that does both gives a row for each side), each an issue, a solution with the issue that first took it up (by the date of its `HAVE_PROPOSED`, as in Q50), or other evidence, with that issue's parent for the breadcrumbs; so "the first thing it speaks to", which the breadcrumbs and the Write page's card start from, is the first it was cited for, not the oldest; the evidence on it; whether a writer gave it as personal experience; the page it answers when it is a writer's own words beside a page read the other way (issue 29); and what its page says about itself (Phase 2).
 
 ```cypher
 // Q52. $key: the evidence.
@@ -1580,13 +1580,13 @@ CALL (e) {
 }
 CALL (e) {
   OPTIONAL MATCH (e)-[r:SUPPORTS|REFUTES]->(t)
-  WITH DISTINCT t, type(r) AS stance
-  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(t)
-  WITH t, stance, home ORDER BY home.created_at
-  WITH t, stance, head(collect(home)) AS home
-  WITH t, stance, home, CASE WHEN t:Issue THEN t ELSE home END AS issue
+  WITH t, type(r) AS stance, min(r.created_at) AS cited
+  OPTIONAL MATCH (home:Issue)-[hp:HAVE_PROPOSED]->(t)
+  WITH t, stance, cited, home, hp ORDER BY hp.created_at, home.created_at
+  WITH t, stance, cited, head(collect(home)) AS home
+  WITH t, stance, cited, home, CASE WHEN t:Issue THEN t ELSE home END AS issue
   OPTIONAL MATCH (issue)-[:PART_OF]->(parent:Issue)
-  WITH t, stance, home, parent ORDER BY t.created_at
+  WITH t, stance, home, parent, cited ORDER BY cited, t.created_at
   RETURN [x IN collect({kind: CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END,
                         key: t.key, name: t.name, stance: stance, home_key: home.key, home_name: home.name,
                         parent_key: parent.key, parent_name: parent.name})
@@ -1634,10 +1634,18 @@ RETURN CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evid
 
 A question asked in the box on a solution's page is answered from that solution with its stances (Q40's columns for the one solution), its evidence and the evidence on that (Q41 for a solution), the posts that mention it (Q51), and its issues (Q2 and Q3, up to three) as context. On a piece of evidence's page: the edges into it and out of it (Q41 for a piece of evidence, as the record-wide form reads each top piece), the posts that mention it (Q53), and the issues it bears on as context; no solution rows. The digest's `asked_about` names the solution or the evidence. In an answer's sources a solution or a piece of evidence links to its own page (`page`), beside the link to its issue.
 
+The third form lists the solution's issues in the order they took it up, as Q50 does, so the digest's first issue (its context, and the issue its source and its posts link to) is the page's. It does so with its own issues call in place of the first call of Q40's columns; the rest of the columns are shared. The issue form of Q40 and Q42 are left exactly as they are live since Phase 3, oldest issue first, so their digests do not change: in an answer asked on an issue's page or of the whole database, a solution's source still links to the oldest of its issues.
+
 ```cypher
-// Q40, third form. $key: the solution; $stance_limit: 20. Then Q40's columns.
+// Q40, third form. $key: the solution; $stance_limit: 20. Then this issues call, then Q40's columns after
+// their own issues call.
 MATCH (s:Solution {key: $key})
 WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
+CALL (s) {
+  OPTIONAL MATCH (home:Issue)-[hp:HAVE_PROPOSED]->(s)
+  WITH home, hp ORDER BY hp.created_at, home.created_at
+  RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
+}
 ```
 
 ```cypher
@@ -1669,7 +1677,7 @@ LIMIT $limit
 
 ### Questions asked on these pages: Q47 to Q49, revised
 
-A question answered in the box on a solution's or a piece of evidence's page is kept like any other, with `solution_key` or `evidence_key` set and `issue_key` null; its `key` starts `solution:<key>|` or `evidence:<key>|` (a key never holds a colon, so it cannot read as an issue's). Q47 sets both properties (null for a question asked on an issue or the whole database). Q48 lists, under a solution's box, only the questions asked there (`$solution_key`), and likewise for evidence; on Ask the database it lists every question with the name of what it was asked on. Q49 returns those names too, so an earlier answer says "Asked about" the solution or the evidence while it still exists. A copy checks both as text. A kept answer's solution and evidence sources carry `page`; post and document sources are kept exactly as before.
+A question answered in the box on a solution's or a piece of evidence's page is kept like any other, with `solution_key` or `evidence_key` set and `issue_key` null; its `key` starts `solution:<key>|` or `evidence:<key>|` (a key never holds a colon, so it cannot read as an issue's). Q47 sets both properties (null for a question asked on an issue or the whole database). Q48 lists, under a solution's box, only the questions asked there (`$solution_key`), and likewise for evidence; on Ask the database it lists every question with the name of what it was asked on. Q49 returns those names too, so an earlier answer says "Asked about" the solution or the evidence while it still exists. A copy checks both as text. A kept answer's sources keep exactly the fields they had before issue 55 (`id, kind, name, date, text, href, issue, post_id`) and never `page`, so the site as it was before issue 55 still reads every kept answer if issue 55 is reverted. When a kept answer is shown, a solution's or a piece of evidence's `page` is worked out again from its kind and the `make_key` of its name: that is its key, since neither is ever renamed (tidying renames issues only, Q28 to Q32). So answers kept before issue 55 link to these pages too.
 
 ```cypher
 // Q48. $issue_key, $solution_key, $evidence_key: at most one set (none on Ask the database); $limit: 10 or 5.

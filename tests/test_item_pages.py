@@ -99,10 +99,28 @@ def test_with_the_evidence_check_the_evidence_page_says_its_source_confidence(pa
             '<span class="confidence differs">The page was read as agreeing with this.</span>') in page
 
 
-def test_evidence_with_no_link_says_so(pages, monkeypatch):
+def test_evidence_with_no_link_says_so_with_the_evidence_check(pages, switch, monkeypatch):
+    """As on the issue page, these lines come only with EVIDENCE_CHECK_ENABLED (review finding 4)."""
+    unlinked = {"personal": None}
     monkeypatch.setattr(graph_item_pages, "evidence", lambda key: {**json.loads(json.dumps(STUDY)), "url": None,
-                                                                   "personal": True})
-    assert '<p class="source-line">From personal experience.</p>' in pages.client.get("/evidence/who%20pays").text
+                                                                   **unlinked})
+    for personal, line in ((True, "From personal experience."), (None, "No source given.")):
+        unlinked["personal"] = personal
+        switch(evidence_check_enabled=False)
+        page = pages.client.get("/evidence/who%20pays").text
+        assert 'class="source-line"' not in page and line not in page
+        switch(evidence_check_enabled=True)
+        assert f'<p class="source-line">{line}</p>' in pages.client.get("/evidence/who%20pays").text
+
+
+def test_a_writers_own_words_name_their_page_whatever_the_switch_says(pages, switch, monkeypatch):
+    """Issue 29: the line is part of the page, like the source link, so it does not wait for the evidence check."""
+    monkeypatch.setattr(graph_item_pages, "evidence", lambda key: {**json.loads(json.dumps(STUDY)), "url": None,
+                                                                   "answers_key": "the page", "answers_name": "The page"})
+    for on in (False, True):
+        switch(evidence_check_enabled=on)
+        assert ('<p class="source-line">The writer\'s own words about <a href="/evidence/the%20page">The page</a>.</p>'
+                in pages.client.get("/evidence/who%20pays").text)
 
 
 def test_an_unknown_key_goes_to_the_issues_page_and_a_stranger_to_the_door(pages):
@@ -242,7 +260,28 @@ def test_the_ask_box_on_a_solution_page_asks_about_that_solution(asking):
     assert body["sources"][0]["page"] == "/solutions/carbon%20tax" and "page" not in body["sources"][1]
     text, issue, on, answer = asking.kept[0]
     assert (text, issue, on) == ("Who opposes it?", None, {"solution_key": "carbon tax"})
-    assert answer["sources"][0]["page"] == "/solutions/carbon%20tax" and "page" not in answer["sources"][1]
+    assert all("page" not in source for source in answer["sources"])
+
+
+# The fields of ask.Source on main before GitHub issue 55, which rebuilds a kept source with Source(**source).
+MAIN_SOURCE_FIELDS = {"id", "kind", "name", "date", "text", "href", "issue", "post_id"}
+
+
+def test_a_kept_answer_stays_readable_by_the_site_before_issue_55(asking, monkeypatch):
+    """A revert of issue 55 must not make kept answers fail: a kept source holds main's fields only, from a
+    solution's, an evidence's or an issue's page alike."""
+    sources = [*ANSWER.sources, ask.Source("E1", "evidence", "Who pays study", href="/issues/climate", issue="Climate",
+                                           page="/evidence/who%20pays"),
+               ask.Source("D1", "document", "Our purpose", href="/about#purpose")]
+    monkeypatch.setattr(ask, "answer", lambda *args, **kw: ask.Answer("answered", ANSWER.paragraphs, sources))
+    monkeypatch.setattr(ask, "issue_digest", lambda key, **kw: ask.Digest("{}", {s.id: s for s in sources}))
+    monkeypatch.setattr("app.graph.issue_header", lambda key: {"key": key, "name": "Climate"})
+    for body in ({"solution": "carbon tax"}, {"evidence": "who pays"}, {"issue": "climate"}):
+        asking.client.post("/api/ask", json={"question": "Who pays?", **body}, headers=SAME_SITE)
+    assert len(asking.kept) == 3
+    for _, _, _, answer in asking.kept:
+        assert [source["kind"] for source in answer["sources"]] == ["solution", "post", "evidence", "document"]
+        assert all(set(source) <= MAIN_SOURCE_FIELDS for source in json.loads(json.dumps(answer))["sources"])
 
 
 def test_the_ask_box_on_an_evidence_page_and_without_javascript(asking):
@@ -275,10 +314,30 @@ def test_a_kept_answer_asked_on_a_solution_links_back_to_it(asking, monkeypatch)
             "asked_at": datetime(2026, 10, 30, 9, 0, tzinfo=timezone.utc),
             "answer": {"paragraphs": [{"text": "Three oppose it.", "refs": [1]}], "partial": None,
                        "sources": [{"id": "S1", "kind": "solution", "name": "Carbon tax", "date": None, "text": None,
-                                    "href": "/issues/climate", "issue": "Climate", "post_id": None,
-                                    "page": "/solutions/carbon%20tax"}]}}
+                                    "href": "/issues/climate", "issue": "Climate", "post_id": None}]}}
     monkeypatch.setattr(graph_questions, "one", lambda qid: kept)
     page = asking.client.get("/ask/answers/" + "0f" * 16).text
     assert '<p class="ask-lead">Asked about <a href="/solutions/carbon%20tax">Carbon tax</a></p>' in page
     assert '<input type="hidden" name="solution" value="carbon tax">' in page
     assert 'Solution: <a href="/solutions/carbon%20tax">Carbon tax</a>.' in page
+
+
+def test_a_kept_source_gets_its_page_from_its_name(asking, monkeypatch):
+    """The page is worked out from the kind and the make_key of the name, so an answer kept before issue 55, on an
+    issue's page, links too; a post and a document get none."""
+    sources = [{"id": "S1", "kind": "solution", "name": "The carbon tax!", "date": None, "text": None,
+                "href": "/issues/climate", "issue": "Climate", "post_id": None},
+               {"id": "E1", "kind": "evidence", "name": "Who pays study", "date": None, "text": None,
+                "href": "/issues/climate", "issue": "Climate", "post_id": None},
+               {"id": "D1", "kind": "document", "name": "Our purpose", "date": None, "text": None,
+                "href": "/about#purpose", "issue": None, "post_id": None}]
+    kept = {"text": "Who pays?", "issue_key": "climate", "issue_name": "Climate",
+            "asked_at": datetime(2026, 10, 29, 9, 0, tzinfo=timezone.utc),
+            "answer": {"paragraphs": [{"text": "Three oppose it.", "refs": [1, 2, 3]}], "partial": None,
+                       "sources": sources}}
+    monkeypatch.setattr(graph_questions, "one", lambda qid: kept)
+    page = asking.client.get("/ask/answers/" + "0f" * 16).text
+    assert 'Solution: <a href="/solutions/carbon%20tax">The carbon tax!</a>.' in page
+    assert 'Evidence: <a href="/evidence/who%20pays%20study">Who pays study</a>.' in page
+    assert routes_ask._from_kept(sources[2]).page is None
+    assert routes_ask._shown(routes_ask._from_kept(sources[2]), routes_ask.config.get_settings()).get("page") is None

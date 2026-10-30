@@ -7,15 +7,15 @@ from typing import Any
 
 from app.graph_runtime import _read
 
-# Q50. A solution's page: its issues in the order they took it up (each with its parent, for the
-# breadcrumbs), who proposed it, its stance counts with the member's own ($me null matches nothing), and
-# its evidence, one row per piece and side.
+# Q50. A solution's page: its issues in the order they took it up, by the date of each HAVE_PROPOSED (each
+# with its parent, for the breadcrumbs), who proposed it, its stance counts with the member's own ($me null
+# matches nothing), and its evidence, one row per piece and side.
 SOLUTION_PAGE = """
 MATCH (s:Solution {key: $key})
 CALL (s) {
-  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
+  OPTIONAL MATCH (home:Issue)-[hp:HAVE_PROPOSED]->(s)
   OPTIONAL MATCH (home)-[:PART_OF]->(parent:Issue)
-  WITH home, parent ORDER BY home.created_at
+  WITH home, parent, hp ORDER BY hp.created_at, home.created_at
   RETURN [h IN collect({key: home.key, name: home.name, parent_key: parent.key, parent_name: parent.name})
           WHERE h.key IS NOT NULL] AS issues
 }
@@ -57,10 +57,11 @@ LIMIT $limit
 SOLUTION_POSTS = "MATCH (x:Solution {key: $key})" + _ITEM_POSTS
 EVIDENCE_POSTS = "MATCH (x:Evidence {key: $key})" + _ITEM_POSTS
 
-# Q52. A piece of evidence's page: who submitted it, what it supports or refutes (an issue, a solution with
-# the issue that first took it up, or other evidence; with that issue's parent, for the breadcrumbs), the
-# evidence on it, whether a writer gave it as personal experience, the page it answers (issue 29), and what
-# its page says about itself (Phase 2).
+# Q52. A piece of evidence's page: who submitted it, what it supports or refutes, in the order this evidence
+# was first cited for each (an issue, a solution with the issue that first took it up, by the date of its
+# HAVE_PROPOSED, or other evidence; with that issue's parent, for the breadcrumbs), the evidence on it,
+# whether a writer gave it as personal experience, the page it answers (issue 29), and what its page says
+# about itself (Phase 2).
 EVIDENCE_PAGE = """
 MATCH (e:Evidence {key: $key})
 CALL (e) {
@@ -69,13 +70,13 @@ CALL (e) {
 }
 CALL (e) {
   OPTIONAL MATCH (e)-[r:SUPPORTS|REFUTES]->(t)
-  WITH DISTINCT t, type(r) AS stance
-  OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(t)
-  WITH t, stance, home ORDER BY home.created_at
-  WITH t, stance, head(collect(home)) AS home
-  WITH t, stance, home, CASE WHEN t:Issue THEN t ELSE home END AS issue
+  WITH t, type(r) AS stance, min(r.created_at) AS cited
+  OPTIONAL MATCH (home:Issue)-[hp:HAVE_PROPOSED]->(t)
+  WITH t, stance, cited, home, hp ORDER BY hp.created_at, home.created_at
+  WITH t, stance, cited, head(collect(home)) AS home
+  WITH t, stance, cited, home, CASE WHEN t:Issue THEN t ELSE home END AS issue
   OPTIONAL MATCH (issue)-[:PART_OF]->(parent:Issue)
-  WITH t, stance, home, parent ORDER BY t.created_at
+  WITH t, stance, home, parent, cited ORDER BY cited, t.created_at
   RETURN [x IN collect({kind: CASE WHEN t:Issue THEN 'issue' WHEN t:Solution THEN 'solution' ELSE 'evidence' END,
                         key: t.key, name: t.name, stance: stance, home_key: home.key, home_name: home.name,
                         parent_key: parent.key, parent_name: parent.name})

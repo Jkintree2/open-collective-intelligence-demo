@@ -1182,7 +1182,7 @@ Added 30 October 2026 (John's GitHub issue 55, quoted and agreed the same day). 
 
 Laid out like an issue page:
 
-* Breadcrumb to the first issue that took the solution up, then the solution's name: "Issues › Need for world government › Global climate coordination › Global carbon tax by referendum".
+* Breadcrumb to the first issue that took the solution up (the first to have it proposed, not the oldest issue), then the solution's name: "Issues › Need for world government › Global climate coordination › Global carbon tax by referendum". **Proposed for** lists its issues in that order too.
 * The name as the page title, then the link, as on an issue page:
 
 > Write about this solution
@@ -1202,25 +1202,29 @@ Laid out like an issue page:
 
 ### A piece of evidence's page (`/evidence/<key>`)
 
-* Breadcrumb to the first thing it speaks to: an issue, or a solution under its issue, or other evidence; then its name.
+* Breadcrumb to the first thing it speaks to (the first it was cited for, not the oldest): an issue, or a solution under the first issue that took it up, or other evidence; then its name.
 * The name as the page title, then:
 
 > Write about this evidence
 
-* Its source, opening in a new tab, or the line the issue page gives evidence with no link:
+* Its source, opening in a new tab:
 
 > Source: https://www.unep.org/resources/emissions-gap-report-2024
+
+* With no link, a writer's own words beside a page read the other way (issue 29) name that page, linked. Like the source link this is part of the page, so it shows whatever `EVIDENCE_CHECK_ENABLED` says:
+
+> The writer's own words about {page}.
+
+* Any other piece with no link gets the line the issue page gives it, and, as there, only with `EVIDENCE_CHECK_ENABLED`; without it the page has no source line:
 
 > No source given.
 
 > From personal experience.
 
-> The writer's own words about {page}.
-
 * Who submitted it, anonymous ones as "Anonymous": "Submitted by Ada Tester, Anonymous".
 * With `EVIDENCE_CHECK_ENABLED`, once its page has been read, the source line as the issue page words it, for example "A research paper from 2019. More than five years old. Primary source."
 * The row of buttons: "Supports or refutes (2)", "Evidence (1)" when other evidence speaks to it, "Ask" with `ASK_ENABLED`, "Posts".
-* **What it supports or refutes**, one line each in John's display verbs, the name linked to its page; a solution says which issue it is on. With `EVIDENCE_CHECK_ENABLED`, each line carries the agreement there, the disagreement line and the readings, as on the issue page. None: "Nothing yet."
+* **What it supports or refutes**, one line each in John's display verbs, in the order it was first cited for each, the name linked to its page; a solution says the first issue that took it up. With `EVIDENCE_CHECK_ENABLED`, each line carries the agreement there, the disagreement line and the readings, as on the issue page. None: "Nothing yet."
 
 > Refutes solution of Global carbon tax by referendum on Global climate coordination
 
@@ -1239,7 +1243,7 @@ Laid out like an issue page:
 > source
 
 * **Search on the Issues page**: solutions and evidence open their own pages.
-* **Ask answers**: a source that is a solution or a piece of evidence names it as a link to its page, and still says which issue it is on: "Solution: {name}. On {issue name}". Answers kept before 30 October 2026 keep their plain names.
+* **Ask answers**: a source that is a solution or a piece of evidence names it as a link to its page, and still says which issue it is on: "Solution: {name}. On {issue name}". A kept answer's page links them too, answers kept before these pages included: the link is worked out when the answer is shown, not kept with it.
 * An unknown key goes to the Issues page, as an unknown issue does.
 
 ### Writing from these pages (`/?solution=<key>`, `/?evidence=<key>`)

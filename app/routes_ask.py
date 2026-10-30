@@ -25,6 +25,7 @@ from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.members import require_access, require_same_origin
 from app.pages import page
 from app.routes_evidence import reader_key
+from app.text import make_key
 
 router = APIRouter()
 log = logging.getLogger("oci")
@@ -80,18 +81,27 @@ def _linked(source: ask.Source, settings: config.Settings) -> ask.Source:
 
 
 def _kept(source: ask.Source) -> dict[str, Any]:
-    """A source as an answer keeps it. Only a solution or a piece of evidence has a page of its own (GitHub issue
-    55), so a post or a document is kept as it was before."""
+    """A source as an answer keeps it: the fields it had before GitHub issue 55 and never its page, so the site
+    as it was before issue 55 (after a revert) still reads every kept answer. _from_kept works the page out."""
     kept = asdict(source)
-    if kept["page"] is None:
-        del kept["page"]
+    del kept["page"]
     return kept
 
 
+def _from_kept(source: dict[str, Any]) -> ask.Source:
+    """A kept source with its page worked out again (GitHub issue 55). A solution's or a piece of evidence's key
+    is the make_key of its name, as neither is ever renamed (tidying renames issues only), so answers kept
+    before issue 55 get the link too."""
+    return ask.Source(**{**source, "page": ask.item_page(source["kind"], make_key(source["name"]))})
+
+
 def _shown(source: ask.Source, settings: config.Settings) -> dict[str, Any]:
-    """A source as the page shows it; a post's id stays on the server."""
-    shown = {**_kept(_linked(source, settings)), "when": source.when}
+    """A source as the page shows it; a post's id stays on the server, and only a solution or a piece of
+    evidence has a page of its own (GitHub issue 55)."""
+    shown = {**asdict(_linked(source, settings)), "when": source.when}
     del shown["post_id"]
+    if shown["page"] is None:
+        del shown["page"]
     return shown
 
 
@@ -237,7 +247,7 @@ def answer_page(request: Request, question_id: str) -> Response:
         raise HTTPException(404)
     answer, settings = kept["answer"], config.get_settings()
     result = {"status": "answered", "message": None, "paragraphs": answer["paragraphs"], "partial": answer["partial"],
-              "sources": [_shown(ask.Source(**source), settings) for source in answer["sources"]]} \
+              "sources": [_shown(_from_kept(source), settings) for source in answer["sources"]]} \
         if _still_holds(answer, kept["asked_at"]) else None
     return page(request, "ask_answer.html", {
         "question": kept["text"], "result": result, "changed": ANSWER_CHANGED,

@@ -18,12 +18,22 @@ EDGE_LIMIT = 300     # evidence rows on one issue
 # One solution's columns, shared by Q40 and Q42: its issues, proposers counted as in Q4 (by account and
 # anonymity, D2), the posts that proposed it, and its stances newest first, each with its date, whether
 # it was a click, and the posts that took it (the first and, when a later post said the same, that one).
-_SOLUTION_COLUMNS = """
+_SOLUTION_ISSUES = """
 CALL (s) {
   OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
   WITH home ORDER BY home.created_at
   RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
-}
+}"""
+# GitHub issue 55: on a solution's own page its issues come in the order they took it up, by the date of each
+# HAVE_PROPOSED, as Q50 lists them, so its first issue is the page's. The issue and whole record forms keep
+# the oldest issue first, as they were.
+_SOLUTION_ISSUES_TAKEN_UP = """
+CALL (s) {
+  OPTIONAL MATCH (home:Issue)-[hp:HAVE_PROPOSED]->(s)
+  WITH home, hp ORDER BY hp.created_at, home.created_at
+  RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
+}"""
+_SOLUTION_REST = """
 CALL (s) {
   OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
   RETURN count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
@@ -40,6 +50,7 @@ CALL (s) {
 RETURN s.key AS key, s.name AS name, issues, proposers, proposed_in, approves, opposes, stances
 ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 """
+_SOLUTION_COLUMNS = _SOLUTION_ISSUES + _SOLUTION_REST
 
 # Q40. The solutions proposed for an issue and its sub-issues, ranked by net support as Q4 ranks them.
 ISSUE_STANCES = """
@@ -54,11 +65,12 @@ ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 LIMIT $limit
 """ + _SOLUTION_COLUMNS
 
-# Q40, third form (GitHub issue 55): one solution, for a question asked on its own page.
+# Q40, third form (GitHub issue 55): one solution, for a question asked on its own page, its issues in the
+# order they took it up.
 ONE_SOLUTION_STANCES = """
 MATCH (s:Solution {key: $key})
 WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
-""" + _SOLUTION_COLUMNS
+""" + _SOLUTION_ISSUES_TAKEN_UP + _SOLUTION_REST
 
 # Q42. The solutions with the most net support in the whole record.
 TOP_SOLUTIONS = """

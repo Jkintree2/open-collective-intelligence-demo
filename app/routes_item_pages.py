@@ -122,13 +122,14 @@ def evidence_page(request: Request, key: str) -> Response:
     for target in evidence["targets"]:
         target["href"] = target_href(target)
         target["verb"] = VERBS[target["stance"]]
-    own_source = None
+    own_source = source_note = None
     if settings.evidence_check_enabled:
         own_source = confidence.own_source(evidence)
         confidence.mark_targets(key, evidence["targets"], graph_item_pages.evidence_confidence(key))
-    # With no link, the line the issue page gives such evidence (a writer's own words get theirs in the page).
-    source_note = None if evidence["url"] or evidence["answers_key"] else \
-        confidence.PERSONAL if evidence["personal"] else confidence.NO_SOURCE
+        # With no link, the line the issue page gives such evidence, also only with the switch (a writer's own
+        # words get theirs in the page whatever the switch says, as the source link does).
+        if not evidence["url"] and not evidence["answers_key"]:
+            source_note = confidence.PERSONAL if evidence["personal"] else confidence.NO_SOURCE
     return page(request, "evidence.html", {
         "evidence": evidence, "crumbs": evidence_crumbs(evidence), "own_source": own_source,
         "source_note": source_note,

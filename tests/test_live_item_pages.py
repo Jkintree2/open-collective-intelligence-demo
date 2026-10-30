@@ -21,8 +21,7 @@ SET_PRIVATE = "MATCH (p:Person {key: $key}) SET p.email = $email, p.country = $c
 ANSWER = {"paragraphs": [{"text": "Three oppose it.", "refs": [1]}], "partial": None,
           "sources": [{"id": "S1", "kind": "solution", "name": "Global carbon tax by referendum", "date": None,
                        "text": None, "href": "/issues/global%20climate%20coordination",
-                       "issue": "Global climate coordination", "post_id": None,
-                       "page": "/solutions/global%20carbon%20tax%20by%20referendum"}]}
+                       "issue": "Global climate coordination", "post_id": None}]}
 
 
 @pytest.fixture
@@ -145,3 +144,40 @@ def test_a_question_on_a_solution_is_kept_and_listed_on_its_page_only(record):
     assert len(graph_questions.recent()) == 3
     kept = graph_questions.one(on_tax)
     assert (kept["solution_key"], kept["solution_name"], kept["answer"]) == (TAX, "Global carbon tax by referendum", ANSWER)
+
+
+TAKEN_UP = """
+CREATE (old:Issue {key: 'old issue', name: 'Old issue', created_at: datetime('2026-01-01T09:00:00Z')})
+CREATE (new:Issue {key: 'new issue', name: 'New issue', created_at: datetime('2026-02-01T09:00:00Z')})
+CREATE (world:Issue {key: 'world', name: 'World', created_at: datetime('2025-12-01T09:00:00Z')})
+CREATE (new)-[:PART_OF {created_at: datetime('2026-02-01T09:00:00Z')}]->(world)
+CREATE (plan:Solution {key: 'shared plan', name: 'Shared plan', created_at: datetime('2026-03-01T09:00:00Z')})
+CREATE (new)-[:HAVE_PROPOSED {post_id: 'x1', created_at: datetime('2026-03-01T09:00:00Z')}]->(plan)
+CREATE (old)-[:HAVE_PROPOSED {post_id: 'x2', created_at: datetime('2026-04-01T09:00:00Z')}]->(plan)
+CREATE (study:Evidence {key: 'plan study', name: 'Plan study', created_at: datetime('2026-03-02T09:00:00Z')})
+CREATE (study)-[:SUPPORTS {post_id: 'x3', created_at: datetime('2026-05-01T09:00:00Z')}]->(plan)
+CREATE (study)-[:REFUTES {post_id: 'x4', created_at: datetime('2026-06-01T09:00:00Z')}]->(old)
+"""
+
+
+def test_the_first_issue_is_the_first_to_take_the_solution_up(live_graph):
+    """Review finding 3: a solution proposed for a newer issue first and an older issue later starts from the newer
+    one on its page, in its digest and on the page of evidence about it; evidence lists what it speaks to in the
+    order it was first cited, not by the age of each."""
+    live_graph.driver().execute_query(TAKEN_UP, database_=live_graph.database())
+    plan = graph_item_pages.solution("shared plan")
+    assert [(item["key"], item["parent_key"]) for item in plan["issues"]] == [("new issue", "world"), ("old issue", None)]
+    study = graph_item_pages.evidence("plan study")
+    assert [(t["kind"], t["key"], t["stance"], t["home_key"], t["parent_key"]) for t in study["targets"]] == [
+        ("solution", "shared plan", "SUPPORTS", "new issue", "world"), ("issue", "old issue", "REFUTES", None, None)]
+
+    built = ask.solution_digest("shared plan", today=TODAY)
+    body = json.loads(built.text)
+    assert [item["name"] for item in body["issues"]] == ["New issue", "Old issue"]
+    assert body["solutions"][0]["issues"] == ["New issue", "Old issue"]
+    assert (built.sources["S1"].href, built.sources["S1"].issue) == ("/issues/new%20issue", "New issue")
+    assert [item["name"] for item in json.loads(ask.evidence_digest("plan study", today=TODAY).text)["issues"]] == \
+        ["New issue", "Old issue"]
+    # Phase 3's issue and whole record digests are left as they are live: there the oldest issue comes first.
+    on_old = ask.issue_digest("old issue", today=TODAY)
+    assert json.loads(on_old.text)["solutions"][0]["issues"] == ["Old issue", "New issue"]

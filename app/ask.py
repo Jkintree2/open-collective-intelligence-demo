@@ -63,6 +63,14 @@ class Source:
         return day_words(date.fromisoformat(self.date)) if self.date else None
 
 
+ITEM_PAGES = {"solution": "/solutions/", "evidence": "/evidence/"}
+
+
+def item_page(kind: str, key: str | None) -> str | None:
+    """GitHub issue 55: a solution's or a piece of evidence's own page; None for a post or a document."""
+    return ITEM_PAGES[kind] + quote(key, safe="") if kind in ITEM_PAGES and key else None
+
+
 def day_words(day: date) -> str:
     """"28 October 2026", as the page shows a date."""
     return f"{day.day} {MONTHS[day.month - 1]} {day.year}"
@@ -310,7 +318,7 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
         sources[s_ids[row["key"]]] = Source(s_ids[row["key"]], "solution", row["name"],
                                             href=search.issue_href(first["key"]) if first else None,
                                             issue=first["name"] if first else None,
-                                            page="/solutions/" + quote(row["key"], safe=""))
+                                            page=item_page("solution", row["key"]))
     # A piece of evidence links to the first issue it is about, directly or through a solution.
     homes: dict[str, str] = {}
     solution_homes = {row["key"]: row["issues"][0]["key"] for row in solutions if row["issues"]}
@@ -325,7 +333,7 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
         target = homes.get(keys[item["id"]]) or home
         sources[item["id"]] = Source(item["id"], "evidence", item["name"],
                                      href=search.issue_href(target) if target else None, issue=names.get(target),
-                                     page="/evidence/" + quote(keys[item["id"]], safe=""))
+                                     page=item_page("evidence", keys[item["id"]]))
     return Digest(_dumps(digest), sources, len(kept), left_out, [issue["key"] for issue in issues])
 
 
