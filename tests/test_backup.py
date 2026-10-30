@@ -320,7 +320,14 @@ def test_a_question_travels_in_a_copy():
     validate_record({"format": "oci-record", "version": VERSION, "nodes": [question_node()], "relationships": []})
 
 
-@pytest.mark.parametrize("bad", [{"asked": 0}, {"asked": "2"}, {"issue_key": 3}, {"asked_at": "yesterday"}])
+def test_a_question_travels_with_its_answer():
+    """John, 30 October: a question is kept with the answer it got, as JSON text."""
+    validate_record({"format": "oci-record", "version": VERSION, "relationships": [],
+                     "nodes": [question_node(id="0f" * 16, answer='{"paragraphs": [], "sources": [], "partial": null}')]})
+
+
+@pytest.mark.parametrize("bad", [{"asked": 0}, {"asked": "2"}, {"issue_key": 3}, {"asked_at": "yesterday"},
+                                 {"answer": 3}])
 def test_a_malformed_question_is_refused(bad):
     with pytest.raises(InvalidBackup):
         validate_record({"format": "oci-record", "version": VERSION, "nodes": [question_node(**bad)], "relationships": []})

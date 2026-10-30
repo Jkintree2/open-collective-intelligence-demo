@@ -62,6 +62,19 @@ def test_a_number_word_counts_only_beside_what_it_counts():
         assert [p["text"] for p in kept((text, ["S1"]))[0]] == [text], text
 
 
+def test_a_count_line_may_run_to_several_sentences_when_each_is_a_count():
+    """The case run of 30 October: asked which solutions have the most approval, a short answer was the counts
+    alone, 211 characters on S ids, 3 runs of 3, and the 200 character limit dropped the whole answer. Each
+    sentence is held to the count line's test instead; one that is not a count makes it a claim again."""
+    counts_only = ("A global carbon tax by referendum leads with 4 approvals against 3 opposed, as of 17 October. "
+                   "Carbon border adjustment has 3 approvals and 1 opposed, and carbon fee and dividend has 1 "
+                   "approval and no opposition.")
+    assert [p["text"] for p in kept((counts_only, ["S1"]))[0]] == [counts_only]
+    for text in ("Approved by 4, opposed by 3. It will end climate change.",
+                 "Approved by 4. " + "y" * 200 + " by 3 people."):
+        assert kept((text, ["S1"]))[0] == [], text
+
+
 def test_five_paragraphs_at_most_and_twelve_hundred_characters_in_order():
     five, counts = kept(*[(f"Point {n}.", ["P1"]) for n in range(1, 8)])
     assert [p["text"] for p in five] == [f"Point {n}." for n in range(1, 6)] and counts["paragraphs_dropped"] == 2
@@ -183,6 +196,22 @@ def test_the_timeout_is_forty_seconds(monkeypatch):
 def test_the_rules_have_no_dashes_where_a_reader_could_see_them():
     for line in (ask.EMPTY, ask.PARTIAL, ask.FAILED):
         assert "-" not in line and "\u2014" not in line and "\u2013" not in line
+
+
+def test_an_answer_is_two_or_three_sentences_unless_the_question_asks_for_more():
+    """John, 30 October: "more conversational if the answers were limited to two or three sentences instead of
+    a list of all related entities in the database, unless an expanded answer is requested". The guard's five
+    paragraphs and 1,200 characters stay as the ceiling of the longer answer."""
+    rules = " ".join(ask.ANSWERING_RULES.split())
+    assert ("Two or three sentences in all, under 400 characters not counting a quotation, the most important point "
+            "first") in rules
+    assert ('Only when the question asks for more, as in "tell me more", "in detail" or "list them all", write up '
+            "to 5 short paragraphs") in rules
+    assert "give the most held and say there are others" in rules  # rule 2: a short answer cannot hold each view
+    # The case run of 30 October: the first wording still gave the evidence a paragraph of its own.
+    assert "in a short answer, in a few words beside the point, never a sentence of its own" in rules
+    assert "At most 5 short paragraphs" not in rules
+    assert (ask.PARAGRAPHS_MAX, ask.ANSWER_CHARS) == (5, 1200)
 
 
 # John, 28 October: Ask must answer from the guiding documents too ("what does the UDHR say about privacy",

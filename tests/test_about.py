@@ -99,8 +99,15 @@ def test_with_every_part_on_it_reads_as_04_has_it(about, switch):
             "at the start of the system prompt, its instructions for reading statements, answering questions and asking "
             "follow-up questions.",
             "It does not judge a post against them unless a question asks, and names an article or a principle only when "
-            "the question or a post does."):
+            "the question or a post does.",
+            # John, 30 October: answers are short and kept with their question.
+            "The language model writes an answer of two or three sentences from that alone, or a longer one when the "
+            "question asks for more,",
+            "A question that gets an answer is kept with its answer and listed under the Ask box for everyone here, "
+            "without the name of who asked; a listed question opens the answer it got, while the posts it rests on "
+            "are unchanged."):
         assert sentence in words, sentence
+    assert "Answers are not kept." not in words
 
 
 @pytest.mark.parametrize("fields, reads, given", [

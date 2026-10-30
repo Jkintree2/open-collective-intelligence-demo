@@ -991,9 +991,11 @@ Since 28 October 2026 every line here says "database" where it said "record" (Jo
 
 Under either box, small:
 
-> Answers sum up what is in the database, including views that differ. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone, without your name; answers are not kept.
+> Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer one. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone with its answer, without your name.
 
-**Under the answers, the latest questions** (John, 28 October, after the call; the headings are drafts for John). On `/ask`, the ten questions most recently answered anywhere; under an issue's box, the five asked about that issue. A question asked again moves to the top. Each is a button; a tap puts it in the box, ready to ask or change. On `/ask`, a question asked on an issue says which, linked. Never a name. Hidden until there is one; a question answered on the page joins the top at once.
+(30 October 2026, John: answers of two or three sentences unless more is asked for, and each listed question a link to its answer. The rules' rule 12 sets the length; the guard's five paragraphs and 1,200 characters stay as the ceiling of a longer answer.)
+
+**Under the answers, the latest questions** (John, 28 October, after the call; the headings are drafts for John). On `/ask`, the ten questions most recently answered anywhere; under an issue's box, the five asked about that issue. A question asked again moves to the top. Since 30 October each is a link to the answer it last got (below); a question kept before then has none and stays a button, whose tap puts it in the box, ready to ask or change. On `/ask`, a question asked on an issue says which, linked. Never a name. Hidden until there is one; a question answered on the page joins the top at once.
 
 > **Questions people are asking** (on `/ask`) or **Questions asked about this issue** (on an issue page)
 >
@@ -1008,7 +1010,7 @@ After ten seconds, one more line until the answer comes:
 
 > Still reading. A long issue can take up to a minute.
 
-**The answer,** a few short paragraphs, each ending in its source numbers ([1] [3]), then:
+**The answer,** two or three sentences, or up to five short paragraphs when the question asks for more, each paragraph ending in its source numbers ([1] [3]), then:
 
 > **Sources**
 >
@@ -1035,6 +1037,20 @@ Its name links to the document on the About page while About is switched on; oth
 **When the record holds nothing on it,** or nothing in the answer could be tied to a post or a guiding document (a question that names a document, an article or a principle is always answered from the documents):
 
 > The database does not say anything about this yet.
+
+**An earlier answer** (`/ask/answers/<id>`, 30 October 2026, John: a listed question links to the answer it got). The heading "An earlier answer", then, for a question asked on an issue that still exists, "Asked about {issue name}" linked; the question and the answer as it was shown, with its sources; then:
+
+> Answered on {day}. The database may have changed since, so ask again for an answer from what it holds now.
+
+> [ Ask again ]
+
+Ask again sends the question, on its issue, as the box does without JavaScript, and the new answer comes on the Ask page. When a post the answer cites has been deleted, edited after it was answered, or is shown under another name, the answer is not shown; instead, under the question:
+
+> A post this answer rested on has been edited or removed since, so the answer is no longer shown. Ask again for an answer from what the database holds now.
+
+> [ Ask again ]
+
+A question kept before 30 October, with no answer kept, has no page; its button still puts it in the box.
 
 **When it cannot go ahead:**
 
@@ -1119,7 +1135,7 @@ With a town or area, near means posts placed in the same town or area; with a co
 >
 > A language model fills in the form from the statement. Nothing joins the database until the writer has checked the form and posted it.
 >
-> When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes a short answer from that alone, and from the guiding documents below when a question asks about them. Each part of the answer names the posts or the document it comes from; a part that names neither is left out. A question that gets an answer is kept and listed under the Ask box for everyone here, without the name of who asked. Answers are not kept.
+> When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes an answer of two or three sentences from that alone, or a longer one when the question asks for more, and from the guiding documents below when a question asks about them. Each part of the answer names the posts or the document it comes from; a part that names neither is left out. A question that gets an answer is kept with its answer and listed under the Ask box for everyone here, without the name of who asked; a listed question opens the answer it got, while the posts it rests on are unchanged.
 >
 > **The language model**
 >

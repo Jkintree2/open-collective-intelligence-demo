@@ -130,6 +130,9 @@ def test_sources_hold_what_the_page_shows():
     assert built.sources["S1"].href == "/issues/climate" and built.sources["S1"].name == "Tax"
     assert built.sources["E1"].kind == "evidence" and built.sources["E1"].href == "/issues/climate"
     assert json.loads(built.text)["posts"][0]["edited"] == "2026-10-07"
+    # John, 30 October: a kept answer is shown only while the posts it cites are as they were, so a post
+    # source knows its post; nothing else has one.
+    assert (source.post_id, built.sources["S1"].post_id, built.sources["E1"].post_id) == ("a", None, None)
 
 
 def test_evidence_carries_its_reading_its_source_and_evidence_on_evidence():

@@ -356,7 +356,8 @@ purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
 1. Use only the record and the three guiding documents. If neither holds anything that answers the
    question, return {"in_record": false, "answer": []}. Never add facts, numbers or views from
    anywhere else.
-2. Sum up; do not lecture. Give each point of view the record holds and how many people hold it.
+2. Sum up; do not lecture. Give the points of view the record holds and how many people hold each;
+   when there are more than the answer has room for, give the most held and say there are others.
    Never your own view, and never one verdict on who is right; the one verdict you give is rule
    10's answer on whether something fits a guiding document. This is a conversation, not a lecture.
    Numbers of people who approve or oppose come only from "approved_by" and "opposed_by".
@@ -369,7 +370,8 @@ purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
    A point about a piece of evidence cites the evidence (E) and the post that cited it (the
    "post" in its "about"). Never write an id in the text itself; ids go only in "sources".
 4. Say how well backed a point is: how its evidence pages were read, what kind of source each
-   is, and what other evidence supports or refutes it. Say only what the record holds: where a
+   is, and what other evidence supports or refutes it; in a short answer, in a few words beside the
+   point, never a sentence of its own. Say only what the record holds: where a
    piece has no "page_read_as" or "source", say nothing about how it was read; at most one short
    clause in the whole answer may say the pages behind some evidence have not been read yet, never a
    paragraph of its own.
@@ -394,11 +396,14 @@ purpose, D2 the Universal Declaration of Human Rights, D3 the Earth Charter.
     record fits an article or principle, quote it, then answer plainly in the next sentence: yes,
     partly or no, it fits, judged only by setting the solution's own words beside the words of the
     article or principle, never by whether the solution is good. Then say how: where its words meet
-    what the article or principle asks for and where they do not. Then give the views and counts
-    the record holds.
+    what the article or principle asks for and where they do not. Then, when the answer has room,
+    give the views and counts the record holds.
 11. Earlier questions only tell you what the new question refers to; answer the new question.
-12. English only, plain words. At most 5 short paragraphs of one to three sentences each, under
-    1,000 characters in all, the most important point first. Call what you were given "the database";
+12. English only, plain words. Two or three sentences in all, under 400 characters not counting a
+    quotation, the most important point first, in one paragraph, or two when one quotes a guiding
+    document: the main views and how many hold each; leave the rest for the reader to ask. Only when the question asks for more, as in
+    "tell me more", "in detail" or "list them all", write up to 5 short paragraphs of one to three
+    sentences each, under 1,000 characters in all. Call what you were given "the database";
     never "the record", "digest", "JSON", "data", "excerpt" or "ids".
 
 Return exactly:
@@ -421,7 +426,7 @@ Return exactly:
 * `D` ids are kept only when the question, or an earlier question on the page, names a document, an article or a principle (`ask.names_document`); otherwise they count as not in the digest (live run of 28 October: "Is a carbon tax a good idea?" got an Earth Charter paragraph unasked).
 * A paragraph that cites a guiding document needs no post (John, 28 October 2026: "what does the UDHR say about privacy" and "is a global carbon tax consistent with Earth Charter 7d" were answered "nothing in the record"). Every quotation in it (straight or curly quotation marks, 12 characters or more, an ellipsis splitting it into pieces) must be found word for word in a document it cites or in the digest, spaces and case aside; otherwise the paragraph is dropped. The article number itself is not checked.
 * A question that names a document, an article or a principle (`ask.names_document`: udhr, declaration, human rights, charter, statement of purpose, guiding, article, principle) goes to the call even when the digest holds no post and no solution, and is counted.
-* A paragraph keeps at least one `P` id, or it is dropped; the one exception is a count line, which may cite `S` or `E` ids only, recognised as a paragraph of at most 200 characters with a figure in it, or a count in words ("no", "none", "one" to "ten") beside what it counts (approved, opposed, people, posts, pieces, evidence, stances, supported, refuted), so "No evidence here is supported or refuted by other evidence." stands on the evidence it speaks of, and "One solution is to ban cars." on a solution id alone does not.
+* A paragraph keeps at least one `P` id, or it is dropped; the one exception is a count line, which may cite `S` or `E` ids only, recognised as a paragraph whose every sentence has at most 200 characters and a figure, or a count in words ("no", "none", "one" to "ten") beside what it counts (approved, opposed, people, posts, pieces, evidence, stances, supported, refuted), so "No evidence here is supported or refuted by other evidence." stands on the evidence it speaks of, and "One solution is to ban cars." on a solution id alone does not. Sentence by sentence since 30 October 2026: a short answer to "Which solutions have the most approval?" is the counts alone, a sentence a solution, 211 characters in 3 runs of 3, and the 200 character limit on the whole paragraph dropped the answer.
 * Ids written into the text are taken out: a bracketed list goes, a bare `S`, `E` or `D` id reads as its name, a bare `P` id as "a post". The numbers the page shows come from "sources" only. The word "digest" in an answer reads "database", and "the record" reads "the database" (John, 28 October 2026).
 * At most 5 paragraphs, kept in order while the total stays within 1,200 characters; the paragraph that would pass it is dropped with the rest.
 * `in_record` false, or no paragraph left: "The database does not say anything about this yet."

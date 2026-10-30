@@ -105,6 +105,15 @@
       "issue": null,
       "question": "Does the lack of a global carbon tax violate the Universal Declaration of Human Rights?",
       "expect": "Quotes only articles that bear on it, citing D2, answers plainly whether they speak to it (yes, partly or no) and how, with the record's views on the tax; says plainly when no article speaks to it (John, call of 28 October)."
+    },
+    {
+      "id": "A18",
+      "issue": "global climate coordination",
+      "question": "Tell me more.",
+      "earlier": [
+        "Why do people oppose these solutions?"
+      ],
+      "expect": "The longer answer (John, 30 October): up to five short paragraphs on why people oppose these solutions, each reason cited, with the evidence; an answer of two or three sentences to any question that does not ask for more."
     }
   ]
 }
