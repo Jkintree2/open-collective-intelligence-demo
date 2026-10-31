@@ -47,6 +47,11 @@ def main() -> int:
         if case["context"] == "stlouis":
             for name in ("Data centers", "Downtown St Louis revitalization"):
                 candidates.issues[make_key(name)] = {"name": name, "parent_key": None}
+        if case["context"] == "consensus":  # John's live consensus solution, 31 October 2026, on top of the seed
+            name = "Methods of collective decision making"
+            candidates.issues[make_key(name)] = {"name": name, "parent_key": None}
+            candidates.solutions["decisions should be made by consensus"] = "Decisions should be made by consensus"
+            candidates.solution_issues["decisions should be made by consensus"] = ["Need for world government", name]
         text = case["text"]
         if case.get("words"):
             words = text.split()

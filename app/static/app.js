@@ -80,7 +80,7 @@
   find('retry').addEventListener('click', read);
   find('add-issue').addEventListener('click', () => card.addRow('issues'));
   find('add-solution').addEventListener('click', () => card.addRow('solutions'));
-  find('add-evidence').addEventListener('click', () => card.addRow('evidence'));
+  find('add-evidence').addEventListener('click', () => card.addRow('evidence', card.handEvidence()));
   find('plain').addEventListener('click', card.openPlain);
   find('discard').addEventListener('click', () => { dictation.stop(); stopReading(); find('card').hidden = true; card.changed(); text.focus(); });
   find('post').addEventListener('click', card.post);

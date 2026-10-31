@@ -1,6 +1,8 @@
 {# GitHub issue 55: the write page opened from a piece of evidence's page (/?evidence=<key>). The card starts from
-   the issue the evidence first speaks to, directly or through a solution (data-issue-key). #}
-<section class="about-issue" id="about-issue" data-issue="{{ about.issue_name }}" data-issue-key="{{ about.issue_key }}">
+   the issue the evidence first speaks to, directly or through a solution (data-issue-key). Since 31 October 2026
+   (John) evidence added by hand is about this evidence (data-evidence), and posting goes back to its page
+   (data-return). #}
+<section class="about-issue" id="about-issue" data-issue="{{ about.issue_name }}" data-issue-key="{{ about.issue_key }}" data-evidence="{{ about.evidence.name }}" data-return="{{ about.href }}">
   <h2>Already in the database for {{ about.evidence.name }}</h2>
   {% if about.evidence.url %}<p class="counts source-line">Source: <a href="{{ about.evidence.url }}" target="_blank" rel="noopener noreferrer">{{ about.evidence.url }}</a></p>{% endif %}
   <p class="ev-label">What it supports or refutes</p>

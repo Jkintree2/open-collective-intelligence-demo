@@ -199,6 +199,32 @@ def test_approving_an_existing_solution_records_only_the_approval():
     assert [(row["name"], row["stance"], row["stance_only"]) for row in resolved.solutions] == [(FLEETS, "approve", True)]
 
 
+
+CONSENSUS = Candidates(
+    issues={"need for world government": {"name": "Need for world government", "parent_key": None},
+            "methods of collective decision making": {"name": "Methods of collective decision making", "parent_key": None}},
+    solutions={"decisions should be made by consensus": "Decisions should be made by consensus"},
+    solution_issues={"decisions should be made by consensus": ["Need for world government",
+                                                               "Methods of collective decision making"]},
+)
+
+
+def test_a_position_alone_claims_none_of_the_solutions_issues():
+    """John, 31 October 2026: the card from a solution's page holds every issue it was proposed for. A position
+    and nothing else still claims none of them, whichever one the solution's row names."""
+    resolved = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Need for world government"}, {"name": "Methods of collective decision making"}],
+        "solutions": [{"name": "Decisions should be made by consensus", "for_issue": "Need for world government",
+                       "stance": "oppose"}]}), CONSENSUS)
+    assert resolved.issues == []
+    with_proposal = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Need for world government"}, {"name": "Methods of collective decision making"}],
+        "solutions": [{"name": "Decisions should be made by consensus", "for_issue": "Need for world government",
+                       "stance": "oppose"},
+                      {"name": "Decisions by majority vote", "for_issue": "Methods of collective decision making",
+                       "stance": "approve"}]}), CONSENSUS)
+    assert [row["key"] for row in with_proposal.issues] == ["methods of collective decision making"]
+
 def test_a_position_on_a_solution_for_an_issue_it_is_not_yet_under_still_proposes_it():
     known = replace(CLIMATE, issues={**CLIMATE.issues, "urban congestion": {"name": "Urban congestion", "parent_key": None}})
     resolved = resolve_payload(CardPayload.model_validate({

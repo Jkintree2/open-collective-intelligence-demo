@@ -73,13 +73,14 @@ def _posts(request: Request, posts: list[dict]) -> list[dict]:
 
 def about_solution(key: str | None) -> dict | None:
     """The write page's summary for a solution (/?solution=<key>): its issues, its counts and the three
-    positions, its evidence. `issue_name` and `issue_key` are its first issue's, which the card starts from."""
+    positions, its evidence. `issue_name` and `issue_key` are its first issue's, which the card starts from;
+    `issue_keys` are all of them, which the card holds too (John, 31 October 2026)."""
     solution = graph_item_pages.solution(key) if key else None
     if solution is None:
         return None
     first = solution["issues"][0] if solution["issues"] else {"key": "", "name": ""}
     return {"kind": "solution", "solution": solution, "issue_key": first["key"], "issue_name": first["name"],
-            "href": solution_href(key)}
+            "issue_keys": [item["key"] for item in solution["issues"]], "href": solution_href(key)}
 
 
 def about_evidence(key: str | None) -> dict | None:

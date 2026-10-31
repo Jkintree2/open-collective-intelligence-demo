@@ -159,7 +159,10 @@ def test_chips_open_the_solution_and_evidence_pages(pages, monkeypatch):
 
 def test_the_write_page_from_a_solution_shows_it_with_the_three_positions(pages):
     page = pages.client.get("/?solution=carbon%20tax").text
-    assert '<section class="about-issue" id="about-issue" data-issue="Climate" data-issue-key="climate">' in page
+    # John, 31 October 2026: every issue it was proposed for, its name for evidence added by hand, and the page
+    # to go back to after posting.
+    assert ('<section class="about-issue" id="about-issue" data-issue="Climate" data-issue-key="climate" '
+            'data-issue-keys=\'["climate"]\' data-solution="Carbon tax" data-return="/solutions/carbon%20tax">') in page
     assert "<h2>Already in the database for Carbon tax</h2>" in page
     assert '<p class="counts">Proposed for Climate</p>' in page
     assert 'value="approve" data-solution="Carbon tax"' in page and "I oppose this" in page
@@ -168,9 +171,17 @@ def test_the_write_page_from_a_solution_shows_it_with_the_three_positions(pages)
     assert "about_issue.js" in page
 
 
+
+def test_the_write_page_from_a_solution_with_two_issues_names_both(pages, monkeypatch):
+    two = {**TAX, "issues": [*TAX["issues"], {"key": "veto", "name": "Veto", "parent_key": None, "parent_name": None}]}
+    monkeypatch.setattr(graph_item_pages, "solution", lambda key, me=None: two if key == "carbon tax" else None)
+    page = pages.client.get("/?solution=carbon%20tax").text
+    assert 'data-issue-key="climate" data-issue-keys=\'["climate", "veto"]\'' in page
+
 def test_the_write_page_from_evidence_starts_from_its_first_issue(pages):
     page = pages.client.get("/?evidence=who%20pays").text
-    assert '<section class="about-issue" id="about-issue" data-issue="Climate" data-issue-key="climate">' in page
+    assert ('<section class="about-issue" id="about-issue" data-issue="Climate" data-issue-key="climate" '
+            'data-evidence="Who pays study" data-return="/evidence/who%20pays">') in page
     assert "<h2>Already in the database for Who pays study</h2>" in page
     assert "<li>Refutes solution of Carbon tax</li><li>Supports issue of Climate</li>" in page
     assert '<a href="/evidence/who%20pays">Open the full page for this evidence</a>' in page
