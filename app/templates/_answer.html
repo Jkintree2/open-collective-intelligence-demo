@@ -7,6 +7,6 @@
       {% endfor %}{% if ask_result.partial %}<p class="ask-partial">{{ ask_result.partial }}</p>{% endif %}
       {% if ask_result.sources %}<h3 class="ask-sources-title">Sources</h3>
       <ol class="ask-sources">{% for source in ask_result.sources %}
-        <li>{% if source.kind == "document" %}Guiding document: {% if source.href %}<a href="{{ source.href }}">{{ source.name }}</a>{% else %}{{ source.name }}{% endif %}.{% elif source.kind == "post" %}{{ source.name }}{% if source.when %}, {{ source.when }}{% endif %}{% if source.text %}: “{{ source.text }}”{% endif %}{% else %}{{ "Solution" if source.kind == "solution" else "Evidence" }}: {{ source.name }}.{% endif %}{% if source.issue and source.href %} On <a href="{{ source.href }}">{{ source.issue }}</a>{% endif %}</li>{% endfor %}
+        <li>{% if source.kind == "document" %}Guiding document: {% if source.href %}<a href="{{ source.href }}">{{ source.name }}</a>{% else %}{{ source.name }}{% endif %}.{% elif source.kind == "post" %}{{ source.name }}{% if source.when %}, {{ source.when }}{% endif %}{% if source.text %}: “{{ source.text }}”{% endif %}{% else %}{{ "Solution" if source.kind == "solution" else "Evidence" }}: {% if source.page %}<a href="{{ source.page }}">{{ source.name }}</a>{% else %}{{ source.name }}{% endif %}.{% endif %}{% if source.issue and source.href %} On <a href="{{ source.href }}">{{ source.issue }}</a>{% endif %}</li>{% endfor %}
       </ol>{% endif %}
     </div>

@@ -42,9 +42,12 @@
     const controller = new AbortController(); readController = controller;
     slowTimer = setTimeout(() => { find('compose-message').textContent = 'Still reading. This can take up to half a minute.'; }, 8000);
     abandonTimer = setTimeout(() => card.openCard({}, unavailable), 25000);
-    const issue = new URLSearchParams(location.search).get('issue');
+    const params = new URLSearchParams(location.search), issue = params.get('issue');
+    // GitHub issue 55: written from a solution's or a piece of evidence's page, the reading attaches to it.
+    const from = issue ? {} : params.get('solution') ? {solution: params.get('solution')}
+      : params.get('evidence') ? {evidence: params.get('evidence')} : {};
     try {
-      const result = await request('/api/extract', {text: text.value, ...card.identity(), issue}, controller.signal);
+      const result = await request('/api/extract', {text: text.value, ...card.identity(), issue, ...from}, controller.signal);
       if (readController !== controller) return;
       if (result.payload.language_ok === false) {
         stopReading(); find('compose-message').textContent = result.message; return;

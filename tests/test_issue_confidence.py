@@ -16,13 +16,14 @@ ROWS = [
      "check": "supports", **NONE},
 ]
 # The solutions and evidence sections with the flag off, rendered from issue.html at phase-2 54391fd
-# (before source confidence): the flag off leaves it byte for byte as it was.
+# (before source confidence): the flag off leaves it byte for byte as it was. Since GitHub issue 55 the solution
+# and evidence names link to their own pages, with each source link beside its name.
 TODAY_SECTIONS = (
     '<h2 id="solutions">Proposed solutions</h2>\n'
     '<p class="counts">Listed by approvals minus oppositions.</p>\n'
     '\n'
     '<section class="solution" id="solution-abolish-the-veto">\n'
-    '  <h3>Abolish the veto</h3>\n'
+    '  <h3><a href="/solutions/abolish%20the%20veto">Abolish the veto</a></h3>\n'
     '  <p class="counts">proposed by 1 · approved by <span data-approves>0</span> · opposed by <span data-opposes>0</span></p>\n'
     '  <form class="stance" method="post" action="/solutions/abolish%20the%20veto/stance">\n'
     '    <input type="hidden" name="issue" value="veto">\n'
@@ -33,14 +34,14 @@ TODAY_SECTIONS = (
     '  \n'
     '  \n'
     '  \n'
-    '  <p class="ev-label">Refuted by</p><ul class="evidence"><li>A study</li></ul>\n'
+    '  <p class="ev-label">Refuted by</p><ul class="evidence"><li><a href="/evidence/study">A study</a></li></ul>\n'
     '</section>\n'
     '\n'
     '\n'
     '<h2 id="evidence">Evidence about this issue</h2>\n'
     '\n'
     '\n'
-    '<p class="ev-label">Supported by</p><ul class="evidence"><li><a href="https://example.org/report" target="_blank" rel="noopener noreferrer">UN report</a> <span class="by">submitted by Ada Tester</span></li><li>Open letter <span class="by">submitted by Anonymous</span></li></ul>\n'
+    '<p class="ev-label">Supported by</p><ul class="evidence"><li><a href="/evidence/report">UN report</a> <a class="source-link" href="https://example.org/report" target="_blank" rel="noopener noreferrer">source</a> <span class="by">submitted by Ada Tester</span></li><li><a href="/evidence/letter">Open letter</a> <span class="by">submitted by Anonymous</span></li></ul>\n'
     '\n'
     '\n'
     '\n'
@@ -93,8 +94,8 @@ def test_with_the_flag_each_piece_of_evidence_says_its_source_confidence(page):
     # The open letter has no link (revision round).
     assert ('<span class="confidence">No source given.</span>'
             '<span class="confidence">One other piece of evidence here says the same.</span></li>') in about
-    solution = section(html, "<h3>Abolish the veto</h3>", "</section>")
-    assert ('<li>A study<span class="confidence">No source given.</span>'
+    solution = section(html, ">Abolish the veto</a></h3>", "</section>")
+    assert ('<li><a href="/evidence/study">A study</a><span class="confidence">No source given.</span>'
             '<span class="confidence differs">The page was read as agreeing with this.</span></li>') in solution
 
 

@@ -11,8 +11,9 @@ from tests.test_reading import CARD, SETTINGS
 
 # SHA-256 of the reading prompt as it stood in app/extract.py before the guiding texts moved
 # to app/guiding/ (main 995ee8f). If John changes a guiding file or the reading rules on purpose,
-# the new hash goes here in the same commit.
-PROMPT_SHA256 = "122df111cbe8b000da80530b3ae3dad1a0741acd545d6d08d7b59cf53c60e98d"
+# the new hash goes here in the same commit. Changed on purpose for GitHub issue 55: writing_about may name a
+# solution or a piece of evidence (three sentences added to the reading rules, tested on live cards).
+PROMPT_SHA256 = "b989a92f8959843eaa7b70931a500bb2cf08a240822a3c9ee9c4518b735f51b7"
 
 
 def sha(text: str) -> str:
@@ -21,7 +22,7 @@ def sha(text: str) -> str:
 
 def test_reading_prompt_is_byte_for_byte_unchanged():
     assert sha(reading.SYSTEM_PROMPT) == PROMPT_SHA256
-    assert len(reading.SYSTEM_PROMPT) == 32455
+    assert len(reading.SYSTEM_PROMPT) == 32891
 
 
 def test_the_prompt_sent_to_the_model_is_unchanged():

@@ -56,9 +56,12 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     }
     if (seen.has(previous)) select.value = previous;
   }
+  // The issue the card starts from: the page's own (?issue=), or since GitHub issue 55 the issue of the solution or
+  // piece of evidence the page was opened for, which the summary above the form names (data-issue-key).
+  const startIssue = () => find('about-issue')?.dataset?.issueKey ?? new URLSearchParams(location.search).get('issue');
   // The issue the writer is writing about, its top level issue and that issue's family.
   function family() {
-    const issueKey = new URLSearchParams(location.search).get('issue');
+    const issueKey = startIssue();
     const about = state.candidates.issues[issueKey];
     if (!about) return {label: '', names: []};
     const topKey = about.parent_key || issueKey;
@@ -266,7 +269,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     find('card-errors').textContent = '';
     find('retry').hidden = message !== unavailable;
     for (const group of Object.keys(state.groups)) { state.groups[group].forEach(row => row.element.remove()); state.groups[group] = []; }
-    const prefill = state.candidates.issues[new URLSearchParams(location.search).get('issue')];
+    const prefill = state.candidates.issues[startIssue()];
     if ((!payload.issues || !payload.issues.length) && prefill) payload.issues = [{name: prefill.name, parent: state.candidates.issues[prefill.parent_key]?.name}];
     for (const group of Object.keys(state.groups)) (payload[group] || []).forEach(item => addRow(group, item));
     // A position chosen in the panel above survives a reading (GitHub issue 8): it wins over the
@@ -293,7 +296,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   async function loadCandidates() {
     try {
       state.candidates = await request('/api/candidates'); state.candidatesReady = true;
-      if (new URLSearchParams(location.search).has('issue') && !state.prefillConsumed && card.hidden && !state.reading) {
+      if (startIssue() !== null && !state.prefillConsumed && card.hidden && !state.reading) {
         state.prefillConsumed = true; openCard();
       }
       changed();

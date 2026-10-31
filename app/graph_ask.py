@@ -1,4 +1,5 @@
-"""Phase 3, ask the record: the reads behind an answer (03_schema.md, Phase 3, Q40 to Q42). Read only.
+"""Phase 3, ask the record: the reads behind an answer (03_schema.md, Phase 3, Q40 to Q42; since GitHub issue
+55 also for one solution and one piece of evidence). Read only.
 
 app/ask.py turns the rows into the digest the reading service sees. Nothing here returns an email,
 a country, a postal code or the name behind an anonymous edge: stances come as counts, dates and the
@@ -17,12 +18,22 @@ EDGE_LIMIT = 300     # evidence rows on one issue
 # One solution's columns, shared by Q40 and Q42: its issues, proposers counted as in Q4 (by account and
 # anonymity, D2), the posts that proposed it, and its stances newest first, each with its date, whether
 # it was a click, and the posts that took it (the first and, when a later post said the same, that one).
-_SOLUTION_COLUMNS = """
+_SOLUTION_ISSUES = """
 CALL (s) {
   OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(s)
   WITH home ORDER BY home.created_at
   RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
-}
+}"""
+# GitHub issue 55: on a solution's own page its issues come in the order they took it up, by the date of each
+# HAVE_PROPOSED, as Q50 lists them, so its first issue is the page's. The issue and whole record forms keep
+# the oldest issue first, as they were.
+_SOLUTION_ISSUES_TAKEN_UP = """
+CALL (s) {
+  OPTIONAL MATCH (home:Issue)-[hp:HAVE_PROPOSED]->(s)
+  WITH home, hp ORDER BY hp.created_at, home.created_at
+  RETURN [h IN collect({key: home.key, name: home.name}) WHERE h.key IS NOT NULL] AS issues
+}"""
+_SOLUTION_REST = """
 CALL (s) {
   OPTIONAL MATCH (pp:Person)-[pr:PROPOSE]->(s)
   RETURN count(DISTINCT pp.key + CASE WHEN coalesce(pr.anonymous, false) THEN '|anonymous' ELSE '' END) AS proposers,
@@ -39,6 +50,7 @@ CALL (s) {
 RETURN s.key AS key, s.name AS name, issues, proposers, proposed_in, approves, opposes, stances
 ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 """
+_SOLUTION_COLUMNS = _SOLUTION_ISSUES + _SOLUTION_REST
 
 # Q40. The solutions proposed for an issue and its sub-issues, ranked by net support as Q4 ranks them.
 ISSUE_STANCES = """
@@ -52,6 +64,13 @@ WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPP
 ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 LIMIT $limit
 """ + _SOLUTION_COLUMNS
+
+# Q40, third form (GitHub issue 55): one solution, for a question asked on its own page, its issues in the
+# order they took it up.
+ONE_SOLUTION_STANCES = """
+MATCH (s:Solution {key: $key})
+WITH s, COUNT { (:Person)-[:APPROVE]->(s) } AS approves, COUNT { (:Person)-[:OPPOSE]->(s) } AS opposes
+""" + _SOLUTION_ISSUES_TAKEN_UP + _SOLUTION_REST
 
 # Q42. The solutions with the most net support in the whole record.
 TOP_SOLUTIONS = """
@@ -113,6 +132,35 @@ ORDER BY r.created_at
 LIMIT $limit
 """ + _EVIDENCE_COLUMNS
 
+# Q41, for a solution (GitHub issue 55): every evidence edge into the solution, then every edge from other
+# evidence into that evidence (one step), as the issue form reads them.
+SOLUTION_EVIDENCE = """
+MATCH (s:Solution {key: $key})
+OPTIONAL MATCH (piece:Evidence)-[:SUPPORTS|REFUTES]->(s)
+WITH s, collect(DISTINCT piece) AS pieces
+UNWIND [s] + pieces AS t
+MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(t)
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+LIMIT $limit
+""" + _EVIDENCE_COLUMNS
+
+# Q41, for a piece of evidence (GitHub issue 55): the edges into it and its own edges out, as the record-wide
+# form reads each top piece.
+ONE_EVIDENCE = """
+MATCH (top:Evidence {key: $key})
+CALL (top) {
+  MATCH (e:Evidence)-[r:SUPPORTS|REFUTES]->(top)
+  RETURN e, r, top AS t
+  UNION
+  MATCH (top)-[r:SUPPORTS|REFUTES]->(t)
+  RETURN top AS e, r, t
+}
+WITH DISTINCT e, r, t
+ORDER BY r.created_at
+LIMIT $limit
+""" + _EVIDENCE_COLUMNS
+
 # Q41, record-wide. The evidence most supported by other evidence (then least refuted, then submitted
 # by most posts), with the edges into it and its own edges out.
 TOP_EVIDENCE = """
@@ -138,6 +186,11 @@ def issue_stances(key: str, limit: int = SOLUTION_LIMIT) -> list[dict[str, Any]]
     return _read(ISSUE_STANCES, key=key, limit=limit, stance_limit=STANCE_LIMIT)
 
 
+def solution_stances(key: str) -> list[dict[str, Any]]:
+    """Q40's third form: the one solution, or no row."""
+    return _read(ONE_SOLUTION_STANCES, key=key, stance_limit=STANCE_LIMIT)
+
+
 def top_solutions(limit: int = 10) -> list[dict[str, Any]]:
     """Q42."""
     return _read(TOP_SOLUTIONS, limit=limit, stance_limit=STANCE_LIMIT)
@@ -156,6 +209,16 @@ def posts_by_ids(ids: list[str]) -> list[dict[str, Any]]:
 def issue_evidence(key: str, limit: int = EDGE_LIMIT) -> list[dict[str, Any]]:
     """Q41 for an issue: one row per evidence edge, oldest first."""
     return _read(ISSUE_EVIDENCE, key=key, limit=limit)
+
+
+def solution_evidence(key: str, limit: int = EDGE_LIMIT) -> list[dict[str, Any]]:
+    """Q41 for a solution: one row per evidence edge, oldest first."""
+    return _read(SOLUTION_EVIDENCE, key=key, limit=limit)
+
+
+def one_evidence(key: str, limit: int = EDGE_LIMIT) -> list[dict[str, Any]]:
+    """Q41 for a piece of evidence: one row per edge into or out of it, oldest first."""
+    return _read(ONE_EVIDENCE, key=key, limit=limit)
 
 
 def top_evidence(limit: int = EVIDENCE_LIMIT) -> list[dict[str, Any]]:

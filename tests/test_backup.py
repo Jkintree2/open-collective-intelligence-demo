@@ -331,3 +331,26 @@ def test_a_question_travels_with_its_answer():
 def test_a_malformed_question_is_refused(bad):
     with pytest.raises(InvalidBackup):
         validate_record({"format": "oci-record", "version": VERSION, "nodes": [question_node(**bad)], "relationships": []})
+
+
+# GitHub issue 55: a question asked on a solution's or a piece of evidence's page keeps that key, with no issue.
+def test_a_question_on_a_solution_or_evidence_page_round_trips(monkeypatch):
+    memory = Memory()
+    monkeypatch.setattr(graph, "driver", lambda: memory)
+    on_solution = question_node(key="solution:carbon tax|who pays", issue_key=None, solution_key="carbon tax")
+    on_evidence = question_node(key="evidence:who pays|is it new", issue_key=None, evidence_key="who pays")
+    for node in (on_solution, on_evidence):
+        node["identity"] = node["properties"]["key"]
+        del node["properties"]["issue_key"]  # null on these, so not stored
+    original = {"format": "oci-record", "version": VERSION, "nodes": [on_solution, on_evidence], "relationships": []}
+    assert graph.restore_record(original) == (2, 0)
+    assert memory.nodes["Question", "solution:carbon tax|who pays"]["solution_key"] == "carbon tax"
+    assert memory.nodes["Question", "evidence:who pays|is it new"]["evidence_key"] == "who pays"
+    assert json.loads(json.dumps(graph.export_record())) == canonical(original)
+
+
+@pytest.mark.parametrize("bad", [{"solution_key": 3}, {"solution_key": True}, {"evidence_key": 7},
+                                 {"evidence_key": ["who pays"]}])
+def test_a_solution_or_evidence_key_of_the_wrong_type_is_refused(bad):
+    with pytest.raises(InvalidBackup):
+        validate_record({"format": "oci-record", "version": VERSION, "nodes": [question_node(**bad)], "relationships": []})

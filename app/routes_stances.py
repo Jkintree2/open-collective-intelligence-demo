@@ -30,10 +30,9 @@ def stance(request: Request, solution_key: str, choice: str = Form(""), issue: s
             return JSONResponse({"message": NOT_SAVED}, status_code=404 if choice in CHOICES else 422)
         return JSONResponse(result)
     # Without JavaScript every answer goes back to the page; a failure names the solution, and the
-    # page shows NOT_SAVED in its stance line (_stance.html).
-    if not issue:
-        return RedirectResponse("/issues", status_code=303)
-    back = f"/issues/{quote(issue, safe='')}"
+    # page shows NOT_SAVED in its stance line (_stance.html). The solution's own page sends no issue
+    # (GitHub issue 55).
+    back = f"/issues/{quote(issue, safe='')}" if issue else f"/solutions/{quote(solution_key, safe='')}"
     if result is None:
         back += "?" + urlencode({"not_saved": solution_key}, quote_via=quote)
     return RedirectResponse(f"{back}#{quote(solution_anchor(solution_key), safe='-')}", status_code=303)

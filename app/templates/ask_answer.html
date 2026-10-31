@@ -4,7 +4,9 @@
 {% block title %}An earlier answer · {{ site_name }}{% endblock %}
 {% block content %}
 <h1 id="ask-title">An earlier answer</h1>
-{% if issue %}<p class="ask-lead">Asked about <a href="/issues/{{ issue.key|urlencode }}">{{ issue.name }}</a></p>{% endif %}
+{% if issue %}<p class="ask-lead">Asked about <a href="/issues/{{ issue.key|urlencode }}">{{ issue.name }}</a></p>
+{% elif solution %}<p class="ask-lead">Asked about <a href="/solutions/{{ solution.key|urlencode }}">{{ solution.name }}</a></p>
+{% elif evidence %}<p class="ask-lead">Asked about <a href="/evidence/{{ evidence.key|urlencode }}">{{ evidence.name }}</a></p>{% endif %}
 <section class="ask">
   {% if result %}{% set ask_result = result %}{% set ask_question = question %}{% include "_answer.html" %}
   <p class="ask-note">{{ answered_on }}</p>
@@ -14,7 +16,7 @@
   </div>{% endif %}
   <form class="ask-again-form" method="post" action="/ask">
     <input type="hidden" name="question" value="{{ question }}">
-    {% if issue %}<input type="hidden" name="issue" value="{{ issue.key }}">{% endif %}
+    {% if issue %}<input type="hidden" name="issue" value="{{ issue.key }}">{% elif solution %}<input type="hidden" name="solution" value="{{ solution.key }}">{% elif evidence %}<input type="hidden" name="evidence" value="{{ evidence.key }}">{% endif %}
     <button class="primary" type="submit">Ask again</button>
   </form>
 </section>

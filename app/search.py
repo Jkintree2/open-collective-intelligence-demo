@@ -92,17 +92,13 @@ _GROUPS = {"Issue": "issues", "Solution": "solutions", "Evidence": "evidence"}
 
 
 def group(name_rows: list[dict]) -> dict[str, list[dict]]:
-    """Each result links to its issue page: an issue to itself, a solution to its first issue,
-    evidence to the first issue it is about, directly or through a solution."""
+    """Each result links to its own page: an issue's, and since GitHub issue 55 a solution's or a piece of
+    evidence's."""
+    pages = {"Issue": "/issues/", "Solution": "/solutions/", "Evidence": "/evidence/"}
     found: dict[str, list[dict]] = {"issues": [], "solutions": [], "evidence": []}
     for row in name_rows:
-        if row["label"] == "Issue":
-            home = row["key"]
-        elif row["label"] == "Solution":
-            home = next(iter(row["solution_homes"]), None)
-        else:
-            home = next(iter(row["evidence_homes"]), None)
-        found[_GROUPS[row["label"]]].append({"name": row["name"], "href": issue_href(home) if home else None})
+        found[_GROUPS[row["label"]]].append({"name": row["name"],
+                                             "href": pages[row["label"]] + quote(row["key"], safe="")})
     return found
 
 

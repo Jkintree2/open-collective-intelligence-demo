@@ -1,15 +1,19 @@
-{# Phase 3: the Ask box, on /ask (ask_issue none) and on an issue page (ask_issue the issue). Shown only
-   with ASK_ENABLED. Without JavaScript the form posts to /ask and the answer comes back there. #}
-<section class="ask" data-ask{% if ask_issue %} data-issue="{{ ask_issue.key }}"{% endif %}>
-  {% if not ask_page %}<h2 id="ask-title">Ask about this issue</h2>{% endif %}
+{# Phase 3: the Ask box, on /ask (ask_issue none) and on an issue page (ask_issue the issue); since GitHub issue 55
+   also on a solution's page (ask_solution) and a piece of evidence's (ask_evidence). Shown only with
+   ASK_ENABLED. Without JavaScript the form posts to /ask and the answer comes back there. #}
+{% set ask_kind = "issue" if ask_issue else "solution" if ask_solution else "evidence" if ask_evidence else none %}
+{% set ask_item = ask_issue or ask_solution or ask_evidence %}
+<section class="ask" data-ask{% if ask_item %} data-{{ ask_kind }}="{{ ask_item.key }}"{% endif %}>
+  {% if not ask_page %}<h2 id="ask-title">Ask about this {{ ask_kind }}</h2>{% endif %}
   <form class="ask-form" method="post" action="/ask">
-    {% if ask_issue %}<input type="hidden" name="issue" value="{{ ask_issue.key }}">{% endif %}
+    {% if ask_item %}<input type="hidden" name="{{ ask_kind }}" value="{{ ask_item.key }}">{% endif %}
     {% for earlier in ask_earlier or [] %}<input type="hidden" name="earlier" value="{{ earlier }}">{% endfor %}
     {# John, 28 October: on Ask the database the box is empty with the cursor in it, like the Write page. #}
-    <textarea name="question" rows="2" aria-labelledby="ask-title"{% if ask_issue %} placeholder="For example: Why do people oppose these solutions?"{% else %} autofocus{% endif %}>{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
+    <textarea name="question" rows="2" aria-labelledby="ask-title"{% if ask_issue %} placeholder="For example: Why do people oppose these solutions?"{% elif ask_solution %} placeholder="For example: Why do people oppose this solution?"{% elif ask_evidence %} placeholder="For example: What do people say about this evidence?"{% else %} autofocus{% endif %}>{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
     <button class="primary" type="submit">Ask</button>
   </form>
-  {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.</p>{% endif %}
+  {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.</p>
+  {% elif ask_item %}<p class="ask-scope">Answers come only from the posts about this {{ ask_kind }}, and from the guiding documents when a question asks about them.</p>{% endif %}
   {# John, 30 October: answers are two or three sentences unless more is asked for, and kept with their question. #}
   <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer one. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone with its answer, without your name.</p>
   <p class="ask-status" data-ask-status aria-live="polite">{% if ask_result and not ask_result.status %}{{ ask_result.message }}{% endif %}</p>
@@ -19,9 +23,9 @@
   {# John, 28 October: the latest questions, as the Write page lists the latest statements. Since 30 October each
      opens the answer it got; one kept before answers were has none, and a tap puts it in the box. #}
   <div class="ask-recent" data-ask-recent{% if not recent_questions %} hidden{% endif %}>
-    <h3>{% if ask_issue %}Questions asked about this issue{% else %}Questions people are asking{% endif %}</h3>
+    <h3>{% if ask_item %}Questions asked about this {{ ask_kind }}{% else %}Questions people are asking{% endif %}</h3>
     <ul>{% for asked in recent_questions or [] %}
-      <li>{% if asked.id and asked.answered %}<a class="ask-answered" href="/ask/answers/{{ asked.id }}">{{ asked.text }}</a>{% else %}<button type="button" class="ask-again">{{ asked.text }}</button>{% endif %}{% if not ask_issue and asked.issue_name %} <span class="counts">On <a href="/issues/{{ asked.issue_key|urlencode }}">{{ asked.issue_name }}</a></span>{% endif %}</li>{% endfor %}
+      <li>{% if asked.id and asked.answered %}<a class="ask-answered" href="/ask/answers/{{ asked.id }}">{{ asked.text }}</a>{% else %}<button type="button" class="ask-again">{{ asked.text }}</button>{% endif %}{% if not ask_item %}{% if asked.issue_name %} <span class="counts">On <a href="/issues/{{ asked.issue_key|urlencode }}">{{ asked.issue_name }}</a></span>{% elif asked.solution_name %} <span class="counts">On <a href="/solutions/{{ asked.solution_key|urlencode }}">{{ asked.solution_name }}</a></span>{% elif asked.evidence_name %} <span class="counts">On <a href="/evidence/{{ asked.evidence_key|urlencode }}">{{ asked.evidence_name }}</a></span>{% endif %}{% endif %}</li>{% endfor %}
     </ul>
   </div>
 </section>

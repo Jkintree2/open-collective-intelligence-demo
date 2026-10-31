@@ -561,3 +561,33 @@ Logged at INFO, one line a request: `{"event": "follow_ups", "request_id", "char
 | F11 | The walk's bus statement: two new issues, a new solution and evidence with no link; where, who and how all said | The fixed question and at least one question the statement leaves open. | The fixed question, "Who decided to cut these bus routes?" and where the older people live. |
 
 Measured on the last two runs (alike): 11 of 11 as expected; 9 calls; 0 questions on what a statement already says. Per call about 6,100 tokens in, of which about 5,900 were cache hits, and about 100 out: about 0.28 US cents at peak before the cache discount. History: the first draft of the rules gave 5 of 10 and 4 questions on what was already said ("Which older people are most affected?" after "many older people there"); naming the examples and then the `answered` list brought it to 9 of 10 (F10 asked who would build the flood wall the council was named for); widening rule 2 and putting the language check first brought it to 11 of 11.
+
+## GitHub issue 55: writing about a solution or a piece of evidence (added 30 October 2026)
+
+"Write about this solution" and "Write about this evidence" open the Write page with `?solution=<key>` or `?evidence=<key>`, and the reading gets what the writer came from in `writing_about`, as it gets an issue from "Write about this issue". The user message carries one of three shapes; the issue's is unchanged:
+
+```
+"writing_about": {"name": "Global climate coordination", "parent": "Need for world government"}
+"writing_about": {"solution": "Global carbon tax by referendum", "for_issues": ["Global climate coordination"]}
+"writing_about": {"evidence": "UNEP Emissions Gap Report 2024"}
+```
+
+A solution or a piece of evidence older than the newest 200 the candidates hold (Q8) is added to the candidates for that call, so the reading sees it and the card finds it already in the record.
+
+The reading rules gain three sentences, inside the `writing_about` block and above the untrusted-data line, so they sit near the end where deepseek-v4-flash weighs them (recency wins); the issue sentences around them are word for word as before:
+
+> When writing_about names a solution instead, the writer came from that existing solution: a stance the statement takes without naming another solution is a stance on it, returned with its name, the matching stance and its issue as an issue row, and evidence the statement cites for or against it is about it. When writing_about names evidence instead, evidence the statement cites for or against that evidence is about it, by its name.
+
+`tests/test_principles.py` holds the new hash of the whole prompt.
+
+Cases 18 to 22 in `tests/extraction_cases.json` (`python -m scripts.cards --case 18 ...`; a case's `writing_about` may be `{"solution": key}` or `{"evidence": key}`). Each was run three times on deepseek-v4-flash on 30 October 2026, with the seed as candidates; all fifteen readings as expected:
+
+| Case | Statement, written on | Every run |
+|---|---|---|
+| 18 | "I support this. …", on Global carbon tax by referendum | the solution, approve, a position only (no new issue or solution) |
+| 19 | a 2019 study showing the poorest pay most, same page | one evidence item refuting the solution; no stance, no new solution |
+| 20 | "I oppose this. Each national parliament should set its own carbon price.", same page | oppose on the solution; a new solution for national carbon prices, approve, under Global climate coordination |
+| 21 | the 2023 edition of the report, with its link, on UNEP Emissions Gap Report 2024 | one evidence item with that link, supporting the 2024 report |
+| 22 | "The Security Council veto should be abolished.", on the carbon tax | read on its own: approve Limit or abolish the Security Council veto; nothing on the carbon tax |
+
+Cases 1 to 17 were run once with the new prompt and once with the prompt before it, and the four that differed (2, 3, 4 and 16) three times more on each. Cases 3, 4 and 16 read the same on both prompts once run-to-run variation is set aside (16 keeps its known stance of none). One change is real: case 2, John's supreme law paragraph, now reads approve on both existing solutions in every run (4 of 4), where the prompt before read none (4 of 4), so the post records the two approvals only. The case allows either ("approve or restrained none"), and case 7, the restraint test, still reads none.
