@@ -79,7 +79,7 @@ def test_with_ask_and_follow_ups_off_it_speaks_only_of_reading_statements(about)
     assert "at the start of the system prompt, its instructions for reading statements. They guide it" in words
     assert "It does not judge a post against them, and names an article or a principle only when a post does." in words
     assert "The statement being written and its form; and the names of issues, solutions and evidence." in words
-    assert "the first page after one can take up to a minute" in words
+    assert "On Render's Starter plan, with the records in a free Neo4j Aura database." in words
     assert "everyone here can read and build on." in words
 
 
@@ -95,7 +95,8 @@ def test_with_every_part_on_it_reads_as_04_has_it(about, switch):
             "no principles, so that each link stays quick and cheap to read.",
             "The statement being written and its form; the question and your earlier questions on the page; and what the "
             "database holds that an answer is built from:",
-            "the first page or question after one can take up to a minute.",
+            # John moved the site to Render's Starter plan on 31 October: it no longer sleeps.
+            " Where it runs On Render's Starter plan, with the records in a free Neo4j Aura database. Guiding principles ",
             "at the start of the system prompt, its instructions for reading statements, answering questions and asking "
             "follow-up questions.",
             "It does not judge a post against them unless a question asks, and names an article or a principle only when "

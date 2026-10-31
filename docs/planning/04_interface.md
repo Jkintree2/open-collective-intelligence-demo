@@ -1151,7 +1151,7 @@ With a town or area, near means posts placed in the same town or area; with a co
 >
 > **Where it runs**
 >
-> On Render's free plan, with the records in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page or question after one can take up to a minute.
+> On Render's Starter plan, with the records in a free Neo4j Aura database.
 >
 > **Guiding principles**
 >
