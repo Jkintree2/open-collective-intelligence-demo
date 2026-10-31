@@ -130,10 +130,16 @@ def test_provider_comes_from_the_base_address(url, name):
     assert routes_about.provider(url) == name
 
 
-def test_it_names_johns_repository_and_the_site_name(about):
+def test_it_names_johns_repository_and_the_site_name(about, switch):
+    switch(ask_enabled=True)
     html = about.client.get("/about").text
     assert f'<a href="{routes_about.REPOSITORY}" rel="noopener noreferrer">' in html
-    assert f"<p>{about.settings.site_name} is a small test of a shared database." in html
+    # John's wording of 31 October, word for word with Ask on.
+    assert (f"<p>{about.settings.site_name} is a small test of a conversational platform for constructing a shared database"
+            " of issues, evidence, and solutions for collective problem solving. People write statements about issues they"
+            " care about. The site reads each statement, and extracts the issues, evidence, and solutions into a short form;"
+            " the person checks and corrects the form; and it joins a database that everyone here can read, ask questions of,"
+            " and build on. Development of this prototype software began in September of 2026.</p>") in html
 
 
 def test_its_own_copy_has_no_technical_words_or_dashes(about):
