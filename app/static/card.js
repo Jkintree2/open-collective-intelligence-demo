@@ -59,6 +59,9 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   // The issue the card starts from: the page's own (?issue=), or since GitHub issue 55 the issue of the solution or
   // piece of evidence the page was opened for, which the summary above the form names (data-issue-key).
   const startIssue = () => find('about-issue')?.dataset?.issueKey ?? new URLSearchParams(location.search).get('issue');
+  // A solution's page names every issue it was proposed for (data-issue-keys); the card holds each of them, after
+  // any the reading found (John, 31 October 2026).
+  const solutionIssues = () => { try { return JSON.parse(find('about-issue')?.dataset?.issueKeys || '[]'); } catch { return []; } };
   // The issue the writer is writing about, its top level issue and that issue's family.
   function family() {
     const issueKey = startIssue();
@@ -260,6 +263,14 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   function removeRow(group, row) {
     release(row); state.groups[group] = state.groups[group].filter(other => other !== row); row.element.remove(); changed();
   }
+  // "+ add evidence" on a solution's or a piece of evidence's write page starts the row about that item, and
+  // refuting a solution the card opposes; elsewhere it starts empty, about the first issue (John, 31 October 2026).
+  function handEvidence() {
+    const {solution, evidence} = find('about-issue')?.dataset || {};
+    if (!solution && !evidence) return {};
+    const row = solution && state.groups.solutions.find(other => key(other.name.value) === key(solution));
+    return {about: solution || evidence, stance: row?.radios.find(radio => radio.checked)?.value === 'oppose' ? 'refutes' : 'supports'};
+  }
   function openCard(payload = {}, message = '', meta = {source: 'manual'}, reapply = true) {
     stopDictation(); stopReading(); state.metadata = meta; state.plain = false;
     card.hidden = false;
@@ -269,8 +280,12 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     find('card-errors').textContent = '';
     find('retry').hidden = message !== unavailable;
     for (const group of Object.keys(state.groups)) { state.groups[group].forEach(row => row.element.remove()); state.groups[group] = []; }
+    const asRow = item => ({name: item.name, parent: state.candidates.issues[item.parent_key]?.name});
     const prefill = state.candidates.issues[startIssue()];
-    if ((!payload.issues || !payload.issues.length) && prefill) payload.issues = [{name: prefill.name, parent: state.candidates.issues[prefill.parent_key]?.name}];
+    if ((!payload.issues || !payload.issues.length) && prefill) payload.issues = [asRow(prefill)];
+    const named = new Set((payload.issues || []).map(item => key(item.name)));
+    const more = solutionIssues().map(issueKey => state.candidates.issues[issueKey]).filter(item => item && !named.has(key(item.name)));
+    if (more.length) payload.issues = [...(payload.issues || []), ...more.map(asRow)];
     for (const group of Object.keys(state.groups)) (payload[group] || []).forEach(item => addRow(group, item));
     // A position chosen in the panel above survives a reading (GitHub issue 8): it wins over the
     // reading's own guess for the same solution, and is added when the reading did not find it.
@@ -316,6 +331,9 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       await request(state.editing ? `/api/posts/${encodeURIComponent(state.editing)}` : '/api/posts', payload);
       // An edit goes back to the write page, which says the post is updated.
       if (state.editing) { location.href = '/?done=edited'; return; }
+      // Written from a solution's or a piece of evidence's page, back to that page (John, 31 October 2026).
+      const back = find('about-issue')?.dataset?.return;
+      if (back) { location.href = back; return; }
       card.hidden = true; text.value = ''; state.metadata = {source: 'manual'};
       extras.forEach(extra => extra.posted?.());  // the next statement starts afresh (place.js)
       find('compose-message').textContent = 'Added to the database';
@@ -367,5 +385,5 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   // window.ociCardExtras; each gets the same helpers and may answer {row(group, row, item), opened(payload, meta),
   // posted()}: posted() once a new post is saved, before the next statement.
   const extras = (window.ociCardExtras || []).map(extra => extra({find, request, node, text, state, changed, addRow, removeRow, updateText}) || {});
-  return {state, grow, identity, changed, addRow, openCard, openPlain, noteShortened, loadCandidates, post, setPositionOnExisting};
+  return {state, grow, identity, changed, addRow, handEvidence, openCard, openPlain, noteShortened, loadCandidates, post, setPositionOnExisting};
 };

@@ -1276,6 +1276,12 @@ For a piece of evidence:
 > Evidence about this evidence
 > Open the full page for this evidence
 
+**After trying the live pages (John, 31 October 2026).** No new words; three changes to how the card behaves on these two pages, and none on "Write about this issue" or the plain Write page:
+
+* **Every issue of the solution.** From a solution's page the card holds each issue the solution was proposed for, the first one first, not only the first (at most three, as the card allows). After a reading, those the reading did not name are added after its own. A post that only takes a position still claims none of them (GitHub issue 4), whichever one the solution's row names.
+* **Evidence added by hand.** "+ add evidence" starts its row about the solution or the evidence the page is for, where it started about the first issue on the card. Against a solution the card opposes, it starts as "refutes". The writer may change both.
+* **Back to the page.** After Post the browser goes back to that solution's or evidence's page, where the post is listed, rather than staying on the Write page.
+
 Under the card's issue rows the usual line shows: "To add a sub-issue, write it here and choose the issue it is part of."
 
 ### Ask on these pages

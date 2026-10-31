@@ -1,7 +1,9 @@
 {# GitHub issue 55: the write page opened from a solution's page (/?solution=<key>). It works as the issue summary
    does: a position chosen here opens the card with the solution (about_issue.js), and the card starts from the
-   solution's first issue (data-issue-key). #}
-<section class="about-issue" id="about-issue" data-issue="{{ about.issue_name }}" data-issue-key="{{ about.issue_key }}">
+   solution's first issue (data-issue-key). Since 31 October 2026 (John) the card also holds the solution's other
+   issues (data-issue-keys), evidence added by hand is about the solution (data-solution), and posting goes back to
+   the solution's page (data-return). #}
+<section class="about-issue" id="about-issue" data-issue="{{ about.issue_name }}" data-issue-key="{{ about.issue_key }}" data-issue-keys='{{ about.issue_keys|tojson }}' data-solution="{{ about.solution.name }}" data-return="{{ about.href }}">
   <h2>Already in the database for {{ about.solution.name }}</h2>
   {% if about.solution.issues %}<p class="counts">Proposed for {{ about.solution.issues|map(attribute="name")|join(", ") }}</p>{% endif %}
   <div class="about-solution">

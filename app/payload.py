@@ -365,14 +365,19 @@ def _positions_only(out: ResolvedPayload, candidates: Candidates) -> None:
     GitHub issue 4: approving one solution must not claim its issue again or propose the
     solution again. An existing issue is left out when its only part in the post is to hold
     such positions; anything else about it (a new solution, evidence, a sub-issue) keeps it.
+    Since 31 October 2026 (John) the card from a solution's page holds every issue the solution was
+    proposed for, so a position holds all of them, not only the one its row names.
     """
+    held = set()
     for row in out.solutions:
         linked = {make_key(name) for name in candidates.solution_issues.get(row["key"], [])}
         row["stance_only"] = row["existing"] and row["stance"] != "none" and row["for_issue_key"] in linked
+        if row["stance_only"]:
+            held |= linked
     used = {row["for_issue_key"] for row in out.solutions if not row["stance_only"]}
     used |= {row["target_key"] for row in out.evidence if row["target_label"] == "Issue"}
     used |= {row["parent_key"] for row in out.issues if row["parent_key"]}
-    held = {row["for_issue_key"] for row in out.solutions if row["stance_only"]} - used
+    held -= used
     out.issues = [
         row for row in out.issues
         if not (row["key"] in held and row["existing"]
