@@ -1129,7 +1129,7 @@ With a town or area, near means posts placed in the same town or area; with a co
 >
 > **What it is for**
 >
-> {SITE_NAME} is a small test of a shared database. People write statements about issues they care about. The site reads each one into a short form of the issue, the evidence and the solutions it mentions; the writer checks and corrects the form; and it joins a database that everyone here can read, ask questions of, and build on.
+> {SITE_NAME} is a small test of a conversational platform for constructing a shared database of issues, evidence, and solutions for collective problem solving. People write statements about issues they care about. The site reads each statement, and extracts the issues, evidence, and solutions into a short form; the person checks and corrects the form; and it joins a database that everyone here can read, ask questions of, and build on. Development of this prototype software began in September of 2026.
 >
 > **How statements are read and questions are answered**
 >
@@ -1151,7 +1151,7 @@ With a town or area, near means posts placed in the same town or area; with a co
 >
 > **Where it runs**
 >
-> On Render's free plan, with the records in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page or question after one can take up to a minute.
+> On Render's Starter plan, with the records in a free Neo4j Aura database.
 >
 > **Guiding principles**
 >

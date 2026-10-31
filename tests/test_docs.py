@@ -51,7 +51,7 @@ def test_the_operators_guide_is_plain_and_covers_phase_1():
 def test_the_operators_guide_covers_phase_3():
     guide = section("docs/operators-guide.md", "Talking to the database")
     for phrase in ("`ASK_ENABLED`", "`FOLLOW_UPS_ENABLED`", "`PLACES_ENABLED`", "`ABOUT_ENABLED`", "Add to my statement",
-                   "part of the public statement", "Near", "start again when the site sleeps", "half a US cent",
+                   "part of the public statement", "Near", "start again when the site restarts", "half a US cent",
                    "a third of a US cent", "After switching it on", "app/guiding/udhr.txt"):
         assert phrase in guide, phrase
     assert guide.count("**After switching it on:**") == 4

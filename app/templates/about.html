@@ -9,7 +9,7 @@
 <h1>About this site</h1>
 
 <h2>What it is for</h2>
-<p>{{ site_name }} is a small test of a shared database. People write statements about issues they care about. The site reads each one into a short form of the issue, the evidence and the solutions it mentions; the writer checks and corrects the form; and it joins a database that everyone here can read{% if on.ask %}, ask questions of,{% endif %} and build on.</p>
+<p>{{ site_name }} is a small test of a conversational platform for constructing a shared database of issues, evidence, and solutions for collective problem solving. People write statements about issues they care about. The site reads each statement, and extracts the issues, evidence, and solutions into a short form; the person checks and corrects the form; and it joins a database that everyone here can read{% if on.ask %}, ask questions of,{% endif %} and build on. Development of this prototype software began in September of 2026.</p>
 
 <h2>How statements are read{% if on.ask %} and questions are answered{% endif %}</h2>
 <p>A language model fills in the form from the statement. Nothing joins the database until the writer has checked the form and posted it.</p>
@@ -31,7 +31,7 @@
 <p>The site is written in Python with FastAPI and keeps the records in a Neo4j database. Its code is open, under the MIT licence, in John Kintree's repository: <a href="{{ repository }}" rel="noopener noreferrer">{{ repository }}</a>.</p>
 
 <h2>Where it runs</h2>
-<p>On Render's free plan, with the records in a free Neo4j Aura database. A free service sleeps after a quiet spell, so the first page{% if on.ask %} or question{% endif %} after one can take up to a minute.</p>
+<p>On Render's Starter plan, with the records in a free Neo4j Aura database.</p>
 
 <h2>Guiding principles</h2>
 <p>The language model is given the Statement of purpose, and the full text of the Universal Declaration of Human Rights and the Earth Charter at the start of the system prompt, its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own form.</p>

@@ -121,11 +121,9 @@ Only your account can tidy the list of issues. At the foot of each issue page yo
 
 Every rename, move and merge is listed, newest first, on **Changes to the issues**, linked at the foot of the Issues page. Everyone taking part can read it, so tidying always happens in the open. After a merge, older posts show the issue they now belong to; their own words are not changed.
 
-## The slow first visit
+## The first visit after a quiet spell
 
-On the free plan, Render puts the site to sleep after about fifteen minutes with no visitors. The next visit wakes it up. That first page can take around thirty seconds to appear. After that it is quick again. Nothing is wrong, and nothing is lost.
-
-If you want the site to answer at once every time, see "What costs money" below.
+The site runs on Render's Starter plan, which keeps it running all the time, so the first page after a quiet spell answers as quickly as any other. On Render's free plan the site would sleep after about fifteen minutes with no visitors, and the first page after that could take up to a minute. See "What costs money" below.
 
 ## When the page says the database is asleep
 
@@ -145,7 +143,7 @@ To wake it:
 A few kinds of email need action. Always sign in by typing the company's address into your browser yourself, rather than clicking a link in the email. That way a fake email cannot trick you.
 
 * **From Neo4j, about a paused instance or a planned deletion.** Wake the instance as described above.
-* **From UptimeRobot, saying the site is down.** Open the site yourself. If it loads after about thirty seconds, it was only asleep and you can ignore the alert. If it shows the "asleep" page, wake the database. If it shows an error for more than ten minutes, contact whoever helps you with the site.
+* **From UptimeRobot, saying the site is down.** Open the site yourself. If it loads, the break was short and you can ignore the alert. If it shows the "asleep" page, wake the database. If it shows an error for more than ten minutes, contact whoever helps you with the site.
 * **From Google, saying an app can now send email for you, or that its access was removed.** One arrives right after the setup call; that one is expected. If one arrives at any other time and you did nothing, ask whoever helps you with the site.
 
 Emails that need nothing from you: receipts from DeepSeek, notices from Render that the site was deployed, newsletters from any of the four companies, and a later UptimeRobot email saying the site is up again. Replies from people you entered are ordinary emails to you.
@@ -188,9 +186,9 @@ The site was built for a small, trusted group. Before you let many more people i
 
 ## What costs money
 
-Nothing, by default.
+About 7 US dollars a month for Render, and a few cents for DeepSeek.
 
-* **Render** is free. The Starter plan, about 7 US dollars a month, removes the slow first visit. You can change the plan on the service page in Render at any time.
+* **Render**: the site is on the Starter plan, about 7 US dollars a month, which keeps it running all the time. The free plan costs nothing, but the site then sleeps after a quiet spell and the first page after one is slow. You can change the plan on the service page in Render at any time.
 * **DeepSeek** costs a few cents for a busy week. You pay in advance by adding credit. Reading the page behind a link costs about a tenth of a US cent each time, about one US dollar per thousand links; a link already read is not read again until the site restarts. When DeepSeek's own page reader is asked to try a page, that adds 75 US cents per thousand pages it manages to read. Asking the database costs at most about half a US cent a question, and a follow-up question about a third of a cent a statement; see "Talking to the database".
 * **Neo4j Aura** is free. Never upgrade to Aura Professional for this site. It is far more than a test needs and it costs real money every month.
 * **UptimeRobot** and **GitHub** are free.
@@ -312,7 +310,7 @@ Once the form has opened, a new issue, solution or piece of evidence (never one 
 
 **An answer becomes part of the public statement.** **Add to my statement** adds the question and the answer as one line at the end of the statement ("When did this happen? In 2023."), so everyone who reads the post sees it, and search, editing, asking and the copies you download all carry it. When the post is anonymous, so is the answer. The form says this beside the button. A question never holds back Post, and **Skip** removes it.
 
-**Cost:** each form with something new on it makes one small extra request to the language model, about a third of a US cent at DeepSeek's busiest hours, and less when it comes soon after another one, because DeepSeek charges less for the long opening instructions it has just read. The site makes at most 300 of these a day; after that only "Where did you read or hear this?" shows. Like the question limits below, that count starts again when the site wakes from sleep.
+**Cost:** each form with something new on it makes one small extra request to the language model, about a third of a US cent at DeepSeek's busiest hours, and less when it comes soon after another one, because DeepSeek charges less for the long opening instructions it has just read. The site makes at most 300 of these a day; after that only "Where did you read or hear this?" shows. Like the question limits below, that count starts again when the site restarts.
 
 **After switching it on:** write a statement with a piece of evidence and no link, and press **Read my statement**. Check that "Where did you read or hear this?" appears under the evidence. Type an answer, press **Add to my statement**, and check that the line is added at the end of the statement before you post.
 
@@ -324,11 +322,11 @@ The answer is two or three sentences that sum up what the database holds, includ
 
 The three guiding documents can be asked about too. A question that names the Declaration, the Charter, the statement of purpose, an article or a principle, such as "What does the UDHR say about privacy?", is answered with the article or principle quoted word for word, and the source reads "Guiding document: Universal Declaration of Human Rights.", linked to that document on the About page. Asked whether a solution fits an article or a principle, the answer quotes it, says plainly whether it fits (yes, partly or no) judged by the words alone, says where the solution's own words meet it and where they do not, and gives the views people have posted. A quotation that is not word for word in the document is never shown. When the database holds nothing on the question, the answer says "The database does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
 
-**The latest questions are listed for everyone.** Under the box, the Ask page shows the ten questions most recently answered anywhere, and each issue page the five asked about that issue, each a link to the answer it got. A question is kept only once it got an answer, and never with the name of who asked. The same question asked again moves to the top, with its newest answer. A kept answer is shown with the day it was given and an Ask again button, and only while the posts it rests on are unchanged: once one of them is edited or deleted, the page says so and offers Ask again instead, so an answer never keeps words a writer has taken back. Questions asked before 30 October 2026 have no answer kept; a tap puts one in the box. If a question or an answer that should not be listed ever appears, tell whoever helps you with the site; it can be removed from the database. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go. The first question after a quiet spell can take up to a minute, because the site may be waking up.
+**The latest questions are listed for everyone.** Under the box, the Ask page shows the ten questions most recently answered anywhere, and each issue page the five asked about that issue, each a link to the answer it got. A question is kept only once it got an answer, and never with the name of who asked. The same question asked again moves to the top, with its newest answer. A kept answer is shown with the day it was given and an Ask again button, and only while the posts it rests on are unchanged: once one of them is edited or deleted, the page says so and offers Ask again instead, so an answer never keeps words a writer has taken back. Questions asked before 30 October 2026 have no answer kept; a tap puts one in the box. If a question or an answer that should not be listed ever appears, tell whoever helps you with the site; it can be removed from the database. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go.
 
 **Cost:** a question costs at most about half a US cent, and less after the first question of a spell, because DeepSeek charges less for the long opening instructions it has just read. Each person can ask 30 questions a day, and the site answers 300 a day in all, so a full day at the limit costs at most about 1.50 US dollars.
 
-**The daily limits start again when the site sleeps.** They are kept in the site's working memory, not in the database. When the site goes to sleep after a quiet spell (see "The slow first visit") and wakes again, or restarts after a change in Render, both counts start again from zero. So 300 is a ceiling for each time the site is awake, not a firm total for the day. If DeepSeek's usage page ever shows more than you expect, switch asking off and tell whoever helps you with the site.
+**The daily limits start again when the site restarts.** They are kept in the site's working memory, not in the database. When the site restarts, after a new version or a change in Render, both counts start again from zero. So 300 is a ceiling for each time the site starts, not a firm total for the day. If DeepSeek's usage page ever shows more than you expect, switch asking off and tell whoever helps you with the site.
 
 Without a DeepSeek key, the page says "Asking needs the language model, which is not set up." If an answer says "The question could not be answered just now", wait a minute and ask again. If it keeps saying so, check your DeepSeek balance and the language model line in the back room, as in "When reading stops".
 

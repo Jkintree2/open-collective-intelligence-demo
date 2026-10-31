@@ -79,7 +79,7 @@ def test_with_ask_and_follow_ups_off_it_speaks_only_of_reading_statements(about)
     assert "at the start of the system prompt, its instructions for reading statements. They guide it" in words
     assert "It does not judge a post against them, and names an article or a principle only when a post does." in words
     assert "The statement being written and its form; and the names of issues, solutions and evidence." in words
-    assert "the first page after one can take up to a minute" in words
+    assert "On Render's Starter plan, with the records in a free Neo4j Aura database." in words
     assert "everyone here can read and build on." in words
 
 
@@ -95,7 +95,8 @@ def test_with_every_part_on_it_reads_as_04_has_it(about, switch):
             "no principles, so that each link stays quick and cheap to read.",
             "The statement being written and its form; the question and your earlier questions on the page; and what the "
             "database holds that an answer is built from:",
-            "the first page or question after one can take up to a minute.",
+            # John moved the site to Render's Starter plan on 31 October: it no longer sleeps.
+            " Where it runs On Render's Starter plan, with the records in a free Neo4j Aura database. Guiding principles ",
             "at the start of the system prompt, its instructions for reading statements, answering questions and asking "
             "follow-up questions.",
             "It does not judge a post against them unless a question asks, and names an article or a principle only when "
@@ -130,10 +131,16 @@ def test_provider_comes_from_the_base_address(url, name):
     assert routes_about.provider(url) == name
 
 
-def test_it_names_johns_repository_and_the_site_name(about):
+def test_it_names_johns_repository_and_the_site_name(about, switch):
+    switch(ask_enabled=True)
     html = about.client.get("/about").text
     assert f'<a href="{routes_about.REPOSITORY}" rel="noopener noreferrer">' in html
-    assert f"<p>{about.settings.site_name} is a small test of a shared database." in html
+    # John's wording of 31 October, word for word with Ask on.
+    assert (f"<p>{about.settings.site_name} is a small test of a conversational platform for constructing a shared database"
+            " of issues, evidence, and solutions for collective problem solving. People write statements about issues they"
+            " care about. The site reads each statement, and extracts the issues, evidence, and solutions into a short form;"
+            " the person checks and corrects the form; and it joins a database that everyone here can read, ask questions of,"
+            " and build on. Development of this prototype software began in September of 2026.</p>") in html
 
 
 def test_its_own_copy_has_no_technical_words_or_dashes(about):
