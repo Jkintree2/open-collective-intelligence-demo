@@ -121,6 +121,23 @@ def lines(rows: list[dict[str, Any]], today: date | None = None,
     return out
 
 
+def own_source(row: dict[str, Any], today: date | None = None) -> str | None:
+    """GitHub issue 55: what a piece of evidence's page says about itself (Q52), shown once on its own page."""
+    return source_words(_source(row), today=today, video=is_video(row.get("url")))
+
+
+def mark_targets(key: str, targets: list[dict[str, Any]], rows: list[dict[str, Any]],
+                 today: date | None = None) -> None:
+    """GitHub issue 55: under each thing the evidence page's piece supports or refutes, the agreement there, the
+    disagreement line and the readings, from Q54's rows, in place. Its source line is not repeated here: the
+    page shows it once, above (own_source)."""
+    found = lines([{**row, "source_known": False} for row in rows], today=today)
+    for target in targets:
+        entry = found.get((target["kind"], target["key"], key, target["stance"])) or {}
+        target["confidence"], target["differs"] = entry.get("words"), entry.get("differs")
+        target["readings"] = entry.get("readings") or []
+
+
 def annotate(issue_key: str, evidence: list[dict[str, Any]], solutions: list[dict[str, Any]],
              rows: list[dict[str, Any]], today: date | None = None) -> None:
     """Put `confidence`, `differs`, `readings` and, for evidence with no link, `source_note` ("No source

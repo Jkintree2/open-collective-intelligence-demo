@@ -1,11 +1,17 @@
 {% extends "base.html" %}
-{% block title %}{% if issue %}Ask about this issue{% else %}Ask the database{% endif %} · {{ site_name }}{% endblock %}
+{% block title %}{% if issue %}Ask about this issue{% elif solution %}Ask about this solution{% elif evidence %}Ask about this evidence{% else %}Ask the database{% endif %} · {{ site_name }}{% endblock %}
 {% block content %}{% if issue %}
 <p class="crumbs"><a href="/issues">Issues</a> › <a href="/issues/{{ issue.key|urlencode }}">{{ issue.name or issue.key }}</a></p>
 <h1 id="ask-title">Ask about this issue</h1>
+{% elif solution %}
+<p class="crumbs"><a href="/issues">Issues</a> › <a href="/solutions/{{ solution.key|urlencode }}">{{ solution.name or solution.key }}</a></p>
+<h1 id="ask-title">Ask about this solution</h1>
+{% elif evidence %}
+<p class="crumbs"><a href="/issues">Issues</a> › <a href="/evidence/{{ evidence.key|urlencode }}">{{ evidence.name or evidence.key }}</a></p>
+<h1 id="ask-title">Ask about this evidence</h1>
 {% else %}
 <h1 id="ask-title">Ask the database</h1>
 <p class="ask-lead">Ask a question in plain words. The answer is built only from what people have posted here and the three guiding documents, and names where each part comes from.</p>
 {% endif %}
-{% set ask_issue = issue %}{% set ask_page = true %}{% set ask_result = result %}{% set ask_question = question %}{% set ask_earlier = earlier %}{% include "_ask.html" %}
+{% set ask_issue = issue %}{% set ask_solution = solution %}{% set ask_evidence = evidence %}{% set ask_page = true %}{% set ask_result = result %}{% set ask_question = question %}{% set ask_earlier = earlier %}{% include "_ask.html" %}
 {% endblock %}

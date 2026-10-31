@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{# GitHub issue 55: a piece of evidence's own page, laid out like an issue page. #}
+{% block title %}{{ evidence.name }} · {{ site_name }}{% endblock %}
+{% block content %}
+<p class="crumbs">{% for crumb in crumbs %}<a href="{{ crumb.href }}">{{ crumb.name }}</a> › {% endfor %}{{ evidence.name }}</p>
+<h1>{{ evidence.name }}</h1>
+<a class="write-issue" href="/?evidence={{ evidence.key|urlencode }}">Write about this evidence</a>
+{% if evidence.url %}<p class="source-line">Source: <a href="{{ evidence.url }}" target="_blank" rel="noopener noreferrer">{{ evidence.url }}</a></p>
+{% elif evidence.answers_key %}<p class="source-line">The writer's own words about <a href="/evidence/{{ evidence.answers_key|urlencode }}">{{ evidence.answers_name }}</a>.</p>
+{% elif source_note %}<p class="source-line">{{ source_note }}</p>{% endif %}
+{% if evidence.submitted_by %}<p class="claimed">Submitted by {{ evidence.submitted_by|join(", ") }}</p>{% endif %}
+{% if own_source %}<p class="counts">{{ own_source }}</p>{% endif %}
+<nav class="issue-menu" aria-label="On this page">
+  <a href="#speaks-to">Supports or refutes ({{ evidence.targets|length }})</a>
+  {% if evidence.evidence %}<a href="#evidence">Evidence ({{ evidence.evidence|length }})</a>{% endif %}
+  {% if switches().ask %}<a href="#ask-title">Ask</a>{% endif %}
+  <a href="#posts">Posts</a>
+</nav>
+
+<h2 id="speaks-to">What it supports or refutes</h2>
+<ul class="evidence">
+  {% for item in evidence.targets %}<li>{{ item.verb }} {{ item.kind }} of <a href="{{ item.href }}">{{ item.name }}</a>{% if item.kind == "solution" and item.home_name %} <span class="by">on {{ item.home_name }}</span>{% endif %}{% include "_confidence.html" %}</li>{% endfor %}
+</ul>
+{% if not evidence.targets %}<p class="empty">Nothing yet.</p>{% endif %}
+
+{% if evidence.evidence %}
+<h2 id="evidence">Evidence about this evidence</h2>
+{% set supports = evidence.evidence|selectattr("stance", "equalto", "SUPPORTS")|list %}
+{% set refutes = evidence.evidence|selectattr("stance", "equalto", "REFUTES")|list %}
+{% if supports %}<p class="ev-label">Supported by</p><ul class="evidence">{% for item in supports %}<li>{% include "_evidence_name.html" %}</li>{% endfor %}</ul>{% endif %}
+{% if refutes %}<p class="ev-label">Refuted by</p><ul class="evidence">{% for item in refutes %}<li>{% include "_evidence_name.html" %}</li>{% endfor %}</ul>{% endif %}
+{% endif %}
+
+{% if switches().ask %}{% set ask_evidence = evidence %}{% include "_ask.html" %}
+{% endif %}<section class="feed">
+  <h2 id="posts">Posts about this evidence</h2>
+  {% for post in posts %}
+  {% include "_post.html" %}
+  {% else %}
+  <p class="empty">No posts yet.</p>
+  {% endfor %}
+</section>
+{% endblock %}

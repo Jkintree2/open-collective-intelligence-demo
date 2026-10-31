@@ -25,8 +25,9 @@ def test_a_word_start_finds_names_and_posts(live_graph):
     query = search.lucene_query("hous")
     found = search.group(graph_search.search_names(query))
     assert [r["name"] for r in found["issues"]] == ["Housing costs"]
-    assert found["solutions"] == [{"name": "Social housing", "href": "/issues/housing%20costs"}]
-    assert found["evidence"] == [{"name": "Housing report", "href": "/issues/housing%20costs"}]
+    # GitHub issue 55: each opens its own page.
+    assert found["solutions"] == [{"name": "Social housing", "href": "/solutions/social%20housing"}]
+    assert found["evidence"] == [{"name": "Housing report", "href": "/evidence/report"}]
     assert [p["id"] for p in graph_search.search_posts(query)] == ["p1"]
     assert graph_search.search_names(search.lucene_query("zebra")) == []
 

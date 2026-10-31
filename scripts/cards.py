@@ -55,8 +55,11 @@ def main() -> int:
         if len(text) > 4000:
             print(f"Too long ({len(text)} characters); provider not called.")
             continue
+        # An issue's key, or (GitHub issue 55) {"solution": key} or {"evidence": key}.
+        about = case.get("writing_about")
+        about = next(iter(about.items())) if isinstance(about, dict) else about
         result = reading.extract(text, case.get("display_name", "Tester"), candidates, settings,
-                                 writing_about=case.get("writing_about"))
+                                 writing_about=about)
         if result is None:
             print("No result. Review provider status before continuing.")
             return 1

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{# GitHub issue 55: a solution's own page, laid out like an issue page. #}
+{% block title %}{{ solution.name }} · {{ site_name }}{% endblock %}
+{% block content %}{% if member %}<script src="/static/stances.js?v={{ asset_version }}" defer></script>{% endif %}
+<p class="crumbs">{% for crumb in crumbs %}<a href="{{ crumb.href }}">{{ crumb.name }}</a> › {% endfor %}{{ solution.name }}</p>
+<h1>{{ solution.name }}</h1>
+<a class="write-issue" href="/?solution={{ solution.key|urlencode }}">Write about this solution</a>
+<p class="claimed">Proposed by {{ solution.proposers }} {{ "person" if solution.proposers == 1 else "people" }}{% if solution.proposed_by %}: {{ solution.proposed_by|join(", ") }}{% endif %}</p>
+<nav class="issue-menu" aria-label="On this page">
+  <a href="#issues">Issues ({{ solution.issues|length }})</a>
+  <a href="#evidence">Evidence ({{ solution.evidence|length }})</a>
+  {% if switches().ask %}<a href="#ask-title">Ask</a>{% endif %}
+  <a href="#posts">Posts</a>
+</nav>
+
+<section class="solution solution-stances" id="{{ solution.key|anchor }}">
+  {% if member %}{% include "_stance.html" %}{% else %}<p class="counts">proposed by {{ solution.proposers }} · approved by {{ solution.approves }} · opposed by {{ solution.opposes }}</p>{% endif %}
+</section>
+
+<h2 id="issues">Proposed for</h2>
+<ul class="sub-issues plain">
+  {% for item in solution.issues %}<li><a href="/issues/{{ item.key|urlencode }}">{{ item.name }}</a>{% if item.parent_name %} <span class="by">part of {{ item.parent_name }}</span>{% endif %}</li>{% endfor %}
+</ul>
+
+<h2 id="evidence">Evidence about this solution</h2>
+{% set supports = solution.evidence|selectattr("stance", "equalto", "SUPPORTS")|list %}
+{% set refutes = solution.evidence|selectattr("stance", "equalto", "REFUTES")|list %}
+{% if supports %}<p class="ev-label">Supported by</p><ul class="evidence">{% for item in supports %}<li>{% include "_evidence_name.html" %}{% include "_confidence.html" %}</li>{% endfor %}</ul>{% endif %}
+{% if refutes %}<p class="ev-label">Refuted by</p><ul class="evidence">{% for item in refutes %}<li>{% include "_evidence_name.html" %}{% include "_confidence.html" %}</li>{% endfor %}</ul>{% endif %}
+{% if not solution.evidence %}<p class="empty">No evidence attached to this solution yet.</p>{% endif %}
+
+{% if switches().ask %}{% set ask_solution = solution %}{% include "_ask.html" %}
+{% endif %}<section class="feed">
+  <h2 id="posts">Posts about this solution</h2>
+  {% for post in posts %}
+  {% include "_post.html" %}
+  {% else %}
+  <p class="empty">No posts yet.</p>
+  {% endfor %}
+</section>
+{% endblock %}

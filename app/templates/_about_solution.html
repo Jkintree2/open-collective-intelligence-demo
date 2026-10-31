@@ -1,0 +1,18 @@
+{# GitHub issue 55: the write page opened from a solution's page (/?solution=<key>). It works as the issue summary
+   does: a position chosen here opens the card with the solution (about_issue.js), and the card starts from the
+   solution's first issue (data-issue-key). #}
+<section class="about-issue" id="about-issue" data-issue="{{ about.issue_name }}" data-issue-key="{{ about.issue_key }}">
+  <h2>Already in the database for {{ about.solution.name }}</h2>
+  {% if about.solution.issues %}<p class="counts">Proposed for {{ about.solution.issues|map(attribute="name")|join(", ") }}</p>{% endif %}
+  <div class="about-solution">
+    <p class="about-name">{{ about.solution.name }} <span class="counts">approved by {{ about.solution.approves }} · opposed by {{ about.solution.opposes }}</span></p>
+    <fieldset><legend>Your position</legend>
+      {% for value, label in (("none", "no position"), ("approve", "I approve this"), ("oppose", "I oppose this")) %}
+      <label class="check"><input type="radio" name="about-0-{{ about.solution.key }}" value="{{ value }}" data-solution="{{ about.solution.name }}"{% if value == "none" %} checked{% endif %}> {{ label }}</label>
+      {% endfor %}
+    </fieldset>
+  </div>
+  <p class="ev-label">Evidence</p>
+  {% if about.solution.evidence %}<ul class="evidence">{% for item in about.solution.evidence %}<li>{{ item.name }} ({{ "supports" if item.stance == "SUPPORTS" else "refutes" }})</li>{% endfor %}</ul>{% else %}<p class="empty">No evidence attached to this solution yet.</p>{% endif %}
+  <p><a href="{{ about.href }}">Open the full page for this solution</a></p>
+</section>

@@ -3,7 +3,9 @@ import pytest
 ISSUE = {"key": "veto", "name": "Security Council veto", "parent_key": None, "parent_name": None,
          "children": [], "created_at": None, "seed": False}
 # Today's "Proposed solutions" section for one solution, rendered from issue.html at phase-1 c48bfe5.
-TODAY_SOLUTIONS = ('<h2 id="solutions">Proposed solutions</h2>\n\n<section class="solution">\n  <h3>Abolish the veto</h3>\n'
+# Since GitHub issue 55 the solution's name links to its own page.
+TODAY_SOLUTIONS = ('<h2 id="solutions">Proposed solutions</h2>\n\n<section class="solution">\n'
+                   '  <h3><a href="/solutions/abolish%20the%20veto">Abolish the veto</a></h3>\n'
                    '  <p class="counts">proposed by 1 · approved by 2 · opposed by 1</p>\n  \n  \n  \n  \n'
                    '</section>\n\n\n')
 

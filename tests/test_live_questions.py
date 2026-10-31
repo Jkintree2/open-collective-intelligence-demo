@@ -15,6 +15,8 @@ FIRST = {"paragraphs": [{"text": "Two writers oppose the veto.", "refs": [1]}],
                       "href": "/issues/veto", "issue": "Security Council veto", "post_id": "post-1"}],
          "partial": None}
 NEWER = {**FIRST, "paragraphs": [{"text": "Three writers oppose the veto now.", "refs": [1]}]}
+# GitHub issue 55: a question asked on a solution's or a piece of evidence's page names it instead.
+NOT_ON_A_SOLUTION = {"solution_key": None, "solution_name": None, "evidence_key": None, "evidence_name": None}
 
 
 @pytest.fixture
@@ -42,7 +44,8 @@ def test_asked_again_the_question_keeps_its_id_and_shows_the_newest_answer(quest
     assert kept["answer"] == NEWER and kept["asked_at"] == NOW + timedelta(hours=1)
     assert kept["issue_name"] == "Security Council veto"
     assert graph_questions.recent("veto") == [{"text": "why the veto", "issue_key": "veto",
-                                               "issue_name": "Security Council veto", "id": first, "answered": True}]
+                                               "issue_name": "Security Council veto", "id": first, "answered": True,
+                                               **NOT_ON_A_SOLUTION}]
 
 
 def test_a_question_kept_before_answers_were_gets_an_id_when_asked_again(questions):
@@ -50,10 +53,10 @@ def test_a_question_kept_before_answers_were_gets_an_id_when_asked_again(questio
         "CREATE (:Question {key: '|who pays', text: 'Who pays?', issue_key: null, created_at: datetime($now), "
         "asked_at: datetime($now), asked: 1})", now=NOW.isoformat(), database_=questions.database())
     assert graph_questions.recent() == [{"text": "Who pays?", "issue_key": None, "issue_name": None, "id": None,
-                                         "answered": False}]
+                                         "answered": False, **NOT_ON_A_SOLUTION}]
     qid = graph_questions.keep("Who pays?", None, NOW + timedelta(hours=1), FIRST)
     assert graph_questions.recent()[0] == {"text": "Who pays?", "issue_key": None, "issue_name": None, "id": qid,
-                                           "answered": True}
+                                           "answered": True, **NOT_ON_A_SOLUTION}
 
 
 def test_question_ids_are_unique(questions):

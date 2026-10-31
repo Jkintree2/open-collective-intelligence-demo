@@ -22,7 +22,8 @@
   }
 
   // 04_interface.md: a post is "{name}, {date}: “{first 200 characters}” On {issue}"; a solution or a piece
-  // of evidence is "Solution: {name}. On {issue}" or "Evidence: {name}. On {issue}".
+  // of evidence is "Solution: {name}. On {issue}" or "Evidence: {name}. On {issue}", its name a link to its own
+  // page (GitHub issue 55).
   const KINDS = {solution: 'Solution: ', evidence: 'Evidence: '};
   function sourceLine(source) {
     const item = el('li');
@@ -37,10 +38,17 @@
       item.append(document.createTextNode('.'));
       return item;
     }
-    const words = source.kind === 'post'
-      ? source.name + (source.when ? ', ' + source.when : '') + (source.text ? ': \u201c' + source.text + '\u201d' : '')
-      : (KINDS[source.kind] || '') + source.name + '.';
-    item.append(document.createTextNode(words));
+    if (source.kind !== 'post' && source.page) {
+      item.append(document.createTextNode(KINDS[source.kind] || ''));
+      const link = el('a', '', source.name);
+      link.href = source.page;
+      item.append(link, document.createTextNode('.'));
+    } else {
+      const words = source.kind === 'post'
+        ? source.name + (source.when ? ', ' + source.when : '') + (source.text ? ': \u201c' + source.text + '\u201d' : '')
+        : (KINDS[source.kind] || '') + source.name + '.';
+      item.append(document.createTextNode(words));
+    }
     if (source.issue && source.href) {
       item.append(document.createTextNode(' On '));
       const link = el('a', '', source.issue);
@@ -70,6 +78,12 @@
     return block;
   }
 
+  // GitHub issue 55: the box on a solution's or a piece of evidence's page says which.
+  function on(box) {
+    if (box.dataset.solution) return {solution: box.dataset.solution};
+    return box.dataset.evidence ? {evidence: box.dataset.evidence} : {};
+  }
+
   async function submit(event) {
     const form = event.target;
     if (!form.matches || !form.matches('form.ask-form')) return;
@@ -94,7 +108,7 @@
     try {
       response = await fetch('/api/ask', {method: 'POST', signal: controller.signal,
         headers: {'Content-Type': 'application/json', Accept: 'application/json'},
-        body: JSON.stringify({question, earlier: asked.slice(-EARLIER), issue: box.dataset.issue || null})});
+        body: JSON.stringify({question, earlier: asked.slice(-EARLIER), issue: box.dataset.issue || null, ...on(box)})});
       data = await response.json();
     } catch {
       data = null;

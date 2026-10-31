@@ -21,8 +21,9 @@ import time
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Iterable
+from urllib.parse import quote
 
-from app import graph, graph_ask, graph_own_posts, graph_search, search
+from app import graph, graph_ask, graph_item_pages, graph_own_posts, graph_search, search
 from app.check import MONTHS, source_words
 from app.config import Settings
 from app.extract import call_model
@@ -55,10 +56,19 @@ class Source:
     href: str | None = None  # its issue page; a document's place on the About page
     issue: str | None = None  # that issue's name
     post_id: str | None = None  # a post's id in the record, kept with the answer and never sent to the page
+    page: str | None = None  # GitHub issue 55: a solution's or a piece of evidence's own page
 
     @property
     def when(self) -> str | None:
         return day_words(date.fromisoformat(self.date)) if self.date else None
+
+
+ITEM_PAGES = {"solution": "/solutions/", "evidence": "/evidence/"}
+
+
+def item_page(kind: str, key: str | None) -> str | None:
+    """GitHub issue 55: a solution's or a piece of evidence's own page; None for a post or a document."""
+    return ITEM_PAGES[kind] + quote(key, safe="") if kind in ITEM_PAGES and key else None
 
 
 def day_words(day: date) -> str:
@@ -157,10 +167,12 @@ def _ordered_posts(solutions: list[dict[str, Any]], posts: list[tuple[dict[str, 
 
 def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, Any]],
           evidence_rows: list[dict[str, Any]], posts: list[tuple[dict[str, Any], str]], *,
-          cap: int = DIGEST_CHARS, today: date | None = None) -> Digest:
+          cap: int = DIGEST_CHARS, today: date | None = None, asked_about: str | None = None) -> Digest:
     """The digest from rows already read. `scope` is the issue's name, or None for the whole record;
     `issues` are {key, name, parent, sub_issues, people, claims}; `solutions` Q40 and Q42 rows (repeats
-    dropped by key); `evidence_rows` Q41 rows; `posts` (Q6 row, the issue key it was read under)."""
+    dropped by key); `evidence_rows` Q41 rows; `posts` (Q6 row, the issue key it was read under).
+    `asked_about` names a solution or a piece of evidence asked about on its own page (GitHub issue 55),
+    whose issues then come first in `issues`."""
     first: dict[str, dict[str, Any]] = {}
     for row in solutions:
         first.setdefault(row["key"], row)
@@ -248,7 +260,7 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
             if (cited := cite([row["post_id"]] if row.get("post_id") else [])):
                 about["post"] = cited[0]
             entry.setdefault("about", []).append(about)
-        section: dict[str, Any] = {"asked_about": f"the issue {scope}" if scope else "the whole record",
+        section: dict[str, Any] = {"asked_about": asked_about or (f"the issue {scope}" if scope else "the whole record"),
                                    "issues": out_issues}
         if out_solutions:
             section["solutions"] = out_solutions
@@ -305,7 +317,8 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
         first = row["issues"][0] if row["issues"] else None
         sources[s_ids[row["key"]]] = Source(s_ids[row["key"]], "solution", row["name"],
                                             href=search.issue_href(first["key"]) if first else None,
-                                            issue=first["name"] if first else None)
+                                            issue=first["name"] if first else None,
+                                            page=item_page("solution", row["key"]))
     # A piece of evidence links to the first issue it is about, directly or through a solution.
     homes: dict[str, str] = {}
     solution_homes = {row["key"]: row["issues"][0]["key"] for row in solutions if row["issues"]}
@@ -319,13 +332,18 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
     for item in digest.get("evidence", []):
         target = homes.get(keys[item["id"]]) or home
         sources[item["id"]] = Source(item["id"], "evidence", item["name"],
-                                     href=search.issue_href(target) if target else None, issue=names.get(target))
+                                     href=search.issue_href(target) if target else None, issue=names.get(target),
+                                     page=item_page("evidence", keys[item["id"]]))
     return Digest(_dumps(digest), sources, len(kept), left_out, [issue["key"] for issue in issues])
 
 
 def _posts(key: str) -> list[tuple[dict[str, Any], str]]:
     """Q6 for one issue, each post with the date it was last edited (Q7's flags, asked for no one)."""
-    posts = graph.issue_posts(key, limit=POSTS_PER_ISSUE)
+    return _edited(graph.issue_posts(key, limit=POSTS_PER_ISSUE), key)
+
+
+def _edited(posts: list[dict[str, Any]], key: str) -> list[tuple[dict[str, Any], str]]:
+    """Each post with the date it was last edited, and the issue it is shown under."""
     flags = graph_own_posts.post_flags(None, [post["id"] for post in posts])
     for post in posts:
         post["edited_at"] = flags.get(post["id"], {}).get("edited_at")
@@ -349,6 +367,37 @@ def issue_digest(key: str, *, cap: int = DIGEST_CHARS, today: date | None = None
         return None
     return build(issue["name"], [issue], graph_ask.issue_stances(key), graph_ask.issue_evidence(key), _posts(key),
                  cap=cap, today=today)
+
+
+def solution_digest(key: str, *, cap: int = DIGEST_CHARS, today: date | None = None) -> Digest | None:
+    """GitHub issue 55: the digest for a question asked on a solution's page: the solution with its stances, its
+    evidence and the evidence on that, the posts that mention it (Q51), and its issues as context. None when the
+    solution is not in the record."""
+    rows = graph_ask.solution_stances(key)
+    if not rows:
+        return None
+    solution = rows[0]
+    issues = [issue for item in solution["issues"][:RECORD_ISSUES] if (issue := _issue(item["key"]))]
+    home = issues[0]["key"] if issues else ""
+    return build(solution["name"], issues, rows, graph_ask.solution_evidence(key),
+                 _edited(graph_item_pages.solution_posts(key, POSTS_PER_ISSUE), home),
+                 cap=cap, today=today, asked_about=f"the solution {solution['name']}")
+
+
+def evidence_digest(key: str, *, cap: int = DIGEST_CHARS, today: date | None = None) -> Digest | None:
+    """GitHub issue 55: the digest for a question asked on a piece of evidence's page: the piece with what it
+    supports or refutes, the evidence on it, the posts that mention it (Q53), and the issues it bears on as
+    context. None when the evidence is not in the record."""
+    page = graph_item_pages.evidence(key)
+    if page is None:
+        return None
+    homes = [target["key"] if target["kind"] == "issue" else target["home_key"] for target in page["targets"]]
+    issues = [issue for home in list(dict.fromkeys(h for h in homes if h))[:RECORD_ISSUES]
+              if (issue := _issue(home))]
+    first = issues[0]["key"] if issues else ""
+    return build(page["name"], issues, [], graph_ask.one_evidence(key),
+                 _edited(graph_item_pages.evidence_posts(key, POSTS_PER_ISSUE), first),
+                 cap=cap, today=today, asked_about=f"the evidence {page['name']}")
 
 
 def pick_issues(name_rows: list[dict[str, Any]], post_rows: list[dict[str, Any]],
