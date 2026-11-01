@@ -220,6 +220,16 @@ class ResolvedPayload:
         )
 
 
+# Query parameters that only track a click, never part of what a link points at: `utm_`, and since John's
+# link of 31 October 2026 (gad_source) the ad and social click ids. card.js linkKey drops the same.
+TRACKING = ("utm_", "gad_", "gclid=", "gbraid=", "wbraid=", "fbclid=", "msclkid=")
+
+
+def _kept_query(query: str) -> str:
+    """The query stays (a video's ?v= is the video); only tracking parameters go."""
+    return "&".join(part for part in query.split("&") if part and not part.startswith(TRACKING))
+
+
 def link_name(url: str | None) -> str:
     """The name of evidence given only as a link: its host without "www." and its path, so the same
     link always makes the same name (John, 22 Oct 2026: a link given is always evidence)."""
@@ -227,20 +237,19 @@ def link_name(url: str | None) -> str:
         return ""
     parsed = urlsplit(url)
     host = (parsed.hostname or "").removeprefix("www.")
-    # The query stays (a video's ?v= is the video); only tracking parameters go.
-    query = "&".join(part for part in parsed.query.split("&") if part and not part.startswith("utm_"))
+    query = _kept_query(parsed.query)
     return (host + parsed.path.rstrip("/") + ("?" + query if query else ""))[:120]
 
 
 def link_key(url: str | None) -> str:
     """The form in which two links count as the same (24 October 2026): scheme, a leading "www.",
-    a trailing slash and the fragment ignored, `utm_` parameters dropped and the rest of the query
+    a trailing slash and the fragment ignored, tracking parameters dropped and the rest of the query
     kept (a video's ?v= is the video). An arXiv abstract page and its PDF stay different."""
     if not url:
         return ""
     parsed = urlsplit(url)
     host = parsed.netloc.lower().removeprefix("www.")
-    query = "&".join(part for part in parsed.query.split("&") if part and not part.startswith("utm_"))
+    query = _kept_query(parsed.query)
     return host + parsed.path.rstrip("/") + ("?" + query if query else "")
 
 

@@ -29,6 +29,12 @@ test('a link the record holds gives the row the existing name, the badge and the
   assert.equal(note.hidden, false);
 });
 
+test('click tracking on a link the record holds still finds it (John, 31 October 2026: gad_source)', async () => {
+  const {name, badge} = await cardWith([{name: '', url: 'https://example.org/report?gad_source=1&gclid=abc&utm_medium=x', stance: 'supports', about: 'Flooding'}]);
+  assert.equal(name.value, 'Old report');
+  assert.equal(badge.textContent, 'existing');
+});
+
 test('a link not in the record is new and says nothing', async () => {
   const {name, badge, note} = await cardWith([{name: 'Flood study 2024', url: 'https://example.org/report?page=2', stance: 'supports', about: 'Flooding'}]);
   assert.equal(name.value, 'Flood study 2024');

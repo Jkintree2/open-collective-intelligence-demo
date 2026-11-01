@@ -271,6 +271,8 @@ def _render_index(
             # flag alone a row with no link still says so (revision round).
             "evidence_check": settings.evidence_check_enabled,
             "evidence_read": settings.evidence_check_enabled and bool(settings.llm_api_key),
+            # No language model: nothing reads a statement, so the card never says one is unread.
+            "reading_on": bool(settings.llm_api_key),
         },
         status_code=status_code,
     )

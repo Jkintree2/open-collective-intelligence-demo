@@ -35,7 +35,7 @@
   async function read() {
     dictation.stop();
     if (!text.value.trim() || [...text.value].length > 4000 || state.posting) return;
-    stopReading(); find('card').hidden = true; state.reading = true; text.readOnly = true;
+    stopReading(); find('card').hidden = true; state.reading = true; state.readTried = true; text.readOnly = true;
     dictate.disabled = true;
     find('read').textContent = 'Reading…'; find('read').disabled = true; find('stop').hidden = false;
     find('retry').hidden = true;

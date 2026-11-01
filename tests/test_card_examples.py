@@ -132,6 +132,27 @@ def test_evidence_named_only_by_its_link_still_joins():
     assert (row["key"], row["name"], row["existing"]) == ("reuters com world", "reuters.com/world", True)
 
 
+def test_a_card_posted_alone_names_a_link_only_piece_of_evidence_once():
+    # John, 31 October 2026: with no statement written, the card's lines become the statement, and a link
+    # with no words beside it showed twice in it ("submits evidence <link>", then "<link> refutes ...").
+    url = "https://www.aei.org/commentary/data-centers-make-easy-targets/?gad_source=1&gad_campaignid=9"
+    card = CardPayload.model_validate({"issues": [{"name": "Data centers problem"}], "evidence": [
+        {"name": "", "url": url, "stance": "refutes", "about": "Data centers problem"}]})
+    shown = prepared_card(card, Candidates.empty())
+    lines = sentences(shown, "John Kintree", resolve_payload(shown, Candidates.empty()))
+    assert lines == ["John Kintree claims Data centers problem",
+                     "John Kintree submits evidence Aei.org/commentary/data-centers-make-easy-targets, "
+                     "which refutes issue of Data centers problem"]
+    assert ". ".join(lines).lower().count("aei.org") == 1
+
+
+def test_a_link_with_a_name_of_its_own_keeps_its_two_lines():
+    card = CardPayload.model_validate({"issues": [{"name": "Flooding"}], "evidence": [
+        {"name": "Flood study 2024", "url": "https://example.org/new", "about": "Flooding"}]})
+    assert sentences(card, "Pat")[-2:] == ["Pat submits evidence Flood study 2024",
+                                           "Flood study 2024 supports issue of Flooding"]
+
+
 def test_a_short_typed_name_with_a_known_link_is_kept_not_dropped():
     assert _evidence("ab", "https://example.org/report")["key"] == "old report"
 
@@ -146,6 +167,8 @@ def test_evidence_can_be_about_evidence_matched_by_link():
 
 @pytest.mark.parametrize("url, expected", [
     ("https://www.youtube.com/watch?v=abc&utm_source=x", "youtube.com/watch?v=abc"),
+    ("https://www.aei.org/commentary/x/?gad_source=1&gad_campaignid=2&gclid=abc", "aei.org/commentary/x"),
+    ("https://example.org/a?fbclid=1&page=2&msclkid=3", "example.org/a?page=2"),
     ("http://Example.org/", "example.org"),
     ("https://arxiv.org/abs/1234.5678", "arxiv.org/abs/1234.5678"),
     ("https://arxiv.org/pdf/1234.5678", "arxiv.org/pdf/1234.5678"),

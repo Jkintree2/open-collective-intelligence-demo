@@ -273,4 +273,5 @@ def test_a_link_name_keeps_the_query_but_not_tracking():
     from app.payload import link_name
     assert link_name("https://www.youtube.com/watch?v=AbC&utm_source=x") == "youtube.com/watch?v=AbC"
     assert link_name("https://example.org/?utm_medium=mail") == "example.org"
+    assert link_name("https://www.aei.org/commentary/x?gad_source=1&gclid=abc") == "aei.org/commentary/x"
     assert link_name(None) == ""
