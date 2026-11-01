@@ -92,9 +92,13 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
     24 October its line was left out whenever the card added anything else).
     `resolved` is the card's ResolvedPayload; without it the card is resolved against an empty record.
     `both_sides` (issue 29, sides.statements) maps an evidence key to the writer's statement written
-    beside it: the page's line then takes the page's side, and the statement's lines follow the page's."""
+    beside it: the page's line then takes the page's side, and the statement's lines follow the page's.
+    Evidence named after its own link gets one line, "submits evidence <link>, which refutes …", so a card
+    posted with no statement names the link once (John, 31 October 2026: it showed twice)."""
+    from app.payload import link_name  # payload imports this module
+
     if resolved is None:
-        from app.payload import Candidates, resolve_payload  # payload imports this module
+        from app.payload import Candidates, resolve_payload
 
         resolved = resolve_payload(payload, Candidates.empty())
     name = clean_name(display_name) or "Anonymous"
@@ -111,15 +115,25 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
     def beside(item) -> dict | None:
         return both_sides.get(make_key(item.name) or "")
 
+    def about(item) -> str:
+        kind = kinds.get(make_key(item.about or "") or "")
+        return f"{TARGET_WORDS[kind] + ' ' if kind else ''}{item.about}"
+
+    def link_only(item) -> bool:
+        return bool(item.url) and make_key(item.name) == make_key(link_name(item.url)) and not beside(item)
+
     for item in payload.evidence:
+        if link_only(item):
+            rest.append(f"{name} submits evidence {item.name}, which {item.stance} {about(item)}")
+            continue
         rest.append(f"{name} submits evidence {item.name}")
         if (statement := beside(item)):
             rest.append(f"{name} submits evidence {statement['name']}")
     for item in payload.evidence:
-        kind = kinds.get(make_key(item.about or "") or "")
-        about = f"{TARGET_WORDS[kind] + ' ' if kind else ''}{item.about}"
+        if link_only(item):
+            continue
         statement = beside(item)
-        rest.append(f"{item.name} {statement['page'] if statement else item.stance} {about}")
+        rest.append(f"{item.name} {statement['page'] if statement else item.stance} {about(item)}")
         if statement:
-            rest.append(f"{statement['name']} {statement['stance']} {about}")
+            rest.append(f"{statement['name']} {statement['stance']} {about(item)}")
     return claims + rest

@@ -5,24 +5,26 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   const state = {
     candidates: {issues: {}, solutions: {}, evidence: {}}, candidatesReady: false, prefillConsumed: false,
     groups: {issues: [], solutions: [], evidence: []},
-    metadata: {source: 'manual'}, plain: false, reading: false, posting: false,
+    metadata: {source: 'manual'}, plain: false, reading: false, posting: false, readTried: false,
     // Positions chosen in the panel above the box, by solution key; a reading keeps them (issue 8).
     positions: new Map(),
     previewController: null, previewTimer: null, revision: 0, serial: 0,
     // The preview a tap on Post waits for, so a blur that re-runs it does not swallow the tap.
     previewPending: null, previewSettle: null
   };
+  const NO_STATEMENT = 'No statement written. The lines under "What this will add" will be posted as your statement.';
+  const UNREAD = 'Your statement has not been read yet. Press "Read my statement" to fill in the form from it.';
   const key = value => {
     let result = value.normalize('NFKC').toLowerCase().trim().replace(/^(the|a|an)( |$)/u, '');
     result = result.replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     return result.length >= 2 ? result : '';
   };
   // The form in which two links count as the same (payload.link_key, 24 October 2026): scheme, "www.",
-  // a trailing slash and the fragment ignored, utm_ parameters dropped, the rest of the query kept.
+  // a trailing slash and the fragment ignored, tracking parameters (payload.TRACKING) dropped, the rest of the query kept.
   const linkKey = value => {
     const match = /^https?:\/\/([^/?#]*)([^?#]*)(?:\?([^#]*))?/i.exec((value || '').trim());
     if (!match) return '';
-    const query = (match[3] || '').split('&').filter(part => part && !part.startsWith('utm_')).join('&');
+    const query = (match[3] || '').split('&').filter(part => part && !/^(utm_|gad_|gclid=|gbraid=|wbraid=|fbclid=|msclkid=)/.test(part)).join('&');
     return match[1].toLowerCase().replace(/^www\./, '') + match[2].replace(/\/+$/, '') + (query ? `?${query}` : '');
   };
   function node(tag, content, className) {
@@ -179,9 +181,12 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     const incomplete = payload.solutions.some(item => !item.for_issue) || payload.evidence.some(item => !item.about);
     const filled = payload.issues.length || payload.solutions.length || payload.evidence.length;
     const noStatement = !text.value.trim();
-    // A card filled in by hand is posted on its own: its sentences become the statement.
-    if (!card.hidden && noStatement && filled && !state.reading) find('card-message').textContent = 'No statement written. The lines under "What this will add" will be posted as your statement.';
-    else if (!card.hidden && find('card-message').textContent.startsWith('No statement written')) find('card-message').textContent = '';
+    if (noStatement) state.readTried = false;
+    // A card filled in by hand is posted on its own: its sentences become the statement. A statement written
+    // beside a card that was never read is posted unread, so the card says so (John's counter proposal, 31 October 2026).
+    const unread = !noStatement && !state.readTried && !state.plain && !state.editing && form.dataset?.noReading === undefined;
+    const message = find('card-message'), hint = card.hidden || state.reading ? '' : noStatement && filled ? NO_STATEMENT : unread ? UNREAD : '';
+    if (hint === NO_STATEMENT || [NO_STATEMENT, UNREAD].includes(message.textContent) || (hint && !message.textContent)) message.textContent = hint;
     if (card.hidden || !state.candidatesReady || (noStatement && !filled) || [...text.value].length > 4000 || incomplete || state.posting) {
       waiting?.(false); find('post').disabled = true; return;
     }

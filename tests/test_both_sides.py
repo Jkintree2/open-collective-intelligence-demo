@@ -178,7 +178,8 @@ def test_what_this_will_add_lists_the_page_on_its_side_and_the_statement_on_the_
     assert sentences(card, "Ada", payload, sides.statements(checks)) == [
         "Ada claims Climate change", f"Ada submits evidence {PAGE}", f"Ada submits evidence {name}",
         f"{PAGE} supports issue of Climate change", f"{name} refutes issue of Climate change"]
-    assert sentences(card, "Ada", payload)[-1] == f"{PAGE} refutes issue of Climate change"
+    # Without the statement beside it, the page named after its link is named once (31 October 2026).
+    assert sentences(card, "Ada", payload)[-1] == f"Ada submits evidence {PAGE}, which refutes issue of Climate change"
 
 
 @pytest.fixture
@@ -214,7 +215,7 @@ def test_the_preview_and_the_post_carry_both_sides_and_the_flag_off_carries_neit
     assert list(sides.statements(seen[-1]["checks"]).values())[0]["page"] == "supports"
     monkeypatch.setattr(main, "settings", replace(main.settings, evidence_check_enabled=False))
     said = client.post("/api/preview", json=body).json()["sentences"]
-    assert said[-1] == f"{PAGE} refutes issue of Climate change" and len(said) == 3
+    assert said[-1] == f"Ada submits evidence {PAGE}, which refutes issue of Climate change" and len(said) == 2
     assert client.post("/api/posts", json=body).status_code == 201
     assert seen[-1]["checks"] is None
 
