@@ -211,7 +211,8 @@ def show(cases: list[dict], names: Candidates | None, settings) -> int:
             return 1
         print(json.dumps({"payload": result.payload.model_dump(), "model": result.model,
                           "latency_ms": result.latency_ms}, ensure_ascii=False, indent=2))
-        print("\n".join(sentences(result.payload, case.get("display_name", "Tester"))))
+        print("\n".join(sentences(reading.prepared_card(result.payload, candidates), case.get("display_name", "Tester"),
+                                   reading.resolve_payload(result.payload, candidates))))
     print("\nHuman review required: record pass/fail for every case run; all three variants must pass case 6.")
     return 0
 

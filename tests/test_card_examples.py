@@ -87,6 +87,15 @@ def test_a_solution_proposed_for_an_existing_issue_and_approved_is_one_line():
     assert lines({"issues": [{"name": "Erosion"}], "solutions": [{**approved, "for_issue": "Erosion"}]}) == [
         "John Kintree claims Erosion", "John Kintree proposes solution Seawalls", "Erosion has proposed Seawalls",
         "John Kintree approves Seawalls"]
+    # Two issues, one new: only the approved proposal for the issue already in the database joins, and only that
+    # issue's claim line goes.
+    both = [{"name": "Erosion"}, {"name": "Coastal flooding"}]
+    assert lines({"issues": both, "solutions": [{**approved, "for_issue": "Erosion"}]}) == [
+        "John Kintree claims Erosion", "John Kintree claims about existing issue Coastal flooding",
+        "John Kintree proposes solution Seawalls", "Erosion has proposed Seawalls", "John Kintree approves Seawalls"]
+    assert lines({"issues": both, "solutions": [approved]}) == [
+        "John Kintree claims Erosion",
+        "John Kintree proposes and approves solution of Seawalls for the issue of Coastal flooding"]
     # A solution already listed under the issue is a position only, as before (GitHub issue 4).
     assert lines({"issues": [{"name": "Harbour dredging delays"}],
                   "solutions": [{**approved, "for_issue": "Harbour dredging delays"}]}) == ["John Kintree approves Seawalls"]

@@ -114,7 +114,7 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
     kinds = {row["target_key"]: row["target_label"] for row in resolved.evidence}
 
     def joined(item) -> bool:
-        # An issue not on the card is one the record holds (resolve_payload keeps no other).
+        # On a prepared card an issue not on the card is one the record holds (resolve_payload keeps no other).
         key = make_key(item.for_issue or "")
         return (not item.stance_only and item.stance == "approve" and key is not None
                 and (key in existing or key not in on_card))
