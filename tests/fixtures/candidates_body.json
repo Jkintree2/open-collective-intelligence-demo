@@ -1,0 +1,5 @@
+{"issues": {"library opening hours": {"name": "Library opening hours", "parent_key": null}},
+ "solutions": {"open the library on sundays": "Open the library on Sundays"},
+ "evidence": {"2025 reader survey": "2025 reader survey"},
+ "solution_issues": {"open the library on sundays": ["Library opening hours"]},
+ "evidence_links": {}}

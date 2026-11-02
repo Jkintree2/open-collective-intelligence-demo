@@ -697,3 +697,30 @@ A context `world` in `scripts/cards.py` mirrors the live record's shape (the see
 | 31 | 4 | now right: the reason refutes the abolish solution in every run (before, it supported it) |
 | every other case | 1 | as expected, John's paragraph (case 2) with the UDHR and the Earth Charter |
 
+
+## The reading-quality loop (added 2 November 2026)
+
+A known kind of misreading is caught by code every time; nothing promises the language model never misreads. The loop keeps that true as the reading changes and as the model drifts: every case has machine checks, each is run several times against a pass mark, before any change to the reading and every week, and readings the writers correct on the site become new cases.
+
+**Checks.** Each case in `tests/extraction_cases.json` keeps its `expect` sentence for a person to read and has `checks` for the runner (`scripts/case_checks.py`). Every check of a case must hold on the card the reading returns (after `prepared_card`, so the stance guard is included). A NAME is a string matched by its key, or a list of words that must all be in the name. In an evidence check's `about` a list names alternatives instead.
+
+| Check | Holds when |
+|---|---|
+| `{"found": true}`, `{"language_ok": false}` | the card's flag is that |
+| `{"count": "issues", "is": 1}` (or `max`, `min`; counts `issues`, `solutions`, `evidence`, `stances`, `new_issues`) | the count meets it; `stances` are solutions with approve or oppose, `new_issues` issue rows not already in the record |
+| `{"issue": NAME}` | an issue row matches |
+| `{"solution": NAME, "stance": "approve", "for_issue": NAME}` (stance and issue optional; stance may be a list) | a solution row matches every field given |
+| `{"evidence": NAME, "url": null, "stance": "supports", "about": NAME}` (each optional) | an evidence row matches every field given |
+| `{"not": CHECK}`, `{"any": [CHECKS]}`, `{"all": [CHECKS]}` | the check fails; one holds; all hold |
+
+Where `expect` allows two readings, the check is an `any`. A check is never loosened to fit a misreading. Case 10 is `"checks": "local"`: no call is made, and it is met when its text is over the length limit.
+
+**Pass marks.** `python -m scripts.cards --check` runs each case 3 times (`--runs`), four calls at a time, and a case meets its mark when every run passes. A case known to wobble may carry `"pass": 2` with a `"pass_note"` saying why. A run with no answer (provider down, timeout) never passes. Exit 0: every case met its mark; 1: a case missed (or, with `--against`, is worse); 2: no `LLM_API_KEY`; 3: a case missed only for runs with no answer.
+
+**Paired runs.** `--against <commit>` loads that commit's `app/extract.py` (rules and guards) beside today's and sends both readings' runs of a case at the same moment, because the model's answers drift within hours. It prints `now 3/3   <commit> 3/3` and marks a case `WORSE` where today's passes fewer runs. Before any change to the reading rules or a guard: run every case against `origin/main`; no case may be worse, and the new case for the change must meet its mark. The older reading runs with today's `app/payload.py`; the runner says so when that file differs.
+
+**The live record's names.** `--names <file>` reads the body of `GET /api/candidates` (signed in, read only; no reading, no write), saved outside the repository: the repository is public and the names are the testers'. Cases with `"context": "live"` read against it, and are skipped without it. Cases taken from posts on the site keep the writers' words, so they live in a private file passed with `--cases` (ids `L1`, `L2` and on; an id may not repeat). A case reaches this repository only reworded, when it backs a code guard.
+
+**Every week**, the repository's cases and the private ones run against the latest names, and only a miss is reported.
+
+**Readings the writers changed.** When a writer changes what the reading found and posts, that post is a candidate case. Each one is read: a misreading becomes a case with checks for what the writer posted; a writer who added more, or changed their mind, does not. When two or more misreadings share a pattern, the pattern gets a code guard in `app/extract.py`, the way `_stances_on_what_is_named` was written: offline tests on fixed cards first, then every case paired against `origin/main`.
