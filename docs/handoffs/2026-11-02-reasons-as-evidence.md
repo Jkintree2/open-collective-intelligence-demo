@@ -1,6 +1,6 @@
 # Handoff, 2 November 2026: no sub-issues, reasons as evidence
 
-John, 1 November 2026: a reason someone gives, such as opposing data centers because they raise the price of electricity, is evidence, not a sub-issue. The site stops identifying sub-issues: a statement is read into issues, solutions and evidence only, the "Part of" choice leaves the form and the tidy tools, and Merge stays. Branch `reasons-as-evidence`, not merged.
+John, 1 November 2026: a reason someone gives, such as opposing data centers because they raise the price of electricity, is evidence, not a sub-issue. The site stops identifying sub-issues: a statement is read into issues, solutions and evidence only, the "Part of" choice leaves the form and the tidy tools, and Merge stays. Branch `reasons-as-evidence`, merged on Eston's go on 2 November 2026 (PR 63, `eda3161`, live 11:51 UTC).
 
 ## Built
 
@@ -32,6 +32,6 @@ A fresh review of the whole branch found nothing blocking (suites green on its s
 
 ## Open
 
-* **Eston's go to merge.** Merging deploys John's live site. After it, run `scripts.smoke` and open a live issue page and the Write page, reading only.
-* **An older fault found by case 29**, not caused by this change: "I oppose the Security Council veto" is read as opposing the solution "Limit or abolish the Security Council veto". The prompt before this change does the same. It needs its own fix to the stance rules.
+* Merged and live on 2 November 2026: smoke 25 of 25; the live Ask page, an issue page and the Write card read back as built.
+* **An older fault found by case 29**, not caused by this change: "I oppose the Security Council veto" is read as opposing the solution "Limit or abolish the Security Council veto". The prompt before this change does the same. Fixed on the card by the stance guard (`docs/handoffs/2026-11-02-stance-guard.md`), since every change to the stance rules cost case 2 its evidence.
 * The tidy box was checked through its route tests and the live tests, not in a browser: the local accounts' passwords are not known here.

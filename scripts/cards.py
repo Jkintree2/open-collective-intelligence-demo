@@ -44,9 +44,13 @@ def main() -> int:
             candidates.issues["drug dealing problem"] = {"name": "Drug dealing problem", "parent_key": None}
             candidates.solutions["decriminalize drug sales"] = "Decriminalize drug sales"
             candidates.solutions["treat drug use as medical issue"] = "Treat drug use as medical issue"
-        if case["context"] == "stlouis":
+        if case["context"] in ("stlouis", "moratorium"):
             for name in ("Data centers", "Downtown St Louis revitalization"):
                 candidates.issues[make_key(name)] = {"name": name, "parent_key": None}
+        if case["context"] == "moratorium":  # John's live moratorium solution, 2 November 2026, on top of stlouis
+            name = "Moratorium on building new data centers"
+            candidates.solutions[make_key(name)] = name
+            candidates.solution_issues[make_key(name)] = ["Data centers"]
         if case["context"] == "consensus":  # John's live consensus solution, 31 October 2026, on top of the seed
             name = "Methods of collective decision making"
             candidates.issues[make_key(name)] = {"name": name, "parent_key": None}

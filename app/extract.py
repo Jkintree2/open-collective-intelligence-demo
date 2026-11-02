@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from app.config import Settings
 from app.payload import Candidates, CardPayload, IssueItem, SolutionItem, EvidenceItem, ResolvedPayload, resolve_payload
 from app.principles import guiding_block
-from app.text import NAME_MAX
+from app.text import NAME_MAX, clean_name, make_key
 
 log = logging.getLogger("oci")
 last_model_error: dict[str, Any] | None = None
@@ -156,7 +156,69 @@ def parse_payload(content: str) -> CardPayload:
     return CardPayload.model_validate(data)
 
 
+# 2 November 2026 (case 29): "I oppose the Security Council veto" was read as opposing "Limit or abolish the
+# Security Council veto". Every change to the reading rules that cured it cost John's supreme law paragraph its
+# evidence (05_extraction.md, "The stance guard"), so the reading's card is corrected here instead: a stance on
+# an existing solution that would change something is dropped when the statement takes a stance in words
+# (STANCE_WORDS) on that something and uses no change word at all. A statement about ending, stopping or getting
+# rid of something, or plain advocacy in other words ("We have to quit burning fossil fuels"), is read as the
+# model read it. Each word lists its forms, so "endorse" is not "end".
+STANCE_WORDS = re.compile(r"\b(?:oppos\w*|against|support\w*|approv\w*|favou?r\w*|endors\w*|reject\w*|"
+                          r"disagree\w*|agree\w*)\b", re.IGNORECASE)
+CHANGE_WORDS = re.compile(r"\b(?:limit\w*|abolish\w*|abolition|end|ends|ended|ending|rid|ban|bans|banned|banning|"
+                          r"stop\w*|reduc\w*|eliminat\w*|remov\w*|repeal\w*|cut|cuts|cutting|prohibit\w*|"
+                          r"restrict\w*|cap|caps|capped|capping|curb\w*|halt\w*|outlaw\w*|scrap|scraps|scrapped|"
+                          r"scrapping|moratori\w*)\b", re.IGNORECASE)
+COMMON_WORDS = {"with", "from", "that", "this", "their", "more", "such", "into", "over", "every"}
+
+
+def _words(text: str) -> set[str]:
+    """Words of four letters or more with a plural taken off, so "vetoes" meets "veto"."""
+    words = set()
+    for word in re.findall(r"[a-z0-9]+", text.lower()):
+        if word.endswith("oes"):
+            word = word[:-2]
+        elif word.endswith("s") and len(word) > 4:
+            word = word[:-1]
+        if len(word) >= 4:
+            words.add(word)
+    return words - COMMON_WORDS
+
+
+def _stances_on_what_is_named(payload: CardPayload, candidates: Candidates, text: str) -> CardPayload:
+    """The reading's solutions without a stance it moved from what the statement names to a solution that would
+    change it. The solution's issue stays, so the writer still claims it."""
+    if not STANCE_WORDS.search(text) or CHANGE_WORDS.search(text):
+        return payload
+    words, kept, dropped = _words(text), [], []
+    for item in payload.solutions:
+        changed = CHANGE_WORDS.sub(" ", item.name)
+        if (item.stance != "none" and changed != item.name and _words(changed) & words
+                and make_key(clean_name(item.name)) in candidates.solutions):
+            dropped.append(item)
+        else:
+            kept.append(item)
+    if not dropped:
+        return payload
+    log.info(json.dumps({"event": "stance_dropped", "count": len(dropped)}))
+    issues = list(payload.issues)
+    for item in dropped:
+        # The issue the model gave when the record holds it, else the solution's own: never a name it made up.
+        home = make_key(clean_name(item.for_issue or ""))
+        if home not in candidates.issues:
+            linked = candidates.solution_issues.get(make_key(clean_name(item.name)), [])
+            home = make_key(clean_name(linked[0])) if linked else None
+        held = {make_key(clean_name(row.name)) for row in issues}
+        if home in candidates.issues and home not in held:
+            issues.append(IssueItem(name=candidates.issues[home]["name"]))
+    return payload.model_copy(update={"solutions": kept, "issues": issues})
+
+
 def prepared_card(payload: CardPayload, candidates: Candidates, text: str | None = None) -> CardPayload:
+    """The card shown for `payload`. With `text` it is the reading's card: links the statement does not hold are
+    removed, and since 2 November 2026 so is a stance moved onto the wrong solution (the stance guard above)."""
+    if text is not None:
+        payload = _stances_on_what_is_named(payload, candidates, text)
     resolved = resolve_payload(payload, candidates)
     names = {key: item["name"] for key, item in candidates.issues.items()}
     names.update(candidates.solutions)
