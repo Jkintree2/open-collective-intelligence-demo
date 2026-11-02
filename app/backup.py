@@ -138,7 +138,7 @@ def properties(value):
                    "relationship", "kind", "details", "check_quote", "source_type",
                    "source_published", "check_claim", "check_reason", "check_quote_at",
                    "place_country", "place_area", "place_area_key", "answers", "issue_key", "answer",
-                   "solution_key", "evidence_key"} \
+                   "solution_key", "evidence_key", "reading_payload"} \
                 and not isinstance(item, str):
             raise InvalidBackup("A text property has the wrong type.")
         if key in {"seed", "anonymous", "admin", "active", "agreed", "source_primary",

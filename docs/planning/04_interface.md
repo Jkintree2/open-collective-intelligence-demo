@@ -1302,3 +1302,12 @@ The box is the issue page's box (`_ask.html`), scoped to the solution or the evi
 > **Questions asked about this solution** or **Questions asked about this evidence**
 
 On Ask the database, such a question says where it was asked: "On {solution or evidence name}", linked. Its earlier answer says "Asked about {name}", linked, and Ask again asks it there again. Without JavaScript the answer comes on the Ask page under "Ask about this solution" or "Ask about this evidence", with the breadcrumb "Issues › {name}".
+
+### Back room: readings changed by their writers (added 2 November 2026)
+
+Under the language model line, a link: "Readings changed by their writers", to `/admin/readings` (behind the back room password, like the rest of the back room). Client facing:
+
+> **Readings changed by their writers**
+> Posts where the writer changed what the language model found before posting, newest first. Each one is looked at, and a misreading is added to the tests the reading is checked against.
+
+Each post: "{name or Anonymous}, {2 November 2026}" (the date of its latest change), the statement, then "Taken out:" and "Added:" with one line each, in the card's verbs without the name ("opposes Limit or abolish the Security Council veto"). A post from before this list began (one kept with no reading of its own) adds "Worked out from the database as it is now." Under the list, when any: "{n} older readings could not be read again." (one: "1 older reading could not be read again."). Nothing listed: "No writer has changed a reading yet." Last line: a link "Back room".

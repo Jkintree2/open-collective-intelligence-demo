@@ -404,3 +404,14 @@ def test_write_page_renders_as_before_when_not_editing(member_app, monkeypatch):
     member_app.sign_in()
     page = member_app.client.get("/").text
     assert re.search(r'about_issue\.js\?v=[^"]*" defer></script>\n\n<section class="feed" id="feed">', page)
+
+
+def test_saving_an_edit_keeps_what_its_reading_found(saving):
+    import json
+
+    raw = json.dumps({"found": True, "issues": [{"name": "Sea levels"}], "solutions": [], "evidence": []})
+    card = {"text": "Coastal flooding matters", "issues": [{"name": "Coastal flooding"}]}
+    assert saving.client.post("/api/posts/mine-1", json={**card, "source": "model", "extraction_raw": raw}).status_code == 200
+    assert [row["name"] for row in json.loads(saving.saved[0][3]["reading_payload"])["issues"]] == ["Sea levels"]
+    assert saving.client.post("/api/posts/mine-1", json=card).status_code == 200
+    assert saving.saved[1][3]["reading_payload"] is None

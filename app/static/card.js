@@ -293,9 +293,10 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     extras.forEach(extra => extra.opened?.(payload, meta));
     changed();
   }
-  // Posting the text with no structure: the card opens with its issue rows emptied.
+  // Posting the text with no structure: the card opens with its issue rows emptied. What the reading found stays
+  // with the post, so the back room lists a reading its writer set aside (2 November 2026).
   function openPlain() {
-    openCard({}, '', {source: 'manual'}, false); state.groups.issues.forEach(row => { row.name.value = ''; }); state.plain = true; changed();
+    openCard({}, '', {...state.metadata, source: 'manual'}, false); state.groups.issues.forEach(row => { row.name.value = ''; }); state.plain = true; changed();
   }
   function noteShortened() {
     const note = find('card-note');

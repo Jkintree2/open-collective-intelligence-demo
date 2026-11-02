@@ -93,6 +93,10 @@ Next to each person are the buttons that fit:
 
 If one of these emails does not go, the page says so. Try again in a minute. One person can be sent only a few emails an hour, so nobody's inbox fills up by mistake.
 
+### Readings changed by their writers
+
+Under the language model line, **Readings changed by their writers** lists each post where the writer changed what the language model found before posting, newest first, with what was taken out and what was added. Each one is looked at, and a misreading is added to the tests the reading is checked against. Posts written before this list began are worked out from the database as it is now, so an issue renamed or merged since then can show up there too. The form's own help shows up as well, such as the issue of the page the writer came from, or the side a link was found to take.
+
 ### Sending email
 
 The **Sending email** line reads "No problems recorded." while all is well. If it shows a date, the last email could not be sent. Try once more. If it keeps happening, Google has most likely withdrawn the permission to send from your Gmail. See "Sending email from your Gmail" below.

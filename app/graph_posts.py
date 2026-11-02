@@ -119,13 +119,15 @@ def merge_post(
     one_stance: bool = False,
     checks: dict[str, dict[str, Any]] | None = None,
     place: dict[str, str | None] | None = None,
+    reading_payload: str | None = None,
 ) -> str:
     """Merge one post and everything it adds, in one write transaction. Returns the post id.
 
     `created_at` and `post_id` are for the seed only; the app never passes them.
     `one_stance` is True for a post by an account, so its stance replaces the person's opposite
     one (D7, from sub-plan C2 on). `place` is Phase 3's (payload.resolve_place, only with
-    PLACES_ENABLED): None writes no place.
+    PLACES_ENABLED): None writes no place. `reading_payload` is what the reading found, resolved
+    as `payload` is (readings.reading_payload), for the back room's readings changed by their writers.
     """
     post_id = post_id or str(uuid.uuid4())
     now = created_at or datetime.now(timezone.utc)
@@ -147,6 +149,7 @@ def merge_post(
             display_name=display_name,
             source=source,
             extraction_raw=extraction_raw,
+            reading_payload=reading_payload,
             model=model,
             latency_ms=latency_ms,
             payload=payload.as_json(),

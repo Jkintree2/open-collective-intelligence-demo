@@ -322,3 +322,48 @@ def test_back_room_sends_log_no_address_name_or_link(back_room, caplog, monkeypa
     for private in (secret, "joined@example.org", "Joined Person"):
         assert private not in caplog.text
     assert '"event": "back_room_people"' in caplog.text and '"action": "password_link"' in caplog.text
+
+
+READINGS_LEAD = ("Posts where the writer changed what the language model found before posting, newest first. Each one "
+                 "is looked at, and a misreading is added to the tests the reading is checked against.")
+
+
+def changed_row(**fields):
+    from app.extract import CardPayload, resolve_payload
+    from app.payload import Candidates
+
+    def resolved(stance):
+        card = CardPayload.model_validate({"found": True, "solutions": [
+            {"name": "Limit the veto", "for_issue": "Veto", "stance": stance}], "issues": [{"name": "Veto"}]})
+        return resolve_payload(card, Candidates()).as_json()
+    return {"id": "p1", "text": "I oppose the veto.", "display_name": None, "created_at": NOW, "edited_at": None,
+            "payload": resolved("approve"), "extraction_raw": "{}", "reading_payload": resolved("oppose"), **fields}
+
+
+def readings_page(back_room, monkeypatch, rows):
+    from app.payload import Candidates
+    monkeypatch.setattr("app.graph_readings.posts_with_readings", lambda limit=200: rows)
+    monkeypatch.setattr("app.graph.candidates", lambda: Candidates())
+    return back_room.client.get("/admin/readings", auth=AUTH)
+
+
+def test_the_readings_page_needs_the_back_room_password(back_room, monkeypatch):
+    page = readings_page(back_room, monkeypatch, [])
+    assert back_room.client.get("/admin/readings").status_code == 401
+    assert page.status_code == 200 and page.headers["cache-control"] == "no-store"
+    assert "<h1>Readings changed by their writers</h1>" in page.text
+    assert READINGS_LEAD in page.text and "No writer has changed a reading yet." in page.text
+
+
+def test_the_readings_page_lists_what_a_writer_changed(back_room, monkeypatch):
+    unreadable = changed_row(id="p2", reading_payload=None, extraction_raw="not a reading")
+    page = readings_page(back_room, monkeypatch, [changed_row(), unreadable]).text
+    assert "Anonymous, " in page and "<blockquote>I oppose the veto.</blockquote>" in page
+    assert "Taken out:" in page and "<li>opposes Limit the veto</li>" in page
+    assert "Added:" in page and "<li>approves Limit the veto</li>" in page
+    assert "1 older reading could not be read again." in page
+    assert "No writer has changed a reading yet." not in page and "Worked out from the database" not in page
+
+
+def test_the_back_room_links_to_the_readings_page(back_room):
+    assert '<a href="/admin/readings">Readings changed by their writers</a>' in back_room.page()

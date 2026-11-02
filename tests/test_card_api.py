@@ -302,3 +302,23 @@ def test_the_reading_card_has_no_stance_moved_onto_a_solution_that_would_end_wha
                                                "display_name": "Tester"})
     assert response.status_code == 201
     assert writes[0][1]["edited"] is False
+
+
+def test_a_post_keeps_what_the_reading_found_beside_what_was_posted(api):
+    import json
+
+    client, main, writes = api
+    raw = json.dumps({"found": True, "issues": [{"name": "World"}], "solutions": [], "evidence": []})
+    response = client.post("/api/posts", json={"found": True, "issues": [{"name": "Veto"}], "solutions": [],
+                                               "evidence": [], "text": "The veto, and the world.", "source": "model",
+                                               "extraction_raw": raw, "display_name": "Tester"})
+    assert response.status_code == 201
+    assert [row["key"] for row in json.loads(writes[0][1]["reading_payload"])["issues"]] == ["world"]
+    assert [row["key"] for row in json.loads(writes[0][0][5].as_json())["issues"]] == ["veto"]
+
+
+def test_a_post_without_a_reading_keeps_none(api):
+    client, main, writes = api
+    response = client.post("/api/posts", json={"found": True, "issues": [{"name": "Veto"}], "solutions": [],
+                                               "evidence": [], "text": "The veto.", "display_name": "Writer"})
+    assert response.status_code == 201 and writes[0][1]["reading_payload"] is None

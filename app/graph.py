@@ -64,7 +64,7 @@ MATCH (p:Person {key: $person_key})
 CREATE (post:Post {
   id: $post_id, text: $text, created_at: $now,
   anonymous: $anonymous, display_name: $display_name, seed: $seed,
-  source: $source, extraction_raw: $extraction_raw,
+  source: $source, extraction_raw: $extraction_raw, reading_payload: $reading_payload,
   model: $model, latency_ms: $latency_ms, payload: $payload,
   place_country: $place_country, place_area: $place_area, place_area_key: $place_area_key
 })
