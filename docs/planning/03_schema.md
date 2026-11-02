@@ -1677,3 +1677,23 @@ RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS i
        q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name
 ORDER BY q.asked_at DESC
 ```
+
+## Readings changed by their writers (added 2 November 2026)
+
+For the reading-quality loop (`05_extraction.md`): the back room lists the posts whose writer changed what the language model found before posting, so a misreading can become a test case.
+
+* `Post` gains `reading_payload`: what the reading found, as JSON text in the shape of `payload` (the reading's card prepared as `/api/extract` prepared it, with the stance guard, then resolved as the post is). Written by `/api/posts` whenever the post carries `extraction_raw`, and by an edit as `extraction_raw` is (this edit's reading, resolved as the edit is, without the post's own proposal links; otherwise null). Null for a manual post, the seed, and every post before this date. A copy carries it as text.
+
+**Q55. Posts with a reading** (`app/graph_readings.py`), newest change first, at most 200. It never reads the `Person` behind a post, so an anonymous post stays anonymous (`display_name` is null).
+
+```cypher
+MATCH (post:Post)
+WHERE post.extraction_raw IS NOT NULL AND coalesce(post.seed, false) = false
+RETURN post.id AS id, post.text AS text, post.display_name AS display_name, post.created_at AS created_at,
+       post.edited_at AS edited_at, post.payload AS payload, post.extraction_raw AS extraction_raw,
+       post.reading_payload AS reading_payload
+ORDER BY coalesce(post.edited_at, post.created_at) DESC
+LIMIT $limit
+```
+
+`app/readings.py` keeps the rows whose reading and post differ: each side is turned into lines in the display verbs ("claims", "proposes solution … for …", "approves", "opposes", "submits evidence …, which supports issue of …"), and a post is listed when the two sets differ. A post without `reading_payload` (before this date) has its reading worked out from `extraction_raw` against the names as they are now, and says so; one whose reading cannot be read again is counted, not listed.

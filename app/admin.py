@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from app import config, extract, graph, mailer
+from app import config, extract, graph, graph_readings, mailer, readings
 from app import routes_admin_people as people
 from app.auth import make_admin_csrf, require_admin, require_admin_mutation
 from scripts import seed
@@ -82,6 +82,15 @@ def page(request: Request):
         "notice": NOTICES.get(done),
         "people_notice": people.NOTICES.get(done) if with_accounts else None,
     }, headers={"Cache-Control": "no-store"})
+
+
+@router.get("/readings")
+def readings_page(request: Request):
+    """Posts whose writer changed what the language model found (04_interface.md, "Back room additions")."""
+    from app.main import templates
+    posts, unreadable = readings.page_rows(graph_readings.posts_with_readings(), graph.candidates())
+    return templates.TemplateResponse(request=request, name="admin_readings.html", context={
+        "posts": posts, "unreadable": unreadable}, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/export.json")

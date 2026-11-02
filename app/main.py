@@ -54,7 +54,7 @@ from app.members import (
 from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app.routes_item_pages import about_evidence, about_solution, evidence_href, solution_href
-from app import graph_own_posts
+from app import graph_own_posts, readings
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
 from app import check, confidence, graph_accounts, graph_evidence, graph_item_pages, graph_places, places, search, sides, tidy
 
@@ -643,7 +643,8 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 extraction_raw=data.extraction_raw, model=data.model,
                                 latency_ms=data.latency_ms,
                                 request_id=_request_id(request), edited=edited,
-                                one_stance=settings.accounts_enabled, checks=checks, place=card_place(data))
+                                one_stance=settings.accounts_enabled, checks=checks, place=card_place(data),
+                                reading_payload=readings.reading_payload(data.extraction_raw, candidates, data.text))
     response = JSONResponse({"id": post_id, "message": "Added to the database"}, status_code=201)
     if member is None:
         if anonymous:

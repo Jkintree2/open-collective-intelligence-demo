@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Readings changed by their writers · {{ site_name }}{% endblock %}
+{% block content %}
+<h1>Readings changed by their writers</h1>
+<p>Posts where the writer changed what the language model found before posting, newest first. Each one is looked at, and a misreading is added to the tests the reading is checked against.</p>
+{% for post in posts %}
+<article class="post">
+  <p>{{ post.name }}, {{ post.when }}</p>
+  <blockquote>{{ post.text }}</blockquote>
+  {% if post.taken_out %}<p>Taken out:</p>
+  <ul>{% for line in post.taken_out %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
+  {% if post.added %}<p>Added:</p>
+  <ul>{% for line in post.added %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
+  {% if post.worked_out_today %}<p class="quiet">Worked out from the database as it is now.</p>{% endif %}
+</article>
+{% else %}<p>No writer has changed a reading yet.</p>{% endfor %}
+{% if unreadable %}<p class="quiet">{{ unreadable }} older reading{{ "s" if unreadable != 1 }} could not be read again.</p>{% endif %}
+<p><a href="/admin">Back room</a></p>
+{% endblock %}

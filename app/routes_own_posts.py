@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
-from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts, sides
+from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts, readings, sides
 from app.extract import CardPayload, ResolvedPayload, resolve_payload
 from app.members import Member, posting_identity, require_member, require_same_origin
 from app.pages import page
@@ -290,8 +290,13 @@ def save_edit(request: Request, post_id: str, body: dict = Body(...),
     if site.place_problem(data):
         return JSONResponse({"message": site.PLACE_NEEDS_COUNTRY}, status_code=422)
     source = data.source if data.text.strip() and not resolved.is_empty else "manual"
+    found = None
+    if data.extraction_raw:  # what the reading found, resolved as the edit is, without the post's own links
+        _, own = current_card(post_id, row["payload"])
+        found = readings.reading_payload(data.extraction_raw, graph.candidates(), data.text,
+                                         resolve=lambda card: resolve_edit(card, own)[0])
     if not _save(member, row, post_id, data.text.strip(), resolved, card, source=source, anonymous=data.anonymous,
                  items=data.evidence, place=site.card_place(data), extraction_raw=data.extraction_raw,
-                 model=data.model, latency_ms=data.latency_ms):
+                 model=data.model, latency_ms=data.latency_ms, reading_payload=found):
         return JSONResponse({"message": GONE}, status_code=404)
     return JSONResponse({"id": post_id, "message": UPDATED})
