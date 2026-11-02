@@ -7,6 +7,7 @@ import pytest
 from app import extract as reading
 from app.config import Settings
 from app.extract import Candidates, CardPayload
+from app.text import make_key
 
 SETTINGS = Settings("test", "test", "test", "neo4j://localhost:7687", "neo4j", "test", llm_api_key="private-test-key")
 CARD = {"found": True, "issues": [{"name": "Coastal flooding"}], "solutions": [], "evidence": []}
@@ -123,3 +124,88 @@ def test_prompt_carries_the_issue_being_written_about():
     assert plain["writing_about"] is None
     unknown = json.loads(reading.build_messages("Text", "Tester", candidates, writing_about="nowhere")[1]["content"])
     assert unknown["writing_about"] is None
+
+
+VETO = "Limit or abolish the Security Council veto"
+TAX = "Global carbon tax by referendum"
+SUBSIDIES = "End fossil fuel subsidies"
+FUELS = "Stop burning fossil fuels"
+STANCES = Candidates(
+    issues={"security council veto": {"name": "Security Council veto", "parent_key": None},
+            "global climate coordination": {"name": "Global climate coordination", "parent_key": None}},
+    solutions={make_key(name): name for name in (VETO, TAX, SUBSIDIES, FUELS)},
+    solution_issues={make_key(VETO): ["Security Council veto"], make_key(TAX): ["Global climate coordination"],
+                     make_key(SUBSIDIES): ["Global climate coordination"], make_key(FUELS): ["Global climate coordination"]})
+
+
+def _read(text, solution, stance, issues=()):
+    payload = CardPayload.model_validate({"found": True, "issues": [{"name": name} for name in issues], "evidence": [],
+                                          "solutions": [{"name": solution, "for_issue": STANCES.solution_issues[
+                                              make_key(solution)][0], "stance": stance}]})
+    return reading.prepared_card(payload, STANCES, text)
+
+
+@pytest.mark.parametrize("text, stance", [
+    ("I oppose the Security Council veto because it has blocked action on Syria.", "oppose"),
+    ("I support the Security Council veto because it keeps the great powers at the table.", "approve"),
+])
+def test_a_stance_on_what_a_solution_would_end_is_not_a_stance_on_the_solution(text, stance):
+    """Case 29, 2 November 2026: opposing the veto was read as opposing "Limit or abolish the Security Council
+    veto". The row goes and its issue stays, so nothing is proposed again in the writer's name."""
+    card = _read(text, VETO, stance)
+    assert card.solutions == []
+    assert [item.name for item in card.issues] == ["Security Council veto"]
+
+
+@pytest.mark.parametrize("text, solution, stance", [
+    ("We should abolish the Security Council veto.", VETO, "approve"),
+    ("The Security Council veto should be abolished.", VETO, "approve"),
+    ("I oppose limiting the Security Council veto.", VETO, "oppose"),
+    ("I oppose this.", VETO, "oppose"),  # from the solution's own page: it names nothing else
+    ("I support ending the Security Council veto.", VETO, "approve"),  # any change word: read as written
+    ("I support getting rid of the Security Council veto.", VETO, "approve"),
+    ("I oppose a global carbon tax by referendum because it would hit the poorest hardest.", TAX, "oppose"),
+    ("I support ending fossil fuel subsidies.", SUBSIDIES, "approve"),
+])
+def test_a_stance_the_statement_takes_on_the_solution_itself_is_kept(text, solution, stance):
+    card = _read(text, solution, stance, issues=STANCES.solution_issues[make_key(solution)])
+    assert [(item.name, item.stance) for item in card.solutions] == [(solution, stance)]
+
+
+def test_plain_advocacy_in_other_words_keeps_its_approval():
+    """No stance word on what it names (oppose, against, support...): the approval is the writer's advocacy."""
+    card = _read("We have to quit burning fossil fuels before 2040.", FUELS, "approve")
+    assert [(item.name, item.stance) for item in card.solutions] == [(FUELS, "approve")]
+
+
+@pytest.mark.parametrize("text", ["I'm against burning fossil fuels.", "I am opposed to burning fossil fuels."])
+def test_against_and_opposed_count_as_stance_words(text):
+    assert _read(text, FUELS, "oppose").solutions == []
+
+
+def test_endorse_is_not_end():
+    card = _read("I endorse fossil fuel subsidies, they keep heating affordable.", SUBSIDIES, "approve")
+    assert card.solutions == []
+
+
+def test_the_guard_never_touches_the_writers_own_card():
+    """Posting and editing build the card without the statement text: what the writer chose is kept."""
+    payload = CardPayload.model_validate({"found": True, "issues": [], "evidence": [], "solutions": [
+        {"name": VETO, "for_issue": "Security Council veto", "stance": "oppose"}]})
+    assert [item.stance for item in reading.prepared_card(payload, STANCES).solutions] == ["oppose"]
+
+
+def test_a_new_solution_is_never_dropped():
+    payload = CardPayload.model_validate({"found": True, "issues": [{"name": "Data centers"}], "evidence": [],
+                                          "solutions": [{"name": "Limit new data centers", "for_issue": "Data centers",
+                                                         "stance": "approve"}]})
+    card = reading.prepared_card(payload, STANCES, "We need fewer data centers in St. Louis.")
+    assert [item.name for item in card.solutions] == ["Limit new data centers"]
+
+
+def test_a_dropped_row_brings_back_only_an_issue_the_record_holds():
+    """The model's for_issue may be a name it made up: the solution's own issue in the record comes back instead."""
+    payload = CardPayload.model_validate({"found": True, "issues": [], "evidence": [], "solutions": [
+        {"name": VETO, "for_issue": "Veto power problem", "stance": "oppose"}]})
+    card = reading.prepared_card(payload, STANCES, "I oppose the Security Council veto.")
+    assert card.solutions == [] and [item.name for item in card.issues] == ["Security Council veto"]

@@ -653,4 +653,34 @@ congestion charge for the centre, paid by every driver who enters, would deal wi
 
 Case 11 is the one known difference: the reading now keeps a proposal the writer makes in passing, under a fuller name than the writer gave it, and once in four runs took the writer's ranking of the problems as evidence. Both show on the card, where the writer can rename or remove them before posting.
 
-Cases 29 and 30 were added after the branch review. Case 29 found a fault older than this change: "I oppose the Security Council veto" is read as opposing the solution "Limit or abolish the Security Council veto", the opposite of what the writer means. The prompt before this change does the same in 3 of 3 runs, and also drops the reason, so the stance rules (unchanged here) match the solution by name. Left for its own fix.
+Cases 29 and 30 were added after the branch review. Case 29 found a fault older than this change: "I oppose the Security Council veto" is read as opposing the solution "Limit or abolish the Security Council veto", the opposite of what the writer means. The prompt before this change does the same in 3 of 3 runs, and also drops the reason, so the stance rules (unchanged here) match the solution by name. Fixed on the card by the stance guard below.
+
+## The stance guard (added 2 November 2026)
+
+Case 29 above: "I oppose the Security Council veto because it has blocked action on Syria." is read as opposing the existing solution "Limit or abolish the Security Council veto", 3 of 3 runs on the prompt as it stands. The writer opposes the veto, so the stance is backwards.
+
+**Why not the reading rules.** Five wordings were tried on deepseek-v4-flash the same afternoon (about 300 calls): a sentence after the stance-only rule saying a stance is on what the writer names, with a death penalty example; the same sentence among the stance definitions at the top; "followed by the solution's own name, not the name of what it would change" in the stance-only rule; "I oppose the veto" added to the objection rule's example; and a sentence that a reason for what an issue names refutes the issue. Each cured case 29, or nearly, and each broke something worth more: John's supreme law paragraph (case 2) lost its UDHR and Earth Charter evidence in 2 of 8 to 5 of 10 runs, against 10 of 10 for the prompt as it stands run at the same moments, or case 20 lost its "I oppose this" (3 of 6), or case 25's reason went to the wrong side. The model's answers also drifted during the afternoon (the prompt as it stands dropped case 2's evidence once, 1 of 8), so old and new were compared only in runs started together. The reading rules are unchanged; `tests/test_principles.py` keeps its hash.
+
+**The guard** (`app/extract.py`, `_stances_on_what_is_named`) corrects the reading's card instead. It runs in `prepared_card` only when the statement text is given, that is on the card the reading returns (`/api/extract`) and on the copy `/api/posts` rebuilds from `extraction_raw` to tell whether the writer changed the card. It never runs on a card the writer sends to preview, post or edit, so a stance the writer sets by hand is never touched. A solution row is dropped, and its issue added as an issue row when the card lacks it, when all of these hold:
+
+1. the statement takes a stance in words (oppose, against, support, approve, favour, endorse, reject, agree, disagree, in any form);
+2. the statement uses no change word at all (limit, abolish, abolition, end, get rid, ban, stop, reduce, eliminate, remove, repeal, cut, prohibit, restrict, cap, curb, halt, outlaw, scrap, moratorium, in their forms; "endorse" is not "end");
+3. the row is an existing solution whose name holds a change word, with approve or oppose;
+4. the rest of the solution's name (its words of four letters or more, plurals taken off) shares a word with the statement.
+
+The row is dropped rather than set to no stance, because an existing solution with no stance would be proposed again in the writer's name. The card then holds the issue and the evidence, and the writer can still choose the solution's stance by hand. A statement about ending, stopping or getting rid of something, plain advocacy without a stance word ("We have to quit burning fossil fuels"), and "I oppose this" on a solution's own page are left as the model read them. The cost: a writer who supports a change in other words *and* uses a stance word ("I support doing away with the veto") gets no stance and sets it on the form. Each drop is logged as `stance_dropped` with a count, never text.
+
+In the seed only "Limit or abolish the Security Council veto" holds a change word; on the live record on 2 November, 4 of 39 solutions: Stop burning fossil fuels, Carbon removal through forests and soil, Limit or abolish the Security Council veto, Moratorium on building new data centers.
+
+**Cases.** Case 29's expectation now says never oppose. New case 31, the mirror ("I support the Security Council veto because it keeps the great powers at the table.", seed): never approve on the abolish solution. New case 32 in a new context `moratorium` (`stlouis` plus John's "Moratorium on building new data centers"): "I'm against new data centers in St. Louis because they use too much water." never opposes the moratorium. Offline tests in `tests/test_reading.py` hold the four conditions, "endorse", "against", "opposed", "ending", "getting rid of", "I oppose this", a new solution and a card sent without text; `tests/test_card_api.py` runs case 29 through `/api/extract` and `/api/posts` (the post is not marked edited).
+
+**Runs, 2 November 2026, with the guard** (the reading rules as they stand; the first runs used a first version that compared change words family by family, which gives the same answer as the final rule on every case below):
+
+| Case | Runs | Read |
+|---|---|---|
+| 29 | 9 | every run: the veto issue, the Syria reason supporting it, no stance on the abolish solution (without the guard: oppose, 3 of 3) |
+| 31 | 9 | every run: no stance on the abolish solution; the reason "Veto keeps great powers at the table" supports the abolish solution, the wrong side (the prompt as it stands does the same in 2 of 3 without the guard; not the guard's to fix) |
+| 32 | 5 | every run: Data centers and the water reason supporting it; no stance on the moratorium (also 4 of 4 without the guard) |
+| 8, 14, 18, 20, 22, 25 | 4 | every run: the stance as before (approve on the veto solution in 8 and 22, approve in 14 and 18, oppose in 20 and 25) |
+| 24 | 4 | as before |
+| every other case | 2 | as expected; case 16 kept its hedged no stance ("would reduce"), as before the guard |

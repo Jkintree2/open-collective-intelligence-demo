@@ -275,3 +275,30 @@ def test_candidates_carry_each_evidence_link(monkeypatch):
     assert found.evidence == {"new copy": "New copy", "old report": "Old report", "no link": "No link"}
     # Two pieces with the same link (entered before this rule): the older one is the one found.
     assert found.evidence_links == {"example.org/report": "old report"}
+
+
+def test_the_reading_card_has_no_stance_moved_onto_a_solution_that_would_end_what_is_named(api, monkeypatch):
+    """Case 29, 2 November 2026, through the routes: the stance guard runs on the reading's card, and posting
+    that card unchanged is not an edit, because the copy rebuilt from extraction_raw is guarded the same way."""
+    import json
+
+    from app.extract import CardPayload, Extraction
+    from app.text import make_key
+
+    client, main, writes = api
+    veto = "Limit or abolish the veto"
+    candidates = Candidates(issues={"veto": {"name": "Veto", "parent_key": None}},
+                            solutions={make_key(veto): veto}, solution_issues={make_key(veto): ["Veto"]})
+    monkeypatch.setattr(main.graph, "candidates", lambda: candidates)
+    monkeypatch.setattr(main, "settings", replace(main.settings, llm_api_key="offline test key"))
+    raw = json.dumps({"found": True, "issues": [], "evidence": [],
+                      "solutions": [{"name": veto, "for_issue": "Veto", "stance": "oppose"}]})
+    monkeypatch.setattr(main.reading, "call_model", lambda *args, **kwargs: Extraction(
+        CardPayload.model_validate(json.loads(raw)), raw, "test-provider", 10))
+    text = "I oppose the veto because it has blocked action on Syria."
+    card = client.post("/api/extract", json={"text": text}).json()["payload"]
+    assert card["solutions"] == [] and [row["name"] for row in card["issues"]] == ["Veto"]
+    response = client.post("/api/posts", json={**card, "text": text, "source": "model", "extraction_raw": raw,
+                                               "display_name": "Tester"})
+    assert response.status_code == 201
+    assert writes[0][1]["edited"] is False
