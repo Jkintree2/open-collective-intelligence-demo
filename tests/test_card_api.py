@@ -184,7 +184,8 @@ def test_a_filled_card_posts_without_a_statement_and_stores_its_sentences(api):
     assert preview.status_code == 200 and preview.json()["valid"]
     assert client.post("/api/posts", json=body).status_code == 201
     args, _ = writes[0]
-    assert args[4] == "John claims about existing issue Veto. John proposes solution Abolish the veto. Veto has proposed Abolish the veto. John approves Abolish the veto."  # Veto is already in the record (John, 24 October 2026)
+    # Veto is already in the database, so proposing and approving is one sentence (John, 2 November 2026).
+    assert args[4] == "John proposes and approves solution of Abolish the veto for the issue of Veto."
 
 
 def test_an_empty_card_with_no_statement_is_refused(api):
@@ -254,6 +255,27 @@ def test_approving_an_existing_solution_previews_and_posts_one_approval(api, mon
     args, _ = writes[0]
     assert args[4] == "Anonymous approves EV fleets."
     assert args[5].issues == [] and [row["key"] for row in args[5].solutions] == ["ev fleets"]
+
+
+def test_proposing_and_approving_a_solution_for_an_existing_issue_is_one_sentence(api, monkeypatch):
+    """John, 2 November 2026 ("Wording"): the list and the statement made from it read as one sentence; what is
+    stored does not change (the claim, the proposal, the issue's link to it and the approval)."""
+    client, main, writes = api
+    known = Candidates(issues={"coastal flooding": {"name": "Coastal flooding", "parent_key": None},
+                               "harbour dredging delays": {"name": "Harbour dredging delays", "parent_key": None}},
+                       solutions={"seawalls": "Seawalls"}, solution_issues={"seawalls": ["Harbour dredging delays"]})
+    monkeypatch.setattr(main.graph, "candidates", lambda: known)
+    body = {"text": "", "display_name": "John Kintree", "issues": [{"name": "Coastal flooding"}],
+            "solutions": [{"name": "Seawalls", "for_issue": "Coastal flooding", "stance": "approve"}]}
+    sentence = "John Kintree proposes and approves solution of Seawalls for the issue of Coastal flooding"
+    preview = client.post("/api/preview", json=body).json()
+    assert preview["valid"] and preview["sentences"] == [sentence]
+    assert client.post("/api/posts", json=body).status_code == 201
+    args, _ = writes[0]
+    assert args[4] == sentence + "."
+    assert [row["key"] for row in args[5].issues] == ["coastal flooding"]
+    assert [(row["key"], row["for_issue_key"], row["stance"], row["stance_only"]) for row in args[5].solutions] == [
+        ("seawalls", "coastal flooding", "approve", False)]
 
 
 def test_with_accounts_off_the_name_field_stays(api):

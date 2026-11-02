@@ -57,6 +57,50 @@ def test_the_place_is_the_last_line_of_the_list():
     assert sentences(card, "Tester", place=None) == sentences(card, "Tester")
 
 
+def test_a_solution_proposed_for_an_existing_issue_and_approved_is_one_line():
+    """John, 2 November 2026 ("Wording"): adding a solution already in the database to an issue already in the
+    database, with approval, gave four lines (claims about existing issue, proposes solution, has proposed,
+    approves). He asked for one: "John Kintree proposes and approves solution of X for the issue of Y"."""
+    known = Candidates(issues={"coastal flooding": {"name": "Coastal flooding", "parent_key": None},
+                               "harbour dredging delays": {"name": "Harbour dredging delays", "parent_key": None}},
+                       solutions={"seawalls": "Seawalls"}, solution_issues={"seawalls": ["Harbour dredging delays"]})
+
+    def lines(card: dict) -> list[str]:
+        payload = CardPayload.model_validate({"found": True, **card})
+        return sentences(prepared_card(payload, known), "John Kintree", resolve_payload(payload, known))
+
+    approved = {"name": "Seawalls", "for_issue": "Coastal flooding", "stance": "approve"}
+    assert lines({"issues": [{"name": "Coastal flooding"}], "solutions": [approved]}) == [
+        "John Kintree proposes and approves solution of Seawalls for the issue of Coastal flooding"]
+    # The same with a new solution, or with the issue named only as the solution's issue.
+    assert lines({"issues": [{"name": "Coastal flooding"}], "solutions": [{**approved, "name": "Dunes"}]}) == [
+        "John Kintree proposes and approves solution of Dunes for the issue of Coastal flooding"]
+    assert lines({"solutions": [approved]}) == [
+        "John Kintree proposes and approves solution of Seawalls for the issue of Coastal flooding"]
+    # Every other combination keeps its lines: no position, opposing, and a new issue (the acceptance lines above).
+    assert lines({"issues": [{"name": "Coastal flooding"}], "solutions": [{**approved, "stance": "none"}]}) == [
+        "John Kintree claims about existing issue Coastal flooding", "John Kintree proposes solution Seawalls",
+        "Coastal flooding has proposed Seawalls"]
+    assert lines({"issues": [{"name": "Coastal flooding"}], "solutions": [{**approved, "stance": "oppose"}]}) == [
+        "John Kintree claims about existing issue Coastal flooding", "John Kintree proposes solution Seawalls",
+        "Coastal flooding has proposed Seawalls", "John Kintree opposes Seawalls"]
+    assert lines({"issues": [{"name": "Erosion"}], "solutions": [{**approved, "for_issue": "Erosion"}]}) == [
+        "John Kintree claims Erosion", "John Kintree proposes solution Seawalls", "Erosion has proposed Seawalls",
+        "John Kintree approves Seawalls"]
+    # Two issues, one new: only the approved proposal for the issue already in the database joins, and only that
+    # issue's claim line goes.
+    both = [{"name": "Erosion"}, {"name": "Coastal flooding"}]
+    assert lines({"issues": both, "solutions": [{**approved, "for_issue": "Erosion"}]}) == [
+        "John Kintree claims Erosion", "John Kintree claims about existing issue Coastal flooding",
+        "John Kintree proposes solution Seawalls", "Erosion has proposed Seawalls", "John Kintree approves Seawalls"]
+    assert lines({"issues": both, "solutions": [approved]}) == [
+        "John Kintree claims Erosion",
+        "John Kintree proposes and approves solution of Seawalls for the issue of Coastal flooding"]
+    # A solution already listed under the issue is a position only, as before (GitHub issue 4).
+    assert lines({"issues": [{"name": "Harbour dredging delays"}],
+                  "solutions": [{**approved, "for_issue": "Harbour dredging delays"}]}) == ["John Kintree approves Seawalls"]
+
+
 @pytest.mark.parametrize("case", ["1", "4", "5", "6A", "7"])
 def test_handwritten_card_fixtures_preserve_only_explicit_stances(case):
     card = CardPayload.model_validate(FIXTURES[case])
