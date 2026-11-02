@@ -75,7 +75,10 @@ def test_session_5_fixtures_resolve_without_drops(case, stances):
     assert not resolved.dropped
     assert [item["stance"] for item in resolved.solutions] == stances
     if case == "15":
-        assert [item["parent_key"] for item in resolved.issues] == [None, "data centers", "data centers"]
+        # John, 2 November 2026: the two "sub-issues" are reasons, read as evidence supporting Data centers.
+        assert [row["key"] for row in resolved.issues] == ["data centers"]
+        assert [(row["stance"], row["target_label"], row["target_key"]) for row in resolved.evidence] == [
+            ("supports", "Issue", "data centers")] * 2
     if case == "16":
         assert [(row["target_label"], row["target_key"]) for row in resolved.evidence] == [("Solution", "more processing on personal devices")]
     if case == "17":

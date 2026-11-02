@@ -65,7 +65,8 @@ Top to bottom:
 > Evidence
 > No evidence attached to the issue itself yet.
 > Open the full page for this issue
-> To add a sub-issue, write it as an issue below and choose this issue under "Part of".
+
+"Part of" and "Sub-issues" show only for a tree a record still holds (the seed, an older copy): since 2 November 2026 there are no new sub-issues (John), and the line telling testers how to add one is gone.
 
 Each proposed solution carries the same three position choices as a card row. Choosing "I approve this" or "I oppose this" opens the card and adds that solution as a row, already tied to this issue and with the position set, so the tester can post it. Choosing "no position" again removes the row.
 
@@ -84,8 +85,8 @@ When the choice cannot be taken the panel puts the solution back to "no position
 
 **The card.** Appears under the text box. Heading **client-facing**: "Here is what we found". When a name was too long and was shortened, a note under the heading reads, **client-facing**: "A long name was shortened to 300 characters. You can edit it." Then, in this order, each section editable:
 
-* **Issue.** One text input with autocomplete from existing issue names, and below it a select "Part of" listing top-level issues, shorter first: names already on this form, then, when the page was opened for an issue, that issue's family, then all issues. The choices are grouped under **client-facing** headings: "On this form", "About <issue name>", "All issues". The empty choice reads, **client-facing**: "none, this is a new top level issue", or "none, this is already a top level issue" when the name matches an existing top level issue. A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Since 24 October 2026 (John's email of that day) a line under the row also says so, **client-facing**: "This issue is already in the database." Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three. When the page was not opened from an issue chip or link (no "Already on record" panel above), a line under the issue rows reads, **client-facing**: "To add a sub-issue, write it here and choose the issue it is part of."
-* **Solutions.** Zero or more rows. Each row: name input with autocomplete, a "for issue" select (defaults to the first issue) grouped the same shorter-first way ("On this form", "About <issue name>", "All issues"; empty choice **client-facing**: "Choose an issue"), and three radio buttons: "no position", "I approve this", "I oppose this". The model pre-selects a position only when the text states one. "+ add a solution" link.
+* **Issue.** One text input with autocomplete from existing issue names. Since 2 November 2026 (John: a reason is not a sub-issue) there is no "Part of" select and no line about adding a sub-issue; a reason is an evidence row. A small badge beside the input says "existing" when the name matches a node already in the graph, "new" otherwise. Since 24 October 2026 (John's email of that day) a line under the row also says so, **client-facing**: "This issue is already in the database." Most posts have one issue; a "+ another issue" link adds a second row, and the card will not post with more than three.
+* **Solutions.** Zero or more rows. Each row: name input with autocomplete, a "for issue" select (defaults to the first issue) grouped shorter first: names on this form, then, when the page was opened for an issue, that issue's family in a tree a record still holds, then all issues ("On this form", "About <issue name>", "All issues"; empty choice **client-facing**: "Choose an issue"), and three radio buttons: "no position", "I approve this", "I oppose this". The model pre-selects a position only when the text states one. "+ add a solution" link.
 * **Evidence.** Zero or more rows. Each row: name input with autocomplete, a link input (optional), a select "supports / refutes", and a select "claim about" (John, 23 October 2026; "about" before) listing the issues and solutions in the card plus existing nodes, grouped **client-facing**: "On this form", "About <issue name>", "All issues", "Solutions", "Evidence" (empty choice **client-facing**: "Choose what this is about"). "+ add evidence" link. The badge beside the name reads "existing" when the name is already in the record, and since 24 October 2026 also when the link is: the same link counts as the same evidence (the scheme, a leading www., a trailing slash, the fragment and utm_ parameters do not count; the rest of the address does), so a row whose link the record already holds takes that piece of evidence's name and shows one line under the row, **client-facing**: "This evidence is already in the database." The writer may still change the name; a name already in the record then decides as before, and any other name still joins the evidence the link belongs to.
 * **What this will add.** A read-only list of sentences generated live from the fields, in John's format, for example:
 
@@ -137,7 +138,7 @@ Empty state **client-facing**: "No issues yet. Write something on the front page
 * "Proposed solutions". Each solution: name, then "proposed by 2 · approved by 3 · opposed by 1", then its evidence as two short lists, "Supported by" and "Refuted by", each item a name and, if present, a link that opens in a new tab with `rel="noopener noreferrer"`.
 * "Evidence about this issue". Same two lists for evidence attached to the issue directly.
 * "Posts about this issue". The feed component filtered to posts that touched this issue or, on a parent, any of its sub-issues.
-* A "Write about this issue" button (Session 3) that returns to the front page with the issue and its parent prefilled in the card. Cheap and it gives the conversation a thread without building threads.
+* A "Write about this issue" button (Session 3) that returns to the front page with the issue prefilled in the card. Cheap and it gives the conversation a thread without building threads.
 
 ## Screen 5: admin (`/admin`)
 
@@ -526,8 +527,7 @@ At the foot of an issue page, seen only by an admin account:
 >
 > New name: [ {name} ] [ Rename ]
 >
-> Make it part of: [ none, make it a top level issue / top level issues ] [ Move ]
-> *or, when other issues are part of it:* Other issues are part of this one, so it stays at the top level.
+> *only on an issue that is part of another (the seed, an older copy):* Part of {parent}. [ Make it a top level issue ]
 >
 > Merge this issue with: [ Choose an issue / every other issue ] [ Merge ]
 > Start from the issue you want to keep.
@@ -549,11 +549,9 @@ Messages:
 
 > That name is too short.
 
-> An issue cannot be part of itself.
-
-> That issue is part of another issue, so nothing can be part of it.
-
 > Choose a different issue to merge.
+
+Since 2 November 2026 (John: no sub-issues) nothing is made part of another issue, so the two refusals that only moving under an issue could give are gone, and so is the line for an issue that has sub-issues.
 
 ### Changes to the issues (`/changes`)
 
@@ -987,7 +985,9 @@ Since 28 October 2026 every line here says "database" where it said "record" (Jo
 > [ input, placeholder "For example: Why do people oppose these solutions?" ]
 > [ Ask ]
 >
-> Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.
+> Answers come only from the posts about this issue, and from the guiding documents when a question asks about them.
+
+(2 November 2026, John: no sub-issues. On an issue a record still gives sub-issues, the line reads "about this issue and its sub-issues".)
 
 Under either box, small:
 
@@ -1284,7 +1284,7 @@ For a piece of evidence:
 * **Evidence added by hand.** "+ add evidence" starts its row about the solution or the evidence the page is for, where it started about the first issue on the card. Against a solution the card opposes, it starts as "refutes". The writer may change both.
 * **Back to the page.** After Post the browser goes back to that solution's or evidence's page, where the post is listed, rather than staying on the Write page.
 
-Under the card's issue rows the usual line shows: "To add a sub-issue, write it here and choose the issue it is part of."
+Since 2 November 2026 no line about sub-issues shows under the card's issue rows (John: there are no sub-issues).
 
 ### Ask on these pages
 

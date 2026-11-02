@@ -59,7 +59,7 @@ def test_manual_anonymous_post_ignores_name_and_preserves_name_cookie(api):
     args, kwargs = writes[0]
     assert args[1:4] == (None, True, None)
     assert args[0].startswith("anon:")
-    assert args[5].issues[0]["parent_key"] == "world"
+    assert args[5].issues[0] == {"key": "veto", "name": "Veto", "existing": True}
     assert "oci_name" not in result.headers.get("set-cookie", "")
     assert "Private name" not in result.text
     assert kwargs["source"] == "manual"
@@ -102,7 +102,7 @@ def test_preview_sentences_use_resolved_names_and_cleared_rows_are_removed(api):
     result = client.post("/api/preview", json={"text": "Veto reform", "display_name": "Tester", "issues": [{"name": "the veto."}]})
     assert result.json()["valid"]
     assert result.json()["sentences"] == ["Tester claims about existing issue Veto"]
-    assert result.json()["payload"]["issues"][0]["parent"] == "World"
+    assert result.json()["payload"]["issues"][0] == {"name": "Veto", "existing": True}
 
 
 def test_a_reading_result_is_kept_even_when_the_card_ends_up_manual(api):
@@ -155,7 +155,7 @@ def test_empty_reading_result_is_manual_and_existing_result_preserves_badge(api,
     response = client.post('/api/extract', json={"text": "Hello"})
     assert response.json()["source"] == "manual"
     card = prepared_card(CardPayload.model_validate({"issues": [{"name": "the veto."}]}), main.graph.candidates())
-    assert card.issues[0].existing and card.issues[0].parent == "World"
+    assert card.issues[0].existing and card.issues[0].model_dump() == {"name": "Veto", "existing": True}
 
 
 def test_html_form_still_posts_without_javascript_and_checks_untrimmed_length(api):

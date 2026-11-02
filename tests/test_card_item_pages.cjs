@@ -36,10 +36,10 @@ test('the card starts from the issue the summary names, with that issue\'s famil
   await get('stop').emit('click'); await flush();
   const rows = get('issue-rows').children;
   assert.equal(rows[0].children[1].value, 'Climate');
-  const parent = rows[0].children.find(c => c.tag === 'select');
-  assert.equal(parent.value, 'World');
-  await get('add-issue').emit('click');
-  const labels = rows[1].children.find(c => c.tag === 'select').children.map(c => c.label || c.value);
+  assert.equal(rows[0].children.some(c => c.tag === 'select'), false);   // no "Part of" (2 November 2026)
+  await get('add-solution').emit('click');
+  const labels = get('solution-rows').children.at(-1).children.find(c => c.tag === 'select').children
+    .map(c => c.label || c.value);
   assert.ok(labels.includes('About World'));
 });
 

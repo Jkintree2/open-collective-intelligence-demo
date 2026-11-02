@@ -12,9 +12,6 @@ DONE = {"renamed": "Renamed.", "moved": "Moved.", "merged": "Merged. Everything 
 PROBLEMS = {
     "taken": "Another issue already has that name. To join the two, use Merge.",
     "short": "That name is too short.",
-    "self": "An issue cannot be part of itself.",
-    "parent_is_sub": "That issue is part of another issue, so nothing can be part of it.",
-    "has_children": "Other issues are part of this one, so it stays at the top level.",
     "choose_other": "Choose a different issue to merge.",
 }
 

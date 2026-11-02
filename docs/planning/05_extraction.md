@@ -53,7 +53,7 @@ One JSON object, this shape, nothing else:
   "language_ok": true,
   "found": true,
   "issues": [
-    {"name": "Drug dealing problem", "parent": null, "existing": false}
+    {"name": "Drug dealing problem", "existing": false}
   ],
   "solutions": [
     {"name": "Decriminalize drug sales", "for_issue": "Drug dealing problem", "stance": "none"},
@@ -68,7 +68,7 @@ Field rules, enforced server side with pydantic after the call (anything that fa
 
 * `language_ok`: false when the text is not mostly English. The card then shows the English-only message and no fields.
 * `found`: false when there is no issue, claim, evidence or solution. `issues`, `solutions`, `evidence` must then be empty.
-* `issues`: 0 to 3. `name` 3 to 120 characters. `parent` is null or the exact name of an existing top-level issue from the candidate list; if the model names a sub-issue as the parent, the server substitutes that sub-issue's parent. `existing` is true only when `name` exactly matches a candidate; the server recomputes this from the normalised key and ignores the model's value.
+* `issues`: 0 to 3. `name` 3 to 120 characters. No `parent` since 2 November 2026 (there are no sub-issues; one sent anyway is ignored). `existing` is true only when `name` exactly matches a candidate; the server recomputes this from the normalised key and ignores the model's value.
 * `solutions`: 0 to 5. `for_issue` must be a name from `issues` or from the candidate list; otherwise set to the first issue. `stance` is `none`, `approve` or `oppose`.
 * `evidence`: 0 to 5. `name` is a short citation title. `url` is null or an `http(s)://` URL that appeared in the text; anything else becomes null. `stance` is `supports` or `refutes`. `about` is a name from `issues`, `solutions`, or the candidate lists; otherwise the first issue.
 * `note`: one sentence or empty. Shown at the top of the card in the soft ink colour when `found` is false or when the model hedged.
@@ -76,6 +76,8 @@ Field rules, enforced server side with pydantic after the call (anything that fa
 There is no numeric confidence. Models invent those. The useful signals are the "new" versus "existing" badge on each name (did it resolve or invent?) and the note.
 
 ## The system prompt (draft, to be tuned in Session 3 against the examples below)
+
+The draft below is kept as written in September 2026. The prompt as built is `READING_RULES` in `app/extract.py`; since 2 November 2026 it asks for no parent and reads reasons as evidence ("Reasons as evidence, no sub-issues", at the end).
 
 ```
 You help fill in a form for a shared civic record. People write a statement about an issue they care about. Your job is to pull out, from that statement only, the ISSUE they are raising, any SOLUTION they name, and any EVIDENCE they cite, and return them as json.
@@ -107,10 +109,10 @@ Return only a json object in exactly this shape and nothing else:
 ```
 The writer's display name is: {display_name}
 
-Existing issues (name | part of):
-- Need for world government | (top level)
-- Security Council veto | part of Need for world government; cannot be a parent
-- Drug dealing problem | (top level)
+Existing issues (names only since 2 November 2026; before, each carried "top level" or "part of …"):
+- Need for world government
+- Security Council veto
+- Drug dealing problem
 ...
 
 Existing solutions (name | for issue):
@@ -150,7 +152,7 @@ The card's fields are posted as JSON to `POST /api/posts`. Same shape as the mod
   "anonymous": false,
   "source": "model",
   "extraction_raw": "{...the model's JSON as a string, or null...}",
-  "issues": [{"name": "...", "parent": null}],
+  "issues": [{"name": "..."}],
   "solutions": [{"name": "...", "for_issue": "...", "stance": "approve"}],
   "evidence": [{"name": "...", "url": null, "stance": "supports", "about": "..."}]
 }
@@ -183,7 +185,7 @@ His Claude example showed two "approves" lines; this shows one, and the second i
 
 Input: the "Laws are passed by elected representatives …" paragraph from `john_extraction_examples.md`.
 
-Expect, with the seed present: issue `need for supreme law above nations` matched as existing with parent `need for world government`; solutions `global referendum on the udhr and earth charter` and `global carbon tax by referendum`, both existing, both `stance: approve` ("would give those principles the force of supreme law" is plain advocacy in context; accept `none` as a pass too, since the rule prefers restraint); evidence `universal declaration of human rights` and `earth charter` supporting the referendum solution. On an empty graph: same names, parent null.
+Expect, with the seed present: issue `need for supreme law above nations` matched as existing (no parent since 2 November 2026); solutions `global referendum on the udhr and earth charter` and `global carbon tax by referendum`, both existing, both `stance: approve` ("would give those principles the force of supreme law" is plain advocacy in context; accept `none` as a pass too, since the rule prefers restraint); evidence `universal declaration of human rights` and `earth charter` supporting the referendum solution. On an empty graph: same names.
 
 ### Case 3. The Festival of Nations sentence
 
@@ -235,7 +237,7 @@ Expect, with case 1 already in the graph: issue resolves to the existing `drug d
 
 Input: "We should abolish the Security Council veto. It has blocked action on Syria and on Ukraine."
 
-Expect, with the seed loaded: issue existing `security council veto` with parent `need for world government`; solution existing `limit or abolish the security council veto` (or a new "Abolish the Security Council veto"; either passes), `stance: approve`; evidence key containing `syria` or `ukraine`, supports the issue.
+Expect, with the seed loaded: issue existing `security council veto` (no parent since 2 November 2026); solution existing `limit or abolish the security council veto` (or a new "Abolish the Security Council veto"; either passes), `stance: approve`; evidence key containing `syria` or `ukraine`, supports the issue.
 
 ### Case 9. Not English
 
@@ -567,7 +569,7 @@ Measured on the last two runs (alike): 11 of 11 as expected; 9 calls; 0 question
 "Write about this solution" and "Write about this evidence" open the Write page with `?solution=<key>` or `?evidence=<key>`, and the reading gets what the writer came from in `writing_about`, as it gets an issue from "Write about this issue". The user message carries one of three shapes; the issue's is unchanged:
 
 ```
-"writing_about": {"name": "Global climate coordination", "parent": "Need for world government"}
+"writing_about": {"name": "Global climate coordination"}   (it carried "parent" until 2 November 2026)
 "writing_about": {"solution": "Global carbon tax by referendum", "for_issues": ["Global climate coordination"]}
 "writing_about": {"evidence": "UNEP Emissions Gap Report 2024"}
 ```
@@ -593,3 +595,62 @@ Cases 18 to 22 in `tests/extraction_cases.json` (`python -m scripts.cards --case
 Cases 1 to 17 were run once with the new prompt and once with the prompt before it, and the four that differed (2, 3, 4 and 16) three times more on each. Cases 3, 4 and 16 read the same on both prompts once run-to-run variation is set aside (16 keeps its known stance of none). One change is real: case 2, John's supreme law paragraph, now reads approve on both existing solutions in every run (4 of 4), where the prompt before read none (4 of 4), so the post records the two approvals only. The case allows either ("approve or restrained none"), and case 7, the restraint test, still reads none.
 
 Case 23 (John, 31 October 2026), context `consensus` in `scripts/cards.py` (the seed plus his live consensus solution and its two issues): "Decisions should be made by majority of votes, and Roberts rules of order.", written on Decisions should be made by consensus, with no stance words. Run three times on deepseek-v4-flash on 31 October with the prompt unchanged: every run returned two new solutions, Decisions by majority vote and Robert's Rules of Order, both approve, for Methods of collective decision making. So the reading keeps a counter proposal. John's live post of these words recorded only the opposition, most likely because the statement was never read: on a solution's Write page the card is already open, and its Post sends the statement as written with only the rows on the card. The prompt is not changed.
+
+## Reasons as evidence, no sub-issues (added 2 November 2026)
+
+John, 1 November 2026: "When someone says that they are opposed to data centers because they are increasing the price of electricity, they are stating their reason, which is not a sub-issue, but is a form of evidence." The reading stops identifying sub-issues; a statement is read into issues, solutions and evidence only, and a reason is evidence supporting or refuting the issue or solution it is about. The card has no "Part of" and the server ignores a `parent` (see the field rules above and `03_schema.md`).
+
+The reading rules lose the sentence about items marked "cannot be a parent" and the one about narrower issues with a parent; "attach sub-issues, solutions and evidence" becomes "attach solutions and evidence"; the issue rows of the examples lose `"parent":null`; "Issue rows have a name only." joins the field line. The existing issues reach the reading as names only, and `writing_about` for an issue as `{"name"}`. In place of the narrower-issue sentence, word for word:
+
+> There are no sub-issues: a narrower point about an issue, such as a harm it does, a cost or a resource it uses, is evidence supporting that issue, never a second issue, even when the writer calls it a sub-issue. A reason the writer gives with because, since or as, for or against an issue or a solution, is evidence too: it supports what it argues for and refutes what it argues against, named as a short claim in the writer's words. Only those are evidence besides what the writer cites: how serious the writer says an issue is, a restatement of an issue, and what a proposal is or how it would work are never evidence, and neither is a plain description of what something is. A declaration, charter or report the writer names stays evidence by its own name, even when a proposal is built on it.
+
+The Data centers sub-issue example is replaced by two:
+
+```
+Example for 'Data centers are a problem here because they raise electricity prices.':
+{"language_ok":true,"found":true,"issues":[{"name":"Data centers"}],"solutions":[],
+"evidence":[{"name":"Data centers raise electricity prices","url":null,"stance":"supports",
+"about":"Data centers"}],"note":""}
+Example for 'Traffic is the worst problem in our city, and housing costs are nearly as bad. A
+congestion charge for the centre, paid by every driver who enters, would deal with the traffic.':
+{"language_ok":true,"found":true,"issues":[{"name":"City traffic congestion"},{"name":"Housing costs"}],
+"solutions":[{"name":"Congestion charge for the city centre","for_issue":"City traffic congestion",
+"stance":"none"}],"evidence":[],"note":""}
+```
+
+`tests/test_principles.py` holds the new hash.
+
+**Cases.** Case 15 ("New issue with sub-issues") now expects one issue and two pieces of evidence; cases 2 and 8 no longer expect a parent. New cases 24 to 28 (`python -m scripts.cards --case 24 ...`), context `stlouis` (Data centers in the record) except 25 (the seed):
+
+| Case | Statement | Expect |
+|---|---|---|
+| 24 | "I'm against more data centers in St. Louis, because they drive up what households pay for electricity." | Data centers; evidence that they raise household electricity costs, supporting it; no new issue |
+| 25 | "I oppose a global carbon tax by referendum because it would hit the poorest households hardest." | the solution, oppose; evidence that it hits the poorest hardest, refuting it |
+| 26 | "Data centers are large buildings full of servers that store and process data for companies." | Data centers or found false; no evidence |
+| 27 | a solution for Data centers, "because otherwise households end up paying for them", with a link | the solution, approve; evidence with that link |
+| 28 | "Data centers also use huge amounts of water for cooling, in a city that already has water problems." | Data centers; evidence about the water, supporting it; no new issue |
+| 29 | "I oppose the Security Council veto because it has blocked action on Syria." (seed) | the veto issue; the reason supporting it (the veto is a problem), never refuting it |
+| 30 | "Data centers are a problem in St. Louis. Their water use is also a big concern." | Data centers; the water use as evidence supporting it; no second issue |
+
+**Runs, 2 November 2026** (deepseek-v4-flash, the seed or the case's context as candidates). A first version and six rounds of tuning were run against cases 2, 11, 13, 15, 19, 20 and 24 to 28, mostly three runs a round, with cases 2, 3, 11, 13, 18 and 20 also run three times on the prompt before this change (main `0dd0779`) for comparison. What the rounds showed: widening the definition of evidence at the top of the rules made the reading turn the writer's own descriptions into evidence (case 2 lost its UDHR and Earth Charter evidence; case 13 restated Beth's practice as evidence refuting itself); an example reading "I oppose data centers because ..." with no stance taught the model that "I oppose" gives none (case 20 lost its opposition in 2 of 3 runs, against 3 of 3 before); a sentence asking for solution names in the writer's own words made case 13 worse. The rules above are the last round. On them:
+
+| Case | Runs | Read |
+|---|---|---|
+| 15 | 4 | every run: Data centers, and "Data centers use large amounts of electricity" and "Data centers use water for cooling" supporting it; no other issue |
+| 24 | 4 | every run: Data centers, and a short claim that they raise household electricity costs, supporting it |
+| 25 | 4 | every run: oppose Global carbon tax by referendum, and "Carbon tax hits poorest households hardest" refuting it |
+| 26 | 3 | every run: Data centers, no evidence |
+| 27 | 3 | every run: the solution with approve and the evidence with its link; the reason is about the solution once and about Data centers twice (the writer can change "claim about") |
+| 28 | 4 | every run: Data centers, and the water they use supporting it |
+| 2 | 4 | every run as before the change: approve on both solutions, the UDHR and the Earth Charter supporting the referendum |
+| 13 | 4 | every run: one issue, nothing else |
+| 20 | 4 | every run: oppose on the carbon tax, and the new solution for national carbon prices, approve |
+| 11 | 4 | every run: the three existing issues; the writer's "All three need a body above nations" is now a solution, named "World Constitution based on the UDHR and Earth Charter" (before the change no solution was read); once, "The veto is the biggest problem" as evidence supporting the veto |
+| 1, 3 to 10, 12, 14, 16, 17, 19, 21 to 23 | 1 | as expected |
+| 18 | 1 | as expected, and the writer's reason ("the fairest way to pay") as evidence supporting the solution |
+| 30 | 3 | every run: Data centers, and its water use supporting it; no second issue |
+| 29 | 3 | every run: the veto issue, and "Veto has blocked action on Syria" supporting it; and oppose on Limit or abolish the Security Council veto (see below) |
+
+Case 11 is the one known difference: the reading now keeps a proposal the writer makes in passing, under a fuller name than the writer gave it, and once in four runs took the writer's ranking of the problems as evidence. Both show on the card, where the writer can rename or remove them before posting.
+
+Cases 29 and 30 were added after the branch review. Case 29 found a fault older than this change: "I oppose the Security Council veto" is read as opposing the solution "Limit or abolish the Security Council veto", the opposite of what the writer means. The prompt before this change does the same in 3 of 3 runs, and also drops the reason, so the stance rules (unchanged here) match the solution by name. Left for its own fix.

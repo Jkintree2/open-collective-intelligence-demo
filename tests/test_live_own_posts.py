@@ -261,3 +261,26 @@ def test_my_statements_lists_only_ones_own_posts_newest_first(live_graph):
     live_graph.driver().execute_query("MATCH (p:Post {id: $id}) SET p.seed = true", id=first,
                                       database_=live_graph.database())
     assert [row["id"] for row in graph_own_posts.my_posts("acct:ada", 10)] == [quiet]
+
+
+def test_a_post_never_writes_part_of(live_graph):
+    """John, 2 November 2026: there are no sub-issues. A parent in the card's JSON (an older tab) is ignored."""
+    pid = post(live_graph, "acct:ada", "Data centers and the electricity they use",
+               issues=[{"name": "Data centers"}, {"name": "Electricity used by data centers", "parent": "Data centers"}])
+    assert rels(live_graph, pid) == ["CLAIM", "CLAIM"]
+    assert not live_graph.driver().execute_query("MATCH ()-[r:PART_OF]->() RETURN r",
+                                                 database_=live_graph.database()).records
+
+
+def test_a_post_on_an_existing_sub_issue_keeps_its_place(live_graph):
+    """A sub-issue already in the record (the seed, an older copy) keeps its PART_OF, and a post adds none."""
+    live_graph.driver().execute_query(
+        "CREATE (w:Issue {key: 'world', name: 'World', seed: false, created_at: $now}), "
+        "(v:Issue {key: 'veto', name: 'Veto', seed: false, created_at: $now}) "
+        "CREATE (v)-[:PART_OF {created_at: $now}]->(w)", now=NOW, database_=live_graph.database())
+    pid = post(live_graph, "acct:ada", "The veto blocks action", issues=[{"name": "Veto"}, {"name": "World"}])
+    assert rels(live_graph, pid) == ["CLAIM", "CLAIM"]
+    rows = live_graph.driver().execute_query(
+        "MATCH (a:Issue)-[r:PART_OF]->(b:Issue) RETURN a.key AS a, b.key AS b, r.post_id AS p",
+        database_=live_graph.database()).records
+    assert [(r["a"], r["b"], r["p"]) for r in rows] == [("veto", "world", None)]

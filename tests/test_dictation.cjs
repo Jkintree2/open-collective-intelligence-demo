@@ -184,36 +184,23 @@ test('reading sends the issue from the address', async () => {
   assert.equal(JSON.parse(requests[0].options.body).issue, 'veto');
 });
 
-test('part of offers a new top level issue from this card and lists are grouped', async () => {
-  const {get, location, flush} = await setup({issues: {
-    'short term': {name: 'Short term rental properties', parent_key: null},
+test('an issue row has no Part of and the card sends no parent; lists are still grouped', async () => {
+  // John, 2 November 2026: there are no sub-issues. A tree already in the record still groups the lists.
+  const {get, location, requests, runTimer, flush} = await setup({issues: {
     'downtown': {name: 'Downtown', parent_key: null},
-    'parking': {name: 'Parking', parent_key: 'downtown'}}});
+    'parking': {name: 'Parking', parent_key: 'downtown'}}, solutions: {}, evidence: {}});
   location.search = '?issue=parking';
   await get('stop').emit('click'); await flush();
-  await get('add-issue').emit('click');
-  const rows = get('issue-rows').children;
-  rows[1].children[1].value = 'Riverfront'; await rows[1].emit('input');
-  await get('add-issue').emit('click');
-  rows[2].children[1].value = 'Short term rental properties'; await rows[2].emit('input');
-  const parent = rows[2].children.find(c => c.tag === 'select');
-  const labels = parent.children.map(c => c.label || c.value);
-  assert.deepEqual(labels.slice(0, 3), ['', 'On this form', 'About Downtown']);
-  const onForm = parent.children[1];
-  assert.deepEqual(onForm.children.map(o => o.value), ['Riverfront']);
-  // One level only: the family group offers the top level issue, never its sub-issues.
-  assert.deepEqual(parent.children[2].children.map(o => o.value), ['Downtown']);
-});
-
-test('part of says an existing top level issue is already one, and a new one is new', async () => {
-  const {get, flush} = await setup({issues: {'climate change': {name: 'Climate change', parent_key: null}}});
-  await get('stop').emit('click'); await flush();
-  const row = get('issue-rows').children.at(-1);
-  const parent = () => row.children.find(c => c.tag === 'select');
-  row.children[1].value = 'Climate change'; await row.emit('input');
-  assert.equal(parent().children[0].text, 'none, this is already a top level issue');
-  row.children[1].value = 'Riverfront'; await row.emit('input');
-  assert.equal(parent().children[0].text, 'none, this is a new top level issue');
+  const row = get('issue-rows').children[0];
+  assert.equal(row.children[1].value, 'Parking');
+  assert.equal(row.children.filter(c => c.tag === 'select').length, 0);
+  assert.ok(!row.children.some(c => c.textContent === 'Part of'));
+  await get('add-solution').emit('click');
+  const forIssue = get('solution-rows').children.at(-1).children.find(c => c.tag === 'select');
+  assert.deepEqual(forIssue.children.map(c => c.label || c.value).slice(0, 3), ['', 'On this form', 'About Downtown']);
+  await row.emit('input'); await runTimer(200);
+  assert.equal(requests.at(-1).url, '/api/preview');
+  assert.deepEqual(JSON.parse(requests.at(-1).options.body).issues, [{name: 'Parking'}]);
 });
 
 test('a filled card previews and posts with an empty text box', async () => {

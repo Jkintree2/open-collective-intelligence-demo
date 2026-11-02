@@ -30,6 +30,12 @@ def post(graph, person, text, *, minutes=0, anonymous=False, country=None, area=
     return post_id
 
 
+def part_of(graph, post_id, child, parent):
+    """The PART_OF an older post wrote: a post writes none since 2 November 2026, but a record may still hold one."""
+    graph.driver().execute_query(graph.MERGE_PART_OF, issue_key=child, parent_key=parent, post_id=post_id, now=NOW,
+                                 database_=graph.database())
+
+
 def test_places_of_a_page_of_posts(live_graph):
     town = post(live_graph, "acct:ada", "Rents rose", country="US", area="St. Louis", issues=[{"name": "Rent"}])
     land = post(live_graph, "acct:bob", "The veto", country="DE", issues=[{"name": "Veto"}])
@@ -75,9 +81,10 @@ def test_a_near_sub_issue_shows_under_its_parent_with_whole_counts(live_graph, m
     monkeypatch.setattr("app.config.get_settings", lambda: Settings("unused", "unused", "unused", "neo4j://x", "neo4j", "x"))
     main = importlib.import_module("app.main")
     post(live_graph, "acct:ada", "Floods", issues=[{"name": "Flooding"}])
-    post(live_graph, "acct:bob", "Coastal floods", issues=[{"name": "Coastal floods", "parent": "Flooding"}])
-    post(live_graph, "acct:cy", "Berlin floods", country="DE", area="Berlin",
-         issues=[{"name": "Floods in Berlin", "parent": "Flooding"}])
+    part_of(live_graph, post(live_graph, "acct:bob", "Coastal floods", issues=[{"name": "Coastal floods"}]),
+            "coastal floods", "flooding")
+    part_of(live_graph, post(live_graph, "acct:cy", "Berlin floods", country="DE", area="Berlin",
+                             issues=[{"name": "Floods in Berlin"}]), "floods in berlin", "flooding")
     post(live_graph, "acct:di", "Rent", issues=[{"name": "Rent"}])
     keys = graph_places.issues_near("DE", "berlin")
     assert "floods in berlin" in keys and "rent" not in keys and "coastal floods" not in keys
@@ -120,8 +127,8 @@ def test_post_first_q43_finds_what_the_first_one_found(live_graph):
     from app.graph_runtime import _read
     post(live_graph, "acct:ada", "Floods and rent", issues=[{"name": "Flooding"}, {"name": "Rent"}],
          solutions=[{"name": "Seawalls", "for_issue": "Flooding"}])
-    post(live_graph, "acct:bob", "Berlin floods", country="DE", area="Berlin",
-         issues=[{"name": "Floods in Berlin", "parent": "Flooding"}])
+    part_of(live_graph, post(live_graph, "acct:bob", "Berlin floods", country="DE", area="Berlin",
+                             issues=[{"name": "Floods in Berlin"}]), "floods in berlin", "flooding")
     # A proposal only, for an issue the post does not claim.
     post(live_graph, "acct:cy", "Rent caps", country="DE", area="Berlin",
          solutions=[{"name": "Rent caps", "for_issue": "Rent"}])
