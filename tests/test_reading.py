@@ -209,3 +209,48 @@ def test_a_dropped_row_brings_back_only_an_issue_the_record_holds():
         {"name": VETO, "for_issue": "Veto power problem", "stance": "oppose"}]})
     card = reading.prepared_card(payload, STANCES, "I oppose the Security Council veto.")
     assert card.solutions == [] and [item.name for item in card.issues] == ["Security Council veto"]
+
+
+def _read_with_reason(text, stance, reason_side, reason_about=VETO):
+    """The live record's shape, 2 November 2026: the veto solution sits under Need for world government, so the
+    reading points the writer's reason at the solution, on the side of the stance it gave."""
+    world = Candidates(issues={"need for world government": {"name": "Need for world government", "parent_key": None}},
+                       solutions={make_key(VETO): VETO}, solution_issues={make_key(VETO): ["Need for world government"]})
+    payload = CardPayload.model_validate({"found": True, "issues": [{"name": "Need for world government"}],
+                                          "solutions": [{"name": VETO, "for_issue": "Need for world government",
+                                                         "stance": stance}],
+                                          "evidence": [{"name": "Veto blocked action on Syria", "stance": reason_side,
+                                                        "about": reason_about}]})
+    return reading.prepared_card(payload, world, text)
+
+
+@pytest.mark.parametrize("text, stance, given, side", [
+    ("I oppose the Security Council veto because it has blocked action on Syria.", "oppose", "refutes", "supports"),
+    ("I'm against the Security Council veto because it has blocked action on Syria.", "oppose", "refutes", "supports"),
+    ("I support the Security Council veto because it keeps the great powers at the table.", "oppose", "supports",
+     "refutes"),
+    ("I support the Security Council veto because it keeps the great powers at the table.", "approve", "refutes",
+     "refutes"),
+])
+def test_a_reason_about_the_dropped_solution_takes_the_side_of_the_writers_own_stance(text, stance, given, side):
+    """Live read back of PR 65: the oppose was dropped but the reason still refuted the abolish solution. Against
+    what the solution would end, the reason supports the solution; for it, the reason refutes it."""
+    card = _read_with_reason(text, stance, given)
+    assert card.solutions == []
+    assert [(item.name, item.stance, item.about) for item in card.evidence] == [
+        ("Veto blocked action on Syria", side, VETO)]
+
+
+@pytest.mark.parametrize("text", [
+    "I don't support the Security Council veto, because it has blocked action on Syria.",
+    "I oppose the Security Council veto but support the Council, because it has blocked action on Syria.",
+])
+def test_a_negated_or_mixed_stance_leaves_the_reason_as_the_model_gave_it(text):
+    card = _read_with_reason(text, "oppose", "refutes")
+    assert card.solutions == [] and card.evidence[0].stance == "refutes"
+
+
+def test_a_reason_about_something_else_is_never_turned():
+    card = _read_with_reason("I oppose the Security Council veto because it has blocked action on Syria.", "oppose",
+                             "supports", reason_about="Need for world government")
+    assert [(item.stance, item.about) for item in card.evidence] == [("supports", "Need for world government")]

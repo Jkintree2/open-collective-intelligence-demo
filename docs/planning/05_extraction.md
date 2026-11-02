@@ -679,8 +679,21 @@ In the seed only "Limit or abolish the Security Council veto" holds a change wor
 | Case | Runs | Read |
 |---|---|---|
 | 29 | 9 | every run: the veto issue, the Syria reason supporting it, no stance on the abolish solution (without the guard: oppose, 3 of 3) |
-| 31 | 9 | every run: no stance on the abolish solution; the reason "Veto keeps great powers at the table" supports the abolish solution, the wrong side (the prompt as it stands does the same in 2 of 3 without the guard; not the guard's to fix) |
+| 31 | 9 | every run: no stance on the abolish solution; the reason "Veto keeps great powers at the table" supports the abolish solution, the wrong side (the prompt as it stands does the same in 2 of 3 without the guard; not the guard's to fix); turned since, see below) |
 | 32 | 5 | every run: Data centers and the water reason supporting it; no stance on the moratorium (also 4 of 4 without the guard) |
 | 8, 14, 18, 20, 22, 25 | 4 | every run: the stance as before (approve on the veto solution in 8 and 22, approve in 14 and 18, oppose in 20 and 25) |
 | 24 | 4 | as before |
 | every other case | 2 | as expected; case 16 kept its hedged no stance ("would reduce"), as before the guard |
+
+**The reason's side (added 2 November 2026, after PR 65 went live).** The live read back of PR 65 showed what the seed could not: on John's record there is no Security Council veto issue and "Limit or abolish the Security Council veto" sits under Need for world government, so the reading points the writer's reason at the solution, on the side of its wrong oppose ("Security Council veto blocked action on Syria refutes Limit or abolish the Security Council veto"). The guard dropped the oppose but left the reason refuting. Now, when the guard drops a row, every reason about that solution takes the side of the writer's own stance word: against what the solution would end (oppose, against, reject, disagree), the reason supports the solution; for it (support, approve, favour, endorse, agree), the reason refutes it. A statement holding both kinds of word ("I oppose the veto but support the Council"), or a negated one ("I don't support"), keeps its reasons as the model read them, and a reason about anything else is never turned. The `stance_dropped` log line also counts `reasons_turned`.
+
+A context `world` in `scripts/cards.py` mirrors the live record's shape (the seed without the veto issue, the veto solution under Need for world government). New cases 33 and 34 are cases 29 and 31 in it.
+
+| Case | Runs | Read |
+|---|---|---|
+| 33 | 4 | every run: Need for world government; no stance on the abolish solution; the Syria reason supports it (without the guard, 2 of 2 oppose, and the reason refuted the solution once) |
+| 34 | 4 | every run: no stance on the abolish solution; the reason refutes it (without the guard: oppose, with the reason supporting it once and missing once) |
+| 29 | 4 | as before: the veto issue, the Syria reason supporting it |
+| 31 | 4 | now right: the reason refutes the abolish solution in every run (before, it supported it) |
+| every other case | 1 | as expected, John's paragraph (case 2) with the UDHR and the Earth Charter |
+

@@ -162,9 +162,14 @@ def parse_payload(content: str) -> CardPayload:
 # an existing solution that would change something is dropped when the statement takes a stance in words
 # (STANCE_WORDS) on that something and uses no change word at all. A statement about ending, stopping or getting
 # rid of something, or plain advocacy in other words ("We have to quit burning fossil fuels"), is read as the
-# model read it. Each word lists its forms, so "endorse" is not "end".
-STANCE_WORDS = re.compile(r"\b(?:oppos\w*|against|support\w*|approv\w*|favou?r\w*|endors\w*|reject\w*|"
-                          r"disagree\w*|agree\w*)\b", re.IGNORECASE)
+# model read it. Each word lists its forms, so "endorse" is not "end". Since the live read back of PR 65 the
+# writer's reasons about a dropped solution take the side of the writer's own stance: against what the solution
+# would end, a reason supports the solution; for it, a reason refutes it. A statement holding both kinds of stance
+# word, or a negated one ("I don't support"), keeps its reasons as the model read them.
+AGAINST_WORDS = r"oppos\w*|against|reject\w*|disagree\w*"
+FOR_WORDS = r"support\w*|approv\w*|favou?r\w*|endors\w*|agree\w*"
+STANCE_WORDS = re.compile(rf"\b(?:{AGAINST_WORDS}|{FOR_WORDS})\b", re.IGNORECASE)
+NEGATED_STANCE = re.compile(rf"(?:\bnot|\bnever|n't)\s+(?:\w+\s+)?(?:{AGAINST_WORDS}|{FOR_WORDS})\b", re.IGNORECASE)
 CHANGE_WORDS = re.compile(r"\b(?:limit\w*|abolish\w*|abolition|end|ends|ended|ending|rid|ban|bans|banned|banning|"
                           r"stop\w*|reduc\w*|eliminat\w*|remov\w*|repeal\w*|cut|cuts|cutting|prohibit\w*|"
                           r"restrict\w*|cap|caps|capped|capping|curb\w*|halt\w*|outlaw\w*|scrap|scraps|scrapped|"
@@ -185,9 +190,19 @@ def _words(text: str) -> set[str]:
     return words - COMMON_WORDS
 
 
+def _reason_side(text: str) -> str | None:
+    """The side a reason about a solution that would end what the writer names takes, or None when unclear."""
+    against = re.search(rf"\b(?:{AGAINST_WORDS})\b", text, re.IGNORECASE)
+    for_it = re.search(rf"\b(?:{FOR_WORDS})\b", text, re.IGNORECASE)
+    if bool(against) == bool(for_it) or NEGATED_STANCE.search(text):
+        return None
+    return "supports" if against else "refutes"
+
+
 def _stances_on_what_is_named(payload: CardPayload, candidates: Candidates, text: str) -> CardPayload:
     """The reading's solutions without a stance it moved from what the statement names to a solution that would
-    change it. The solution's issue stays, so the writer still claims it."""
+    change it. The solution's issue stays, so the writer still claims it, and reasons about the solution take the
+    side of the writer's own stance."""
     if not STANCE_WORDS.search(text) or CHANGE_WORDS.search(text):
         return payload
     words, kept, dropped = _words(text), [], []
@@ -200,7 +215,11 @@ def _stances_on_what_is_named(payload: CardPayload, candidates: Candidates, text
             kept.append(item)
     if not dropped:
         return payload
-    log.info(json.dumps({"event": "stance_dropped", "count": len(dropped)}))
+    side, gone = _reason_side(text), {make_key(clean_name(item.name)) for item in dropped}
+    evidence = [row.model_copy(update={"stance": side}) if side and make_key(clean_name(row.about or "")) in gone
+                else row for row in payload.evidence]
+    turned = sum(old.stance != new.stance for old, new in zip(payload.evidence, evidence))
+    log.info(json.dumps({"event": "stance_dropped", "count": len(dropped), "reasons_turned": turned}))
     issues = list(payload.issues)
     for item in dropped:
         # The issue the model gave when the record holds it, else the solution's own: never a name it made up.
@@ -211,7 +230,7 @@ def _stances_on_what_is_named(payload: CardPayload, candidates: Candidates, text
         held = {make_key(clean_name(row.name)) for row in issues}
         if home in candidates.issues and home not in held:
             issues.append(IssueItem(name=candidates.issues[home]["name"]))
-    return payload.model_copy(update={"solutions": kept, "issues": issues})
+    return payload.model_copy(update={"solutions": kept, "issues": issues, "evidence": evidence})
 
 
 def prepared_card(payload: CardPayload, candidates: Candidates, text: str | None = None) -> CardPayload:
