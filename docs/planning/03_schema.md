@@ -984,7 +984,7 @@ The page text, the raw response of the reading service, and the suggestions the 
 
 ### The check cache (process memory, not the database)
 
-`app/check.py` keeps, for the life of the process, the last 500 readings keyed by (URL, target name, statement hash), each with its verdict, quote and source facts. It lets the write path confirm a check (above) and keeps the same link from being read twice in a session. A restart empties it; a post made across a restart is stored with `check = null`.
+`app/check.py` keeps, for the life of the process, the last 500 readings keyed by (URL, target name, statement hash), each with its verdict, quote and source facts. It lets the write path confirm a check (above) and keeps the same link from being read twice in a session. A restart empties it; a post made across a restart is stored with `check = null`. An `unread` reading is kept so a post can still confirm it, but it is never answered from the cache: the next request for that link reads it again, under the usual limits, and its new reading replaces the old (Beth, 2 November 2026: Marketplace's site refuses our reader, the backup reader most likely failed that once, and the link then said "Could not open this page." until the next restart, though it reads fine now).
 
 ### Export and restore
 

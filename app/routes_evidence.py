@@ -121,7 +121,8 @@ def check_evidence(request: Request, data: CheckRequest) -> Response:
     # A transcript counts only for a video link, and is read afresh: the reading before it found no captions.
     transcript = data.transcript if data.transcript.strip() and fetch_video.is_video(url) else None
     cached = None if transcript else check.cache.get(check.cache_key(url, data.about, data.text))
-    if cached is not None:
+    # A page that could not be opened is read again, and counts against the limits like any new link.
+    if cached is not None and cached.verdict != "unread":
         return answer(cached)
     if not person_limit.take(reader_key(request)) or not site_daily.take(site_minute):
         return JSONResponse({"message": TOO_MANY}, status_code=429)
