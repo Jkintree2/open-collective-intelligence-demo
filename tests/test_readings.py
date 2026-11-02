@@ -92,3 +92,23 @@ def test_reading_payload_resolves_the_reading_as_a_post_is_resolved():
     assert readings.reading_payload("no reading here", RECORD, TEXT) is None
     assert readings.reading_payload(raw, RECORD, TEXT, resolve=lambda card: resolve_payload(card, Candidates())) \
         == resolve_payload(card, Candidates()).as_json()
+
+
+def test_an_older_post_that_proposed_with_a_stance_is_not_listed_when_left_as_read():
+    """The review of 2 November: worked out against today's names, the post's own proposal link made its new
+    solution look like a position only, and its issue drop out."""
+    drug, medical = "Drug dealing problem", "Treat drug use as medical issue"
+    after = Candidates(issues={make_key(drug): {"name": drug, "parent_key": None}}, solutions={make_key(medical): medical},
+                       solution_issues={make_key(medical): [drug]})
+    raw = json.dumps({"found": True, "issues": [{"name": drug}], "evidence": [],
+                      "solutions": [{"name": medical, "for_issue": drug, "stance": "approve"}]})
+    posted = resolve_payload(CardPayload.model_validate(json.loads(raw)), Candidates()).as_json()
+    older = row(None, posted, extraction_raw=raw, text="Drug dealing is a problem. We should treat drug use as a medical issue.")
+    assert readings.page_rows([older], after) == ([], 0)
+
+
+def test_a_reading_too_deep_to_read_again_is_counted_not_raised():
+    deep = "[" * 15000 + "]" * 15000
+    assert readings.reading_payload(deep, RECORD, TEXT) is None
+    assert readings.page_rows([row(None, APPROVES, extraction_raw=deep)], RECORD) == ([], 1)
+    assert readings.page_rows([row(OPPOSES, deep)], RECORD) == ([], 1)

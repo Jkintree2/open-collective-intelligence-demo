@@ -1682,7 +1682,7 @@ ORDER BY q.asked_at DESC
 
 For the reading-quality loop (`05_extraction.md`): the back room lists the posts whose writer changed what the language model found before posting, so a misreading can become a test case.
 
-* `Post` gains `reading_payload`: what the reading found, as JSON text in the shape of `payload` (the reading's card prepared as `/api/extract` prepared it, with the stance guard, then resolved as the post is). Written by `/api/posts` whenever the post carries `extraction_raw`, and by an edit as `extraction_raw` is (this edit's reading, resolved as the edit is, without the post's own proposal links; otherwise null). Null for a manual post, the seed, and every post before this date. A copy carries it as text.
+* `Post` gains `reading_payload`: what the reading found, as JSON text in the shape of `payload` (the reading's card prepared as `/api/extract` prepared it, with the stance guard, then resolved as the post is). Written by `/api/posts` whenever the post carries `extraction_raw`, also when the writer sets the reading aside and posts the text as it is (the card keeps the reading for that). An edit sets it as `extraction_raw` is: this edit's reading, resolved as the edit is, without the post's own proposal links; the edit page does not read again today, so an edit clears both. Null for a manual post, the seed, and every post before this change went live. A copy carries it as text.
 
 **Q55. Posts with a reading** (`app/graph_readings.py`), newest change first, at most 200. It never reads the `Person` behind a post, so an anonymous post stays anonymous (`display_name` is null).
 
@@ -1696,4 +1696,4 @@ ORDER BY coalesce(post.edited_at, post.created_at) DESC
 LIMIT $limit
 ```
 
-`app/readings.py` keeps the rows whose reading and post differ: each side is turned into lines in the display verbs ("claims", "proposes solution … for …", "approves", "opposes", "submits evidence …, which supports issue of …"), and a post is listed when the two sets differ. A post without `reading_payload` (before this date) has its reading worked out from `extraction_raw` against the names as they are now, and says so; one whose reading cannot be read again is counted, not listed.
+`app/readings.py` keeps the rows whose reading and post differ: each side is turned into lines in the display verbs ("claims", "proposes solution … for …", "approves", "opposes", "submits evidence …, which supports issue of …"), and a post is listed when the two sets differ. A post without `reading_payload` (before this change) has its reading worked out from `extraction_raw` against the names as they are now, less what the post itself added (its rows that were new then, and its own proposal links), and says so; a row that cannot be read again is counted, not listed, and never stops the page.

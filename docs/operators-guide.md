@@ -95,7 +95,7 @@ If one of these emails does not go, the page says so. Try again in a minute. One
 
 ### Readings changed by their writers
 
-Under the language model line, **Readings changed by their writers** lists each post where the writer changed what the language model found before posting, newest first, with what was taken out and what was added. Each one is looked at, and a misreading is added to the tests the reading is checked against. Posts written before 2 November 2026 are worked out from the database as it is now, so an issue renamed or merged since then can show up there too.
+Under the language model line, **Readings changed by their writers** lists each post where the writer changed what the language model found before posting, newest first, with what was taken out and what was added. Each one is looked at, and a misreading is added to the tests the reading is checked against. Posts written before this list began are worked out from the database as it is now, so an issue renamed or merged since then can show up there too. The form's own help shows up as well, such as the issue of the page the writer came from, or the side a link was found to take.
 
 ### Sending email
 

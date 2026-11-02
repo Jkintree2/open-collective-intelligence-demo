@@ -54,7 +54,7 @@ from app.members import (
 from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app.routes_item_pages import about_evidence, about_solution, evidence_href, solution_href
-from app import graph_own_posts, readings
+from app import graph_own_posts
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
 from app import check, confidence, graph_accounts, graph_evidence, graph_item_pages, graph_places, places, search, sides, tidy
 
@@ -629,12 +629,14 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                                           sides.statements(checks))) + ".")[:TEXT_MAX]
     if not data.text.strip():
         source = "manual"
-    edited = False
+    edited, found = False, None
     if data.extraction_raw:
         try:
             original = reading.prepared_card(reading.parse_payload(data.extraction_raw), candidates, data.text)
             edited = any(getattr(original, key) != getattr(card, key) for key in ("issues", "solutions", "evidence"))
-        except ValueError:
+            # Kept beside the post for the back room's readings changed by their writers (readings.py).
+            found = resolve_payload(original, candidates).as_json()
+        except (ValueError, RecursionError):
             edited = True
     # What the reading service returned is kept whenever it returned something, even when the tester
     # emptied the card or the box, so "it did something weird" can be answered from the one post.
@@ -644,7 +646,7 @@ def post_card(request: Request, data: PostRequest) -> Response:
                                 latency_ms=data.latency_ms,
                                 request_id=_request_id(request), edited=edited,
                                 one_stance=settings.accounts_enabled, checks=checks, place=card_place(data),
-                                reading_payload=readings.reading_payload(data.extraction_raw, candidates, data.text))
+                                reading_payload=found)
     response = JSONResponse({"id": post_id, "message": "Added to the database"}, status_code=201)
     if member is None:
         if anonymous:
