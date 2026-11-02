@@ -20,7 +20,7 @@ CANDIDATES = Candidates(
 
 
 def _payload(**kwargs):
-    base = {"issues": [{"name": ISSUE, "parent": None}], "solutions": [], "evidence": []}
+    base = {"issues": [{"name": ISSUE}], "solutions": [], "evidence": []}
     base.update(kwargs)
     return CardPayload.model_validate(base)
 
@@ -45,7 +45,7 @@ def test_unknown_for_issue_falls_back_to_the_first_issue():
 
 def test_lists_are_capped_at_three_issues_and_five_solutions_and_five_evidence():
     payload = _payload(
-        issues=[{"name": f"Issue number {n}", "parent": None} for n in range(6)],
+        issues=[{"name": f"Issue number {n}"} for n in range(6)],
         solutions=[{"name": f"Solution number {n}", "for_issue": None, "stance": "none"} for n in range(8)],
         evidence=[{"name": f"Evidence number {n}", "url": None, "stance": "supports", "about": None} for n in range(8)],
     )
@@ -57,7 +57,7 @@ def test_lists_are_capped_at_three_issues_and_five_solutions_and_five_evidence()
 
 def test_names_are_cleaned_and_keyed_and_unusable_names_dropped():
     payload = _payload(
-        issues=[{"name": "the security council veto.\n", "parent": None}, {"name": "!!!", "parent": None}]
+        issues=[{"name": "the security council veto.\n"}, {"name": "!!!"}]
     )
     resolved = resolve_payload(payload, CANDIDATES)
     assert len(resolved.issues) == 1
@@ -66,30 +66,29 @@ def test_names_are_cleaned_and_keyed_and_unusable_names_dropped():
     assert resolved.issues[0]["existing"] is True
 
 
-def test_a_parent_that_is_a_sub_issue_is_replaced_by_its_own_parent():
-    payload = _payload(issues=[{"name": "Veto reform timetable", "parent": "Security Council veto"}])
+def test_a_requested_parent_is_ignored():
+    """John, 2 November 2026: there are no sub-issues. A parent sent by the reading or by an older card is
+    ignored, and is no correction either."""
+    payload = _payload(issues=[{"name": "Data centers"},
+                               {"name": "Electricity used by data centers", "parent": "Data centers"},
+                               {"name": "Veto reform timetable", "parent": "Security Council veto"}])
+    assert "parent" not in payload.issues[1].model_dump()
     resolved = resolve_payload(payload, CANDIDATES)
-    assert resolved.issues[0]["parent_key"] == "need for world government"
-
-
-def test_a_parent_that_does_not_exist_is_dropped():
-    payload = _payload(issues=[{"name": "Veto reform timetable", "parent": "Nowhere"}])
-    resolved = resolve_payload(payload, CANDIDATES)
-    assert resolved.issues[0]["parent_key"] is None
-
-
-def test_a_parent_introduced_by_the_same_card_is_kept():
-    payload = _payload(issues=[{"name": "Coastal flooding"},
-                               {"name": "Harbor district drainage", "parent": "Coastal flooding"}])
-    resolved = resolve_payload(payload, Candidates.empty())
-    assert [item["parent_key"] for item in resolved.issues] == [None, "coastal flooding"]
+    assert [sorted(row) for row in resolved.issues] == [["existing", "key", "name"]] * 3
     assert not resolved.dropped and not resolved.corrected
 
 
-def test_a_missing_parent_is_a_correction_and_does_not_stop_the_post():
-    resolved = resolve_payload(_payload(issues=[{"name": "Veto reform timetable", "parent": "Nowhere"}]), CANDIDATES)
-    assert resolved.issues[0]["parent_key"] is None
-    assert not resolved.dropped and len(resolved.corrected) == 1
+def test_a_position_under_an_existing_sub_issue_is_only_a_stance():
+    """A sub-issue already in a record (the seed, an older copy) keeps its place: approving one of its
+    solutions claims nothing again."""
+    known = replace(CANDIDATES, solution_issues={
+        "limit or abolish the security council veto": ["Security Council veto"]})
+    resolved = resolve_payload(CardPayload.model_validate({
+        "issues": [{"name": "Security Council veto"}],
+        "solutions": [{"name": "Limit or abolish the Security Council veto", "for_issue": "Security Council veto",
+                       "stance": "approve"}]}), known)
+    assert resolved.issues == []
+    assert resolved.solutions[0]["stance_only"] is True
 
 
 def test_short_names_are_reused_when_they_exist_and_refused_when_they_are_new():
@@ -147,19 +146,6 @@ def test_cleared_and_malformed_names_do_not_reject_other_rows():
     assert [item["name"] for item in resolved.issues] == [ISSUE]
 
 
-def test_existing_sub_issue_keeps_its_parent_even_when_card_omits_it():
-    resolved = resolve_payload(_payload(issues=[{"name": "Security Council veto"}]), CANDIDATES)
-    assert resolved.issues[0]["parent_key"] == "need for world government"
-
-
-def test_existing_parent_cannot_be_made_a_child_and_new_parents_are_not_invented():
-    payload = _payload(issues=[{"name": "Need for world government", "parent": "Security Council veto"},
-                               {"name": "New issue", "parent": "Another new issue"},
-                               {"name": "Another new issue", "parent": "New issue"}])
-    resolved = resolve_payload(payload, CANDIDATES)
-    assert all(item["parent_key"] is None for item in resolved.issues)
-
-
 def test_empty_and_non_english_results_cannot_retain_structure():
     for flags in ({"found": False}, {"language_ok": False}):
         payload = CardPayload.model_validate({"issues": [{"name": ISSUE}], **flags})
@@ -169,15 +155,6 @@ def test_empty_and_non_english_results_cannot_retain_structure():
 def test_invalid_http_urls_are_removed():
     payload = _payload(evidence=[{"name": "Study", "about": ISSUE, "url": "https://"}])
     assert payload.evidence[0].url is None
-
-
-def test_a_childless_top_level_issue_can_gain_a_parent_new_on_the_same_card():
-    known = Candidates(issues={"short term rental properties": {"name": "Short term rental properties", "parent_key": None}})
-    payload = _payload(issues=[{"name": "Downtown St Louis revitalization", "parent": None},
-                               {"name": "Short term rental properties", "parent": "Downtown St Louis revitalization"}])
-    resolved = resolve_payload(payload, known)
-    assert [item["parent_key"] for item in resolved.issues] == [None, "downtown st louis revitalization"]
-    assert not resolved.corrected
 
 
 CLIMATE = Candidates(

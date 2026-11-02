@@ -25,9 +25,8 @@ def write_payload(tx: Any, payload: ResolvedPayload, common: dict[str, Any], *, 
     Phase 1 does; a dict writes each row's kept reading (or nulls) with statements 5 and 5b extended."""
     for issue in payload.issues:
         tx.run(graph.MERGE_ISSUE_CLAIM, issue_key=issue["key"], issue_name=issue["name"], **common)
-    for issue in payload.issues:
-        if issue.get("parent_key"):
-            tx.run(graph.MERGE_PART_OF, issue_key=issue["key"], parent_key=issue["parent_key"], **common)
+    # A post writes no PART_OF since 2 November 2026 (John: there are no sub-issues); only the seed's issues
+    # block still does, and a PART_OF already in the record stays.
     for solution in payload.solutions:
         if not solution.get("stance_only"):
             tx.run(

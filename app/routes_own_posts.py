@@ -81,8 +81,7 @@ def edit_card(rows: list[dict], stored_json: str | None, issues: dict[str, dict]
     for row in rows:
         rel = row["rel"]
         if rel == "CLAIM":
-            claimed.setdefault(row["to_key"], {"name": row["to_name"],
-                                               "parent": (issues.get(row["to_key"]) or {}).get("parent_name")})
+            claimed.setdefault(row["to_key"], {"name": row["to_name"]})
         elif rel in ("PROPOSE", "APPROVE", "OPPOSE") and row["to_label"] == "Solution":
             key = row["to_key"]
             # The issue this post linked it to; else the one its payload named, if it still exists; else its home.

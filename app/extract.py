@@ -160,8 +160,7 @@ def prepared_card(payload: CardPayload, candidates: Candidates, text: str | None
     return CardPayload.model_validate({
         "language_ok": payload.language_ok, "found": payload.found and not resolved.is_empty,
         "note": payload.note,
-        "issues": [{"name": row["name"], "parent": names.get(row["parent_key"]),
-                    "existing": row["existing"]} for row in resolved.issues],
+        "issues": [{"name": row["name"], "existing": row["existing"]} for row in resolved.issues],
         "solutions": [{"name": row["name"], "for_issue": names[row["for_issue_key"]],
                        "stance": row["stance"], "stance_only": row["stance_only"]} for row in resolved.solutions],
         "evidence": [{"name": row["name"], "url": row["url"] if text is None or row["url"] in urls else None,

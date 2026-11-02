@@ -33,8 +33,9 @@ def _text(value: Any) -> str:
 
 
 class IssueItem(BaseModel):
+    # No parent since 2 November 2026 (John): there are no sub-issues, and a parent sent by an older card
+    # or by the reading is ignored like any other unknown field.
     name: str = ""
-    parent: str | None = None
     existing: bool = False
 
     @field_validator("existing", mode="before")
@@ -42,7 +43,7 @@ class IssueItem(BaseModel):
     def recompute_existing(cls, value: Any) -> bool:
         return value if isinstance(value, bool) else False
 
-    @field_validator("name", "parent", mode="before")
+    @field_validator("name", mode="before")
     @classmethod
     def _strings(cls, value: Any) -> str | None:
         return _text(value)
@@ -268,7 +269,7 @@ def resolve_payload(payload: CardPayload, candidates: Candidates) -> ResolvedPay
     """Apply the rules under "Rules applied in Python before the transaction" in 03_schema.md."""
     out = ResolvedPayload()
 
-    # Issues: cleaned, keyed, capped, de-duplicated, parents resolved.
+    # Issues: cleaned, keyed, capped, de-duplicated.
     issue_keys: dict[str, dict[str, Any]] = {}
     for item in payload.issues:
         key, name = _keyed(item.name)
@@ -284,14 +285,8 @@ def resolve_payload(payload: CardPayload, candidates: Candidates) -> ResolvedPay
         issue_keys[key] = {
             "key": key,
             "name": candidates.issues[key]["name"] if existing else name,
-            "parent_key": None,
-            "parent_requested": item.parent,
             "existing": existing,
         }
-    for row in issue_keys.values():
-        row["parent_key"] = _resolve_parent(row, issue_keys, candidates, out)
-    for row in issue_keys.values():
-        del row["parent_requested"]
     out.issues = list(issue_keys.values())
     first_issue = out.issues[0]["key"] if out.issues else None
 
@@ -373,7 +368,7 @@ def _positions_only(out: ResolvedPayload, candidates: Candidates) -> None:
 
     GitHub issue 4: approving one solution must not claim its issue again or propose the
     solution again. An existing issue is left out when its only part in the post is to hold
-    such positions; anything else about it (a new solution, evidence, a sub-issue) keeps it.
+    such positions; anything else about it (a new solution, evidence) keeps it.
     Since 31 October 2026 (John) the card from a solution's page holds every issue the solution was
     proposed for, so a position holds all of them, not only the one its row names.
     """
@@ -385,41 +380,8 @@ def _positions_only(out: ResolvedPayload, candidates: Candidates) -> None:
             held |= linked
     used = {row["for_issue_key"] for row in out.solutions if not row["stance_only"]}
     used |= {row["target_key"] for row in out.evidence if row["target_label"] == "Issue"}
-    used |= {row["parent_key"] for row in out.issues if row["parent_key"]}
     held -= used
-    out.issues = [
-        row for row in out.issues
-        if not (row["key"] in held and row["existing"]
-                and row["parent_key"] == candidates.issues[row["key"]].get("parent_key"))
-    ]
-
-
-def _resolve_parent(
-    row: dict[str, Any],
-    issue_keys: dict[str, dict[str, Any]],
-    candidates: Candidates,
-    out: ResolvedPayload,
-) -> str | None:
-    current = candidates.issues.get(row["key"], {})
-    if current.get("parent_key"):
-        return current["parent_key"]
-    if any(item.get("parent_key") == row["key"] for item in candidates.issues.values()):
-        return None
-    parent_key, _ = _keyed(row["parent_requested"])
-    if parent_key is None or parent_key == row["key"]:
-        return None
-    known = candidates.issues.get(parent_key)
-    if known is None:
-        sibling = issue_keys.get(parent_key)
-        # A parent introduced by the same card counts, as long as it is top level itself.
-        if sibling is not None and _keyed(sibling["parent_requested"])[0] is None:
-            return parent_key
-        out.corrected.append(f"parent {row['parent_requested']!r} of {row['name']!r} does not exist")
-        return None
-    if known.get("parent_key"):
-        # A sub-issue cannot be a parent: use its own parent instead (M2).
-        return known["parent_key"] if known["parent_key"] != row["key"] else None
-    return parent_key
+    out.issues = [row for row in out.issues if not (row["key"] in held and row["existing"])]
 
 
 def _resolve_target(

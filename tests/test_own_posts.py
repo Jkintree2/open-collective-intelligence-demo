@@ -222,7 +222,7 @@ def test_the_edit_card_comes_from_the_posts_edges_as_they_are_now():
                       "target_key": "seawalls", "target_label": "Solution"}]})
     issues = {"coastal flooding": {"name": "Coastal flooding", "parent_name": "World"}}
     assert edit_card(rows, stored, issues) == {
-        "issues": [{"name": "Coastal flooding", "parent": "World"}],
+        "issues": [{"name": "Coastal flooding"}],
         "solutions": [{"name": "Seawalls", "for_issue": "Coastal flooding", "stance": "approve"}],
         "evidence": [{"name": "Report", "url": "https://example.org", "stance": "refutes", "about": "Seawalls"}]}
     # A stance a click has since replaced is no longer this post's: no position, so saving changes nothing.
@@ -278,7 +278,7 @@ def test_the_edit_page_carries_the_post_and_its_card(owned, monkeypatch):
     embedded = re.search(r'<script id="edit-post" type="application/json">(.*?)</script>', page.text, re.S).group(1)
     post = jsonlib.loads(embedded)
     assert post == {"id": "mine-1", "text": "My statement", "anonymous": False,
-                    "card": {"issues": [{"name": "Flooding", "parent": None}], "solutions": [], "evidence": []}}
+                    "card": {"issues": [{"name": "Flooding"}], "solutions": [], "evidence": []}}
     assert "/static/edit_post.js?v=" in page.text
     # Without JavaScript the same form saves the edit; it never posts to /posts.
     assert 'action="/posts/mine-1/edit"' in page.text and 'action="/posts"' not in page.text
