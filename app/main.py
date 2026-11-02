@@ -21,6 +21,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app import graph, extract as reading
 from app.extract import CardPayload, resolve_payload
@@ -137,8 +138,29 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     graph.close_driver()
 
 
+class HeadAsGet:
+    """UptimeRobot's free monitors check a site with HEAD, and FastAPI's GET routes answer only GET (405, so
+    the monitor reads the site as down). A HEAD request runs its GET route, so /health still reads the
+    database, and goes back without the body."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope["method"] != "HEAD":
+            await self.app(scope, receive, send)
+            return
+
+        async def without_body(message: Message) -> None:
+            await send({**message, "body": b""} if message["type"] == "http.response.body" else message)
+
+        await self.app({**scope, "method": "GET"}, receive, without_body)
+
+
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
+# Added before log_request below, so it runs inside it and the log line still says HEAD.
+app.add_middleware(HeadAsGet)
 
 
 @app.middleware("http")

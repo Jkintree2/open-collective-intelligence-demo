@@ -1,5 +1,5 @@
-"""Read-only checks on a deployed site, run after each deploy. GET requests only: nothing is posted,
-signed in, read by the model or written to the record, so it is safe against production.
+"""Read-only checks on a deployed site, run after each deploy. GET and HEAD requests only: nothing is
+posted, signed in, read by the model or written to the record, so it is safe against production.
 
     python -m scripts.smoke --url https://the-site.example [--ref origin/main]
 
@@ -7,6 +7,7 @@ Signed out it checks the sign-in page, that every page behind it sends you there
 password prompt, and that the served scripts and style are exactly the ones in --ref (the hash the
 pages put on their links, and each file's bytes). The pages behind a Phase 3 switch (`/about`, `/ask`)
 pass either way, not found while the switch is off or the page when it is on, and the line says which.
+It also sends the HEAD check UptimeRobot's free monitors send, to /health and to /.
 With OCI_SMOKE_COOKIE set to an `oci_member` cookie copied from a signed-in browser, it also opens the
 signed-in pages. The cookie is never printed.
 """
@@ -82,6 +83,11 @@ def run(client: httpx.Client, static: dict[str, bytes], cookie: str | None = Non
         response = client.get(path)
         checks.append(Check(f"{path} signed out goes to sign in", _sends_to_sign_in(response),
                             f"answered {response.status_code}"))
+    health = client.head("/health")
+    checks.append(Check("HEAD /health (the uptime monitors' check)", health.status_code == 200,
+                        f"answered {health.status_code}"))
+    home = client.head("/")
+    checks.append(Check("HEAD / signed out goes to sign in", _sends_to_sign_in(home), f"answered {home.status_code}"))
     forgot = client.get("/forgot-password")
     checks.append(Check("forgot password page", forgot.status_code == 200, f"answered {forgot.status_code}"))
     admin = client.get("/admin")
