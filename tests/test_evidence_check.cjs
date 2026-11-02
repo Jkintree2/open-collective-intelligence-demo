@@ -171,6 +171,39 @@ test('a post being edited shows the reading it holds, and lists what else the pa
   assert.equal(checks(p).length, 2);
 });
 
+test('a post being edited whose page could not be opened reads it again, and the writer\'s choice stays', async () => {
+  // Beth, 2 November 2026: the stored "could not open" came back on every edit and the page was never tried again.
+  const p = await setup(undefined, {issues: {'coastal flooding': {name: 'Coastal flooding', parent_key: null}}, solutions: {}, evidence: {}},
+                        {member: 'Ada Lovelace', evidenceCheck: true});
+  p.get('edit-post').textContent = JSON.stringify({id: 'post-1', text: 'Coastal flooding is worse.', anonymous: false,
+    card: {issues: [{name: 'Coastal flooding', parent: null}], solutions: [],
+           evidence: [{name: 'Survey', url: URL, stance: 'refutes', about: 'Coastal flooding',
+                       check: {verdict: 'unread', quote: null, line: null}}]}});
+  p.load('edit_post.js'); await p.flush();
+  const [row] = p.get('evidence-rows').children;
+  assert.equal(lines(row)[0], 'Reading the page…');
+  assert.equal(checks(p).length, 1);
+  checks(p)[0].resolve({verdict: 'supports', quote: QUOTE, line: 'A news report from March 2024. Secondary source.', suggested: {}});
+  await p.flush();
+  assert.equal(lines(row)[0], 'Agrees');
+  assert.equal(fields(row).stance.value, 'refutes');
+  await p.runTimer(200);
+  assert.deepEqual(JSON.parse(p.requests.at(-1).options.body).evidence[0].check, {verdict: 'supports', quote: QUOTE});
+});
+
+test('a post being edited whose page could not be opened, with no reading service, says so and asks for nothing', async () => {
+  const p = await setup(undefined, {issues: {'coastal flooding': {name: 'Coastal flooding', parent_key: null}}, solutions: {}, evidence: {}},
+                        {member: 'Ada Lovelace', evidenceCheck: true, noReading: true});
+  p.get('edit-post').textContent = JSON.stringify({id: 'post-1', text: 'Coastal flooding is worse.', anonymous: false,
+    card: {issues: [{name: 'Coastal flooding', parent: null}], solutions: [],
+           evidence: [{name: 'Survey', url: URL, stance: 'supports', about: 'Coastal flooding',
+                       check: {verdict: 'unread', quote: null, line: null}}]}});
+  p.load('edit_post.js'); await p.flush();
+  const [row] = p.get('evidence-rows').children;
+  assert.equal(lines(row)[0], 'Could not open this page.');
+  assert.equal(checks(p).length, 0);
+});
+
 test('a post being edited with no reading service shows its reading and asks for nothing', async () => {
   const p = await setup(undefined, {issues: {'coastal flooding': {name: 'Coastal flooding', parent_key: null}}, solutions: {}, evidence: {}},
                         {member: 'Ada Lovelace', evidenceCheck: true, noReading: true});

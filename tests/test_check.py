@@ -181,6 +181,18 @@ def test_a_page_our_reader_could_not_open_goes_to_the_backup_reader():
     assert asked == [URL] and result.verdict == "supports"
 
 
+def test_a_page_that_could_not_be_opened_is_tried_again_next_time():
+    # Beth, 2 November 2026: a page that failed once (both readers) said "Could not open this page." for as
+    # long as the server ran, though it opened again later. A post may still keep the failed reading.
+    def failed_backup(url, settings, **kwargs):
+        return Page("unread", url, reason="backup")
+
+    first = run(GOOD, page=Page("unread", URL, reason="http"), backup=failed_backup)
+    assert first.verdict == "unread"
+    assert confirmed(URL, "Coastal flooding", "Floods are getting worse.", "unread", None) is first
+    assert run(GOOD).verdict == "supports"
+
+
 @pytest.mark.parametrize("change", [{"deepseek_fetch": False}, {"llm_base_url": "https://api.other.example"}])
 def test_the_backup_reader_is_off_with_its_switch_or_another_provider(change):
     from dataclasses import replace

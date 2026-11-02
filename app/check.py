@@ -284,7 +284,9 @@ def check_evidence(url: str, evidence_name: str, about: str, statement: str, set
     if not settings.llm_api_key:
         return Check("unchecked", url)
     key = cache_key(url, about, statement)
-    if not fresh and (hit := cache.get(key)) is not None:
+    # A page that could not be opened is tried again, as it may open next time (Beth, 2 November 2026); the
+    # failed reading stays cached so a post that carries it can still keep it.
+    if not fresh and (hit := cache.get(key)) is not None and hit.verdict != "unread":
         return hit
     # A long page is cut around the evidence, the claim and the writer's own words, so a sentence copied
     # from deep in an article is in what is read.

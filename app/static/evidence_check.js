@@ -175,9 +175,12 @@ window.ociEvidenceCheck = ({request, node, text, changed, addRow, removeRow, rea
     row.stance.addEventListener('change', () => { row.stanceChosen = true; different(row); });
     // A link the reading found is read as soon as its row exists, once the row has its "about". A row of a
     // post being edited shows the reading the post holds instead, and its supports or refutes stays the writer's.
+    // A page the post could not open is read again, as it may open now (Beth, 2 November 2026).
     Promise.resolve().then(() => {
       if (!row.url.value.trim()) { noLink(row); return; }
-      if (item.check && SAYS[item.check.verdict]) { row.lastAsked = asked(); row.stanceChosen = true; show(row, item.check); alsoMentions(row); } else ask();
+      if (item.check) row.stanceChosen = true;
+      const again = item.check && item.check.verdict === 'unread' && reading;
+      if (item.check && SAYS[item.check.verdict] && !again) { row.lastAsked = asked(); show(row, item.check); alsoMentions(row); } else ask();
     });
   }
   return {watch};

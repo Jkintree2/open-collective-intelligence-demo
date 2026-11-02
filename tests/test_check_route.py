@@ -97,6 +97,12 @@ def test_limited_per_browser_but_a_cached_link_is_free(api, monkeypatch):
     assert client.post("/api/check-evidence", json=BODY).json()["verdict"] == "unclear"
 
 
+def test_a_page_that_could_not_be_opened_is_read_again(api):
+    client, _, calls = api
+    check.cache.put(check.cache_key(BODY["url"], BODY["about"], BODY["text"]), Check("unread", BODY["url"]))
+    assert client.post("/api/check-evidence", json=BODY).json()["verdict"] == "supports" and len(calls) == 1
+
+
 def test_oversized_fields_are_refused(api):
     client, _, calls = api
     assert client.post("/api/check-evidence", json={**BODY, "text": "x" * 4001}).status_code == 422
