@@ -975,7 +975,7 @@ Since 28 October 2026 every line here says "database" where it said "record" (Jo
 
 > **Ask the database**
 >
-> Ask a question in plain words. The answer is built only from what people have posted here and the three guiding documents, and names where each part comes from.
+> Ask a question in plain words. The answer is built only from what people have posted here and the three guiding documents.
 >
 > [ input, empty, with the cursor in it (`autofocus`), like the Write page; no example question (John, call of 28 October) ]
 > [ Ask ]
@@ -991,9 +991,11 @@ Since 28 October 2026 every line here says "database" where it said "record" (Jo
 
 Under either box, small:
 
-> Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer one. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone with its answer, without your name.
+> Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer answer.
 
 (30 October 2026, John: answers of two or three sentences unless more is asked for, and each listed question a link to its answer. The rules' rule 12 sets the length; the guard's five paragraphs and 1,200 characters stay as the ceiling of a longer answer.)
+
+(2 November 2026, John: the opening line on `/ask` ends at "guiding documents", and the line under the box keeps only its first sentence, with "a longer one" now "a longer answer". The same line shows under the box on issue, solution and evidence pages.)
 
 **Under the answers, the latest questions** (John, 28 October, after the call; the headings are drafts for John). On `/ask`, the ten questions most recently answered anywhere; under an issue's box, the five asked about that issue. A question asked again moves to the top. Since 30 October each is a link to the answer it last got (below); a question kept before then has none and stays a button, whose tap puts it in the box, ready to ask or change. On `/ask`, a question asked on an issue says which, linked. Never a name. Hidden until there is one; a question answered on the page joins the top at once.
 
