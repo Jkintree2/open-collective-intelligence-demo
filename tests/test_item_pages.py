@@ -222,7 +222,7 @@ def test_the_reading_is_told_about_a_solution_or_evidence_as_data():
     assert about(("solution", "carbon tax")) == {"solution": "Carbon tax", "for_issues": ["Climate"]}
     assert about(("evidence", "who pays")) == {"evidence": "Who pays study"}
     assert about(("solution", "nowhere")) is None and about(("evidence", "nowhere")) is None
-    assert about("climate") == {"name": "Climate", "parent": None}
+    assert about("climate") == {"name": "Climate"}
 
 
 # Ask on the new pages, with ASK_ENABLED.
