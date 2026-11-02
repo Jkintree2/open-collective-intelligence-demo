@@ -11,10 +11,13 @@ from urllib.parse import urlsplit
 from dotenv import load_dotenv
 
 DEFAULT_SITE_NAME = "Open Collective Intelligence"
-DEFAULT_SITE_SENTENCE = (
-    "Write what you think about an issue that matters to you. We will pull out the issue, "
-    "your claim, any evidence and any solution, show you what we found, and add it to a "
-    "database everyone here shares."
+# The sentence at the top of the write page. Until 2 November 2026 it was read from SITE_SENTENCE in Render;
+# since then it is the site's own, so a change to it is a change here. Render's SITE_SENTENCE (and the line
+# in render.yaml) is no longer read; render.yaml is left as it is, since a change to it can make Render apply
+# the whole file to John's service again.
+SITE_SENTENCE = (
+    "Write what you think about an issue that matters to you. Your issue, your claim, and any evidence and "
+    "solution will be pulled out for you to check, then added to a database everyone here shares."
 )
 DEFAULT_LLM_BASE_URL = "https://api.deepseek.com"
 DEFAULT_LLM_MODEL = "deepseek-v4-flash"
@@ -40,7 +43,7 @@ class Settings:
     neo4j_database: str = "neo4j"
     app_env: str = "production"
     site_name: str = DEFAULT_SITE_NAME
-    site_sentence: str = DEFAULT_SITE_SENTENCE
+    site_sentence: str = SITE_SENTENCE
     llm_api_key: str | None = None
     llm_base_url: str = DEFAULT_LLM_BASE_URL
     llm_model: str = DEFAULT_LLM_MODEL
@@ -106,7 +109,6 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         neo4j_database=env.get("NEO4J_DATABASE") or "neo4j",
         app_env=env.get("APP_ENV") or "production",
         site_name=env.get("SITE_NAME") or DEFAULT_SITE_NAME,
-        site_sentence=env.get("SITE_SENTENCE") or DEFAULT_SITE_SENTENCE,
         llm_api_key=env.get("LLM_API_KEY") or None,
         llm_base_url=env.get("LLM_BASE_URL") or DEFAULT_LLM_BASE_URL,
         llm_model=env.get("LLM_MODEL") or DEFAULT_LLM_MODEL,

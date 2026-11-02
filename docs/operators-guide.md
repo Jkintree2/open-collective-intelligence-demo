@@ -53,14 +53,16 @@ No password is ever sent by email, and nobody, you included, can see anyone's pa
 
 People who took part with the passphrase keep their earlier posts, approvals and oppositions, under the names they typed then. To take part again they need an account: enter them like anyone else. Their earlier posts stay as they are and are not moved to the new account.
 
-## Changing the sentence at the top
+## The site name and the sentence at the top
 
-The sentence at the top of the page and the site name live in Render, not in the code.
+The site name lives in Render, not in the code.
 
 1. Sign in to Render and open your service.
 2. Click **Environment**.
-3. To change the sentence at the top of the page, edit `SITE_SENTENCE`. The site name is `SITE_NAME`.
+3. Edit `SITE_NAME`.
 4. Click **Save**. Render restarts the site. This takes a few minutes.
+
+Since 2 November 2026 the sentence at the top of the Write page is part of the site itself. To change it, contact whoever helps you with the site. `SITE_SENTENCE` in the same list is no longer read. Leave it where it is.
 
 The passphrase from the test weeks, `DEMO_PASSPHRASE`, no longer lets anyone in. Leave it where it is. If accounts ever had to be switched off in a hurry, changing `ACCOUNTS_ENABLED` to false in the same place brings the passphrase page back, and nothing in the database is lost. Then tell whoever helps you with the site.
 
