@@ -92,6 +92,16 @@ def test_validate_refuses_an_unknown_key():
         validate([{"isue": "x"}])
 
 
+def test_every_case_has_valid_checks():
+    cases = json.loads((Path(__file__).parent / "extraction_cases.json").read_text())
+    for case in cases:
+        if case.get("checks") != "local":
+            validate(case.get("checks"))
+        if "pass" in case:
+            assert type(case["pass"]) is int and case["pass"] >= 1 and case.get("pass_note"), case["id"]
+    assert [case["id"] for case in cases if case.get("checks") == "local"] == ["10"]
+
+
 @pytest.mark.parametrize("check", [{"count": "people", "is": 1}, {"count": "issues"}, {"found": "yes"},
                                    {"solution": VETO, "stance": "maybe"}, {"evidence": 3},
                                    {"any": {"found": True}}, {"not": [{"found": True}]}, "found"])

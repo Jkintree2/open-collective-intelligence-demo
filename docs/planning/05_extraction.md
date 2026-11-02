@@ -724,3 +724,11 @@ Where `expect` allows two readings, the check is an `any`. A check is never loos
 **Every week**, the repository's cases and the private ones run against the latest names, and only a miss is reported.
 
 **Readings the writers changed.** When a writer changes what the reading found and posts, that post is a candidate case. Each one is read: a misreading becomes a case with checks for what the writer posted; a writer who added more, or changed their mind, does not. When two or more misreadings share a pattern, the pattern gets a code guard in `app/extract.py`, the way `_stances_on_what_is_named` was written: offline tests on fixed cards first, then every case paired against `origin/main`.
+
+**First runs, 2 November 2026 (evening)**, deepseek-v4-flash, the reading as on `main` at `07d19ef`, 3 runs a case. The first run met 28 of 36. Eight checks said more than their `expect` sentence, and were brought back to it: in cases 2, 8, 18 and 25 a stance on an existing solution has no issue row (the issue is the solution's own, so it is checked there); case 4's issue may be named "Rising sea levels"; case 16's "would reduce" is not explicit advocacy, so approve or none; case 19 has the reason and the study as two pieces of evidence since reasons became evidence; case 27's evidence is checked by its link, since its name varies (and which item it supports is a known misreading, noted in the case). The second run met 34 of 36 and case 2 then met 6 of 6.
+
+| Case | Runs | Read |
+|---|---|---|
+| 34 | 3, 6, 8 | **missed: 2/3, 3/6, 5/8.** In about half the runs the language model leaves out the writer's reason ("keeps the great powers at the table"): it returns only an oppose on Limit or abolish the Security Council veto, which the stance guard drops, so the card holds only Need for world government. Earlier on 2 November it kept the reason 4 of 4. A misreading on the live record's shape, left failing until it is fixed |
+| 27 | 8 | the link always supports, and in most runs it supports Data centers rather than the solution (not checked, see the case) |
+| every other case | 3 | met |
