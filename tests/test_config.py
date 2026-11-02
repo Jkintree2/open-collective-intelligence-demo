@@ -1,6 +1,6 @@
 import pytest
 
-from app.config import DEFAULT_SITE_NAME, DEFAULT_SITE_SENTENCE, load_settings
+from app.config import DEFAULT_SITE_NAME, SITE_SENTENCE, load_settings
 
 FULL = {
     "DEMO_PASSPHRASE": "three plain words",
@@ -29,13 +29,23 @@ def test_empty_variable_counts_as_missing():
 def test_defaults_apply_when_optional_variables_are_absent():
     settings = load_settings(FULL)
     assert settings.site_name == DEFAULT_SITE_NAME
-    assert settings.site_sentence == DEFAULT_SITE_SENTENCE
+    assert settings.site_sentence == SITE_SENTENCE
     assert settings.neo4j_database == "neo4j"
     assert settings.app_env == "production"
     assert settings.llm_base_url == "https://api.deepseek.com"
     assert settings.llm_model == "deepseek-v4-flash"
     assert settings.llm_api_key is None
 
+
+
+def test_the_sentence_at_the_top_is_the_sites_own_whatever_render_holds():
+    """2 November 2026: a tester's wording, which John liked, lightly adjusted. Render's SITE_SENTENCE still
+    holds the old sentence and is no longer read, so the site's own sentence shows."""
+    assert SITE_SENTENCE == ("Write what you think about an issue that matters to you. Your issue, your claim, "
+                             "and any evidence and solution will be pulled out for you to check, then added to a "
+                             "database everyone here shares.")
+    settings = load_settings(dict(FULL, SITE_SENTENCE="Write what you think. We will pull out the issue."))
+    assert settings.site_sentence == SITE_SENTENCE
 
 def test_accounts_are_off_unless_switched_on():
     from app.config import load_settings

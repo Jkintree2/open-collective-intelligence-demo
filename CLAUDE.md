@@ -69,7 +69,7 @@ Display verbs: claims, submits evidence, proposes solution, has proposed, suppor
 9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.** The first account is made once, by `scripts/make_admin.py`, never at startup.
 10. **Keep files small and boring.** If a script in `app/static/` passes 400 lines or `graph.py` passes 500, split by responsibility before adding more.
 11. **Production is never a test target.** Local runs, tests and resets use the local Docker database. Work on a branch and merge to `main` only with the tests green.
-12. **Copy that John may change lives in environment variables.** The site name and the sentence at the top are `SITE_NAME` and `SITE_SENTENCE`; do not hard-code them in a template.
+12. **Copy that John may change lives in environment variables.** The site name is `SITE_NAME`; do not hard-code it in a template. The sentence at the top of the write page is the site's own since 2 November 2026 (`SITE_SENTENCE` in `app/config.py`); Render's `SITE_SENTENCE` is no longer read.
 
 ## Done means
 

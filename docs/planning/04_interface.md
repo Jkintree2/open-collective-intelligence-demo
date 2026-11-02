@@ -42,9 +42,9 @@ If the server has no passphrase configured it refuses to start and logs why, so 
 
 Top to bottom:
 
-**The sentence.** One line in the serif face under the site name, read from `SITE_SENTENCE` so John can change it on Render's Environment tab without touching code. John supplies it (see `QUESTIONS.md`). Default draft, **client-facing**:
+**The sentence.** One line in the serif face under the site name. Since 2 November 2026 it is the site's own (`SITE_SENTENCE` in `app/config.py`): a tester's wording, which John liked, lightly adjusted. Render's `SITE_SENTENCE`, and its line in `render.yaml`, are no longer read. **client-facing**:
 
-> Write what you think about an issue that matters to you. We will pull out the issue, your claim, any evidence and any solution, show you what we found, and add it to a database everyone here shares.
+> Write what you think about an issue that matters to you. Your issue, your claim, and any evidence and solution will be pulled out for you to check, then added to a database everyone here shares.
 
 **Name row.** Label "Your name", text input, placeholder "optional". Beside it a checkbox "Post anonymously". Ticking it clears and greys the name field, and the post is stored with no name at all. The name is remembered in a cookie only when a post is made under it, and prefilled next time; anonymous is never remembered, it is a choice per post.
 
