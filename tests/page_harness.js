@@ -27,6 +27,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const elements = new Map();
   const get = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   get('card').hidden = true;
+  get('sentences-title').textContent = 'What this will add';  // index.html's heading over the list
   // A signed-in write page carries the account's name on the form (sub-plan A, members.posting_identity).
   if (options.member) get('compose').dataset = {member: options.member};
   // Phase 2: the write form asks for evidence links to be read (index.html, evidence_check.js).

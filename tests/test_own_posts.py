@@ -363,7 +363,7 @@ def test_an_unusable_edit_is_refused_like_a_post(saving):
     assert saving.saved == []
 
 
-def test_the_edit_preview_answers_like_the_preview_under_the_posts_own_name(saving):
+def test_the_edit_preview_answers_like_the_preview_under_the_posts_own_name(saving, switch):
     body = {"text": "Coastal flooding matters", "anonymous": False, "issues": [{"name": "Coastal flooding"}]}
     edit = saving.client.post("/api/posts/mine-1/preview", json=body)
     assert edit.status_code == 200
@@ -380,6 +380,18 @@ def test_the_edit_preview_answers_like_the_preview_under_the_posts_own_name(savi
     assert saving.client.post("/api/posts/mine-1/preview", json=empty).json()["valid"] is False
     assert saving.client.post("/api/posts/mine-1/preview", json={**empty, "plain": True}).json()["valid"] is True
     assert saving.client.post("/api/posts/mine-1/preview", json={"text": " ", "plain": True}).json()["valid"] is False
+    # The list is the whole post as saving leaves it, place included, so a change to the town alone shows
+    # (John, 2 November 2026: he added St. Louis, and the list repeated the post and said nothing of it).
+    switch(places_enabled=True)
+    placed = {**body, "place": {"country": "US", "area": "St. Louis"}}
+    edit = saving.client.post("/api/posts/mine-1/preview", json=placed)
+    assert edit.json()["sentences"] == ["Ada Tester claims Coastal flooding", "Place: St. Louis, United States"]
+    assert edit.json() == saving.client.post("/api/preview", json=placed).json()
+    # "Not about one place" adds no line, and a town with no country none either (Save is held back).
+    nowhere = saving.client.post("/api/posts/mine-1/preview", json={**body, "place": {"country": None, "area": None}})
+    assert nowhere.json()["sentences"] == ["Ada Tester claims Coastal flooding"]
+    town = saving.client.post("/api/posts/mine-1/preview", json={**body, "place": {"area": "St. Louis"}}).json()
+    assert town["sentences"] == ["Ada Tester claims Coastal flooding"] and town["valid"] is False
     assert saving.saved == []
 
 

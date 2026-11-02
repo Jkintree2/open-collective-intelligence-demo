@@ -12,7 +12,6 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     // The preview a tap on Post waits for, so a blur that re-runs it does not swallow the tap.
     previewPending: null, previewSettle: null
   };
-  const NO_STATEMENT = 'No statement written. The lines under "What this will add" will be posted as your statement.';
   const UNREAD = 'Your statement has not been read yet. Press "Read my statement" to fill in the form from it.';
   const key = value => {
     let result = value.normalize('NFKC').toLowerCase().trim().replace(/^(the|a|an)( |$)/u, '');
@@ -173,6 +172,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     // A card filled in by hand is posted on its own: its sentences become the statement. A statement written
     // beside a card that was never read is posted unread, so the card says so (John's counter proposal, 31 October 2026).
     const unread = !noStatement && !state.readTried && !state.plain && !state.editing && form.dataset?.noReading === undefined;
+    // The line names the list's heading as the page shows it; the edit page renames it (edit_post.js).
+    const NO_STATEMENT = `No statement written. The lines under "${find('sentences-title').textContent}" will be posted as your statement.`;
     const message = find('card-message'), hint = card.hidden || state.reading ? '' : noStatement && filled ? NO_STATEMENT : unread ? UNREAD : '';
     if (hint === NO_STATEMENT || [NO_STATEMENT, UNREAD].includes(message.textContent) || (hint && !message.textContent)) message.textContent = hint;
     if (card.hidden || !state.candidatesReady || (noStatement && !filled) || [...text.value].length > 4000 || incomplete || state.posting) {

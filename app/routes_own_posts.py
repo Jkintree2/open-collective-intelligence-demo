@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
-from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts, readings, sides
+from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts, places, readings, sides
 from app.extract import CardPayload, ResolvedPayload, resolve_payload
 from app.members import Member, posting_identity, require_member, require_same_origin
 from app.pages import page
@@ -255,16 +255,20 @@ def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, car
     """What main.preview_card answers, for the edit card: resolved as the save is (resolve_edit), so the
     preview and the save always agree, under the name or Anonymous the edit page chose (R4). A card
     with no choice of its own (the record's card, as built for the page) keeps the post's."""
+    from app import main as site
     _, _, _, shown = posting_identity(member, getattr(data, "anonymous", bool(row["anonymous"])))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     if getattr(data, "place", None) is not None:  # Phase 3: a town with no country holds Save back
-        from app import main as site
         valid = valid and not site.place_problem(data)
     both = {}
     if any(getattr(item, "check", None) for item in data.evidence):  # only a row with a reading can split (issue 29)
         both = sides.statements(edit_checks(row.get("id"), row.get("payload"), data.evidence, resolved,
                                             getattr(data, "text", "")))
-    return {"sentences": sentences(card, shown or "Anonymous", resolved, both), "valid": valid, "dropped": resolved.dropped,
+    place = site.card_place_text(data)
+    if getattr(data, "place", None) is None and site.settings.places_enabled:  # no Place row: saving keeps the post's
+        place = places.place_text(row.get("place_country"), row.get("place_area"))
+    return {"sentences": sentences(card, shown or "Anonymous", resolved, both, place),
+            "valid": valid, "dropped": resolved.dropped,
             "corrected": resolved.corrected, "payload": card.model_dump()}
 
 
