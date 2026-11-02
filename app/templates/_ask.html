@@ -14,8 +14,9 @@
   </form>
   {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.</p>
   {% elif ask_item %}<p class="ask-scope">Answers come only from the posts about this {{ ask_kind }}, and from the guiding documents when a question asks about them.</p>{% endif %}
-  {# John, 30 October: answers are two or three sentences unless more is asked for, and kept with their question. #}
-  <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer one. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone with its answer, without your name.</p>
+  {# John, 30 October: answers are two or three sentences unless more is asked for, and kept with their question.
+     John, 2 November: the line keeps only its first sentence, ending "a longer answer". #}
+  <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer answer.</p>
   <p class="ask-status" data-ask-status aria-live="polite">{% if ask_result and not ask_result.status %}{{ ask_result.message }}{% endif %}</p>
   <div class="ask-answers" data-ask-answers aria-live="polite">{% if ask_result and ask_result.status %}
     {% include "_answer.html" %}

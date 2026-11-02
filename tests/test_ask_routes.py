@@ -75,8 +75,10 @@ def test_switched_off_a_stranger_gets_not_found_not_the_door(asking, switch):
 def test_the_ask_page_and_the_issue_box(asking):
     page = asking.client.get("/ask").text
     assert "<h1 id=\"ask-title\">Ask the database</h1>" in page
+    # John, 2 November: the opening line ends at "guiding documents."
     assert "Ask a question in plain words. The answer is built only from what people have posted here and the three " \
-           "guiding documents, and names where each part comes from." in page
+           "guiding documents.</p>" in page
+    assert "names where each part comes from" not in page
     # John, 28 October: an empty box with the cursor in it, no example question.
     assert '<textarea name="question" rows="2" aria-labelledby="ask-title" autofocus>' in page
     assert "For example" not in page
@@ -425,9 +427,10 @@ def test_the_ask_page_lists_the_latest_questions_and_their_issues(asking):
            '<span class="counts">On <a href="/issues/veto">Security Council veto</a></span>' in page
     # A question kept before answers were has none to open: a tap still puts it in the box.
     assert '<button type="button" class="ask-again">Who pays?</button></li>' in page
-    assert ("Answers sum up what is in the database in two or three sentences, including views that differ; ask "
-            "“Tell me more” for a longer one.") in page
-    assert "A question that gets an answer is listed here for everyone with its answer, without your name." in page
+    # John, 2 November: the line under the box is its first sentence only, ending "a longer answer."
+    assert ('<p class="ask-note">Answers sum up what is in the database in two or three sentences, including views '
+            'that differ; ask “Tell me more” for a longer answer.</p>') in page
+    assert "They can be wrong" not in page and "listed here for everyone" not in page
 
 
 def test_the_issue_box_lists_its_own_questions(asking, monkeypatch):
