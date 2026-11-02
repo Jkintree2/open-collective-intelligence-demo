@@ -51,6 +51,9 @@ def main() -> int:
             name = "Moratorium on building new data centers"
             candidates.solutions[make_key(name)] = name
             candidates.solution_issues[make_key(name)] = ["Data centers"]
+        if case["context"] == "world":  # the live record's shape, 2 November 2026: no veto issue, the veto solution
+            candidates.issues.pop("security council veto", None)  # under Need for world government
+            candidates.solution_issues["limit or abolish the security council veto"] = ["Need for world government"]
         if case["context"] == "consensus":  # John's live consensus solution, 31 October 2026, on top of the seed
             name = "Methods of collective decision making"
             candidates.issues[make_key(name)] = {"name": name, "parent_key": None}

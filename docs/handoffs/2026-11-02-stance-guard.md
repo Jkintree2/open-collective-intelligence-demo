@@ -1,6 +1,6 @@
 # Handoff, 2 November 2026: the stance guard
 
-Case 29: "I oppose the Security Council veto because it has blocked action on Syria." was read as opposing the existing solution "Limit or abolish the Security Council veto" (3 of 3 runs), the opposite of what the writer means. Eston chose a guard in code after five changes to the reading rules each cost John's supreme law paragraph (case 2) its UDHR and Earth Charter evidence. Branch `stance-guard`, not merged.
+Case 29: "I oppose the Security Council veto because it has blocked action on Syria." was read as opposing the existing solution "Limit or abolish the Security Council veto" (3 of 3 runs), the opposite of what the writer means. Eston chose a guard in code after five changes to the reading rules each cost John's supreme law paragraph (case 2) its UDHR and Earth Charter evidence. Branch `stance-guard`, merged on Eston's go on 2 November 2026 (PR 65, `8e75031`, live 13:02:48 UTC).
 
 ## Built
 
@@ -18,9 +18,9 @@ Case 29: "I oppose the Security Council veto because it has blocked action on Sy
 
 ## Known
 
-* Case 31's reason lands on the wrong side (supports the abolish solution); the prompt as it stands does the same without the guard. Not the guard's to fix.
+* Case 31's reason landed on the wrong side (supports the abolish solution); turned by the follow-up (`docs/handoffs/2026-11-02-reason-side.md`).
 * A writer who supports a change in other words and uses a stance word ("I support doing away with the veto") gets no stance and sets it on the form.
 
 ## Open
 
-* Eston's go to merge. Merging deploys John's live site. After it, `git fetch`, `scripts.smoke`, and a live read back (reading only).
+* Merged and live on 2 November 2026: smoke 25 of 25; one live `/api/extract` reading of case 29 showed the model's oppose dropped. It also showed the reason still refuting the abolish solution on the live record's shape: turned by the follow-up, `docs/handoffs/2026-11-02-reason-side.md`.
