@@ -729,6 +729,6 @@ Where `expect` allows two readings, the check is an `any`. A check is never loos
 
 | Case | Runs | Read |
 |---|---|---|
-| 34 | 3, 6, 8 | **missed: 2/3, 3/6, 5/8.** In about half the runs the language model leaves out the writer's reason ("keeps the great powers at the table"): it returns only an oppose on Limit or abolish the Security Council veto, which the stance guard drops, so the card holds only Need for world government. Earlier on 2 November it kept the reason 4 of 4. A misreading on the live record's shape, left failing until it is fixed |
+| 34 | 3, 6, 8 | **missed: 2/3, 3/6, 5/8.** In about half the runs the language model leaves out the writer's reason ("keeps the great powers at the table"): it returns only an oppose on Limit or abolish the Security Council veto, which the stance guard drops, so the card holds only Need for world government. Earlier on 2 November it kept the reason 4 of 4. A misreading on the live record's shape, left failing until it is fixed. Later that evening it met 7 of 8, while the same statement against a snapshot of the live names kept its reason 11 of 11 (8 of them in the same runs): `world` is only close to the live record, and the misses come and go with the model |
 | 27 | 8 | the link always supports, and in most runs it supports Data centers rather than the solution (not checked, see the case) |
 | every other case | 3 | met |
