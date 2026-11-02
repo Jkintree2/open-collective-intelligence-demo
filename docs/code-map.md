@@ -3,7 +3,7 @@
 One line per file: what lives where. Read the line for a file before changing it; CLAUDE.md points here so it stays short.
 
 ```
-app/main.py        FastAPI app, page routes, lifespan (driver open/close, non-fatal connectivity check), request-id middleware (emailed links cut from the log through pages.loggable_path), the CrossSite handler, error and asleep pages; include_routers() adds every app/routes_*.py router; the switches() template global reads Phase 3's switches when a page is drawn
+app/main.py        FastAPI app, page routes, lifespan (driver open/close, non-fatal connectivity check), request-id middleware (emailed links cut from the log through pages.loggable_path), HeadAsGet (a HEAD request runs its GET route and goes back without the body, as UptimeRobot's free monitors check with HEAD), the CrossSite handler, error and asleep pages; include_routers() adds every app/routes_*.py router; the switches() template global reads Phase 3's switches when a page is drawn
 app/config.py      settings from environment variables; refuses to start without DEMO_PASSPHRASE, SECRET_KEY, ADMIN_TOKEN, NEO4J_*, and SITE_URL (https, or http on this machine with APP_ENV=local) when ACCOUNTS_ENABLED is true; SITE_NAME and SITE_SENTENCE have defaults; MAIL_FROM, GMAIL_* and MAIL_CONSOLE for email; Phase 3's four switches (ASK_ENABLED, FOLLOW_UPS_ENABLED, PLACES_ENABLED, ABOUT_ENABLED), all off by default
 app/auth.py        passphrase cookie (signed, 30 days, embeds a hash of the passphrase), admin HTTP basic auth and form tokens, in-process limits (MinuteBucket, KeyedLimit, DailyLimit, PostSpacing)
 app/accounts.py    emails, scrypt passwords (two at a time), link secrets and lifetimes, the member cookie, person_name(), entry_state(), every account limiter (sign in, entering, forgot per minute, the per address link limit); no I/O
@@ -71,7 +71,7 @@ scripts/asks.py    prints the answer for each case in tests/ask_cases.json again
 scripts/follow_ups.py prints the follow-up questions for each case in tests/follow_up_cases.json, kept and dropped, with tokens and cache hits (needs LLM_API_KEY)
 scripts/probe_reading.py one reading service preflight call; prints capability results, never credentials
 scripts/restore.py loads an admin export into an empty database
-scripts/smoke.py   read-only checks on the deployed site after each deploy (GET only; the served scripts and style match --ref; OCI_SMOKE_COOKIE adds the signed-in pages)
+scripts/smoke.py   read-only checks on the deployed site after each deploy (GET and HEAD only; the served scripts and style match --ref; HEAD /health and HEAD / as UptimeRobot's free monitors send them; OCI_SMOKE_COOKIE adds the signed-in pages)
 tests/             offline by default (no network, no database); conftest.py (live_graph, member_app), page_harness.js (the fake page every *.cjs test drives); test_live_*.py are marked live and run only against the disposable Neo4j on port 7688; test_wording.py (John, 28 October: no page or page script says "the record"); extraction_cases.json, check_cases.json, ask_cases.json and follow_up_cases.json (Phase 3), fixtures/ (ask_record.json, Phase 3; pages_before_phase3/, the pages as drawn before Phase 3, which test_phase3_switches.py holds every page to with all four switches off)
 docs/operators-guide.md   client-facing guide for John
 docs/planning/     copies of the planning documents

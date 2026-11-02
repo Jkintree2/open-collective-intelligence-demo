@@ -8,12 +8,16 @@ STATIC = {"app.css": b"body {}", "card.js": b"// card"}
 
 
 def site(static=STATIC, version=None, cookie_ok="good", gate=lambda path: "/sign-in?next=" + path,
-         about=False, ask=False):
+         about=False, ask=False, head=True):
     seen = []
 
     def answer(request: httpx.Request) -> httpx.Response:
         seen.append((request.method, request.url.path))
         path, cookie = request.url.path, request.headers.get("cookie", "")
+        if request.method == "HEAD" and not head:
+            return httpx.Response(405)
+        if path == "/health":
+            return httpx.Response(200, json={"ok": True, "nodes": 7})
         if path == "/sign-in":
             return httpx.Response(200, text=f'<link href="/static/app.css?v={version or asset_version(static)}">Sign in')
         if path.startswith("/static/"):
@@ -47,12 +51,13 @@ def failed(checks):
     return [check.name for check in checks if not check.ok]
 
 
-def test_a_site_running_the_commit_passes_with_get_requests_only():
+def test_a_site_running_the_commit_passes_with_read_only_requests():
     client, seen = site()
     checks = run(client, STATIC)
     assert failed(checks) == []
-    assert {method for method, _ in seen} == {"GET"}
-    assert len(checks) == 2 + len(STATIC) + len(GATED) + 3 + 2
+    assert {method for method, _ in seen} == {"GET", "HEAD"}
+    assert {path for method, path in seen if method == "HEAD"} == {"/health", "/"}
+    assert len(checks) == 2 + len(STATIC) + len(GATED) + 3 + 2 + 2
     assert "/about opens signed out (switched off)" in names(checks)
     assert "/ask signed out goes to sign in (switched off)" in names(checks)
 
@@ -93,3 +98,9 @@ def test_the_signed_in_pages_are_checked_only_with_a_cookie():
     assert "/my-statements signed in" in names and failed(run(client, STATIC, cookie="good")) == []
     assert failed(run(client, STATIC, cookie="stale")) == [f"{path} signed in" for path in
                                                           ("/", "/issues", "/my-statements", "/account")]
+
+
+def test_a_site_that_refuses_the_uptime_monitors_head_check_fails():
+    client, _ = site(head=False)
+    assert failed(run(client, STATIC)) == ["HEAD /health (the uptime monitors' check)",
+                                           "HEAD / signed out goes to sign in"]
