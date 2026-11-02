@@ -39,26 +39,22 @@ def changes(graph):
     return [(row["kind"], json.loads(row["details"])) for row in graph_tidy.list_changes()]
 
 
-def test_moves_follow_the_one_level_rule_and_are_recorded(live_graph):
+def test_a_move_makes_a_sub_issue_top_level_and_is_recorded(live_graph):
+    """John, 2 November 2026: there are no sub-issues. A move only makes one already in the record top level;
+    a top level issue, with sub-issues or without, stays as it is."""
     run(live_graph, TREE)
-    assert graph_tidy.move_issue("acct:john", "world", "parking", NOW) == "has_children"  # World holds Veto and Law
-    assert graph_tidy.move_issue("acct:john", "parking", "world", NOW) == "moved"
-    assert parent(live_graph, "parking") == "world"
-    assert graph_tidy.move_issue("acct:john", "parking", "world", NOW) == "same"
-    assert graph_tidy.move_issue("acct:john", "parking", "veto", NOW) == "parent_is_sub"
-    assert graph_tidy.move_issue("acct:john", "parking", "parking", NOW) == "self"
-    assert graph_tidy.move_issue("acct:john", "nowhere", "world", NOW) == "gone"
-    assert graph_tidy.move_issue("acct:john", "veto", None, NOW) == "moved"
-    assert parent(live_graph, "veto") is None
-    assert graph_tidy.move_issue("acct:john", "veto", None, NOW) == "same"
+    assert graph_tidy.move_issue("acct:john", "parking", NOW) == "same"
+    assert graph_tidy.move_issue("acct:john", "world", NOW) == "same"  # World still holds Veto and Law
+    assert graph_tidy.move_issue("acct:john", "nowhere", NOW) == "gone"
+    assert graph_tidy.move_issue("acct:john", "veto", NOW) == "moved"
+    assert parent(live_graph, "veto") is None and parent(live_graph, "law") == "world"
+    assert graph_tidy.move_issue("acct:john", "veto", NOW) == "same"
     assert_one_level(live_graph)
-    kinds = changes(live_graph)
-    assert [k for k, _ in kinds] == ["move", "move"]
-    details = {d["issue_key"]: d for _, d in kinds}
-    assert details["parking"]["to_parent_name"] == "World" and details["parking"]["from_parent_key"] is None
-    assert details["veto"]["from_parent_name"] == "World" and details["veto"]["to_parent_key"] is None
+    assert run(live_graph, "MATCH ()-[r:PART_OF]->() RETURN count(r) AS n")[0]["n"] == 1
+    assert changes(live_graph) == [("move", {"issue_key": "veto", "issue_name": "Veto", "from_parent_key": "world",
+                                             "from_parent_name": "World", "to_parent_key": None, "to_parent_name": None})]
     row = graph_tidy.list_changes()[0]
-    assert row["by"] == "John Kintree" and row["issue_key"] in ("parking", "veto")
+    assert row["by"] == "John Kintree" and row["issue_key"] == "veto"
 
 
 def test_rename_keeps_claims_and_refuses_a_taken_name(live_graph):
@@ -78,12 +74,11 @@ def test_rename_keeps_claims_and_refuses_a_taken_name(live_graph):
         ("Parking", "PARKING"), ("PARKING", "Parking"), ("Parking", "Car parking in town")}
 
 
-def test_choices_offer_top_level_parents_and_every_other_issue(live_graph):
+def test_choices_offer_every_other_issue_to_merge(live_graph):
     run(live_graph, TREE)
-    choices = graph_tidy.tidy_choices("parking")
-    assert [c["key"] for c in choices["parents"]] == ["world"]  # Veto and Law are sub-issues
-    assert sorted(c["key"] for c in choices["others"]) == ["law", "veto", "world"]
-    assert graph_tidy.tidy_choices("world")["has_children"] is True
+    assert graph_tidy.tidy_choices("parking") == {
+        "others": [{"key": "law", "name": "Law"}, {"key": "veto", "name": "Veto"}, {"key": "world", "name": "World"}]}
+    assert graph_tidy.tidy_choices("nowhere") == {"others": []}
 
 
 def double_submit(monkeypatch, call):
@@ -108,7 +103,7 @@ def double_submit(monkeypatch, call):
 
 def test_a_double_submit_records_one_change(live_graph, monkeypatch):
     run(live_graph, TREE)
-    inner, outer = double_submit(monkeypatch, lambda: graph_tidy.move_issue("acct:john", "parking", "world", NOW))
+    inner, outer = double_submit(monkeypatch, lambda: graph_tidy.move_issue("acct:john", "veto", NOW))
     assert (inner, outer) == ("moved", "same")
     inner, outer = double_submit(monkeypatch, lambda: graph_tidy.rename_issue("acct:john", "parking", "Car parking", NOW))
     assert (inner, outer) == (("renamed", "car parking"), ("same", "car parking"))
@@ -239,7 +234,7 @@ def race_a_rename(live_graph, waiter):
 
 
 def test_a_rename_committed_while_a_move_waits_is_not_undone(live_graph):
-    move = race_a_rename(live_graph, lambda: graph_tidy.move_issue("acct:john", "a", "p", NOW))
+    move = race_a_rename(live_graph, lambda: graph_tidy.move_issue("acct:john", "a", NOW))
     assert move == "gone"  # the key it was asked about no longer exists
     rows = run(live_graph, "MATCH (i:Issue) WHERE i.name STARTS WITH 'A' RETURN i.key AS k, i.name AS n")
     assert [(r["k"], r["n"]) for r in rows] == [("a two", "A two")]
@@ -276,15 +271,14 @@ def test_the_issues_list_counts_people_as_the_issue_page_does(live_graph):
 
 
 def test_tidying_does_not_count_as_activity(live_graph):
-    """A rename, and a move (item 18: Q28's PART_OF has a created_at), leave "Most recent" alone, for
-    the issue and for its new parent."""
+    """A rename, and a move to the top level, leave "Most recent" alone, for the issue and for its old parent."""
     run(live_graph, TREE)
     before = {row["key"]: row["last_activity"] for row in live_graph.list_issues()}
     later = datetime(2026, 12, 1, tzinfo=timezone.utc)
-    graph_tidy.rename_issue("acct:john", "parking", "Car parking", later)
-    assert graph_tidy.move_issue("acct:john", "car parking", "world", later) == "moved"
+    graph_tidy.rename_issue("acct:john", "veto", "Council veto", later)
+    assert graph_tidy.move_issue("acct:john", "council veto", later) == "moved"
     after = {row["key"]: row["last_activity"] for row in live_graph.list_issues()}
-    assert after["car parking"] == before["parking"]
+    assert after["council veto"] == before["veto"]
     assert after["world"] == before["world"]
 
 
@@ -301,7 +295,7 @@ def test_reload_seed_after_a_move_keeps_the_issue_top_level(live_graph):
     run(live_graph, "CREATE (:Person {key: 'acct:john', name: 'John Kintree', admin: true})")
     assert seed.load(data) == (2, 0)
     assert parent(live_graph, "voting online") == "platform"
-    assert graph_tidy.move_issue("acct:john", "voting online", None, NOW) == "moved"
+    assert graph_tidy.move_issue("acct:john", "voting online", NOW) == "moved"
     assert graph_backup.delete_post("seed-02")
     assert seed.load(data) == (1, 1)
     assert run(live_graph, "MATCH (p:Post {id: 'seed-02'}) RETURN p.id AS id")

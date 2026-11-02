@@ -19,12 +19,11 @@ RETURN i.key AS key, i.name AS name, parent.key AS parent_key, parent.name AS pa
        EXISTS { MATCH (:Issue)-[:PART_OF]->(i) } AS has_children
 """
 
+# The issues Merge offers: every other issue.
 TIDY_CHOICES = """
 MATCH (i:Issue {key: $key})
-WITH i, EXISTS { MATCH (:Issue)-[:PART_OF]->(i) } AS has_children
 OPTIONAL MATCH (other:Issue) WHERE other <> i
-OPTIONAL MATCH (other)-[:PART_OF]->(up:Issue)
-RETURN has_children, collect({key: other.key, name: other.name, top: up IS NULL}) AS others
+RETURN collect({key: other.key, name: other.name}) AS others
 """
 
 # Locks first, reads after (as Q23): a repeated submit waits here and then sees the finished change.
@@ -32,19 +31,8 @@ RETURN has_children, collect({key: other.key, name: other.name, top: up IS NULL}
 # this waits would be undone by writing the old key back. The transient property is never committed.
 LOCK_ISSUES = "MATCH (i:Issue) WHERE i.key IN $keys SET i.tidy_lock = true REMOVE i.tidy_lock"
 
-# Q28. Under a top-level parent: the guards repeat the one-level rule after the locks.
-MOVE_UNDER = """
-MATCH (child:Issue {key: $key}), (parent:Issue {key: $parent_key})
-WHERE child <> parent
-  AND NOT (parent)-[:PART_OF]->(:Issue)
-  AND NOT (:Issue)-[:PART_OF]->(child)
-OPTIONAL MATCH (child)-[old:PART_OF]->(:Issue)
-DELETE old
-WITH DISTINCT child, parent
-CREATE (child)-[:PART_OF {created_at: $now}]->(parent)
-RETURN child.key AS key
-"""
-
+# Q28. Since 2 November 2026 (John: there are no sub-issues) a move only makes a sub-issue already in the
+# record top level; nothing is put under another issue any more.
 MOVE_TOP = """
 MATCH (child:Issue {key: $key})-[old:PART_OF]->(:Issue)
 DELETE old
@@ -148,52 +136,25 @@ def issue_place(key: str) -> dict[str, Any] | None:
 
 def tidy_choices(key: str) -> dict[str, Any]:
     rows = _read(TIDY_CHOICES, key=key)
-    if not rows:
-        return {"parents": [], "others": [], "has_children": False}
-    others = sorted((o for o in rows[0]["others"] if o["key"]), key=lambda o: o["name"].lower())
-    return {"parents": [{"key": o["key"], "name": o["name"]} for o in others if o["top"]],
-            "others": [{"key": o["key"], "name": o["name"]} for o in others],
-            "has_children": rows[0]["has_children"]}
+    others = sorted((o for o in rows[0]["others"] if o["key"]), key=lambda o: o["name"].lower()) if rows else []
+    return {"others": [{"key": o["key"], "name": o["name"]} for o in others]}
 
 
-def move_issue(me: str, key: str, parent_key: str | None, now: datetime) -> str:
+def move_issue(me: str, key: str, now: datetime) -> str:
+    """Make a sub-issue already in the record top level (Q28): "moved", "same" for one already top level,
+    or "gone". The change keeps the "to_parent" fields, so older changes and this one read alike."""
     def work(tx: Any) -> str:
-        tx.run(LOCK_ISSUES, keys=[key, parent_key] if parent_key else [key]).consume()
+        tx.run(LOCK_ISSUES, keys=[key]).consume()
         place = tx.run(ISSUE_PLACE, key=key).single()
         if place is None:
             return "gone"
-        if parent_key is None:
-            if place["parent_key"] is None:
-                return "same"
-            tx.run(MOVE_TOP, key=key).consume()
-            to = {"to_parent_key": None, "to_parent_name": None}
-        else:
-            if parent_key == key:
-                return "self"
-            target = tx.run(ISSUE_PLACE, key=parent_key).single()
-            if target is None:
-                return "gone"
-            if target["parent_key"] is not None:
-                return "parent_is_sub"
-            if place["has_children"]:
-                return "has_children"
-            if place["parent_key"] == parent_key:
-                return "same"
-            if tx.run(MOVE_UNDER, key=key, parent_key=parent_key, now=now).single() is None:
-                # Changed between the reads above and the locks: read again to say which rule refused.
-                again = tx.run(ISSUE_PLACE, key=key).single()
-                if again is None:
-                    return "gone"
-                if again["has_children"]:
-                    return "has_children"
-                recheck = tx.run(ISSUE_PLACE, key=parent_key).single()
-                if recheck is None:
-                    return "gone"
-                return "parent_is_sub"
-            to = {"to_parent_key": parent_key, "to_parent_name": target["name"]}
+        if place["parent_key"] is None:
+            return "same"
+        tx.run(MOVE_TOP, key=key).consume()
         _record(tx, me, "move", key, {"issue_key": key, "issue_name": place["name"],
                                       "from_parent_key": place["parent_key"],
-                                      "from_parent_name": place["parent_name"], **to}, now)
+                                      "from_parent_name": place["parent_name"],
+                                      "to_parent_key": None, "to_parent_name": None}, now)
         return "moved"
     return _write(work)
 

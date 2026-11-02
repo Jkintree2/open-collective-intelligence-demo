@@ -41,13 +41,12 @@ def rename(key: str, new_name: str = Form(""), member: Member = Depends(require_
 
 
 @router.post("/issues/{key}/move", dependencies=[Depends(require_same_origin)])
-def move(key: str, parent: str = Form(""), member: Member = Depends(require_tidier)) -> Response:
-    outcome = graph_tidy.move_issue(member.key, key, parent or None, _now())
+def move(key: str, member: Member = Depends(require_tidier)) -> Response:
+    """Make a sub-issue already in the record top level; a parent an older form sends is ignored."""
+    outcome = graph_tidy.move_issue(member.key, key, _now())
     if outcome == "gone":
         return RedirectResponse("/issues", status_code=303)
-    if outcome == "moved":
-        return _back(key, done="moved")
-    return _back(key) if outcome == "same" else _back(key, problem=outcome)
+    return _back(key, done="moved") if outcome == "moved" else _back(key)
 
 
 @router.get("/issues/{key}/merge")

@@ -31,26 +31,40 @@ def test_change_sentences_word_for_word():
         "4 October 2026, 14:02 UTC · John Kintree merged Parking into Car parking"
 
 
-def test_a_move_refused_after_the_lock_says_why(monkeypatch):
-    """Item 37: Parking gained a sub-issue between the read and the lock. The move is refused because
-    other issues are now part of it, and the answer says that, not that the parent is a sub-issue."""
+def test_a_move_only_makes_a_sub_issue_top_level(monkeypatch):
+    """John, 2 November 2026: there are no sub-issues. A move only makes one already in the record top level,
+    with its change record; a top level issue stays as it is, and nothing is ever put under another issue."""
     from app import graph_tidy
-    place = {"key": "parking", "name": "Parking", "parent_key": None, "parent_name": None, "has_children": False}
-    rows = iter([None, place, {**place, "key": "world", "name": "World"}, None, {**place, "has_children": True}])
+    assert not hasattr(graph_tidy, "MOVE_UNDER")
+    sub = {"key": "veto", "name": "Veto", "parent_key": "world", "parent_name": "World", "has_children": False}
+    top = {**sub, "parent_key": None, "parent_name": None}
+    seen = [graph_tidy.LOCK_ISSUES, graph_tidy.ISSUE_PLACE]
+    for place, outcome, ran in ((sub, "moved", seen + [graph_tidy.MOVE_TOP, graph_tidy.RECORD_CHANGE]),
+                                (top, "same", seen), (None, "gone", seen)):
+        calls = []
 
-    class Tx:
-        def run(self, query, **params):
-            row = next(rows)
-            return type("Result", (), {"single": lambda self: row, "consume": lambda self: None})()
-    monkeypatch.setattr(graph_tidy, "_write", lambda work: work(Tx()))
-    assert graph_tidy.move_issue("acct:john", "parking", "world", WHEN) == "has_children"
+        class Tx:
+            def run(self, query, **params):
+                calls.append((query, params))
+                row = place if query == graph_tidy.ISSUE_PLACE else {"id": "c1"}
+                return type("Result", (), {"single": lambda self: row, "consume": lambda self: None})()
+        monkeypatch.setattr(graph_tidy, "_write", lambda work: work(Tx()))
+        assert graph_tidy.move_issue("acct:john", "veto", WHEN) == outcome
+        assert [query for query, _ in calls] == ran
+        assert calls[0][1] == {"keys": ["veto"]}
+        if outcome == "moved":
+            assert json.loads(calls[-1][1]["details"]) == {
+                "issue_key": "veto", "issue_name": "Veto", "from_parent_key": "world", "from_parent_name": "World",
+                "to_parent_key": None, "to_parent_name": None}
 
 
 ISSUE = {"key": "platform", "name": "Platform for digital democracy", "parent_key": None, "parent_name": None,
          "children": [], "created_at": None, "seed": True}
 # Each issue under its own name, so the merge question names both (item 9 of the 5 October review).
 HEADERS = {"platform": ISSUE,
-           "online platform": {**ISSUE, "key": "online platform", "name": "Online platform", "seed": False}}
+           "online platform": {**ISSUE, "key": "online platform", "name": "Online platform", "seed": False},
+           # A sub-issue already in the record (the seed, an older copy).
+           "veto": {**ISSUE, "key": "veto", "name": "Veto", "parent_key": "world", "parent_name": "World"}}
 
 
 @pytest.fixture
@@ -62,13 +76,11 @@ def tidying(member_app, monkeypatch):
     monkeypatch.setattr(g, "issue_evidence", lambda key: [])
     monkeypatch.setattr(g, "issue_posts", lambda key, limit: [])
     monkeypatch.setattr("app.graph_tidy.tidy_choices", lambda key: {
-        "parents": [{"key": "world", "name": "World"}],
-        "others": [{"key": "online platform", "name": "Online platform"}, {"key": "world", "name": "World"}],
-        "has_children": False})
+        "others": [{"key": "online platform", "name": "Online platform"}, {"key": "world", "name": "World"}]})
     calls = []
     monkeypatch.setattr("app.graph_tidy.rename_issue", lambda me, key, name, now: calls.append(("rename", key, name)) or
                         (("taken", key) if name == "World" else ("renamed", "building a platform")))
-    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, parent, now: calls.append(("move", key, parent)) or "moved")
+    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, now: calls.append(("move", key)) or "moved")
     monkeypatch.setattr("app.graph_tidy.merge_issues", lambda me, kept, merged, now: calls.append(("merge", kept, merged)) or ("merged", "c1"))
     monkeypatch.setattr("app.graph_tidy.change", lambda cid: {"kind": "merge", "details": '{"merged_name": "Online platform"}'} if cid == "c1" else None)
     monkeypatch.setattr("app.graph_tidy.list_changes", lambda: [])
@@ -80,15 +92,20 @@ def test_john_sees_the_controls_and_others_do_not(tidying):
     tidying.sign_in(admin=True)
     page = tidying.client.get("/issues/platform").text
     assert "<h2>Tidy this issue</h2>" in page
-    assert '<option value="">none, make it a top level issue</option>' in page
     assert '<option value="online platform">Online platform</option>' in page
+    # John, 2 November 2026: nothing is made part of another issue; a top level issue has no move at all.
+    assert "/issues/platform/move" not in page and "Make it part of" not in page and 'name="parent"' not in page
+    sub = tidying.client.get("/issues/veto").text
+    assert '<form method="post" action="/issues/veto/move">' in sub
+    assert "Part of World." in sub and '<button type="submit">Make it a top level issue</button>' in sub
+    assert 'name="parent"' not in sub
     tidying.sign_in(key="acct:bob", name="Bob", email="bob@example.org", admin=False)
     assert "Tidy this issue" not in tidying.client.get("/issues/platform").text
 
 
 def test_only_a_tidier_can_tidy(tidying):
     tidying.sign_in(admin=False)
-    for path, data in (("/issues/platform/rename", {"new_name": "X marks"}), ("/issues/platform/move", {"parent": ""}),
+    for path, data in (("/issues/platform/rename", {"new_name": "X marks"}), ("/issues/veto/move", {}),
                        ("/issues/platform/merge", {"other": "online platform"})):
         assert tidying.client.post(path, data=data).status_code == 404
     assert tidying.client.get("/issues/platform/merge?other=online%20platform").status_code == 404
@@ -105,8 +122,11 @@ def test_tidy_answers_land_back_on_the_issue_page(tidying):
     assert result.headers["location"] == "/issues/platform?problem=taken#tidy"
     assert "Another issue already has that name. To join the two, use Merge." in client.get("/issues/platform?problem=taken").text
     assert "Renamed." in client.get("/issues/platform?done=renamed").text
-    result = client.post("/issues/platform/move", data={"parent": ""}, follow_redirects=False)
-    assert result.headers["location"] == "/issues/platform?done=moved#tidy" and tidying.calls[-1] == ("move", "platform", None)
+    result = client.post("/issues/veto/move", follow_redirects=False)
+    assert result.headers["location"] == "/issues/veto?done=moved#tidy" and tidying.calls[-1] == ("move", "veto")
+    # A forged or older form's parent is ignored: the only move left is to the top level.
+    client.post("/issues/veto/move", data={"parent": "platform"}, follow_redirects=False)
+    assert tidying.calls[-1] == ("move", "veto")
 
 
 def test_merge_asks_first_then_says_what_happened(tidying):
@@ -268,16 +288,16 @@ def test_reload_seed_does_not_hang_a_merged_into_issue_under_the_old_seed_parent
 
 
 def test_a_move_answering_same_goes_back_plain(tidying, monkeypatch):
-    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, parent, now: "same")
+    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, now: "same")
     tidying.sign_in(admin=True)
-    result = tidying.client.post("/issues/platform/move", data={"parent": ""}, follow_redirects=False)
+    result = tidying.client.post("/issues/platform/move", follow_redirects=False)
     assert result.headers["location"] == "/issues/platform"
 
 
 def test_a_move_answering_gone_goes_to_the_list(tidying, monkeypatch):
-    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, parent, now: "gone")
+    monkeypatch.setattr("app.graph_tidy.move_issue", lambda me, key, now: "gone")
     tidying.sign_in(admin=True)
-    result = tidying.client.post("/issues/platform/move", data={"parent": ""}, follow_redirects=False)
+    result = tidying.client.post("/issues/platform/move", follow_redirects=False)
     assert result.headers["location"] == "/issues"
 
 

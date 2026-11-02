@@ -8,16 +8,11 @@
     <input id="new_name" name="new_name" type="text" maxlength="300" required value="{{ issue.name }}">
     <button type="submit">Rename</button>
   </form>
-  {% if tidy.has_children %}
-  <p class="counts">Other issues are part of this one, so it stays at the top level.</p>
-  {% else %}
+  {# John, 2 November 2026: there are no sub-issues. Only one already in the record can be moved, to the top level. #}
+  {% if issue.parent_key %}
   <form method="post" action="/issues/{{ issue.key|urlencode }}/move">
-    <label for="parent">Make it part of:</label>
-    <select id="parent" name="parent">
-      <option value="">none, make it a top level issue</option>
-      {% for option in tidy.parents %}<option value="{{ option.key }}"{% if option.key == issue.parent_key %} selected{% endif %}>{{ option.name }}</option>{% endfor %}
-    </select>
-    <button type="submit">Move</button>
+    <p class="counts">Part of {{ issue.parent_name }}.</p>
+    <button type="submit">Make it a top level issue</button>
   </form>
   {% endif %}
   <form method="get" action="/issues/{{ issue.key|urlencode }}/merge">
