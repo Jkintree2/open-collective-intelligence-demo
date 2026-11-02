@@ -87,3 +87,26 @@ def test_extra_cases_with_a_repeated_id_are_refused(tmp_path):
         cards.load_cases([extra])
     extra.write_text(json.dumps([{**CASE, "id": "L1"}]))
     assert cards.load_cases([extra])[-1]["id"] == "L1"
+
+
+def test_a_run_with_no_answer_beside_another_commit_is_not_worse(capsys):
+    assert cards.check([CASE], None, [Fake(GOOD, GOOD, None), Fake(GOOD)], 3, None, against="main") == 3
+    out = capsys.readouterr().out
+    assert "WORSE" not in out and "MISSED: no answer" in out
+
+
+def test_a_known_miss_is_reported_without_failing_the_run(capsys):
+    known = {**CASE, "known_miss": "the reason goes to the issue"}
+    assert cards.check([known], None, [Fake(BAD)], 3, None) == 0
+    out = capsys.readouterr().out
+    assert "MISSED (known: the reason goes to the issue)" in out and "1 known miss" in out
+    assert cards.check([known], None, [Fake(GOOD)], 3, None) == 0
+    assert "met (the known miss was not seen)" in capsys.readouterr().out
+
+
+def test_reading_at_head_loads_and_lists_what_runs_as_today(capsys):
+    from app import extract as reading
+    module = cards.reading_at("HEAD")
+    assert module.__name__ == "extract_at_ref" and module.SYSTEM_PROMPT == reading.SYSTEM_PROMPT
+    changed = cards.differs_at("HEAD")
+    assert isinstance(changed, list) and "app/extract.py" not in changed

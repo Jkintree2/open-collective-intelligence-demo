@@ -2,7 +2,7 @@
 
 A card is CardPayload.model_dump() after prepared_card, as extract() returns it. A NAME is a string, matched
 by its key (make_key), or a list of words that must all be in the name. In an evidence check's "about" a list
-is a list of names instead, any of which will do. docs/planning/05_extraction.md has the table."""
+is a list of NAMEs instead, any of which will do: ["Data centers", ["cost"]]. docs/planning/05_extraction.md has the table."""
 
 import json
 
@@ -65,7 +65,7 @@ def _check_one(check) -> None:
                or ("url" in check and check["url"] is not None and not isinstance(check["url"], str))
                or ("stance" in check and check["stance"] not in SIDES)
                or not (isinstance(about, str) or (isinstance(about, list) and about
-                                                  and all(isinstance(name, str) for name in about))))
+                                                  and all(_name(name) for name in about))))
     if bad:
         raise ValueError(f"malformed check: {check!r}")
 

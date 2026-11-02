@@ -94,6 +94,13 @@ def writing_about(case: dict):
     return next(iter(about.items())) if isinstance(about, dict) else about
 
 
+def differs_at(ref: str) -> list[str]:
+    """The files under app/ other than extract.py that differ at `ref`: both readings run them as they are today."""
+    out = subprocess.run(["git", "diff", "--name-only", ref, "--", "app", ":(exclude)app/extract.py"], cwd=ROOT,
+                         check=True, capture_output=True, text=True).stdout
+    return out.split()
+
+
 def reading_at(ref: str) -> types.ModuleType:
     """app/extract.py as it is at `ref`, beside today's. It imports today's app/payload.py."""
     source = subprocess.run(["git", "show", f"{ref}:app/extract.py"], cwd=ROOT, check=True,
@@ -129,11 +136,14 @@ def run_case(case: dict, candidates: Candidates, readings: list, runs: int, sett
 def check(cases: list[dict], names: Candidates | None, readings: list, runs: int, settings,
           against: str | None = None) -> int:
     """Run each case `runs` times and print one line a case. 0: every case met its mark (and, beside `against`,
-    none is worse); 1: a case missed or is worse; 3: a case missed only for runs with no answer."""
+    none is worse); 1: a case missed or is worse; 3: a case missed only for runs with no answer. A case with a
+    `known_miss` (a misreading not fixed yet, said in words) is reported on every run and never fails it."""
     for case in cases:
         if case.get("checks") != "local":
             validate(case.get("checks"))
-    met = missed = skipped = worse = 0
+        if "known_miss" in case and not (isinstance(case["known_miss"], str) and case["known_miss"].strip()):
+            raise ValueError(f"case {case['id']}: known_miss must say what the misreading is")
+    met = missed = skipped = worse = known = 0
     no_answer = no_answer_only = 0
     with ThreadPoolExecutor(max_workers=4) as pool:
         for case in cases:
@@ -154,12 +164,15 @@ def check(cases: list[dict], names: Candidates | None, readings: list, runs: int
             line = f"{label}   {now['passed']}/{runs}"
             if against:
                 line = f"{label}   now {now['passed']}/{runs}   {against} {results[1]['passed']}/{runs}"
-                if now["passed"] < results[1]["passed"]:
+                if now["passed"] + now["no_answer"] < results[1]["passed"]:
                     worse += 1
                     line += "   WORSE"
             if now["passed"] >= mark:
                 met += 1
-                line += "   met"
+                line += "   met" + (" (the known miss was not seen)" if case.get("known_miss") else "")
+            elif case.get("known_miss"):
+                known += 1
+                line += f"   MISSED (known: {case['known_miss']}) " + " | ".join(now["misses"])
             elif now["passed"] + now["no_answer"] >= mark:
                 no_answer_only += 1
                 line += "   MISSED: no answer"
@@ -169,8 +182,9 @@ def check(cases: list[dict], names: Candidates | None, readings: list, runs: int
             if now["no_answer"]:
                 line += f"   ({now['no_answer']} with no answer)"
             print(line)
-    total = met + missed + no_answer_only
-    summary = (f"\n{met} of {total} cases met their mark; {skipped} skipped (needs --names); "
+    total = met + missed + no_answer_only + known
+    summary = (f"\n{met} of {total} cases met their mark; {known} known miss{'' if known == 1 else 'es'}; "
+               f"{skipped} skipped (needs --names); "
                f"{no_answer} run{'' if no_answer == 1 else 's'} with no answer")
     print(summary + (f"; {worse} worse than {against}" if against else ""))
     if missed or worse:
@@ -221,8 +235,8 @@ def main() -> int:
         return show(cases, names, settings)
     readings = [reading]
     if args.against:
-        if subprocess.run(["git", "diff", "--quiet", args.against, "--", "app/payload.py"], cwd=ROOT).returncode:
-            print(f"app/payload.py differs at {args.against}; its reading runs with today's payload.py.")
+        if changed := differs_at(args.against):
+            print(f"These differ at {args.against} and run as they are today on both sides: {', '.join(changed)}")
         readings.append(reading_at(args.against))
     return check(cases, names, readings, args.runs, settings, against=args.against)
 

@@ -97,6 +97,8 @@ def test_every_case_has_valid_checks():
     for case in cases:
         if case.get("checks") != "local":
             validate(case.get("checks"))
+        if "known_miss" in case:
+            assert isinstance(case["known_miss"], str) and case["known_miss"].strip(), case["id"]
         if "pass" in case:
             assert type(case["pass"]) is int and case["pass"] >= 1 and case.get("pass_note"), case["id"]
     assert [case["id"] for case in cases if case.get("checks") == "local"] == ["10"]
@@ -108,3 +110,11 @@ def test_every_case_has_valid_checks():
 def test_validate_refuses_a_malformed_check(check):
     with pytest.raises(ValueError):
         validate([check])
+
+
+def test_about_alternatives_may_be_words():
+    assert failures(DATA_CENTERS, [{"evidence": ["electricity"], "about": [["data", "center"], "Carbon tax"]}]) == []
+    assert failures(DATA_CENTERS, [{"about": [["seawall"]]}])
+    validate([{"about": [["seawall"], "Data centers"]}])
+    with pytest.raises(ValueError):
+        validate([{"about": [[]]}])
