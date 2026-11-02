@@ -106,7 +106,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       // A link with no words beside it is still evidence (John, 22 Oct 2026); the site names it after the link.
       payload[group] = rows.filter(row => row.name.value.trim() || row.url?.value.trim()).map(row => {
         const item = {name: row.name.value};
-        for (const fieldName of ['parent', 'for_issue', 'url', 'about']) {
+        for (const fieldName of ['for_issue', 'url', 'about']) {
           if (row[fieldName]) item[fieldName] = row[fieldName].value || null;
         }
         if (row.stance) item.stance = row.stance.value;
@@ -123,11 +123,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     const names = Object.values(candidates.issues).map(item => item.name);
     const issues = groups.issues.map(row => row.name.value.trim()).filter(Boolean);
     const solutions = groups.solutions.map(row => row.name.value.trim()).filter(Boolean);
-    const top = Object.values(candidates.issues).filter(item => !item.parent_key).map(item => item.name);
     const fam = family();
-    // A row that is itself part of something is not offered as a parent; the record allows one level.
-    const cardTop = groups.issues.filter(row => row.name.value.trim() && !row.parent?.value
-      && !candidates.issues[key(row.name.value)]?.parent_key).map(row => row.name.value.trim());
     for (const [group, rows] of Object.entries(groups)) {
       for (const row of rows) {
         let known = candidates[group][key(row.name.value)];
@@ -144,14 +140,6 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         }
         row.badge.textContent = row.name.value.trim() ? known ? 'existing' : 'new' : ''; grow(row.name);
         if (row.issueNote) row.issueNote.hidden = !known;
-        if (row.parent) {
-          const self = key(row.name.value);
-          options(row.parent, [['On this form', cardTop.filter(name => key(name) !== self)],
-            [fam.label, fam.names.filter(name => key(name) !== self && !candidates.issues[key(name)]?.parent_key)],
-            ['All issues', top.filter(name => key(name) !== self)]], known ? 'none, this is already a top level issue' : 'none, this is a new top level issue');
-          if (known?.parent_key) row.parent.value = candidates.issues[known.parent_key]?.name || '';
-          row.parent.disabled = Boolean(known?.parent_key);
-        }
         if (row.for_issue) {
           options(row.for_issue, [['On this form', issues], [fam.label, fam.names], ['All issues', names]], 'Choose an issue');
           if (!row.for_issue.value && issues.length) row.for_issue.value = issues[0];
@@ -224,7 +212,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     field(row, 'name', label).value = item.name || '';
     row.badge = node('span', '', 'badge'); row.element.append(row.badge);
     if (group === 'issues') {
-      field(row, 'parent', 'Part of', 'select');
+      // No "Part of" since 2 November 2026 (John): there are no sub-issues.
       // John, 24 October 2026: an issue the record holds says so under the row, not only in the badge.
       row.issueNote = node('p', 'This issue is already in the database.', 'issue-note'); row.issueNote.hidden = true;
       row.element.append(row.issueNote);
@@ -260,7 +248,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     state.groups[group].push(row);
     find(group === 'issues' ? 'issue-rows' : group === 'solutions' ? 'solution-rows' : 'evidence-rows').append(row.element);
     refresh();
-    for (const name of ['parent', 'for_issue', 'about']) if (row[name] && item[name]) row[name].value = item[name];
+    for (const name of ['for_issue', 'about']) if (row[name] && item[name]) row[name].value = item[name];
     extras.forEach(extra => extra.row?.(group, row, item));
     changed();
     return row;
@@ -285,7 +273,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     find('card-errors').textContent = '';
     find('retry').hidden = message !== unavailable;
     for (const group of Object.keys(state.groups)) { state.groups[group].forEach(row => row.element.remove()); state.groups[group] = []; }
-    const asRow = item => ({name: item.name, parent: state.candidates.issues[item.parent_key]?.name});
+    const asRow = item => ({name: item.name});
     const prefill = state.candidates.issues[startIssue()];
     if ((!payload.issues || !payload.issues.length) && prefill) payload.issues = [asRow(prefill)];
     const named = new Set((payload.issues || []).map(item => key(item.name)));

@@ -19,5 +19,4 @@
   <p class="ev-label">Evidence</p>
   {% if about.evidence %}<ul class="evidence">{% for item in about.evidence %}<li>{{ item.name }} ({{ "supports" if item.stance == "SUPPORTS" else "refutes" }})</li>{% endfor %}</ul>{% else %}<p class="empty">No evidence attached to the issue itself yet.</p>{% endif %}
   <p><a href="{{ about.href }}">Open the full page for this issue</a></p>
-  <p class="counts">To add a sub-issue, write it as an issue below and choose this issue under "Part of".</p>
 </section>

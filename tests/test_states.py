@@ -109,6 +109,11 @@ def test_write_about_shows_the_issue_summary_above_the_form(state_client, monkey
     assert "Already in the database for Security Council veto" in page.text
     assert "Abolish the veto" in page.text and "I approve this" in page.text
     assert 'href="/issues/veto"' in page.text
+    # John, 2 November 2026: no sub-issues, so neither page explains how to add one; a tree already in the
+    # record still says where the issue sits.
+    assert "Part of World" in page.text
+    for text in (page.text, client.get("/").text):
+        assert "To add a sub-issue" not in text and "Part of" not in text.replace("Part of World", "")
     assert client.get("/?issue=nowhere").status_code == 200
 
 
