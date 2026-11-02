@@ -22,7 +22,16 @@ John, 1 November 2026: a reason someone gives, such as opposing data centers bec
   * language model off: the write page for Security Council veto (a seed sub-issue) shows "Part of Need for world government" above the form and no line about sub-issues; the form's issue row has no "Part of"; a reason added by hand as evidence posted, the veto kept its place under Need for world government; the veto's Ask line reads "about this issue", Need for world government's "about this issue and its sub-issues"; no console errors;
   * language model set: "I'm opposed to new data centers near St. Louis, because they are increasing the price of electricity for everyone." read as the issue Data centers and the evidence "Data centers raise electricity prices" supporting it (not posted).
 
+## Review
+
+A fresh review of the whole branch found nothing blocking (suites green on its side too). Its points, and what was done:
+
+* Docs that still described a parent (`03_schema.md`, `05_extraction.md`, `04_interface.md`, `CLAUDE.md`): fixed.
+* Two prompt wordings that could, in principle, flip a reason's side or make a "concern" a second issue: tested as cases 29 and 30, three runs each; the reason's side and the single issue were right every time.
+* The no-JavaScript Ask result page passes the issue without its sub-issues, so its line says "about this issue" even on an issue with sub-issues (the answer still reads them). Left as is: only a record with a tree, with JavaScript off.
+
 ## Open
 
 * **Eston's go to merge.** Merging deploys John's live site. After it, run `scripts.smoke` and open a live issue page and the Write page, reading only.
+* **An older fault found by case 29**, not caused by this change: "I oppose the Security Council veto" is read as opposing the solution "Limit or abolish the Security Council veto". The prompt before this change does the same. It needs its own fix to the stance rules.
 * The tidy box was checked through its route tests and the live tests, not in a browser: the local accounts' passwords are not known here.

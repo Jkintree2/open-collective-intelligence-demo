@@ -136,7 +136,7 @@ Rules applied in Python before the transaction:
 * The same link counts as the same evidence (24 October 2026, after John entered one source twice on 22 October). When an evidence row gives a link and the record already holds a piece of evidence with that link, the row takes that evidence's key and name, whatever name the writer typed; a name already in the record still wins over the link, as the name rule above comes first. Links match after normalising (`payload.link_key`): the scheme (http or https) ignored, a leading `www.` ignored, a trailing slash ignored, the fragment ignored, the same tracking parameters dropped and the rest of the query kept (a YouTube `?v=` is the video). Nothing further: an arXiv abstract page and its PDF stay different. `candidates()` carries every evidence link in that form, so the card applies the same rule as it is typed. No new label, type or property: `Evidence.url` already exists.
 * Since 2 November 2026 an issue row has no parent: one sent by the reading or an older card is ignored, with no correction. An issue that already is a sub-issue keeps its place.
 * Node names go through `clean_name()` and keys through `make_key()` as defined above; a name whose key is rejected is dropped from the payload with a message on the card.
-* A position (approve or oppose) on a solution the record already lists under that issue writes only the `APPROVE` or `OPPOSE` edge: no `PROPOSE`, no `HAVE_PROPOSED`. An existing issue whose only part in the post is to hold such positions is not claimed again; a new solution, evidence or sub-issue for it keeps the claim. The issue page still lists the post through the stance edge (GitHub issue 4, October 2026).
+* A position (approve or oppose) on a solution the record already lists under that issue writes only the `APPROVE` or `OPPOSE` edge: no `PROPOSE`, no `HAVE_PROPOSED`. An existing issue whose only part in the post is to hold such positions is not claimed again; a new solution or evidence for it keeps the claim. The issue page still lists the post through the stance edge (GitHub issue 4, October 2026).
 * When `anonymous` is true, `display_name` is stored as null and the poster's name cookie is left untouched.
 * Empty payload (no issues, no solutions, no evidence) is still stored as a Post with `source = manual` and no edges, so the feed shows what the tester wrote. This is the "post as a raw statement" path of Session 1.
 
@@ -301,7 +301,7 @@ RETURN e.name AS name, e.url AS url
 ORDER BY e.created_at DESC LIMIT 200;
 ```
 
-Three lists, queried fresh on every extraction call and every card open. No cache: at demo scale these take milliseconds, and a cache made a just-created issue invisible to the next post (review M20). They feed both the prompt's candidate section (where sub-issues are marked "part of X; cannot be a parent") and the `<datalist>` elements on the card (which get every issue, not the capped 70; a second uncapped query for names only).
+Three lists, queried fresh on every extraction call and every card open. No cache: at demo scale these take milliseconds, and a cache made a just-created issue invisible to the next post (review M20). They feed both the prompt's candidate section (issue names only since 2 November 2026; before, sub-issues were marked "part of X; cannot be a parent") and the `<datalist>` elements on the card (which get every issue, not the capped 70; a second uncapped query for names only).
 
 ### Q9. Health and admin counts
 

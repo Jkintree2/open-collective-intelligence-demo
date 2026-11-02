@@ -77,6 +77,8 @@ There is no numeric confidence. Models invent those. The useful signals are the 
 
 ## The system prompt (draft, to be tuned in Session 3 against the examples below)
 
+The draft below is kept as written in September 2026. The prompt as built is `READING_RULES` in `app/extract.py`; since 2 November 2026 it asks for no parent and reads reasons as evidence ("Reasons as evidence, no sub-issues", at the end).
+
 ```
 You help fill in a form for a shared civic record. People write a statement about an issue they care about. Your job is to pull out, from that statement only, the ISSUE they are raising, any SOLUTION they name, and any EVIDENCE they cite, and return them as json.
 
@@ -150,7 +152,7 @@ The card's fields are posted as JSON to `POST /api/posts`. Same shape as the mod
   "anonymous": false,
   "source": "model",
   "extraction_raw": "{...the model's JSON as a string, or null...}",
-  "issues": [{"name": "...", "parent": null}],
+  "issues": [{"name": "..."}],
   "solutions": [{"name": "...", "for_issue": "...", "stance": "approve"}],
   "evidence": [{"name": "...", "url": null, "stance": "supports", "about": "..."}]
 }
@@ -627,6 +629,8 @@ congestion charge for the centre, paid by every driver who enters, would deal wi
 | 26 | "Data centers are large buildings full of servers that store and process data for companies." | Data centers or found false; no evidence |
 | 27 | a solution for Data centers, "because otherwise households end up paying for them", with a link | the solution, approve; evidence with that link |
 | 28 | "Data centers also use huge amounts of water for cooling, in a city that already has water problems." | Data centers; evidence about the water, supporting it; no new issue |
+| 29 | "I oppose the Security Council veto because it has blocked action on Syria." (seed) | the veto issue; the reason supporting it (the veto is a problem), never refuting it |
+| 30 | "Data centers are a problem in St. Louis. Their water use is also a big concern." | Data centers; the water use as evidence supporting it; no second issue |
 
 **Runs, 2 November 2026** (deepseek-v4-flash, the seed or the case's context as candidates). A first version and six rounds of tuning were run against cases 2, 11, 13, 15, 19, 20 and 24 to 28, mostly three runs a round, with cases 2, 3, 11, 13, 18 and 20 also run three times on the prompt before this change (main `0dd0779`) for comparison. What the rounds showed: widening the definition of evidence at the top of the rules made the reading turn the writer's own descriptions into evidence (case 2 lost its UDHR and Earth Charter evidence; case 13 restated Beth's practice as evidence refuting itself); an example reading "I oppose data centers because ..." with no stance taught the model that "I oppose" gives none (case 20 lost its opposition in 2 of 3 runs, against 3 of 3 before); a sentence asking for solution names in the writer's own words made case 13 worse. The rules above are the last round. On them:
 
@@ -644,5 +648,9 @@ congestion charge for the centre, paid by every driver who enters, would deal wi
 | 11 | 4 | every run: the three existing issues; the writer's "All three need a body above nations" is now a solution, named "World Constitution based on the UDHR and Earth Charter" (before the change no solution was read); once, "The veto is the biggest problem" as evidence supporting the veto |
 | 1, 3 to 10, 12, 14, 16, 17, 19, 21 to 23 | 1 | as expected |
 | 18 | 1 | as expected, and the writer's reason ("the fairest way to pay") as evidence supporting the solution |
+| 30 | 3 | every run: Data centers, and its water use supporting it; no second issue |
+| 29 | 3 | every run: the veto issue, and "Veto has blocked action on Syria" supporting it; and oppose on Limit or abolish the Security Council veto (see below) |
 
 Case 11 is the one known difference: the reading now keeps a proposal the writer makes in passing, under a fuller name than the writer gave it, and once in four runs took the writer's ranking of the problems as evidence. Both show on the card, where the writer can rename or remove them before posting.
+
+Cases 29 and 30 were added after the branch review. Case 29 found a fault older than this change: "I oppose the Security Council veto" is read as opposing the solution "Limit or abolish the Security Council veto", the opposite of what the writer means. The prompt before this change does the same in 3 of 3 runs, and also drops the reason, so the stance rules (unchanged here) match the solution by name. Left for its own fix.
