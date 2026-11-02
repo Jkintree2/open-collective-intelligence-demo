@@ -207,8 +207,8 @@ def test_the_edit_preview_shows_what_an_unchanged_save_keeps(live_graph):
     ada = Member(key="acct:ada", name="Ada", email="ada@example.org", admin=False)
     shown = edit_preview(ada, {"anonymous": False}, data, resolved, prepared)
     assert shown["valid"] is True and shown["dropped"] == []
-    assert shown["sentences"] == ["Ada claims about existing issue Flooding", "Ada proposes solution Seawalls", "Flooding has proposed Seawalls",
-                                  "Ada approves Seawalls"]
+    # On the edit page the post's own issue is already in the database, so its approved proposal is one line.
+    assert shown["sentences"] == ["Ada proposes and approves solution of Seawalls for the issue of Flooding"]
     before = edges(live_graph, pid)
     assert edit_unchanged(live_graph, pid)
     assert [t for t, _, _ in edges(live_graph, pid)] == ["APPROVE", "CLAIM", "HAVE_PROPOSED", "PROPOSE"]

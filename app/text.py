@@ -98,7 +98,10 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
     posted with no statement names the link once (John, 31 October 2026: it showed twice).
     `place` (Phase 3) is the card's place as read under a post ("St. Louis, United States"), given only for
     the list under the card: it is the last line, so a change to the place alone shows (John, 2 November
-    2026). A statement made from the lines leaves it out, since the place shows under the post."""
+    2026). A statement made from the lines leaves it out, since the place shows under the post.
+    A solution proposed for an issue already in the record and approved in the same post is one line, "proposes
+    and approves solution of <solution> for the issue of <issue>", and that issue has no claim line of its own
+    (John, 2 November 2026: four lines read as padding). A new issue keeps its lines."""
     from app.payload import link_name  # payload imports this module
 
     if resolved is None:
@@ -107,13 +110,24 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
         resolved = resolve_payload(payload, Candidates.empty())
     name = clean_name(display_name) or "Anonymous"
     existing = {row["key"] for row in resolved.issues if row.get("existing")}
+    on_card = {make_key(item.name) for item in payload.issues}
     kinds = {row["target_key"]: row["target_label"] for row in resolved.evidence}
+
+    def joined(item) -> bool:
+        # An issue not on the card is one the record holds (resolve_payload keeps no other).
+        key = make_key(item.for_issue or "")
+        return (not item.stance_only and item.stance == "approve" and key is not None
+                and (key in existing or key not in on_card))
+
+    named = {make_key(item.for_issue) for item in payload.solutions if joined(item)}
     claims = [f"{name} claims {'about existing issue ' if make_key(item.name) in existing else ''}{item.name}"
-              for item in payload.issues]
+              for item in payload.issues if make_key(item.name) not in named]
     proposed = [item for item in payload.solutions if not item.stance_only]
-    rest = [f"{name} proposes solution {item.name}" for item in proposed]
-    rest.extend(f"{item.for_issue} has proposed {item.name}" for item in proposed)
-    rest.extend(f"{name} {item.stance}s {item.name}" for item in payload.solutions if item.stance != "none")
+    rest = [f"{name} proposes and approves solution of {item.name} for the issue of {item.for_issue}" if joined(item)
+            else f"{name} proposes solution {item.name}" for item in proposed]
+    rest.extend(f"{item.for_issue} has proposed {item.name}" for item in proposed if not joined(item))
+    rest.extend(f"{name} {item.stance}s {item.name}" for item in payload.solutions
+                if item.stance != "none" and not joined(item))
     both_sides = both_sides or {}
 
     def beside(item) -> dict | None:
