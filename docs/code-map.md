@@ -63,6 +63,7 @@ scripts/__init__.py
 scripts/seed.py    python -m scripts.seed [--counts] [--reset --yes [--force]]; reset keeps accounts and refuses a database holding non-seed nodes; reload writes nothing when complete and reads tidied seed issues as they are now
 scripts/make_admin.py John's own account, the root of who entered whom: NEO4J_* from the shell only (never .env), prints the database host and name, needs --yes, refuses a database on this machine unless --local, sends nothing; his first link comes from "Forgot your password?"
 scripts/cards.py   prints the card the live model produces for each case in tests/extraction_cases.json (needs LLM_API_KEY)
+scripts/case_checks.py the reading cases' machine checks: validate() and failures(card, checks); no I/O
 scripts/checks.py  prints the evidence check for each case in tests/check_cases.json, with tokens used (needs LLM_API_KEY)
 scripts/asks.py    prints the answer for each case in tests/ask_cases.json against tests/fixtures/ask_record.json, with sources kept and dropped, tokens and cache hits (needs LLM_API_KEY)
 scripts/follow_ups.py prints the follow-up questions for each case in tests/follow_up_cases.json, kept and dropped, with tokens and cache hits (needs LLM_API_KEY)
