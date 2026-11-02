@@ -78,6 +78,16 @@ def test_not_about_one_place_and_no_row_write_no_place(places_on, monkeypatch):
     assert places_on.writes[1][1]["place"] is None
 
 
+def test_a_statement_made_from_the_lines_leaves_the_place_out(places_on):
+    """The list under the card ends with the place (John, 2 November 2026), but the place shows under the
+    post, so a statement written from the lines when the box is empty does not repeat it."""
+    body = {**CARD, "text": "", "place": {"country": "US", "area": "St. Louis"}}
+    lines = places_on.client.post("/api/preview", json=body).json()["sentences"]
+    assert lines == ["Ada Tester claims River flooding", "Place: St. Louis, United States"]
+    assert places_on.client.post("/api/posts", json=body).status_code == 201
+    assert places_on.writes[0][0][4] == "Ada Tester claims River flooding."
+
+
 def test_a_town_with_no_country_holds_the_post_back(places_on):
     body = {**CARD, "place": {"country": None, "area": "Springfield"}}
     preview = places_on.client.post("/api/preview", json=body).json()
@@ -155,6 +165,21 @@ def test_saving_an_edit_writes_the_place_from_the_card(editing):
     assert editing.client.post("/api/posts/mine-1/preview", json={**body, "place": {"area": "Bremen"}}
                                ).json()["valid"] is False
     assert len(editing.saved) == 3
+
+
+def test_the_edit_list_shows_the_place_saving_leaves_and_its_statement_leaves_it_out(editing):
+    editing.switch(places_enabled=True)
+    body = {"text": "", "issues": [{"name": "Flooding"}], "place": {"country": "DE", "area": "Bremen"}}
+    lines = ["Ada Tester claims Flooding", "Place: Bremen, Germany"]
+    assert editing.client.post("/api/posts/mine-1/preview", json=body).json()["sentences"] == lines
+    assert editing.client.post("/api/posts/mine-1", json=body).status_code == 200
+    assert editing.saved[0]["text"] == "Ada Tester claims Flooding."
+    # A card whose Place row never loaded keeps the post's place on saving, so the list shows that one.
+    assert editing.client.post("/api/posts/mine-1/preview", json={**body, "place": None}).json()["sentences"] == [
+        lines[0], "Place: Hamburg, Germany"]
+    # With the switch off there is no place to show.
+    editing.switch(places_enabled=False)
+    assert editing.client.post("/api/posts/mine-1/preview", json={**body, "place": None}).json()["sentences"] == lines[:1]
 
 
 def test_with_the_switch_off_an_edit_keeps_the_place(editing):

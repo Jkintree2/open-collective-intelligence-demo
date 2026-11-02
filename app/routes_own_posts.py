@@ -9,7 +9,7 @@ from fastapi import APIRouter, Body, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import ValidationError
 
-from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts, readings, sides
+from app import check, extract as reading, fetch_video, graph, graph_evidence, graph_own_posts, places, readings, sides
 from app.extract import CardPayload, ResolvedPayload, resolve_payload
 from app.members import Member, posting_identity, require_member, require_same_origin
 from app.pages import page
@@ -264,7 +264,10 @@ def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, car
     if any(getattr(item, "check", None) for item in data.evidence):  # only a row with a reading can split (issue 29)
         both = sides.statements(edit_checks(row.get("id"), row.get("payload"), data.evidence, resolved,
                                             getattr(data, "text", "")))
-    return {"sentences": sentences(card, shown or "Anonymous", resolved, both, site.card_place_text(data)),
+    place = site.card_place_text(data)
+    if getattr(data, "place", None) is None and site.settings.places_enabled:  # no Place row: saving keeps the post's
+        place = places.place_text(row.get("place_country"), row.get("place_area"))
+    return {"sentences": sentences(card, shown or "Anonymous", resolved, both, place),
             "valid": valid, "dropped": resolved.dropped,
             "corrected": resolved.corrected, "payload": card.model_dump()}
 
