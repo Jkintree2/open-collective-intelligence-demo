@@ -6,6 +6,10 @@ const {setup} = require('./page_harness.js');
 
 const POST = {id: 'post-1', text: 'Flooding matters', anonymous: true,
   card: {issues: [{name: 'Flooding', parent: null}], solutions: [], evidence: []}};
+// The edit page's list is the whole post as saving leaves it, so it has a heading of its own (John,
+// 2 November 2026: he changed only the town, and "What this will add" listed the post again).
+const LIST_TITLE = 'What this post will say';
+const PLACES = {not_one_place: 'Not about one place', choices: [['DE', 'Germany'], ['US', 'United States']], country: 'DE'};
 
 test('the edit page opens the card from the post and saves under its id', async () => {
   const p = await setup(undefined, {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}},
@@ -101,4 +105,46 @@ test('a failed save keeps its message on screen and the button usable', async ()
   p.get('post').emit('click'); await p.flush();
   assert.equal(p.requests.at(-1).url, '/api/posts/post-1');
   assert.equal(p.requests.length, before + 1);
+});
+
+test('changing only the town: the list says what the post will say, the place included', async () => {
+  const p = await setup(undefined, {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}},
+                        {member: 'Ada Lovelace', before: ['place.js']});
+  p.get('edit-post').textContent = JSON.stringify({...POST, anonymous: false, place: {country: 'US', area: null}});
+  p.requests.find(r => r.url === '/api/place').resolve(PLACES); await p.flush();
+  p.load('edit_post.js'); await p.flush();
+  assert.equal(p.get('sentences-title').textContent, LIST_TITLE);
+  await p.runTimer(200);
+  p.requests.at(-1).resolve({sentences: ['Ada Lovelace claims about existing issue Flooding', 'Place: United States'],
+    valid: true, dropped: [], corrected: []});
+  await p.flush();
+  const area = p.get('add-evidence').afterNodes[0].children[3];
+  area.value = 'St. Louis'; await area.emit('input');
+  await p.runTimer(200);
+  const preview = p.requests.at(-1);
+  assert.equal(preview.url, '/api/posts/post-1/preview');
+  const sent = JSON.parse(preview.options.body);
+  assert.deepEqual(sent.place, {country: 'US', area: 'St. Louis'});
+  assert.deepEqual(sent.issues, [{name: 'Flooding'}]);
+  preview.resolve({sentences: ['Ada Lovelace claims about existing issue Flooding', 'Place: St. Louis, United States'],
+    valid: true, dropped: [], corrected: []});
+  await p.flush();
+  assert.deepEqual(p.get('sentences').children.map(item => item.textContent),
+    ['Ada Lovelace claims about existing issue Flooding', 'Place: St. Louis, United States']);
+  assert.equal(p.get('sentences-title').textContent, LIST_TITLE);
+  // Not awaited: the click's handler waits on the save request.
+  p.get('post').emit('click'); await p.flush();
+  const save = p.requests.at(-1);
+  assert.equal(save.url, '/api/posts/post-1');
+  assert.deepEqual(JSON.parse(save.options.body).place, {country: 'US', area: 'St. Louis'});
+});
+
+test('with the box emptied while editing, the no statement line names the edit page\'s list', async () => {
+  const p = await setup(undefined, {issues: {flooding: {name: 'Flooding', parent_key: null}}, solutions: {}, evidence: {}},
+                        {member: 'Ada Lovelace'});
+  p.get('edit-post').textContent = JSON.stringify(POST);
+  p.load('edit_post.js'); await p.flush();
+  await p.type('');
+  assert.equal(p.get('card-message').textContent,
+    `No statement written. The lines under "${LIST_TITLE}" will be posted as your statement.`);
 });

@@ -524,6 +524,12 @@ def card_place(data: CardPayload) -> dict | None:
     return resolve_place(sent) if settings.places_enabled and sent is not None else None
 
 
+def card_place_text(data: CardPayload) -> str | None:
+    """The card's place as read under a post ("St. Louis, United States"), for the list under the card."""
+    placed = card_place(data)
+    return places.place_text(placed["place_country"], placed["place_area"]) if placed else None
+
+
 def place_problem(data: CardPayload) -> bool:
     """A town or area with no country: the card says so and Post waits (04_interface.md)."""
     return settings.places_enabled and place_needs_country(getattr(data, "place", None))
@@ -617,7 +623,8 @@ def preview_card(request: Request, data: PostRequest) -> Response:
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     valid = valid and not place_problem(data)
     both = sides.statements(_kept_checks(data, resolved, candidates))
-    return JSONResponse({"sentences": sentences(card, name or "Anonymous", resolved, both), "valid": valid,
+    return JSONResponse({"sentences": sentences(card, name or "Anonymous", resolved, both, card_place_text(data)),
+                         "valid": valid,
                          "dropped": resolved.dropped, "corrected": resolved.corrected,
                          "payload": card.model_dump()})
 

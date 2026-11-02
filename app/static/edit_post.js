@@ -10,6 +10,8 @@
   const intro = 'Saving replaces what this post added. '
     + 'Removing a position here does not withdraw it; use the buttons on the issue page.';
   card.state.editing = post.id;
+  // The list is the whole post as saving leaves it, not only what changed (John, 2 November 2026).
+  find('sentences-title').textContent = 'What this post will say';
   find('text').value = post.text;
   find('anonymous').checked = post.anonymous;
   // A reading would clear the intro line and a plain statement would drop every claim the post makes:

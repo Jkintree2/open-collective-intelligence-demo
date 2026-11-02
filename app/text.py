@@ -85,7 +85,8 @@ def count_line(row: dict) -> str:
 TARGET_WORDS = {"Issue": "issue of", "Solution": "solution of", "Evidence": "evidence of"}
 
 
-def sentences(payload, display_name: str, resolved=None, both_sides: dict | None = None) -> list[str]:
+def sentences(payload, display_name: str, resolved=None, both_sides: dict | None = None,
+              place: str | None = None) -> list[str]:
     """The card's sentences, in the order of the acceptance examples, in John's words of 23 October
     2026: "proposes solution", "submits evidence", "supports issue of" (or solution of, evidence of).
     An issue already in the record reads "claims about existing issue" (John, 24 October 2026; from 23 to
@@ -94,7 +95,10 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
     `both_sides` (issue 29, sides.statements) maps an evidence key to the writer's statement written
     beside it: the page's line then takes the page's side, and the statement's lines follow the page's.
     Evidence named after its own link gets one line, "submits evidence <link>, which refutes …", so a card
-    posted with no statement names the link once (John, 31 October 2026: it showed twice)."""
+    posted with no statement names the link once (John, 31 October 2026: it showed twice).
+    `place` (Phase 3) is the card's place as read under a post ("St. Louis, United States"), given only for
+    the list under the card: it is the last line, so a change to the place alone shows (John, 2 November
+    2026). A statement made from the lines leaves it out, since the place shows under the post."""
     from app.payload import link_name  # payload imports this module
 
     if resolved is None:
@@ -136,4 +140,4 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
         rest.append(f"{item.name} {statement['page'] if statement else item.stance} {about(item)}")
         if statement:
             rest.append(f"{statement['name']} {statement['stance']} {about(item)}")
-    return claims + rest
+    return claims + rest + ([f"Place: {place}"] if place else [])

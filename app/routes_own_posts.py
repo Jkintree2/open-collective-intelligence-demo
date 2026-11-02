@@ -255,16 +255,17 @@ def edit_preview(member: Member, row: dict, data, resolved: ResolvedPayload, car
     """What main.preview_card answers, for the edit card: resolved as the save is (resolve_edit), so the
     preview and the save always agree, under the name or Anonymous the edit page chose (R4). A card
     with no choice of its own (the record's card, as built for the page) keeps the post's."""
+    from app import main as site
     _, _, _, shown = posting_identity(member, getattr(data, "anonymous", bool(row["anonymous"])))
     valid = not resolved.dropped and (not resolved.is_empty or bool(data.plain and data.text.strip()))
     if getattr(data, "place", None) is not None:  # Phase 3: a town with no country holds Save back
-        from app import main as site
         valid = valid and not site.place_problem(data)
     both = {}
     if any(getattr(item, "check", None) for item in data.evidence):  # only a row with a reading can split (issue 29)
         both = sides.statements(edit_checks(row.get("id"), row.get("payload"), data.evidence, resolved,
                                             getattr(data, "text", "")))
-    return {"sentences": sentences(card, shown or "Anonymous", resolved, both), "valid": valid, "dropped": resolved.dropped,
+    return {"sentences": sentences(card, shown or "Anonymous", resolved, both, site.card_place_text(data)),
+            "valid": valid, "dropped": resolved.dropped,
             "corrected": resolved.corrected, "payload": card.model_dump()}
 
 

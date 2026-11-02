@@ -47,6 +47,16 @@ def test_evidence_names_what_it_speaks_to_and_a_known_issue_is_claimed_about():
     assert sentences(only, "Ada", resolve_payload(only, known)) == ["Ada claims about existing issue Flooding"]
 
 
+def test_the_place_is_the_last_line_of_the_list():
+    """John, 2 November 2026: he edited a post only to add St. Louis as its town, and the list said nothing
+    about it. The place reads as it does under a post, after everything else; with none there is no line."""
+    card = CardPayload.model_validate(FIXTURES["4"])
+    assert sentences(card, "Tester", place="St. Louis, United States") == [
+        *sentences(card, "Tester"), "Place: St. Louis, United States"]
+    assert sentences(card, "Tester", place="Germany")[-1] == "Place: Germany"
+    assert sentences(card, "Tester", place=None) == sentences(card, "Tester")
+
+
 @pytest.mark.parametrize("case", ["1", "4", "5", "6A", "7"])
 def test_handwritten_card_fixtures_preserve_only_explicit_stances(case):
     card = CardPayload.model_validate(FIXTURES[case])
