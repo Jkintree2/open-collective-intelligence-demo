@@ -12,7 +12,8 @@
     <textarea name="question" rows="2" aria-labelledby="ask-title"{% if ask_issue %} placeholder="For example: Why do people oppose these solutions?"{% elif ask_solution %} placeholder="For example: Why do people oppose this solution?"{% elif ask_evidence %} placeholder="For example: What do people say about this evidence?"{% else %} autofocus{% endif %}>{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
     <button class="primary" type="submit">Ask</button>
   </form>
-  {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them.</p>
+  {# John, 2 November 2026: no sub-issues; the line names them only for an issue a record still gives some. #}
+  {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue{% if ask_issue.children %} and its sub-issues{% endif %}, and from the guiding documents when a question asks about them.</p>
   {% elif ask_item %}<p class="ask-scope">Answers come only from the posts about this {{ ask_kind }}, and from the guiding documents when a question asks about them.</p>{% endif %}
   {# John, 30 October: answers are two or three sentences unless more is asked for, and kept with their question. #}
   <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer one. They can be wrong, so open the posts to check. Your earlier questions on this page go with the next one, so you can follow up. A question that gets an answer is listed here for everyone with its answer, without your name.</p>

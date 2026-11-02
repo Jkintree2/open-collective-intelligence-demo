@@ -116,7 +116,7 @@ There is no separate list to edit. To add a statement you want everyone to see, 
 Only your account can tidy the list of issues. At the foot of each issue page you see **Tidy this issue**:
 
 * **Rename** changes the issue's name. If another issue already has that name, the page suggests a merge instead.
-* **Move** makes the issue part of a top level issue, or makes it a top level issue again. An issue that has issues of its own stays at the top level.
+* **Make it a top level issue** shows on an issue that is still part of another one, such as a starting issue or one from an older copy. Since 2 November 2026 the site makes no sub-issues: a reason someone gives is recorded as evidence for or against the issue or solution it is about.
 * **Merge** starts from the issue you want to keep. Open that issue's page and choose the other one under **Merge this issue with**. Everything from the other issue, its claims, solutions, evidence and the issues that are part of it, moves to the one you kept, and the other is removed. The page asks first, naming the issue it keeps, because a merge cannot be undone.
 
 Every rename, move and merge is listed, newest first, on **Changes to the issues**, linked at the foot of the Issues page. Everyone taking part can read it, so tidying always happens in the open. After a merge, older posts show the issue they now belong to; their own words are not changed.
@@ -242,7 +242,7 @@ If your browser offers Dictate, press it and speak. The button says "Listeningâ€
 
 ## A few things testers may notice
 
-Each issue page has a row of buttons under its name: **Sub-issues**, **Solutions** and **Evidence** with how many each holds, **Ask**, **Posts**, and **Tidy** for you. Each one jumps to that part of the page, so nothing on a long page is missed.
+Each issue page has a row of buttons under its name: **Sub-issues** (only on an issue that still has some), **Solutions** and **Evidence** with how many each holds, **Ask**, **Posts**, and **Tidy** for you. Each one jumps to that part of the page, so nothing on a long page is missed.
 
 The site asks each person to wait twenty seconds between posts, so nobody can flood the database. A tester who posts twice quickly sees a short message asking them to wait a moment.
 

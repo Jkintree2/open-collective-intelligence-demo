@@ -84,7 +84,8 @@ def test_the_ask_page_and_the_issue_box(asking):
     assert '<script src="/static/ask.js?v=' in page and "data-issue" not in page
     issue = asking.client.get("/issues/veto").text
     assert '<h2 id="ask-title">Ask about this issue</h2>' in issue and 'data-issue="veto"' in issue
-    assert "Answers come only from the posts about this issue and its sub-issues, and from the guiding documents when a question asks about them." in issue
+    # John, 2 November 2026: no sub-issues, so the line names them only for an issue that still has some.
+    assert "Answers come only from the posts about this issue, and from the guiding documents when a question asks about them." in issue
     assert 'placeholder="For example: Why do people oppose these solutions?"' in issue
     # Under the evidence and above the posts.
     assert issue.index("Evidence about this issue") < issue.index("Ask about this issue") < issue.index(
@@ -467,6 +468,7 @@ def test_the_issue_page_menu_links_to_each_part(asking, switch, monkeypatch):
     children = [{"key": "a", "name": "A"}, {"key": "b", "name": "B"}]
     monkeypatch.setattr(asking.main.graph, "issue_header", lambda key: {**ISSUE, "children": children})
     page = asking.client.get("/issues/veto").text
+    assert "Answers come only from the posts about this issue and its sub-issues, and from" in page
     assert menu(page)[0] == ("sub-issues", "Sub-issues (2)") and 'id="sub-issues"' in page
     switch(ask_enabled=False)
     assert ("ask-title", "Ask") not in menu(asking.client.get("/issues/veto").text)

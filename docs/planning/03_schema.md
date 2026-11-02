@@ -10,6 +10,8 @@
 
 > **Extended 30 October 2026 for GitHub issue 55 (a page for each solution and each piece of evidence).** Added: queries Q50 to Q54, a third form of Q40 and two more forms of Q41 for Ask on those pages, and two properties on `Question` (`solution_key`, `evidence_key`) with Q47 to Q49 revised to carry them. No new label, relationship type, constraint or index. See "GitHub issue 55" at the end. No switch: the pages are part of the site; their Ask box shows only with `ASK_ENABLED`.
 
+> **Revised 2 November 2026: no new sub-issues** (John: a reason someone gives is evidence, not a sub-issue). A post writes no `PART_OF` (statement 3b is gone, and the payload has no `parent`); tidying only makes a sub-issue top level (Q28). `PART_OF` stays in the schema: the seed's issues block still writes it, a back-room copy holding it still restores, and every query that reads it is unchanged, so a tree already in a record still shows. Merge (Q32) still moves an issue's sub-issues.
+
 Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kickoff decisions require: sub-issues, an anonymous flag on relationships, a source link on Evidence, timestamps, and a Post node so every edge traces back to the text that produced it.
 
 ## Node labels
@@ -17,7 +19,7 @@ Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kic
 | Label | Properties | Notes |
 |---|---|---|
 | `Person` | `key` (unique), `name` (string or null), `anonymous` (bool), `created_at` | `key` is `name:<normalised name>` for a named tester, `anon:<uuid>` for an anonymous one. An anonymous Person has `name = null` and is displayed as "Anonymous". A browser gets one anonymous key, held in a cookie, so an anonymous tester's posts count as one person. |
-| `Issue` | `key` (unique), `name`, `created_at`, `seed` (bool) | Top level or sub-issue. A sub-issue has exactly one outgoing `PART_OF`; the write path's guards keep it that way (first parent wins, and a sub-issue can never be a parent). |
+| `Issue` | `key` (unique), `name`, `created_at`, `seed` (bool) | Top level or sub-issue. A sub-issue has exactly one outgoing `PART_OF`; the write path's guards keep it that way (first parent wins, and a sub-issue can never be a parent). Since 2 November 2026 a sub-issue comes only from the seed or an older record. |
 | `Solution` | `key` (unique), `name`, `created_at`, `seed` | |
 | `Evidence` | `key` (unique), `name`, `url` (string or null), `created_at`, `seed` | `name` is the citation as a short title ("2024 NOAA flooding survey"). `url` optional. Never fetched in 0.1 and Phase 1; from Phase 2, read once when a writer asks for a check (see "Phase 2: evidence that checks itself"). |
 | `Post` | `id` (unique uuid), `text`, `created_at`, `anonymous`, `display_name` (null when `anonymous`; the name is never stored for an anonymous post), `seed`, `source` (`model`, `manual`, `seed`), `extraction_raw` (string, the model's JSON as returned, or null), `model`, `latency_ms` | The audit record. Every relationship created by a post carries `post_id`, so the feed, the "posts about this issue" list, and "it did something weird" debugging all start here. |
@@ -39,7 +41,7 @@ Names are John's README verbs exactly. Direction is always from the actor or sou
 | `REFUTES` | Evidence | Issue, Solution or Evidence | `post_id`, `created_at` | one per post |
 | `APPROVE` | Person | Solution | `post_id`, `anonymous`, `created_at`, `last_post_id` | MERGE: one per person and solution, so "approved by N" counts people, not posts. |
 | `OPPOSE` | Person | Solution | same as APPROVE | MERGE, one per person and solution |
-| `PART_OF` | Issue | Issue | `post_id`, `created_at` | MERGE. One level deep in 0.1: the parent must not itself have a `PART_OF`, and a child that already has a parent keeps it. Both guards are in the write path's WHERE clause; a requested parent that is itself a sub-issue is replaced by that sub-issue's parent in Python before the transaction. |
+| `PART_OF` | Issue | Issue | `post_id`, `created_at` | MERGE. One level deep in 0.1: the parent must not itself have a `PART_OF`, and a child that already has a parent keeps it. Both guards are in the write path's WHERE clause; a requested parent that is itself a sub-issue is replaced by that sub-issue's parent in Python before the transaction. Since 2 November 2026 no post writes it; only the seed's issues block does, and one already in a record stays. |
 
 A person can hold both `APPROVE` and `OPPOSE` on the same solution if they posted both. The counts show both. Reconciling stances is the voting layer, out of scope (addendum 01). **Phase 1 replaces this rule:** one stance per person and solution from then on; pairs left from 0.1 stay until that person takes a new stance (see "Stances" in the Phase 1 section).
 
@@ -93,15 +95,8 @@ WITH i
 MATCH (p:Person {key: $person_key})
 CREATE (p)-[:CLAIM {post_id: $post_id, anonymous: $anonymous, created_at: datetime()}]->(i);
 
-// 3b. If the issue names a parent (sub-issue). Python has already replaced a parent that is
-//     itself a sub-issue with that sub-issue's parent. The parent must exist and be top level,
-//     and the child must not already have a parent (first parent wins).
-MATCH (child:Issue {key: $issue_key}), (parent:Issue {key: $parent_key})
-WHERE child <> parent
-  AND NOT (parent)-[:PART_OF]->(:Issue)
-  AND NOT (child)-[:PART_OF]->(:Issue)
-MERGE (child)-[r:PART_OF]->(parent)
-ON CREATE SET r.post_id = $post_id, r.created_at = datetime();
+// 3b. Gone since 2 November 2026: a post writes no PART_OF. The statement (graph.MERGE_PART_OF)
+//     stays for the seed's issues block only.
 
 // 4. For each solution in the payload (for_issue is required)
 MERGE (s:Solution {key: $solution_key})
@@ -139,7 +134,7 @@ Rules applied in Python before the transaction:
 * Every evidence item must name a target from the payload or the graph. Default target is the first issue in the payload.
 * Evidence given only as a link, with no words beside it, is still evidence: its name is made from the link, the host without `www.` and the path, with the query kept and tracking parameters dropped (`payload.link_name`; `payload.TRACKING`: `utm_`, and since John's link of 31 October 2026 `gad_`, `gclid`, `gbraid`, `wbraid`, `fbclid` and `msclkid`), so the same link always gives the same name (John, 22 October 2026: any time a link is given it is evidence).
 * The same link counts as the same evidence (24 October 2026, after John entered one source twice on 22 October). When an evidence row gives a link and the record already holds a piece of evidence with that link, the row takes that evidence's key and name, whatever name the writer typed; a name already in the record still wins over the link, as the name rule above comes first. Links match after normalising (`payload.link_key`): the scheme (http or https) ignored, a leading `www.` ignored, a trailing slash ignored, the fragment ignored, the same tracking parameters dropped and the rest of the query kept (a YouTube `?v=` is the video). Nothing further: an arXiv abstract page and its PDF stay different. `candidates()` carries every evidence link in that form, so the card applies the same rule as it is typed. No new label, type or property: `Evidence.url` already exists.
-* A parent that does not exist is dropped (the issue becomes top level) and logged. A parent that is itself a sub-issue is replaced by its own parent and logged. A child that already has a parent keeps it; the request is logged and ignored.
+* Since 2 November 2026 an issue row has no parent: one sent by the reading or an older card is ignored, with no correction. An issue that already is a sub-issue keeps its place.
 * Node names go through `clean_name()` and keys through `make_key()` as defined above; a name whose key is rejected is dropped from the payload with a message on the card.
 * A position (approve or oppose) on a solution the record already lists under that issue writes only the `APPROVE` or `OPPOSE` edge: no `PROPOSE`, no `HAVE_PROPOSED`. An existing issue whose only part in the post is to hold such positions is not claimed again; a new solution, evidence or sub-issue for it keeps the claim. The issue page still lists the post through the stance edge (GitHub issue 4, October 2026).
 * When `anonymous` is true, `display_name` is stored as null and the poster's name cookie is left untouched.
@@ -728,7 +723,7 @@ SET r.anonymous = $anonymous
 
 `created_at` stays, so the post keeps its place in the feed. Since the revision round (R4, John, 16 October 2026) the writer may switch between their name and Anonymous at any time, either way: the post and every edge carrying its `post_id` take the new choice, so the public counts keep named and anonymous apart as before.
 
-The edit card is built from the post's current edges (Q7's structure query for this one post, with issue names and parents from Q2), not from its stored `payload`, so an issue renamed or merged since shows as it is now and is never made again; the stored payload gives only evidence links. A solution's position on the card is the stance edge this post still holds, so a stance a click has since replaced shows as no position. When the card is resolved for saving, a solution this post itself proposes is proposed again (its own `HAVE_PROPOSED` link is left out of the candidates), never read as a position on a solution already listed (GitHub issue 4's rule); so an unchanged edit leaves the post's edges as they were. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
+The edit card is built from the post's current edges (Q7's structure query for this one post, with issue names from Q2), not from its stored `payload`, so an issue renamed or merged since shows as it is now and is never made again; the stored payload gives only evidence links. A solution's position on the card is the stance edge this post still holds, so a stance a click has since replaced shows as no position. When the card is resolved for saving, a solution this post itself proposes is proposed again (its own `HAVE_PROPOSED` link is left out of the candidates), never read as a position on a solution already listed (GitHub issue 4's rule); so an unchanged edit leaves the post's edges as they were. MERGEd edges (`HAVE_PROPOSED`, `APPROVE`, `OPPOSE`, `PART_OF`) stay, as with delete: a position added in the edit is taken (Q23 rules), a position removed from the card is not withdrawn; that is done with the buttons.
 
 **Q36. My Statements** (no-cost extra X1, added 20 October 2026; read only, no schema change). Your account lists the member's own posts, anonymous ones included, newest first, 50 at a time (`$limit` is one more than shown, to know whether to offer more). The feed's Q7 flags and structure query then decorate them as on the Write page.
 
@@ -776,22 +771,11 @@ RETURN node.id AS id, node.text AS text, node.display_name AS display_name,
 
 Admin accounts only (D5). Each statement below runs in one write transaction with Q31, so a change and its record land together or not at all. Both issues are locked first with the transient property (`SET i.tidy_lock = true REMOVE i.tidy_lock`), and read only after the lock, in a later statement. The one-level rule of `PART_OF` holds after every change: no sub-issue of a sub-issue, no issue part of itself.
 
-**Q28. Move.** Make an issue part of a top-level issue, or make it top level. Refused when the issue has sub-issues of its own (it stays top level), when the new parent is itself a sub-issue, or when they are the same issue.
+**Q28. Move.** Since 2 November 2026 (John: no sub-issues) only makes a sub-issue already in the record top level; nothing is put under another issue any more. An issue already top level answers "same". The change's `details` keep `to_parent_key` and `to_parent_name` (both null), so older "moved under" changes and new ones read alike.
 
 ```cypher
-// 0. lock both issues first, as one statement: keys is [key, parent_key]
+// 0. lock the issue first: keys is [key]
 MATCH (i:Issue) WHERE i.key IN $keys SET i.tidy_lock = true REMOVE i.tidy_lock;
-
-// under a parent
-MATCH (child:Issue {key: $key}), (parent:Issue {key: $parent_key})
-WHERE child <> parent
-  AND NOT (parent)-[:PART_OF]->(:Issue)
-  AND NOT (:Issue)-[:PART_OF]->(child)
-OPTIONAL MATCH (child)-[old:PART_OF]->(:Issue)
-DELETE old
-WITH DISTINCT child, parent
-CREATE (child)-[:PART_OF {created_at: $now}]->(parent)
-RETURN child.key AS key;
 
 // top level
 MATCH (child:Issue {key: $key})-[old:PART_OF]->(:Issue)
