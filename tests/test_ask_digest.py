@@ -3,6 +3,8 @@
 import json
 from datetime import date, datetime, timezone
 
+import pytest
+
 from app import ask
 
 ISSUE = {"key": "climate", "name": "Climate", "parent": "World government", "sub_issues": ["Carbon prices"],
@@ -300,6 +302,32 @@ def test_the_posts_behind_a_solution_named_after_the_document_are_read_before_th
     crowded(monkeypatch, read)
     ask.record_digest("How does homelessness relate to the principles of the UDHR?")
     assert {"a25-proposal", "a25-stance"} <= set(read[0]) and len(read[0]) == ask.RECORD_STANCE_POSTS
+
+
+HOMELESSNESS_UDHR = "How does homelessness relate to the principles of the UDHR?"
+
+
+@pytest.mark.parametrize("follow_up", ["Tell me more", "Tell me more.", "List them all", "In detail, please",
+                                       "Tell me more in detail", "Can you say more?"])
+def test_a_question_that_only_asks_for_more_is_looked_up_by_the_question_before_it(follow_up):
+    """John, 3 November: "Tell me more" has no words of its own to look up, so after his homelessness question
+    it read the top solutions alone, and neither homelessness nor the solution naming Article 25."""
+    assert ask.lookup_question(follow_up, [HOMELESSNESS_UDHR]) == HOMELESSNESS_UDHR
+
+
+def test_a_second_tell_me_more_still_reaches_the_question_with_words():
+    assert ask.lookup_question("Tell me more", ["Why?", HOMELESSNESS_UDHR, "Tell me more"]) == HOMELESSNESS_UDHR
+
+
+@pytest.mark.parametrize("question, earlier", [
+    ("Tell me more about the carbon tax", [HOMELESSNESS_UDHR]),  # words of its own
+    ("Tell me more about the principles", ["What about the veto?"]),
+    ("Tell me more", []),
+    ("Tell me more", ["Why?"]),
+    # Only the earlier questions the answer is given: the oldest of four is left out of both.
+    ("Tell me more", [HOMELESSNESS_UDHR, "Why?", "Why not?", "And?"])])
+def test_a_question_keeps_its_own_lookup_otherwise(question, earlier):
+    assert ask.lookup_question(question, earlier) == question
 
 
 def test_a_name_citing_an_article_comes_before_shorter_names_that_only_name_the_document(monkeypatch):

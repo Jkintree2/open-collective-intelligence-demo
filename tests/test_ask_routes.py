@@ -137,6 +137,13 @@ def test_the_whole_record_is_asked_without_an_issue(asking):
     assert asking.calls[0] == ("record", "What about the veto?") and asking.calls[1][3] == "record"
 
 
+def test_tell_me_more_reads_what_the_question_before_it_read(asking):
+    """John, 3 November: the follow-up is looked up by the question it follows, and still answered as asked."""
+    earlier = ["How does homelessness relate to the principles of the UDHR?"]
+    post(asking.client, {"question": "Tell me more", "earlier": earlier})
+    assert asking.calls == [("record", earlier[0]), ("answer", "Tell me more", earlier, "record")]
+
+
 @pytest.mark.parametrize("question, message", [("", "Please write a question."), ("   ", "Please write a question."),
                                                ("x" * 501, "Please keep the question under 500 characters.")])
 def test_a_question_that_cannot_go_ahead(asking, question, message):
