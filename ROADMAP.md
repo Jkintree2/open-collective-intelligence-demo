@@ -49,15 +49,13 @@ The platform starts to talk back: it answers questions from what people have pos
 * An About page describing the model, software and host, what each answer is built from, and the two guiding documents in full
 * A place on each post and an "issues near me" filter
 
-### Phase 4: Meeting people where they are (after prototype v0.2)
-
-A connector for AI assistants (MCP), so people can read and post to the record through ChatGPT, Claude or similar assistants instead of the website. It builds on Phases 1 and 3, because an assistant acting for someone needs that person's account and a way to query the record.
-
 ### Later
 
 * A consensus process (reasons for opposition, amendments, rounds), once its design has been discussed
 * Tools for answering questions (calculator, Wikidata, fact checking sites), after Phase 3
 * Server side speech to text, if phone dictation is still a problem
+* Find small language model that runs on smartphones to begin to decentralize the platform
+* A connector for AI assistants (MCP), so people can read and post to the record through ChatGPT, Claude or a language model running on smartphones instead of the website. 
 
 ## Taking part
 
