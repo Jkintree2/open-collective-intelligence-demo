@@ -1,6 +1,6 @@
 # Handoff, 2 November 2026: the stance guard
 
-Case 29: "I oppose the Security Council veto because it has blocked action on Syria." was read as opposing the existing solution "Limit or abolish the Security Council veto" (3 of 3 runs), the opposite of what the writer means. Eston chose a guard in code after five changes to the reading rules each cost John's supreme law paragraph (case 2) its UDHR and Earth Charter evidence. Branch `stance-guard`, merged on Eston's go on 2 November 2026 (PR 65, `8e75031`, live 13:02:48 UTC).
+Case 29: "I oppose the Security Council veto because it has blocked action on Syria." was read as opposing the existing solution "Limit or abolish the Security Council veto" (3 of 3 runs), the opposite of what the writer means. The builder chose a guard in code after five changes to the reading rules each cost John's supreme law paragraph (case 2) its UDHR and Earth Charter evidence. Branch `stance-guard`, merged on the builder's go on 2 November 2026 (PR 65, `8e75031`, live 13:02:48 UTC).
 
 ## Built
 

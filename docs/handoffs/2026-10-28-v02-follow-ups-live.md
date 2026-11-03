@@ -1,6 +1,6 @@
 # Handoff, 28 October 2026 (night): issue page buttons and recent questions are live
 
-The two follow-ups from John's call and his "Announcing v0.2" email shipped tonight as part of Phase 3, at no charge (the builder's decision). This replaces the "left to do" lists in `2026-10-28-ask-recent-questions.md`, and the "recent questions go with the next phase" item in `2026-10-28-call-fixes.md`.
+The two follow-ups from John's call and his "Announcing v0.2" email shipped tonight as part of Phase 3. This replaces the "left to do" lists in `2026-10-28-ask-recent-questions.md`, and the "recent questions go with the next phase" item in `2026-10-28-call-fixes.md`.
 
 ## Shipped
 
@@ -34,5 +34,4 @@ Not read back live: a question being listed once answered, because that writes t
 * **No way for John to remove a listed question himself.** The operator's guide says to ask whoever helps with the site.
 * John will send the v0.2 announcement a day or two after the US election.
 * Reply drafts to John (the "Next phase" thread and "Announcing v0.2") are updated in the builder's mail to say both pieces are live; not sent.
-* The SOW 0.3 draft (in the builder's private folder) holds Phase 4 (reaching agreement) and Phase 5 (talking, later); price, weeks and date are still blanks.
 * Carried over from the call fixes handoff, not rechecked tonight: duplicate solutions ("Global carbon tax by referendum" and "Carbon tax") can be merged by John with Tidy.

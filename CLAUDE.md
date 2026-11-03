@@ -1,6 +1,6 @@
 # Open Collective Intelligence demo
 
-A closed-test website where a small group of people write statements about issues they care about; a language model pulls out the issue, claim, evidence and solution; the writer corrects it; and it merges into a shared Neo4j graph that everyone can read. Version 0.1, built for John Kintree under a fixed-scope statement of work, extended by Phase 1 ("People and positions", SOW 0.2): invited accounts, one-click stances, editing and deleting one's own posts, keyword search, and tidying the issue tree with a list of changes. This file is for a coding session starting cold.
+A closed-test website where a small group of people write statements about issues they care about; a language model pulls out the issue, claim, evidence and solution; the writer corrects it; and it merges into a shared Neo4j graph that everyone can read. Version 0.1, built for John Kintree under a fixed-scope statement of work, extended by Phase 1 ("People and positions"): invited accounts, one-click stances, editing and deleting one's own posts, keyword search, and tidying the issue tree with a list of changes. This file is for a coding session starting cold.
 
 ## Read first
 

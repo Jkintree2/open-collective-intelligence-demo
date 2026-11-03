@@ -2,7 +2,7 @@
 
 > **Revised 5 September 2026 after REVIEW.md.** Changed: the gate names DeepSeek (M16); the sentence and site name come from environment variables (M15); anonymous clears the name and stores none (M7); a row of the most discussed issue chips sits above the text box (C7); the limit is 4,000 characters (m11); a cancel link during reading (m10); Post is gated on an empty card (M17); the feed shows sixty posts, no paging (table); the sort is labelled "Most people" and top-level rows show inclusive counts (m9, C7); evidence links carry `noopener` (M17); admin uses basic auth and shows the last reading-service error (table, M5); the "posting as" header line is cut (table); error and asleep page copy added (m2, C4).
 
-> **Extended 4 October 2026 for Phase 1 (People and positions, SOW 0.2).** Added: sign in, entering a person, the invitation and password emails, accepting, password pages, your account, approve and oppose buttons, editing and deleting your own posts, search, tidying and the list of changes, and back room additions. See "Phase 1: people and positions" at the end. With `ACCOUNTS_ENABLED` unset the screens above are unchanged, except search on the Issues page, which works behind the passphrase too.
+> **Extended 4 October 2026 for Phase 1 (People and positions).** Added: sign in, entering a person, the invitation and password emails, accepting, password pages, your account, approve and oppose buttons, editing and deleting your own posts, search, tidying and the list of changes, and back room additions. See "Phase 1: people and positions" at the end. With `ACCOUNTS_ENABLED` unset the screens above are unchanged, except search on the Issues page, which works behind the passphrase too.
 
 > **Extended 26 October 2026 for Phase 3 (Talking to the record).** Added: drafts for Ask the record, follow-up questions on the card, a place on each post, issues near me and the About page, all for John's yes on 28 October. See "Phase 3: talking to the record" at the end. Each shows only with its switch set.
 
@@ -659,7 +659,7 @@ When a page has not been read after ten seconds, one more line under "Reading th
 
 > Still reading. A slow page can take up to a minute.
 
-The page is read against what the writer says it shows (their own words about the evidence, or a sentence they copied from the page), with the issue or solution as the claim. Words that say about the same as the page, even in other words, count; words that go further than the page read as unclear (22 October 2026, after Audrey Tang's test; Phase 2 SOW item 1, "what the poster claims").
+The page is read against what the writer says it shows (their own words about the evidence, or a sentence they copied from the page), with the issue or solution as the claim. Words that say about the same as the page, even in other words, count; words that go further than the page read as unclear (22 October 2026, after Audrey Tang's test; Phase 2 scope item 1, "what the poster claims").
 
 The last one of the five results is for PDFs, videos and other links that are not web pages. "Could not open this page." is also what shows when the reading itself fails (the site does not answer, or the request is refused), apart from the busy reader below, which has its own line. Under a result with a page, one line of what the page says about itself (the same words as source confidence, below, without the agreement part), for example:
 
@@ -1180,7 +1180,7 @@ This page's words are John's own (his edits of 28 October): "database" for the r
 
 ## GitHub issue 55: a page for each solution and each piece of evidence
 
-Added 30 October 2026 (John's GitHub issue 55, quoted and agreed the same day). Every quote below is **client-facing**; no dashes, none of the forbidden words. No switch: the pages are part of the site. Their Ask box shows only with `ASK_ENABLED`, and source confidence only with `EVIDENCE_CHECK_ENABLED`, as on an issue page. Not in this piece (Phase 4, SOW 0.3): a longer proposal text, editing it together, versions, and objections with reasons.
+Added 30 October 2026 (John's GitHub issue 55, agreed the same day). Every quote below is **client-facing**; no dashes, none of the forbidden words. No switch: the pages are part of the site. Their Ask box shows only with `ASK_ENABLED`, and source confidence only with `EVIDENCE_CHECK_ENABLED`, as on an issue page. Not in this piece (Phase 4): a longer proposal text, editing it together, versions, and objections with reasons.
 
 ### A solution's page (`/solutions/<key>`)
 

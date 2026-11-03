@@ -1,6 +1,6 @@
 # Handoff, 1 November 2026: a link named once, and a line for an unread statement
 
-Two fixes from John's emails of 31 October, free under the 28 October terms (fixes to what was built are free through November). Branch `link-once-and-unread-line`, not merged.
+Two fixes from John's emails of 31 October. Branch `link-once-and-unread-line`, not merged.
 
 ## What John saw, and why
 
@@ -28,5 +28,5 @@ Two fixes from John's emails of 31 October, free under the 28 October terms (fix
 
 ## Open
 
-* **Eston's go to merge.** Merging deploys John's live site. After it, run `scripts.smoke` and open a live solution's Write page, reading only.
+* **The builder's go to merge.** Merging deploys John's live site. After it, run `scripts.smoke` and open a live solution's Write page, reading only.
 * John's AEI evidence keeps its long name in the live record until someone renames or edits it.

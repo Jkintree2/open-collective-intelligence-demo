@@ -137,7 +137,7 @@ Three layers, in order, no embeddings:
 
 1. **The model, given the candidate names.** This does the semantic matching: "the UN veto" resolves to "Security Council veto" because the prompt says to prefer existing names. It is the only layer that understands synonyms.
 2. **Key normalisation in the server.** Whatever the model or the tester wrote is normalised (`03_schema.md`, key rule) and matched to existing keys. This catches case, articles, punctuation and whitespace, and it is what `MERGE` runs on. "The Security Council veto" and "Security council veto." land on one node.
-3. **The tester, via autocomplete.** Every name field on the card is a text input with a `<datalist>` of existing names. When the badge says "new" and the tester can see an existing near-match in the dropdown, they pick it. This is the SOW's "autocomplete against the existing graph".
+3. **The tester, via autocomplete.** Every name field on the card is a text input with a `<datalist>` of existing names. When the badge says "new" and the tester can see an existing near-match in the dropdown, they pick it. This is the agreed scope's "autocomplete against the existing graph".
 
 Where it fails: two people describing the same sub-issue in genuinely different words in separate sessions, when the model does not connect them and neither tester looks at the dropdown. "Veto power of permanent members" and "Security Council veto" become two nodes. The demo accepts this. It is visible in the Issues view, John can see it happening, and merging nodes is on the after list. What the design prevents is the cheap duplicates: capitalisation, articles, and the model inventing "Lack of world government" when "Need for world government" exists.
 

@@ -1,6 +1,6 @@
 # Handoff, 2 November 2026: no sub-issues, reasons as evidence
 
-John, 1 November 2026: a reason someone gives, such as opposing data centers because they raise the price of electricity, is evidence, not a sub-issue. The site stops identifying sub-issues: a statement is read into issues, solutions and evidence only, the "Part of" choice leaves the form and the tidy tools, and Merge stays. Branch `reasons-as-evidence`, merged on Eston's go on 2 November 2026 (PR 63, `eda3161`, live 11:51 UTC).
+John, 1 November 2026: a reason someone gives, such as opposing data centers because they raise the price of electricity, is evidence, not a sub-issue. The site stops identifying sub-issues: a statement is read into issues, solutions and evidence only, the "Part of" choice leaves the form and the tidy tools, and Merge stays. Branch `reasons-as-evidence`, merged on the builder's go on 2 November 2026 (PR 63, `eda3161`, live 11:51 UTC).
 
 ## Built
 

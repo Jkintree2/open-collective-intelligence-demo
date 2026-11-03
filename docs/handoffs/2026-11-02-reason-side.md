@@ -1,6 +1,6 @@
 # Handoff, 2 November 2026: the reason's side
 
-PR 65's live read back: on John's record the veto solution sits under Need for world government (no Security Council veto issue), so "I oppose the Security Council veto because it has blocked action on Syria." came back with the reason REFUTING "Limit or abolish the Security Council veto", on the side of the model's dropped oppose. Eston: "Yes, fix it". Branch `reason-side`, not merged.
+PR 65's live read back: on John's record the veto solution sits under Need for world government (no Security Council veto issue), so "I oppose the Security Council veto because it has blocked action on Syria." came back with the reason REFUTING "Limit or abolish the Security Council veto", on the side of the model's dropped oppose. Fixed on the builder's go. Branch `reason-side`, not merged.
 
 ## Built
 
@@ -16,4 +16,4 @@ PR 65's live read back: on John's record the veto solution sits under Need for w
 
 ## Open
 
-* Eston's go to merge. Merging deploys John's live site. After it, `git fetch`, `scripts.smoke`, and one live `/api/extract` reading of case 29 (nothing posted).
+* The builder's go to merge. Merging deploys John's live site. After it, `git fetch`, `scripts.smoke`, and one live `/api/extract` reading of case 29 (nothing posted).

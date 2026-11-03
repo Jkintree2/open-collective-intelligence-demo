@@ -80,7 +80,7 @@ def read_link(url: str, evidence: str, about: str, statement: str, settings, *, 
         check.cache.put(check.cache_key(url, about, statement), result)
         return result
     paper = fetch_pdf.arxiv_paper(url)
-    # A partly agrees from an abstract is often only what a summary leaves out (Eston, 22 October 2026), so the
+    # A partly agrees from an abstract is often only what a summary leaves out (22 October 2026), so the
     # paper is read for it too; it keeps its place unless the paper gives a reading that rests on a quote.
     if paper and result.verdict in ("unclear", "unread", "partly"):
         full = check.check_evidence(paper, evidence, about, statement, settings, fetcher=reading, **kwargs)
