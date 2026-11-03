@@ -167,6 +167,14 @@
       "issues": [{"name": "Homelessness", "parent": null}],
       "solutions": [],
       "evidence": []
+    },
+    {
+      "id": "ask-19", "account": "acct:fay", "author": "Fay Moreau", "anonymous": false,
+      "created_at": "2026-09-30T09:00:00Z",
+      "text": "Part of the money a global carbon tax raises should pay for housing, food and medical care where they are missing, as Article 25 of the UDHR promises.",
+      "issues": [{"name": "Global climate coordination", "parent": "Need for world government"}],
+      "solutions": [{"name": "Use money from global carbon tax to realize Article 25 of the UDHR", "for_issue": "Global climate coordination", "stance": "approve"}],
+      "evidence": []
     }
   ],
   "clicks": [

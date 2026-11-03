@@ -11,6 +11,8 @@ from scripts.asks import FIXTURE, load_fixture
 
 pytestmark = pytest.mark.live
 CLIMATE = "global climate coordination"
+# John, 3 November: a climate solution named after an article of the UDHR (fixture post ask-19).
+ARTICLE_25 = "Use money from global carbon tax to realize Article 25 of the UDHR"
 TODAY = date(2026, 10, 26)
 # The fixture's accounts' private details, which no digest may ever hold. Set here with Cypher because
 # the write path never sets them on a post's person.
@@ -29,7 +31,8 @@ def record(live_graph):
 
 def test_q40_ranks_an_issues_solutions_with_dated_stances(record):
     rows = {row["name"]: row for row in graph_ask.issue_stances(CLIMATE)}
-    assert list(rows) == ["Carbon border adjustment", "Global carbon tax by referendum", "Carbon fee and dividend"]
+    assert list(rows) == ["Carbon border adjustment", "Global carbon tax by referendum", "Carbon fee and dividend",
+                          ARTICLE_25]
     border, tax = rows["Carbon border adjustment"], rows["Global carbon tax by referendum"]
     assert (border["approves"], border["opposes"], tax["approves"], tax["opposes"]) == (3, 1, 4, 3)
     assert border["issues"] == [{"key": CLIMATE, "name": "Global climate coordination"}]
@@ -42,7 +45,7 @@ def test_q40_ranks_an_issues_solutions_with_dated_stances(record):
 
 def test_q40_on_a_parent_reads_its_sub_issues_and_caps_the_list(record):
     rows = graph_ask.issue_stances("need for world government")
-    assert len(rows) == 11  # every solution in the fixture sits under a sub-issue of this one
+    assert len(rows) == 12  # every solution in the fixture sits under a sub-issue of this one
     assert len(graph_ask.issue_stances("need for world government", limit=3)) == 3
     assert graph_ask.issue_stances("no such issue") == []
 
@@ -74,7 +77,7 @@ def test_q42_ranks_the_record_by_net_support(record):
     rows = graph_ask.top_solutions(3)
     assert [row["name"] for row in rows][:2] == ["United Nations Parliamentary Assembly", "Carbon border adjustment"]
     assert rows[0]["approves"] == 3 and rows[0]["opposes"] == 0
-    assert len(graph_ask.top_solutions(50)) == 11
+    assert len(graph_ask.top_solutions(50)) == 12
 
 
 def test_the_question_query_finds_posts_and_names_with_some_of_the_words(record):
@@ -103,7 +106,7 @@ def test_the_issue_digest_never_holds_a_private_detail_or_a_hidden_name(record):
 def test_the_issue_digest_on_the_fixture(record):
     built = ask.issue_digest(CLIMATE, today=TODAY)
     digest = json.loads(built.text)
-    assert built.posts_left_out == 0 and built.posts_in == len(digest["posts"]) == 14
+    assert built.posts_left_out == 0 and built.posts_in == len(digest["posts"]) == 15
     posts = {p["id"]: p for p in digest["posts"]}
     # The posts that took a stance come first, newest first.
     assert [posts[f"P{n}"]["date"] for n in range(1, 4)] == ["2026-10-13", "2026-10-08", "2026-10-05"]
@@ -145,6 +148,35 @@ def test_a_question_naming_the_documents_reads_the_issue_it_is_about(record):
     built = ask.record_digest("How does the issue of climate change relate to the principles of the Universal "
                               "Declaration of Human Rights and the Earth Charter?", today=TODAY)
     assert built.issue_keys[0] == CLIMATE
+
+
+HOMELESSNESS_UDHR = "How does homelessness relate to the principles of the UDHR?"
+
+
+def test_a_question_naming_the_udhr_reads_the_solutions_that_name_it(record):
+    """John, 3 November: the answer left out the climate solution that names Article 25 of the UDHR."""
+    assert ARTICLE_25 in [row["name"] for row in ask.document_solutions(HOMELESSNESS_UDHR)]
+    built = ask.record_digest(HOMELESSNESS_UDHR, today=TODAY)
+    digest = json.loads(built.text)
+    assert [s["name"] for s in digest["solutions"]].count(ARTICLE_25) == 1
+    assert any("Article 25 of the UDHR promises" in p["text"] for p in digest["posts"])
+    assert built.issue_keys[0] == "homelessness"
+
+
+def test_document_solutions_never_pick_the_issues(record, monkeypatch):
+    question = ("How does the issue of climate change relate to the principles of the Universal Declaration of Human "
+                "Rights and the Earth Charter?")
+    picked = ask.record_digest(question, today=TODAY).issue_keys
+    monkeypatch.setattr(ask, "document_solutions", lambda question: [])
+    assert ask.record_digest(question, today=TODAY).issue_keys == picked
+
+
+def test_a_question_naming_no_document_runs_no_document_read(record, monkeypatch):
+    calls = []
+    search_names = graph_search.search_names
+    monkeypatch.setattr(graph_search, "search_names", lambda query: calls.append(query) or search_names(query))
+    ask.record_digest("Why do people oppose the carbon tax?", today=TODAY)
+    assert len(calls) == 1
 
 
 def test_a_question_with_no_words_still_reads_the_top_of_the_record(record):
