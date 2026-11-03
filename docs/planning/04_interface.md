@@ -1008,7 +1008,7 @@ Under either box, small:
 
 **While it reads:**
 
-> Reading the database… The first question after a quiet spell can take a minute.
+> Reading the database…
 
 After ten seconds, one more line until the answer comes:
 
