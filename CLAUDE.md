@@ -1,6 +1,6 @@
 # Open Collective Intelligence demo
 
-A closed-test website where a small group of people write statements about issues they care about; a language model pulls out the issue, claim, evidence and solution; the writer corrects it; and it merges into a shared Neo4j graph that everyone can read. Version 0.1, built for John Kintree under a fixed-scope statement of work, extended by Phase 1 ("People and positions"): invited accounts, one-click stances, editing and deleting one's own posts, keyword search, and tidying the issue tree with a list of changes. This file is for a coding session starting cold.
+A closed-test website where a small group of people write statements about issues they care about; a language model pulls out the issue, claim, evidence and solution; the writer corrects it; and it merges into a shared Neo4j graph that everyone can read. Version 0.1, built for John Kintree to a fixed, agreed scope, extended by Phase 1 ("People and positions"): invited accounts, one-click stances, editing and deleting one's own posts, keyword search, and tidying the issue tree with a list of changes. This file is for a coding session starting cold.
 
 ## Read first
 
@@ -11,11 +11,11 @@ A closed-test website where a small group of people write statements about issue
 * `docs/planning/05_extraction.md`: the model call, the JSON contract, the system prompt, the test cases, the APPROVE rule.
 * `docs/planning/06_seed.md`: the seed record and its expected counts.
 
-The scope is the one agreed in the statement of work. If a task is unclear, ask before writing code.
+The scope is the one agreed with John. If a task is unclear, ask before writing code.
 
 ## Stack
 
-Python 3.12, FastAPI, Jinja2, uvicorn. `neo4j` driver 6.x against Neo4j Aura Free. `httpx` for the one model call (OpenAI-compatible chat completions, DeepSeek by default). One CSS file, one vanilla JavaScript file, no build step, no npm. pytest. Hosted on Render (free web service, auto-deploy from `main`). No other services, no other dependencies without a reason in the commit message.
+Python 3.12, FastAPI, Jinja2, uvicorn. `neo4j` driver 6.x against Neo4j Aura Free. `httpx` for the one model call (OpenAI-compatible chat completions, DeepSeek by default). One CSS file, one vanilla JavaScript file, no build step, no npm. pytest. Hosted on Render (Starter plan, auto-deploy from `main`). No other services, no other dependencies without a reason in the commit message.
 
 ## Layout
 
@@ -42,7 +42,7 @@ The local `.env` points at the development database, a local Neo4j 5 in Docker (
 
 ## Deploy
 
-Every push to `main` deploys to Render. There is no staging. So: run `pytest` and open the local site before every push, and push small. After each deploy, run `python -m scripts.smoke --url <the live address>` (it reads, never writes, so it is the one check allowed against production; `git fetch` first so `origin/main` is the merged commit). If a deploy breaks the live site, revert the commit and push again; do not fix forward on a broken site. Environment variables live in the Render dashboard, never in the repo. `render.yaml` describes the service so it can be recreated in another Render account by "New Blueprint".
+Every push to `main` deploys to Render. There is no staging. So: run `pytest` and open the local site before every push, and push small. After each deploy, run `python -m scripts.smoke --url <the live address>` (it reads, never writes, so it is the one check allowed against production; `git fetch` first so `origin/main` is the merged commit). If a deploy breaks the live site, revert the commit and push again; do not fix forward on a broken site. Environment variables live in the Render dashboard, never in the repo. `render.yaml` describes the service so it can be recreated in another Render account by "New Blueprint". It still says `plan: free` while the live service is on Starter; leave the file as it is, since a change to it may make Render apply the whole file, plan included, to the live service again.
 
 Phase 2 (evidence that checks itself) runs behind `EVIDENCE_CHECK_ENABLED`, set in the Render dashboard; unset, the card is the Phase 1 card and nothing is fetched. `DEEPSEEK_FETCH=0` stops the backup reader. Change your email (X2) has its own switch, `EMAIL_CHANGE_ENABLED`, also in the dashboard; unset, Your account has no change of email form and its pages answer not found. Phase 1 runs behind `ACCOUNTS_ENABLED`; unset, the site keeps the passphrase and the 0.1 rules for posts, stances and the order of solutions (decision X1), and keyword search on the Issues page works too. Its variables (`SITE_URL`, `MAIL_FROM`, `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `ACCOUNTS_ENABLED`) live in the Render dashboard. The Gmail values come from John's own Google project, with the send permission only, and only John types them in.
 
@@ -65,7 +65,7 @@ Display verbs: claims, submits evidence, proposes solution, has proposed, suppor
 5. **Copy is John's.** Interface words come from `04_interface.md`. Never write node, edge, graph, Cypher, model, extraction or entity where a tester can read it. The one exception is John's own "language model", used everywhere a tester reads about it (28 October; it was "the reading service"). No dashes in client-facing text.
 6. **Cypher lives in the `graph*.py` modules only** (`graph.py`, and since Phase 1 `graph_accounts.py`, `graph_stances.py`, `graph_own_posts.py`, `graph_search.py`, `graph_tidy.py`, since Phase 2 `graph_evidence.py`, since Phase 3 `graph_ask.py` and `graph_places.py`, since GitHub issue 55 `graph_item_pages.py`, and since 2 November 2026 `graph_readings.py`). Relationship types and labels are substituted from whitelists, never from user input.
 7. **Secrets never touch the repo, logs or templates.** Log the request id, sizes, latencies and counts; log text only at DEBUG.
-8. **Nothing personal to the builder in the repo.** No URLs, emails or account names. LICENSE and README name John.
+8. **Nothing personal to the builder in the repo.** No URLs, emails or account names, and no commercial terms. LICENSE and README name John. `tests/test_docs.py` enforces this over `app/`, `scripts/`, `docs/` (handoffs included), `README.md`, `ROADMAP.md`, `CLAUDE.md` and `.env.example`, so a handoff says "the builder's go", never a name.
 9. **Seed is loaded by `scripts/seed.py` or the admin page, never at startup.** The first account is made once, by `scripts/make_admin.py`, never at startup.
 10. **Keep files small and boring.** If a script in `app/static/` passes 400 lines or `graph.py` passes 500, split by responsibility before adding more.
 11. **Production is never a test target.** Local runs, tests and resets use the local Docker database. Work on a branch and merge to `main` only with the tests green.
