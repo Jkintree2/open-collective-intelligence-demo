@@ -1034,6 +1034,10 @@ Its name links to the document on the About page while About is switched on; oth
 
 "On {issue name}" is left off when the evidence belongs to no issue. A solution under more than one issue, and evidence reached through it, say the issue the question is about, and their own first issue when the question is about none of theirs (added 3 November 2026, John: a solution in an answer about homelessness said "On Need for world government"). Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
 
+**When a paragraph quotes a numbered article or principle** of a guiding document and a solution the answer read names that same article or principle but the answer does not cite it, the site adds a line right under that paragraph, at most three in one answer, citing the solution and the post that proposed it (added 3 November 2026, John: an answer on homelessness quoted Article 25 but left out "Use money from global carbon tax to realize Article 25 of the UDHR"; wording proposed, awaiting John):
+
+> Also in the database: the solution "{solution name}", approved by {n}, opposed by {n}.
+
 **When the record had more than one answer can read,** under the answer:
 
 > There are more posts on this than one answer can read, so this answer may leave some out.
