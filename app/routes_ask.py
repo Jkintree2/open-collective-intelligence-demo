@@ -152,7 +152,8 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
     settings = config.get_settings()
     if not settings.llm_api_key:
         return 200, {"message": NO_SERVICE}
-    digest = getattr(ask, DIGESTS[about["kind"]])(about["key"]) if about else ask.record_digest(question)
+    digest = getattr(ask, DIGESTS[about["kind"]])(about["key"]) if about else \
+        ask.record_digest(ask.lookup_question(question, earlier))
     if digest is None:
         raise HTTPException(404)
     # Nothing to answer from: the empty line, with no call and no count. A question about a guiding

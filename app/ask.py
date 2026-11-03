@@ -158,6 +158,25 @@ def document_solutions(question: str) -> list[dict[str, Any]]:
     return [row for name in found[:DOCUMENT_SOLUTIONS] for row in graph_ask.solution_stances(name["key"])]
 
 
+# John, 3 November: "Tell me more" (rule 12) holds no word to look up, so after his homelessness question the
+# whole record's digest was the top solutions alone. Words that only ask for more:
+_ASKS_FOR_MORE = re.compile(r"\b(?:details?|detailed|list|explain|elaborate|expand|continue|go)\b", re.IGNORECASE)
+
+
+def lookup_question(question: str, earlier: list[str]) -> str:
+    """The question a whole-record digest is looked up by: the question itself, or, when it has no words of its
+    own to look up, as when it only asks for more ("Tell me more", "in detail", "list them all") or asks "Why?",
+    the latest of the earlier questions the answer is given that has. The answer is still to the question asked,
+    and the top of the record is read either way."""
+    def has_words(text: str) -> bool:
+        return issue_query(text) is not None or document_query(text) is not None
+
+    if has_words(_ASKS_FOR_MORE.sub(" ", question)):
+        return question
+    earlier = [text[:QUESTION_MAX] for text in earlier if isinstance(text, str) and text.strip()][-EARLIER_MAX:]
+    return next((text for text in reversed(earlier) if has_words(text)), question)
+
+
 def known(digest: Digest) -> dict[str, Source]:
     """What an answer may cite: the digest's own ids and the three documents."""
     return {**digest.sources, **DOCUMENTS}

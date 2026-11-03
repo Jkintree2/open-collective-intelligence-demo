@@ -163,6 +163,15 @@ def test_a_question_naming_the_udhr_reads_the_solutions_that_name_it(record):
     assert built.issue_keys[0] == "homelessness"
 
 
+def test_tell_me_more_reads_what_the_question_before_it_read(record):
+    """John, 3 November: looked up by its own words, "Tell me more." read the top of the record alone, so the
+    longer answer to his homelessness question could not speak of homelessness."""
+    assert "homelessness" not in ask.record_digest("Tell me more.", today=TODAY).issue_keys
+    built = ask.record_digest(ask.lookup_question("Tell me more.", [HOMELESSNESS_UDHR]), today=TODAY)
+    assert built.issue_keys[0] == "homelessness"
+    assert ARTICLE_25 in [s["name"] for s in json.loads(built.text)["solutions"]]
+
+
 def test_a_crowded_record_cannot_crowd_out_a_solution_named_after_the_document(record, monkeypatch):
     """On the live site an issue reads at most 20 solutions and the record its top 10, so a solution with little
     support under an issue the question's words do not find can be left out (John, 3 November). Three of each

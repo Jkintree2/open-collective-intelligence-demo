@@ -463,6 +463,7 @@ Return exactly:
 | A17 | On `/ask`: "Does the lack of a global carbon tax violate the Universal Declaration of Human Rights?" (John) | Quotes only articles that bear on it, answers plainly whether they speak to it and how, with the record's views (John, call of 28 October). |
 | A18 | "Tell me more." after A2's question as an earlier question (John, 30 October) | Up to five short paragraphs on why people oppose these solutions, each reason cited; two or three sentences to a question that does not ask for more. |
 | A19 | On `/ask`: "How does homelessness relate to the principles of the UDHR?" (John, 3 November) | The homelessness posts that tie it to the Declaration, with the count; may quote the article on housing; never adds that no post sets homelessness beside the Declaration or an article. The referendum's source reads On Homelessness. |
+| A20 | On `/ask`: "Tell me more." after A19's question as an earlier question (John, 3 November) | Read from what A19 reads, not the top of the record alone: up to five short paragraphs, with the referendum and its count and the climate solution that uses carbon tax money to realize Article 25. |
 
 Measured each run: sources outside the digest (must be 0), paragraphs not backed by their sources (hand count, reported to John), tokens in and out, cache hits.
 
