@@ -343,7 +343,7 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
         sources[item["id"]] = Source(item["id"], "evidence", item["name"],
                                      href=search.issue_href(target) if target else None, issue=names.get(target),
                                      page=item_page("evidence", keys[item["id"]]))
-    cited_by = {item["id"]: list(dict.fromkeys(about["post"] for about in item["about"] if about.get("post")))
+    cited_by = {item["id"]: list(dict.fromkeys(about["post"] for about in item.get("about", []) if about.get("post")))
                 for item in digest.get("evidence", [])}
     return Digest(_dumps(digest), sources, len(kept), left_out, [issue["key"] for issue in issues], cited_by)
 

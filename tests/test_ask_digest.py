@@ -228,6 +228,10 @@ def test_a_digest_knows_the_posts_that_cited_each_piece_of_evidence():
                                                                              (post("b", 2), "climate")])
     # A post not in the digest is never named; a piece no post cited has none.
     assert built.evidence_posts == {"E1": ["P1", "P2"], "E2": [], "E3": []}
+    # A piece only spoken to by other evidence has no "about" of its own.
+    built, _ = digest_of("Climate", [ISSUE], [], [edge("note", "evidence", "report", post_id="a")],
+                         [(post("a", 3), "climate")])
+    assert built.evidence_posts == {"E1": ["P1"], "E2": []}
 
 
 def test_nothing_in_the_record_still_makes_a_digest():
