@@ -180,6 +180,47 @@ def test_each_piece_of_evidence_links_to_its_own_issue_on_the_whole_record():
                      "Note": (None, None), "Loose": (None, None)}
 
 
+HOMELESSNESS = {"key": "homelessness", "name": "Homelessness", "people": 2, "claims": 2}
+
+
+def two_issue_solution(stances: list[tuple[str, int, list[str]]] = ()):
+    row = solution("shelter", list(stances), 3)
+    row["issues"] = [{"key": "world government", "name": "World government"},
+                     {"key": "homelessness", "name": "Homelessness"}]
+    return row
+
+
+def test_a_solution_under_two_issues_is_shown_on_the_one_the_question_is_about():
+    """John, 3 November: a solution under two issues was shown "On" the first of them, not the one asked about."""
+    built, _ = digest_of(None, [HOMELESSNESS], [two_issue_solution()], [edge("study", "solution", "shelter")], [])
+    assert (built.sources["S1"].issue, built.sources["S1"].href) == ("Homelessness", "/issues/homelessness")
+    assert (built.sources["E1"].issue, built.sources["E1"].href) == ("Homelessness", "/issues/homelessness")
+    # None of its issues asked about: it keeps its first.
+    built, _ = digest_of(None, [ISSUE], [two_issue_solution()], [], [])
+    assert built.sources["S1"].issue == "World government"
+
+
+def test_a_post_behind_a_top_solution_is_shown_on_the_issue_the_question_is_about(monkeypatch):
+    issues = {"homelessness": "Homelessness", "world government": "World government"}
+    monkeypatch.setattr(ask.graph_search, "search_posts", lambda query: [])
+    monkeypatch.setattr(ask.graph_search, "search_names", lambda query: [
+        {"label": "Issue", "key": "homelessness", "solution_homes": [], "evidence_homes": []}])
+    monkeypatch.setattr(ask.graph, "post_structure", lambda ids: {})
+    monkeypatch.setattr(ask.graph, "issue_header", lambda key: {"key": key, "name": issues[key], "children": []})
+    monkeypatch.setattr(ask.graph, "issue_claimants", lambda key: {"people": 1, "claims": 1})
+    monkeypatch.setattr(ask.graph, "issue_posts", lambda key, limit: [])
+    monkeypatch.setattr(ask.graph_own_posts, "post_flags", lambda who, ids: {})
+    for name in ("issue_stances", "issue_evidence"):
+        monkeypatch.setattr(ask.graph_ask, name, lambda key: [])
+    monkeypatch.setattr(ask.graph_ask, "top_solutions", lambda limit: [two_issue_solution([("approves", 2, ["p9"])])])
+    for name in ("top_opposed", "top_evidence"):
+        monkeypatch.setattr(ask.graph_ask, name, lambda limit: [])
+    monkeypatch.setattr(ask.graph_ask, "posts_by_ids", lambda ids: [post("p9", 2)])
+    built = ask.record_digest("How does homelessness relate to the UDHR?")
+    assert (built.sources["P1"].issue, built.sources["P1"].href) == ("Homelessness", "/issues/homelessness")
+    assert built.sources["S1"].issue == "Homelessness"
+
+
 def test_nothing_in_the_record_still_makes_a_digest():
     built, digest = digest_of("Climate", [ISSUE], [], [], [])
     assert digest == {"asked_about": "the issue Climate", "issues": [ISSUE_ENTRY]} and built.sources == {}

@@ -165,6 +165,13 @@ def _ordered_posts(solutions: list[dict[str, Any]], posts: list[tuple[dict[str, 
            [pair for pair in newest if pair[0]["id"] not in took]
 
 
+def _home(row: dict[str, Any], asked: list[str]) -> dict[str, Any] | None:
+    """The issue a solution is shown on: the first issue the question is about that it is under, else its own
+    first issue (John, 3 November: a solution under two issues was shown on the one not asked about)."""
+    under = {item["key"]: item for item in row["issues"]}
+    return next((under[key] for key in asked if key in under), row["issues"][0] if row["issues"] else None)
+
+
 def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, Any]],
           evidence_rows: list[dict[str, Any]], posts: list[tuple[dict[str, Any], str]], *,
           cap: int = DIGEST_CHARS, today: date | None = None, asked_about: str | None = None) -> Digest:
@@ -313,15 +320,16 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
                                             _snippet(post.get("text") or ""),
                                             search.issue_href(issue_key) if issue_key else None,
                                             names.get(issue_key), post["id"])
+    asked = [issue["key"] for issue in issues]
     for row in solutions:
-        first = row["issues"][0] if row["issues"] else None
+        first = _home(row, asked)
         sources[s_ids[row["key"]]] = Source(s_ids[row["key"]], "solution", row["name"],
                                             href=search.issue_href(first["key"]) if first else None,
                                             issue=first["name"] if first else None,
                                             page=item_page("solution", row["key"]))
     # A piece of evidence links to the first issue it is about, directly or through a solution.
     homes: dict[str, str] = {}
-    solution_homes = {row["key"]: row["issues"][0]["key"] for row in solutions if row["issues"]}
+    solution_homes = {row["key"]: _home(row, asked)["key"] for row in solutions if row["issues"]}
     for row in evidence_rows:
         target = row["target_key"] if row["target_kind"] == "issue" else \
             solution_homes.get(row["target_key"]) if row["target_kind"] == "solution" else None
@@ -442,7 +450,8 @@ def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None 
     # The posts behind the top and most opposed solutions' stances, wherever they were posted.
     read = {post["id"] for post, _ in posts}
     wanted = [pid for row in top for stance in row["stances"] for pid in stance["post_ids"] if pid not in read]
-    home_of = {pid: row["issues"][0]["key"] for row in top if row["issues"]
+    asked = [issue["key"] for issue in issues]
+    home_of = {pid: _home(row, asked)["key"] for row in top if row["issues"]
                for stance in row["stances"] for pid in stance["post_ids"]}
     posts += [(post, home_of.get(post["id"], "")) for post in
               graph_ask.posts_by_ids(list(dict.fromkeys(wanted))[:RECORD_STANCE_POSTS])]
@@ -626,6 +635,29 @@ def _quotes_hold(text: str, cited: list[str], digest: Digest) -> bool:
     return True
 
 
+# John, 3 November 2026: beside paragraphs citing posts, a paragraph on a guiding document said "The database holds
+# no post that sets homelessness beside this article." Rule 3 asks for that line only when no post speaks to the
+# question, so beside a post it goes. Quotations are masked first, so one is never cut, and "St. Louis" ends no
+# sentence.
+_NO_POST = re.compile(r"\b(?:no posts?|none of the posts|not a (?:single )?post|nothing in the database)\b",
+                      re.IGNORECASE)
+_QUOTE_SPAN = re.compile(r"[\u201c\"]([^\u201c\u201d\"]*)[\u201d\"]")
+_END = r"[.!?]+[\u201d\"]?(?=\s|$)"
+_SENTENCE = re.compile(rf"(?:\b(?:St|Mt|Dr|Mr|Mrs|Ms|Jr)\.|(?!{_END}).)+(?:{_END}|$)\s*", re.DOTALL)
+
+
+def _without_missing_posts(text: str) -> str:
+    """The paragraph less each sentence, outside a quotation, that says no post speaks to it."""
+    def mask(match: re.Match) -> str:
+        inner = match.group(1)
+        body = inner.rstrip(".!?")
+        return match.group(0)[0] + "x" * len(body) + inner[len(body):] + match.group(0)[-1]
+
+    masked = _QUOTE_SPAN.sub(mask, text)
+    return "".join(text[m.start():m.end()] for m in _SENTENCE.finditer(masked)
+                   if not _NO_POST.search(m.group(0))).strip()
+
+
 def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
           ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """The paragraphs the page may show, each {"text", "sources"} with ids from the digest only, and
@@ -633,7 +665,8 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
     sentence at most 200 characters with a figure, or a count in words beside what it counts; or cites a guiding document
     (D), whose quotes must then be found in it; any other is dropped. With `documents` false (no question
     named a document) a D id counts as not in the digest. At most 5 paragraphs, kept in order
-    while the total stays within 1,200 characters; the one that would pass it is dropped with the rest."""
+    while the total stays within 1,200 characters; the one that would pass it is dropped with the rest. Beside a
+    paragraph citing a post, one citing a document and no post loses any sentence saying no post speaks to it."""
     counts = {"paragraphs_dropped": 0, "sources_kept": 0, "sources_dropped": 0}
     kept: list[dict[str, Any]] = []
     if not reply.get("in_record"):
@@ -660,6 +693,15 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
         total += len(text)
         counts["sources_kept"] += len(sources)
         kept.append({"text": text, "sources": sources})
+    if any(i.startswith("P") for paragraph in kept for i in paragraph["sources"]):
+        for paragraph in list(kept):
+            if any(i.startswith("P") for i in paragraph["sources"]) or not DOCUMENTS.keys() & paragraph["sources"]:
+                continue
+            paragraph["text"] = _without_missing_posts(paragraph["text"])
+            if not paragraph["text"]:
+                kept.remove(paragraph)
+                counts["paragraphs_dropped"] += 1
+                counts["sources_kept"] -= len(paragraph["sources"])
     return kept, counts
 
 
