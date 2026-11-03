@@ -69,17 +69,21 @@ PERSONAL = {
     "a7b0d4efcd9fd1bc79f1711347c8314a2d5124f4a5ef829875ae421b0abe2dd3",  # an email address's name
     "bd7d23838a0f59b9101b40f05c7fe8604624f45c1d878ce1f4de3be04525a419",  # an account name, less its digits
 }
-COMMERCIAL = re.compile(r"(?i:no charge|invoice)|\bSOW\b")
+# Pricing and contract words, as the handoffs used them; "SOW" only in capitals, so "sow" stays a word.
+COMMERCIAL = re.compile(r"(?i:\bno[\s-]+charge|invoic|statement of work|free through)|\bSOWs?\b")
 
 
 def published_lines():
     for name in PUBLISHED:
         path = ROOT / name
+        assert path.exists(), name
         for file in sorted(path.rglob("*")) if path.is_dir() else [path]:
             if file.is_file() and "__pycache__" not in file.parts:
+                where = str(file.relative_to(ROOT))
+                yield where, where  # the file's own name
                 text = file.read_text(encoding="utf-8", errors="ignore")
                 for number, line in enumerate(text.splitlines(), 1):
-                    yield f"{file.relative_to(ROOT)}:{number}", line
+                    yield f"{where}:{number}", line
 
 
 def personal(line: str) -> bool:

@@ -27,6 +27,6 @@ Left to do on this branch:
 4. Open the PR. Then get the builder's go before merging either PR: every merge to main deploys to John's live site. After each deploy: `scripts.smoke`, and read back the live pages.
 5. Both PRs touch `app/static/app.css` in different places; merge one, then bring the other up to date.
 
-## Also open (outside the repo)
+## Also open
 
 * No way yet for John to remove a listed question himself; the guide says to ask whoever helps with the site.

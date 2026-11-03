@@ -1,6 +1,6 @@
 # Handoff, 30 October 2026: solution and evidence pages (GitHub issue 55)
 
-John's GitHub issue 55, "Write about this solution", was agreed with John on 30 October. It is built on the branch `issue-55-solution-pages` as **PR 58**, which is open and not merged.
+John's GitHub issue 55, "Write about this solution", was agreed on 30 October. It is built on the branch `issue-55-solution-pages` as **PR 58**, which is open and not merged.
 
 ## Built
 
