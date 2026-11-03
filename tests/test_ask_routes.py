@@ -94,6 +94,18 @@ def test_the_ask_page_and_the_issue_box(asking):
         "Posts about this issue")
 
 
+def test_the_waiting_line_sits_directly_under_the_ask_button(asking):
+    """John, 3 November 2026: the line saying the question is being read shows right below the Ask button, above
+    the lines about where answers come from."""
+    for path in ("/ask", "/issues/veto"):
+        page = asking.client.get(path).text
+        box = page[page.index('<section class="ask" data-ask'):]
+        assert re.search(r'<button class="primary" type="submit">Ask</button>\s*</form>\s*<p class="ask-status" '
+                         r'data-ask-status', box), path
+        assert box.index("data-ask-status") < box.index('class="ask-note"')
+    assert box.index("data-ask-status") < box.index('class="ask-scope"')
+
+
 def test_a_stranger_is_sent_to_the_door(asking):
     asking.client.cookies.clear()
     assert asking.client.get("/ask", follow_redirects=False).status_code == 303

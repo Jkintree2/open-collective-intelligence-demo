@@ -464,7 +464,7 @@ form.search button { min-height: 44px; }
 .ask-form textarea { min-height: 64px; }
 .ask-form button { margin-top: 8px; }
 .ask-scope, .ask-note { font-size: 0.9rem; color: var(--ink-soft); margin: 8px 0 0; }
-.ask-status { color: var(--ink-soft); margin: 8px 0 0; }
+.ask-status { margin: 8px 0 0; }
 .ask-status:empty { display: none; }
 .ask-answer { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 6px; background: var(--input); }
 .ask-question { font-weight: 600; margin: 0 0 8px; }
