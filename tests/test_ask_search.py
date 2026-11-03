@@ -82,3 +82,24 @@ def test_a_guiding_documents_name_does_not_pick_the_issues(question, query):
 ])
 def test_otherwise_the_whole_question_is_searched_as_before(question):
     assert ask.issue_query(question) == search.question_query(question)
+
+
+# John, 3 November: "Use money from global carbon tax to realize Article 25 of the UDHR" holds none of the words
+# of "How does homelessness relate to the principles of the UDHR?", so a question naming a guiding document also
+# searches the names of the solutions named after it.
+def test_a_question_naming_the_udhr_searches_its_names():
+    query = ask.document_query("How does homelessness relate to the principles of the UDHR?")
+    assert "udhr" in query and '"universal declaration"' in query and '"earth charter"' not in query
+
+
+def test_principles_alone_search_all_three_documents():
+    query = ask.document_query("Which solutions fit the principles?")
+    assert "udhr" in query and '"earth charter"' in query and '"statement of purpose"' in query
+
+
+@pytest.mark.parametrize("question", [
+    "Why do people oppose the carbon tax?",
+    "What does the UN Charter say about the veto?",  # not a guiding document
+])
+def test_a_question_naming_no_document_has_no_document_query(question):
+    assert ask.document_query(question) is None

@@ -1342,7 +1342,7 @@ RETURN s.key AS key, s.name AS name, issues, proposers, proposed_in, approves, o
 ORDER BY approves - opposes DESC, approves DESC, toLower(s.name) ASC
 ```
 
-The digest also reads, unchanged: Q2 (the issue's header), Q3 (counts only), Q6 (the posts, up to 200 per issue), Q7's post flags with `$me` null (edit dates only) and its structure query (which issues a matching post is about), and Q26 and Q27 with `search.question_query` for questions on the whole record; and, on the record scope, Q45 and Q46 below. No new index.
+The digest also reads, unchanged: Q2 (the issue's header), Q3 (counts only), Q6 (the posts, up to 200 per issue), Q7's post flags with `$me` null (edit dates only) and its structure query (which issues a matching post is about), and Q26 and Q27 with `search.question_query` for questions on the whole record (since 3 November 2026 Q26 also with the names of the guiding documents a question names, `ask.document_query`, keeping only its solutions, which Q40's third form then reads; they pick no issue); and, on the record scope, Q45 and Q46 below. No new index.
 
 ### Q43. Issues near a place
 

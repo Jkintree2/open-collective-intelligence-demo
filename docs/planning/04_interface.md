@@ -1006,7 +1006,7 @@ Under either box, small:
 > [ What reasons do people give for opposing the carbon tax? ] On Global climate coordination
 > [ What does the UDHR say about privacy? ]
 
-**While it reads:**
+**While it reads,** directly under the Ask button, above the lines about where answers come from, in the body text colour (John, 3 November 2026: let the person know their question is being processed right after they click). The same place shows a question too long, a limit reached or a failed answer:
 
 > Reading the database…
 

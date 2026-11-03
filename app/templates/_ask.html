@@ -12,13 +12,14 @@
     <textarea name="question" rows="2" aria-labelledby="ask-title"{% if ask_issue %} placeholder="For example: Why do people oppose these solutions?"{% elif ask_solution %} placeholder="For example: Why do people oppose this solution?"{% elif ask_evidence %} placeholder="For example: What do people say about this evidence?"{% else %} autofocus{% endif %}>{% if ask_result and not ask_result.status %}{{ ask_question or "" }}{% endif %}</textarea>
     <button class="primary" type="submit">Ask</button>
   </form>
+  {# John, 3 November 2026: the line that says the question is being read sits right below the Ask button. #}
+  <p class="ask-status" data-ask-status aria-live="polite">{% if ask_result and not ask_result.status %}{{ ask_result.message }}{% endif %}</p>
   {# John, 2 November 2026: no sub-issues; the line names them only for an issue a record still gives some. #}
   {% if ask_issue %}<p class="ask-scope">Answers come only from the posts about this issue{% if ask_issue.children %} and its sub-issues{% endif %}, and from the guiding documents when a question asks about them.</p>
   {% elif ask_item %}<p class="ask-scope">Answers come only from the posts about this {{ ask_kind }}, and from the guiding documents when a question asks about them.</p>{% endif %}
   {# John, 30 October: answers are two or three sentences unless more is asked for, and kept with their question.
      John, 2 November: the line keeps only its first sentence, ending "a longer answer". #}
   <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer answer.</p>
-  <p class="ask-status" data-ask-status aria-live="polite">{% if ask_result and not ask_result.status %}{{ ask_result.message }}{% endif %}</p>
   <div class="ask-answers" data-ask-answers aria-live="polite">{% if ask_result and ask_result.status %}
     {% include "_answer.html" %}
   {% endif %}</div>

@@ -258,7 +258,8 @@ def test_whole_record_issues_are_picked_by_rank_in_names_and_posts():
 
 
 def test_a_whole_record_question_looks_for_its_topic_not_the_documents_it_names(monkeypatch):
-    """John, 29 October: the names and the posts are both found with ask.issue_query."""
+    """John, 29 October: the names and the posts that pick the issues are both found with ask.issue_query. John,
+    3 November: then the solutions named after the document it names are looked for, picking no issue."""
     searched = []
     monkeypatch.setattr(ask.graph_search, "search_posts", lambda query: searched.append(query) or [])
     monkeypatch.setattr(ask.graph_search, "search_names", lambda query: searched.append(query) or [])
@@ -267,4 +268,46 @@ def test_a_whole_record_question_looks_for_its_topic_not_the_documents_it_names(
         monkeypatch.setattr(ask.graph_ask, name, lambda limit: [])
     monkeypatch.setattr(ask.graph_ask, "posts_by_ids", lambda ids: [])
     ask.record_digest("How does climate change relate to the Earth Charter?")
-    assert searched == ["(climate climate*) (change change*) (relate relate*)"] * 2
+    assert searched == ["(climate climate*) (change change*) (relate relate*)"] * 2 + ['"earth charter"']
+
+
+A25 = "Use money from global carbon tax to realize Article 25 of the UDHR"
+
+
+def crowded(monkeypatch, read: list[list[str]]):
+    """A record whose top ten solutions hold four unread stance posts each, and a solution named after the UDHR,
+    proposed in one post and approved in another. `read` gets each list of post ids asked for."""
+    monkeypatch.setattr(ask.graph_search, "search_posts", lambda query: [])
+    monkeypatch.setattr(ask.graph_search, "search_names", lambda query: [
+        {"label": "Solution", "key": "a25", "name": A25, "score": 0.7}] if "udhr" in query else [])
+    monkeypatch.setattr(ask.graph, "post_structure", lambda ids: {})
+    top = [solution(f"top {n}", [("approve", 2, [f"t{n}-{m}"]) for m in range(4)], approves=4) for n in range(10)]
+    for row in top:
+        row["issues"] = []
+    monkeypatch.setattr(ask.graph_ask, "top_solutions", lambda limit: top)
+    for name in ("top_opposed", "top_evidence"):
+        monkeypatch.setattr(ask.graph_ask, name, lambda limit: [])
+    named = dict(solution("a25", [("approve", 1, ["a25-stance"])], approves=1, proposed_in=["a25-proposal"]),
+                 name=A25)
+    monkeypatch.setattr(ask.graph_ask, "solution_stances", lambda key: [named] if key == "a25" else [])
+    monkeypatch.setattr(ask.graph_ask, "posts_by_ids", lambda ids: read.append(ids) or [])
+
+
+def test_the_posts_behind_a_solution_named_after_the_document_are_read_before_the_cap(monkeypatch):
+    """Review, 3 November: added after the top solutions, its stance posts came last and the 40 cut them; the
+    post that proposed it without a stance was never asked for."""
+    read: list[list[str]] = []
+    crowded(monkeypatch, read)
+    ask.record_digest("How does homelessness relate to the principles of the UDHR?")
+    assert {"a25-proposal", "a25-stance"} <= set(read[0]) and len(read[0]) == ask.RECORD_STANCE_POSTS
+
+
+def test_a_name_citing_an_article_comes_before_shorter_names_that_only_name_the_document(monkeypatch):
+    """Review, 3 November: Q26 scores a long name low, so five short names holding "UDHR" pushed out the one
+    John asked about."""
+    rows = [{"label": "Solution", "key": f"short {n}", "name": f"UDHR plan {n}", "score": 2.5} for n in range(6)]
+    rows.append({"label": "Solution", "key": "a25", "name": A25, "score": 0.7})
+    monkeypatch.setattr(ask.graph_search, "search_names", lambda query: rows)
+    monkeypatch.setattr(ask.graph_ask, "solution_stances", lambda key: [{"key": key}])
+    keys = [row["key"] for row in ask.document_solutions("How does homelessness relate to the principles of the UDHR?")]
+    assert keys[0] == "a25" and len(keys) == ask.DOCUMENT_SOLUTIONS

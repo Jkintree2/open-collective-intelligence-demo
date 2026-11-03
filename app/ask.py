@@ -37,6 +37,7 @@ POSTS_PER_ISSUE = 200
 RECORD_ISSUES = 3
 RECORD_TOP = 10
 RECORD_OPPOSED = 5  # the most opposed solutions, read on every whole-record question
+DOCUMENT_SOLUTIONS = 5  # solutions named after a guiding document a whole-record question names (John, 3 November)
 RECORD_STANCE_POSTS = 40  # posts behind their stances, read by id
 EVIDENCE_PIECES = 30  # pieces of evidence in one digest (part 1 is never cut, so it is capped)
 SNIPPET = 200
@@ -120,6 +121,41 @@ def issue_query(question: str) -> str | None:
     Charter read three issues about supreme law, not climate), so it is left out. A question with nothing
     else to look for is searched whole, as before."""
     return search.question_query(_DOCUMENT_NAME.sub(" ", question)) or search.question_query(question)
+
+
+# What a question says to name each guiding document, and the words its solutions are named with. A bare
+# "charter" is left out: "the UN Charter" is not one of them.
+_DOCUMENT_SEARCHES = ((re.compile(r"\b(?:udhr|declaration|human\s+rights)\b", re.IGNORECASE), 'udhr "universal declaration"'),
+                      (re.compile(r"\bearth\s+charter\b", re.IGNORECASE), '"earth charter"'),
+                      (re.compile(r"\bstatement\s+of\s+purpose\b", re.IGNORECASE), '"statement of purpose"'))
+_ANY_DOCUMENT = re.compile(r"\b(?:guiding|principles?|articles?)\b", re.IGNORECASE)
+# A name citing a numbered article or principle ("Article 25 of the UDHR") is the closest link to what a question
+# quotes. Q26 scores such long names below short ones that only name the document, so they come first.
+_NUMBERED = re.compile(r"\b(?:article|principle)\s+\d+", re.IGNORECASE)
+
+
+def document_query(question: str) -> str | None:
+    """The search for the solutions named after the guiding documents a whole-record question names (John,
+    3 November: "Use money from global carbon tax to realize Article 25 of the UDHR" holds none of the words of
+    "How does homelessness relate to the principles of the UDHR?"). A question that names no document but asks
+    about principles, articles or the guiding documents searches all three; None when it names none. The query
+    is built from these fixed words only, never from what was typed."""
+    named = [words for pattern, words in _DOCUMENT_SEARCHES if pattern.search(question)]
+    if not named and _ANY_DOCUMENT.search(question):
+        named = [words for _, words in _DOCUMENT_SEARCHES]
+    return " ".join(named) or None
+
+
+def document_solutions(question: str) -> list[dict[str, Any]]:
+    """Up to DOCUMENT_SOLUTIONS solutions named after a guiding document the question names, those citing a
+    numbered article or principle first, then in the order Q26 finds them, each as Q40's third form reads it;
+    none when it names no document."""
+    query = document_query(question)
+    if query is None:
+        return []
+    found = [row for row in graph_search.search_names(query) if row["label"] == "Solution"]
+    found.sort(key=lambda row: not _NUMBERED.search(row["name"]))  # stable: Q26's order within each group
+    return [row for name in found[:DOCUMENT_SOLUTIONS] for row in graph_ask.solution_stances(name["key"])]
 
 
 def known(digest: Digest) -> dict[str, Source]:
@@ -441,6 +477,11 @@ def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None 
         for item in row["issues"]:
             if len(keys) < RECORD_ISSUES and item["key"] not in keys:
                 keys.append(item["key"])
+    # The solutions named after a guiding document the question names join the top ones; they never pick issues.
+    top_keys = {row["key"] for row in top}
+    named = [row for row in document_solutions(question) if row["key"] not in top_keys]
+    named_keys = {row["key"] for row in named}
+    top += named
     issues, solutions, evidence, posts = [], [], [], []
     for key in keys:
         issue = _issue(key)
@@ -450,12 +491,17 @@ def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None 
         solutions += graph_ask.issue_stances(key)
         evidence += graph_ask.issue_evidence(key)
         posts += _posts(key)
-    # The posts behind the top and most opposed solutions' stances, wherever they were posted.
+    # The posts behind the top and most opposed solutions' stances, wherever they were posted. Those behind a
+    # solution named after a document come first, the posts that proposed it included, so the cap never leaves
+    # it without them (review, 3 November).
+    def behind(row: dict[str, Any]) -> list[str]:
+        stance_posts = [pid for stance in row["stances"] for pid in stance["post_ids"]]
+        return row["proposed_in"] + stance_posts if row["key"] in named_keys else stance_posts
+
     read = {post["id"] for post, _ in posts}
-    wanted = [pid for row in top for stance in row["stances"] for pid in stance["post_ids"] if pid not in read]
+    wanted = [pid for row in named + top for pid in behind(row) if pid not in read]
     asked = [issue["key"] for issue in issues]
-    home_of = {pid: _home(row, asked)["key"] for row in top if row["issues"]
-               for stance in row["stances"] for pid in stance["post_ids"]}
+    home_of = {pid: _home(row, asked)["key"] for row in top if row["issues"] for pid in behind(row)}
     posts += [(post, home_of.get(post["id"], "")) for post in
               graph_ask.posts_by_ids(list(dict.fromkeys(wanted))[:RECORD_STANCE_POSTS])]
     seen_edges = {(row["key"], row["target_key"], row["stance"], row.get("post_id")) for row in evidence}
