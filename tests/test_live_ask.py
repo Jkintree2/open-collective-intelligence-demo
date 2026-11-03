@@ -163,6 +163,21 @@ def test_a_question_naming_the_udhr_reads_the_solutions_that_name_it(record):
     assert built.issue_keys[0] == "homelessness"
 
 
+def test_a_crowded_record_cannot_crowd_out_a_solution_named_after_the_document(record, monkeypatch):
+    """On the live site an issue reads at most 20 solutions and the record its top 10, so a solution with little
+    support under an issue the question's words do not find can be left out (John, 3 November). Three of each
+    stand for that here: the solution named after the UDHR is read all the same, and only through the new read."""
+    issue_stances, top_solutions = graph_ask.issue_stances, graph_ask.top_solutions
+    monkeypatch.setattr(graph_ask, "issue_stances", lambda key, limit=3: issue_stances(key, 3))
+    monkeypatch.setattr(graph_ask, "top_solutions", lambda limit=10: top_solutions(3))
+
+    def names():
+        return [s["name"] for s in json.loads(ask.record_digest(HOMELESSNESS_UDHR, today=TODAY).text)["solutions"]]
+    assert ARTICLE_25 in names()
+    monkeypatch.setattr(ask, "document_solutions", lambda question: [])
+    assert ARTICLE_25 not in names()
+
+
 def test_document_solutions_never_pick_the_issues(record, monkeypatch):
     question = ("How does the issue of climate change relate to the principles of the Universal Declaration of Human "
                 "Rights and the Earth Charter?")
