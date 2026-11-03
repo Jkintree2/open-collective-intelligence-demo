@@ -52,6 +52,23 @@ def test_a_paragraph_needs_a_post_unless_it_is_a_count_line():
     assert counts["paragraphs_dropped"] == 5
 
 
+def test_a_paragraph_on_evidence_takes_the_posts_that_cited_it():
+    """Case A4, 3 November: "Which evidence is most supported by other evidence?" was answered rightly in six runs of
+    six, citing the three pieces and no post, so the guard dropped it and the page said the database holds nothing.
+    Rule 3 asks for the post that cited each piece; the guard now adds it, from the digest."""
+    sources = {**SOURCES, "E2": ask.Source("E2", "evidence", "IMF price floor", href="/issues/climate", issue="Climate"),
+               "E3": ask.Source("E3", "evidence", "A page no post cited", href="/issues/climate", issue="Climate")}
+    digest = ask.Digest(DIGEST.text, sources, posts_in=2, evidence_posts={"E1": ["P2"], "E2": ["P1", "P2"]})
+    text = "Only the World Bank dashboard is supported by other evidence: the IMF price floor, read as agreeing."
+    paragraphs, counts = ask.guard(reply((text, ["E1", "E2"]), ("A page no one cited says so.", ["E3"]),
+                                         ("The dashboard is backed by 2 other pieces of evidence.", ["E1"]),
+                                         ("Ada Okafor cites the dashboard.", ["E1", "P1"])), digest)
+    assert paragraphs == [{"text": text, "sources": ["E1", "E2", "P2", "P1"]},
+                          {"text": "The dashboard is backed by 2 other pieces of evidence.", "sources": ["E1"]},
+                          {"text": "Ada Okafor cites the dashboard.", "sources": ["E1", "P1"]}]
+    assert counts == {"paragraphs_dropped": 1, "sources_kept": 7, "sources_dropped": 0}
+
+
 def test_a_number_word_counts_only_beside_what_it_counts():
     """The final review: "One solution is to ban cars." on an S id alone is a claim, not a count."""
     for text in ("One solution is to ban cars.", "No reason is given for it.", "None of this is settled."):

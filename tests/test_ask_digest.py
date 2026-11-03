@@ -221,6 +221,19 @@ def test_a_post_behind_a_top_solution_is_shown_on_the_issue_the_question_is_abou
     assert built.sources["S1"].issue == "Homelessness"
 
 
+def test_a_digest_knows_the_posts_that_cited_each_piece_of_evidence():
+    rows = [edge("report", "issue", "climate", post_id="a"), edge("report", "solution", "tax", post_id="b"),
+            edge("study", "issue", "climate", post_id="gone"), edge("note", "evidence", "report")]
+    built, _ = digest_of("Climate", [ISSUE], [solution("tax", [], 1)], rows, [(post("a", 3), "climate"),
+                                                                             (post("b", 2), "climate")])
+    # A post not in the digest is never named; a piece no post cited has none.
+    assert built.evidence_posts == {"E1": ["P1", "P2"], "E2": [], "E3": []}
+    # A piece only spoken to by other evidence has no "about" of its own.
+    built, _ = digest_of("Climate", [ISSUE], [], [edge("note", "evidence", "report", post_id="a")],
+                         [(post("a", 3), "climate")])
+    assert built.evidence_posts == {"E1": ["P1"], "E2": []}
+
+
 def test_nothing_in_the_record_still_makes_a_digest():
     built, digest = digest_of("Climate", [ISSUE], [], [], [])
     assert digest == {"asked_about": "the issue Climate", "issues": [ISSUE_ENTRY]} and built.sources == {}
