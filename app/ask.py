@@ -129,6 +129,9 @@ _DOCUMENT_SEARCHES = ((re.compile(r"\b(?:udhr|declaration|human\s+rights)\b", re
                       (re.compile(r"\bearth\s+charter\b", re.IGNORECASE), '"earth charter"'),
                       (re.compile(r"\bstatement\s+of\s+purpose\b", re.IGNORECASE), '"statement of purpose"'))
 _ANY_DOCUMENT = re.compile(r"\b(?:guiding|principles?|articles?)\b", re.IGNORECASE)
+# A name citing a numbered article or principle ("Article 25 of the UDHR") is the closest link to what a question
+# quotes. Q26 scores such long names below short ones that only name the document, so they come first.
+_NUMBERED = re.compile(r"\b(?:article|principle)\s+\d+", re.IGNORECASE)
 
 
 def document_query(question: str) -> str | None:
@@ -144,13 +147,15 @@ def document_query(question: str) -> str | None:
 
 
 def document_solutions(question: str) -> list[dict[str, Any]]:
-    """Up to DOCUMENT_SOLUTIONS solutions named after a guiding document the question names, in the order Q26
-    finds them, each as Q40's third form reads it; none when it names no document."""
+    """Up to DOCUMENT_SOLUTIONS solutions named after a guiding document the question names, those citing a
+    numbered article or principle first, then in the order Q26 finds them, each as Q40's third form reads it;
+    none when it names no document."""
     query = document_query(question)
     if query is None:
         return []
-    keys = [row["key"] for row in graph_search.search_names(query) if row["label"] == "Solution"]
-    return [row for key in keys[:DOCUMENT_SOLUTIONS] for row in graph_ask.solution_stances(key)]
+    found = [row for row in graph_search.search_names(query) if row["label"] == "Solution"]
+    found.sort(key=lambda row: not _NUMBERED.search(row["name"]))  # stable: Q26's order within each group
+    return [row for name in found[:DOCUMENT_SOLUTIONS] for row in graph_ask.solution_stances(name["key"])]
 
 
 def known(digest: Digest) -> dict[str, Source]:
@@ -474,7 +479,9 @@ def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None 
                 keys.append(item["key"])
     # The solutions named after a guiding document the question names join the top ones; they never pick issues.
     top_keys = {row["key"] for row in top}
-    top += [row for row in document_solutions(question) if row["key"] not in top_keys]
+    named = [row for row in document_solutions(question) if row["key"] not in top_keys]
+    named_keys = {row["key"] for row in named}
+    top += named
     issues, solutions, evidence, posts = [], [], [], []
     for key in keys:
         issue = _issue(key)
@@ -484,12 +491,17 @@ def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None 
         solutions += graph_ask.issue_stances(key)
         evidence += graph_ask.issue_evidence(key)
         posts += _posts(key)
-    # The posts behind the top and most opposed solutions' stances, wherever they were posted.
+    # The posts behind the top and most opposed solutions' stances, wherever they were posted. Those behind a
+    # solution named after a document come first, the posts that proposed it included, so the cap never leaves
+    # it without them (review, 3 November).
+    def behind(row: dict[str, Any]) -> list[str]:
+        stance_posts = [pid for stance in row["stances"] for pid in stance["post_ids"]]
+        return row["proposed_in"] + stance_posts if row["key"] in named_keys else stance_posts
+
     read = {post["id"] for post, _ in posts}
-    wanted = [pid for row in top for stance in row["stances"] for pid in stance["post_ids"] if pid not in read]
+    wanted = [pid for row in named + top for pid in behind(row) if pid not in read]
     asked = [issue["key"] for issue in issues]
-    home_of = {pid: _home(row, asked)["key"] for row in top if row["issues"]
-               for stance in row["stances"] for pid in stance["post_ids"]}
+    home_of = {pid: _home(row, asked)["key"] for row in top if row["issues"] for pid in behind(row)}
     posts += [(post, home_of.get(post["id"], "")) for post in
               graph_ask.posts_by_ids(list(dict.fromkeys(wanted))[:RECORD_STANCE_POSTS])]
     seen_edges = {(row["key"], row["target_key"], row["stance"], row.get("post_id")) for row in evidence}
