@@ -1,6 +1,6 @@
 # Handoff, 30 October 2026: solution and evidence pages (GitHub issue 55)
 
-John's GitHub issue 55, "Write about this solution", was quoted at 1,200 USD fixed on 30 October and invoiced (2026-10-30-006, period 31 October to 6 November). John accepted the same day. It is built on the branch `issue-55-solution-pages` as **PR 58**, which is open and not merged.
+John's GitHub issue 55, "Write about this solution", was agreed on 30 October. It is built on the branch `issue-55-solution-pages` as **PR 58**, which is open and not merged.
 
 ## Built
 
@@ -30,7 +30,7 @@ John's GitHub issue 55, "Write about this solution", was quoted at 1,200 USD fix
    * No new label, relationship type, constraint or index.
    * Updated: `03_schema.md`, `04_interface.md`, `05_extraction.md`, `code-map.md`, `CLAUDE.md`, and one paragraph in the operator's guide.
 
-Out of scope, as agreed (Phase 4, SOW 0.3): a longer proposal text, editing it together, versions, and objections with reasons.
+Out of scope, as agreed (Phase 4): a longer proposal text, editing it together, versions, and objections with reasons.
 
 ## Verified (before merge)
 
@@ -60,10 +60,10 @@ Out of scope, as agreed (Phase 4, SOW 0.3): a longer proposal text, editing it t
 
 ## Open
 
-* **Eston's go to merge PR 58.** The merge deploys the live site. After it, run `scripts.smoke` and open a live solution page and evidence page. Reading back a live Ask answer on a solution page would keep a public question, so leave that to John's first question.
+* **The builder's go to merge PR 58.** The merge deploys the live site. After it, run `scripts.smoke` and open a live solution page and evidence page. Reading back a live Ask answer on a solution page would keep a public question, so leave that to John's first question.
 * **Case 2 changed:** John's supreme law paragraph now reads approve on both existing solutions in 4 of 4 runs, where the old prompt read none in 4 of 4. The post then records the two approvals rather than claims and proposals. The case allows either answer. Say so to John only if he asks.
 * **Writing from an evidence page claims the issue as well.** Like "Write about this issue", a statement written there claims the evidence's issue unless the writer clears that row. This keeps the post visible on the issue page.
-* **Review finding 2, Eston's call:** the three new reading sentences are in the system prompt for every reading, not only with `writing_about` (case 2 above). Not changed; `app/extract.py` is as it was.
+* **Review finding 2, the builder's call:** the three new reading sentences are in the system prompt for every reading, not only with `writing_about` (case 2 above). Not changed; `app/extract.py` is as it was.
 * **Not changed, smaller:** in an evidence digest a piece's own source still links to the first issue it speaks to directly, so it can name a different issue from the page's breadcrumbs when the evidence first spoke to a solution; and the review's other nits (post links in the new digests, "Proposed by 0 people", Q52 read twice).
 * The disposable container `oci-neo4j-i55` (7697) was wiped by the live tests and holds only what the last one left (7 nodes); the walk-through record is gone. Remove it with `docker rm -f oci-neo4j-i55` when done.
 * Carried over: "Tell me more." is listed publicly; remote branches of merged PRs are not deleted.

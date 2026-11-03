@@ -1,6 +1,6 @@
 # Handoff, 29 October 2026 (evening): Ask reads the issue a question is about
 
-John's "Asking" emails of 29 October reported two whole-database questions on the Ask page that left things out. This shipped the fix for the first one as a fix to Phase 3, at no charge. The second is not yet explained.
+John's "Asking" emails of 29 October reported two whole-database questions on the Ask page that left things out. This shipped the fix for the first one as a fix to Phase 3. The second is not yet explained.
 
 ## Shipped
 

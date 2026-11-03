@@ -63,7 +63,7 @@ test('an answer shows in place, as text, with its numbered sources', async () =>
   assert.equal(event.prevented, true);
   assert.equal(p.requests.length, 1);
   assert.deepEqual(p.requests[0].body, {question: 'Why do people oppose it?', earlier: [], issue: 'veto'});
-  assert.equal(p.status.textContent, 'Reading the database… The first question after a quiet spell can take a minute.');
+  assert.equal(p.status.textContent, 'Reading the database…');
   assert.equal(p.attrs['aria-busy'], 'true');
   p.requests[0].resolve(json(ANSWER)); await p.flush();
   assert.equal(p.status.textContent, '');
@@ -118,7 +118,7 @@ test('a second line after ten seconds, and the browser gives up after fifty', as
   p.ask('Why?');
   assert.deepEqual([...p.timers.values()].map(t => t.delay).sort((a, b) => a - b), [10000, 50000]);
   p.fire(10000);
-  assert.equal(p.status.textContent, 'Reading the database… The first question after a quiet spell can take a minute. '
+  assert.equal(p.status.textContent, 'Reading the database… '
     + 'Still reading. A long issue can take up to a minute.');
   p.fire(50000);
   assert.equal(p.requests[0].options.signal.aborted, true);

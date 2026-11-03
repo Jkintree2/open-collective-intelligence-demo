@@ -40,10 +40,10 @@ ANSWER_CHANGED = ("A post this answer rested on has been edited or removed since
                   "Ask again for an answer from what the database holds now.")
 _QUESTION_ID = re.compile(r"[0-9a-f]{32}")
 
-# 30 questions a person a day and 300 for the site, held in this process: a restart or a wake from
-# Render's sleep starts both counts again, so they are a ceiling per waking (the logs hold the real count).
+# 30 questions a person a day and 300 for the site, held in this process: a restart (every deploy is one)
+# starts both counts again, so they are a ceiling per run (the logs hold the real count).
 person_limit = KeyedLimit(30, 86400)
-# Five a minute: each call can hold a worker for 40 seconds, and Render's free plan has a tenth of a CPU.
+# Five a minute: each call can hold a worker for 40 seconds; set on Render's free plan, a tenth of a CPU.
 site_minute = MinuteBucket(capacity=5, period=60.0)
 site_daily = DailyLimit(capacity=300)
 

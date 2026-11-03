@@ -24,11 +24,11 @@ log = logging.getLogger("oci")
 
 MAX_BYTES = 15_000_000
 MAX_PAGES = 40
-# Render's free plan has a tenth of a CPU: a 15 page arXiv paper takes about 20 seconds there.
+# Set on Render's free plan, a tenth of a CPU, where a 15 page arXiv paper took about 20 seconds; kept on Starter.
 READ_SECONDS = 25
 DOWNLOAD_SECONDS = 30
-# Address space for the reading process. Render's free plan has 512 MB for everything, the server included;
-# on Linux a 5.5 MB report peaks near 120 MB and a decompression bomb stops at about 370 MB.
+# Address space for the reading process, set on Render's free plan (512 MB for everything, the server included)
+# and kept on Starter; on Linux a 5.5 MB report peaks near 120 MB and a decompression bomb stops at about 370 MB.
 MEMORY_BYTES = 384 * 1024 * 1024
 ROOT = Path(__file__).resolve().parent.parent
 # -E and -s: no PYTHON* variables and no user packages in the process that opens a stranger's file.

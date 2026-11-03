@@ -38,8 +38,8 @@ sign_in_per_minute = MinuteBucket(capacity=20, period=60)
 sign_in_per_address = KeyedLimit(5, 60)
 
 _SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2**14, 8, 1
-# Each scrypt run takes 16 MiB and real CPU; Render's free instance has 512 MB and 0.1 CPU, and
-# FastAPI runs up to 40 requests at once. Two at a time, the rest wait their turn.
+# Each scrypt run takes 16 MiB and real CPU, and FastAPI runs up to 40 requests at once. Two at a time, the rest
+# wait their turn: set on Render's free instance (512 MB, 0.1 CPU), and kept on Starter.
 _SCRYPT_SLOTS = threading.BoundedSemaphore(2)
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
