@@ -226,6 +226,38 @@ def test_the_rules_name_the_three_documents_and_their_ids():
     assert ask.SYSTEM_PROMPT.startswith("\n" + guiding_block() + "\n")
 
 
+ARTICLE_25 = ("Everyone has the right to a standard of living adequate for the health and well-being of himself and "
+              "of his family, including food, clothing, housing and medical care and necessary social services")
+ON_POSTS = ("Ada Okafor ties homelessness in St. Louis to the Declaration through a global referendum.", ["P1"])
+
+
+def test_beside_posts_a_document_paragraph_does_not_add_that_no_post_speaks_to_it():
+    """John, 3 November: an answer that cited three posts on homelessness then said "The database holds no post that
+    sets homelessness beside this article." Rule 3 asks for that line only when no post speaks to the question."""
+    paragraphs, counts = kept(ON_POSTS, (f'Article 25 says: "{ARTICLE_25}..." The database holds no post that sets '
+                                         "homelessness in St. Louis beside this article.", ["D2"]))
+    assert paragraphs == [{"text": ON_POSTS[0], "sources": ["P1"]},
+                          {"text": f'Article 25 says: "{ARTICLE_25}..."', "sources": ["D2"]}]
+    assert counts["paragraphs_dropped"] == 0
+    paragraphs, _ = kept(ON_POSTS, (f"None of the posts sets it beside Article 25. It says: “{ARTICLE_25}.”",
+                                    ["D2"]))
+    assert paragraphs[1]["text"] == f"It says: “{ARTICLE_25}.”"
+    # The case run of 3 November said it this way too.
+    paragraphs, _ = kept(ON_POSTS, (f'Article 25 says "{ARTICLE_25}..." Nothing in the database sets a carbon tax '
+                                    "beside this article, so no verdict is given.", ["D2"]))
+    assert paragraphs[1]["text"] == f'Article 25 says "{ARTICLE_25}..."'
+    # A paragraph that is only that line goes; a quotation is never cut, though it says "No one".
+    paragraphs, counts = kept(ON_POSTS, ("No post here links homelessness to an article.", ["D2"]),
+                              (f"Article 12 says: “{ARTICLE_12}”", ["D2"]))
+    assert paragraphs[1:] == [{"text": f"Article 12 says: “{ARTICLE_12}”", "sources": ["D2"]}]
+    assert counts["paragraphs_dropped"] == 1
+
+
+def test_with_no_post_on_the_question_a_document_paragraph_still_says_so():
+    text = f"Article 12 says: “{ARTICLE_12}” No post here speaks of privacy."
+    assert kept((text, ["D2"]))[0] == [{"text": text, "sources": ["D2"]}]
+
+
 def test_a_paragraph_quoting_a_document_needs_no_post():
     paragraphs, counts = kept((f"Article 12 of the Declaration says: “{ARTICLE_12}”", ["D2"]))
     assert paragraphs == [{"text": f"Article 12 of the Declaration says: “{ARTICLE_12}”", "sources": ["D2"]}]

@@ -635,6 +635,29 @@ def _quotes_hold(text: str, cited: list[str], digest: Digest) -> bool:
     return True
 
 
+# John, 3 November 2026: beside paragraphs citing posts, a paragraph on a guiding document said "The database holds
+# no post that sets homelessness beside this article." Rule 3 asks for that line only when no post speaks to the
+# question, so beside a post it goes. Quotations are masked first, so one is never cut, and "St. Louis" ends no
+# sentence.
+_NO_POST = re.compile(r"\b(?:no posts?|none of the posts|not a (?:single )?post|nothing in the database)\b",
+                      re.IGNORECASE)
+_QUOTE_SPAN = re.compile(r"[\u201c\"]([^\u201c\u201d\"]*)[\u201d\"]")
+_END = r"[.!?]+[\u201d\"]?(?=\s|$)"
+_SENTENCE = re.compile(rf"(?:\b(?:St|Mt|Dr|Mr|Mrs|Ms|Jr)\.|(?!{_END}).)+(?:{_END}|$)\s*", re.DOTALL)
+
+
+def _without_missing_posts(text: str) -> str:
+    """The paragraph less each sentence, outside a quotation, that says no post speaks to it."""
+    def mask(match: re.Match) -> str:
+        inner = match.group(1)
+        body = inner.rstrip(".!?")
+        return match.group(0)[0] + "x" * len(body) + inner[len(body):] + match.group(0)[-1]
+
+    masked = _QUOTE_SPAN.sub(mask, text)
+    return "".join(text[m.start():m.end()] for m in _SENTENCE.finditer(masked)
+                   if not _NO_POST.search(m.group(0))).strip()
+
+
 def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
           ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """The paragraphs the page may show, each {"text", "sources"} with ids from the digest only, and
@@ -642,7 +665,8 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
     sentence at most 200 characters with a figure, or a count in words beside what it counts; or cites a guiding document
     (D), whose quotes must then be found in it; any other is dropped. With `documents` false (no question
     named a document) a D id counts as not in the digest. At most 5 paragraphs, kept in order
-    while the total stays within 1,200 characters; the one that would pass it is dropped with the rest."""
+    while the total stays within 1,200 characters; the one that would pass it is dropped with the rest. Beside a
+    paragraph citing a post, one citing a document and no post loses any sentence saying no post speaks to it."""
     counts = {"paragraphs_dropped": 0, "sources_kept": 0, "sources_dropped": 0}
     kept: list[dict[str, Any]] = []
     if not reply.get("in_record"):
@@ -669,6 +693,15 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
         total += len(text)
         counts["sources_kept"] += len(sources)
         kept.append({"text": text, "sources": sources})
+    if any(i.startswith("P") for paragraph in kept for i in paragraph["sources"]):
+        for paragraph in list(kept):
+            if any(i.startswith("P") for i in paragraph["sources"]) or not DOCUMENTS.keys() & paragraph["sources"]:
+                continue
+            paragraph["text"] = _without_missing_posts(paragraph["text"])
+            if not paragraph["text"]:
+                kept.remove(paragraph)
+                counts["paragraphs_dropped"] += 1
+                counts["sources_kept"] -= len(paragraph["sources"])
     return kept, counts
 
 

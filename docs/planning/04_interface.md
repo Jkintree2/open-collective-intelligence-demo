@@ -1032,7 +1032,7 @@ A guiding document (added 28 October 2026, John: answers quote the Declaration a
 
 Its name links to the document on the About page while About is switched on; otherwise it is plain text.
 
-"On {issue name}" is left off when the evidence belongs to no issue. Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
+"On {issue name}" is left off when the evidence belongs to no issue. A solution under more than one issue, and evidence reached through it, say the issue the question is about, and their own first issue when the question is about none of theirs (added 3 November 2026, John: a solution in an answer about homelessness said "On Need for world government"). Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
 
 **When the record had more than one answer can read,** under the answer:
 

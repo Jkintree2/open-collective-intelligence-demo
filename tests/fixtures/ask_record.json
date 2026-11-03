@@ -143,6 +143,30 @@
       "solutions": [],
       "evidence": [{"name": "Our steel plant closing", "url": null, "stance": "supports", "about": "Carbon border adjustment", "personal": true}],
       "checks": {"Our steel plant closing": {}}
+    },
+    {
+      "id": "ask-16", "account": "acct:ada", "author": "Ada Okafor", "anonymous": false,
+      "created_at": "2026-10-18T09:00:00Z",
+      "text": "More people sleep outside in our city every winter, and the council says what happens to them is not its job. A global referendum that made the Universal Declaration of Human Rights and the Earth Charter supreme law would give those rights force over every government.",
+      "issues": [{"name": "Homelessness", "parent": null}],
+      "solutions": [{"name": "Global referendum on the UDHR and Earth Charter", "for_issue": "Homelessness", "stance": "approve"}],
+      "evidence": []
+    },
+    {
+      "id": "ask-17", "account": "acct:gil", "author": "Gil Santos", "anonymous": true,
+      "created_at": "2026-10-19T09:00:00Z",
+      "text": "If the world voted the Declaration and the Earth Charter into supreme law, people forced onto the street could take the city to court together.",
+      "issues": [{"name": "Homelessness", "parent": null}],
+      "solutions": [{"name": "Global referendum on the UDHR and Earth Charter", "for_issue": "Homelessness", "stance": "none"}],
+      "evidence": []
+    },
+    {
+      "id": "ask-18", "account": "acct:dana", "author": "Dana Reyes", "anonymous": false,
+      "created_at": "2026-10-20T09:00:00Z",
+      "text": "The shelter on Mill Road fills by eight each night and turns the rest away.",
+      "issues": [{"name": "Homelessness", "parent": null}],
+      "solutions": [],
+      "evidence": []
     }
   ],
   "clicks": [
