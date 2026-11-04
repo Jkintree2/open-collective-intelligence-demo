@@ -346,3 +346,47 @@ def test_a_document_is_cited_only_when_a_question_names_one():
     result = ask.answer("And under 7d?", ["Is a carbon tax consistent with the Earth Charter?"], DIGEST, SETTINGS,
                         transport=service(content, calls))
     assert [s.id for s in result.sources] == ["P1", "D3"]
+
+
+# John, 3 November: answers to "How does homelessness relate to the principles of the UDHR?" quoted Article 25 in 9
+# case runs of 9, but named the solution that names it in only 3.
+A25_NAME = "Use money from global carbon tax to realize Article 25 of the UDHR"
+QUOTE_25 = {"text": f'Article 25 says: "{ARTICLE_25}..."', "sources": ["D2"]}
+ARTICLE_SOURCES = {**SOURCES,
+                   "S2": ask.Source("S2", "solution", A25_NAME, href="/issues/climate", issue="Climate"),
+                   "S3": ask.Source("S3", "solution", "Pay for Article 250 of the city code", href="/issues/climate",
+                                    issue="Climate")}
+ARTICLE_DIGEST = ask.Digest(json.dumps({"solutions": [
+    {"id": "S1", "name": "Carbon tax", "approved_by": 4, "opposed_by": 3,
+     "stances": [{"stance": "approve", "date": "2026-10-01", "posts": ["P1"]}]},
+    {"id": "S2", "name": A25_NAME, "approved_by": 1, "opposed_by": 0, "proposed_in": ["P2"],
+     "stances": [{"stance": "approve", "date": "2026-10-03", "posts": ["P2"]}]},
+    {"id": "S3", "name": "Pay for Article 250 of the city code", "approved_by": 0, "opposed_by": 0}]}),
+    ARTICLE_SOURCES, posts_in=2, issue_keys=["climate"])
+A25_LINE = {"text": f'Also in the database: the solution "{A25_NAME}", approved by 1, opposed by 0.',
+            "sources": ["S2", "P2"]}
+
+
+def test_a_solution_naming_the_quoted_article_follows_the_quote():
+    on_posts = {"text": ON_POSTS[0], "sources": ["P1"]}
+    assert ask.with_article_solutions([on_posts, QUOTE_25], ARTICLE_DIGEST) == [on_posts, QUOTE_25, A25_LINE]
+    assert ask.with_article_solutions([QUOTE_25, on_posts], ARTICLE_DIGEST) == [QUOTE_25, A25_LINE, on_posts]
+
+
+@pytest.mark.parametrize("paragraphs", [
+    [{"text": f"Article 12 says: “{ARTICLE_12}”", "sources": ["D2"]}],  # no solution names Article 12
+    [{"text": f"Article 2 says: “{ARTICLE_25}”", "sources": ["D2"]}],  # 2 is not 25
+    [{"text": "Ada ties homelessness to Article 25.", "sources": ["P1"]}],  # not a quote of the document
+    [QUOTE_25, {"text": "One post would use a carbon tax for housing.", "sources": ["S2", "P2"]}],  # already named
+    []])
+def test_no_line_without_a_quoted_article_a_solution_names_and_the_answer_left_out(paragraphs):
+    assert ask.with_article_solutions(paragraphs, ARTICLE_DIGEST) == paragraphs
+
+
+def test_the_answer_gives_the_solution_naming_the_article_it_quotes():
+    calls = []
+    content = json.dumps(reply(ON_POSTS, (QUOTE_25["text"], ["D2"])))
+    result = ask.answer("How does homelessness relate to the principles of the UDHR?", [], ARTICLE_DIGEST, SETTINGS,
+                        transport=service(content, calls))
+    assert result.paragraphs[2] == {"text": A25_LINE["text"], "refs": [3, 4]}
+    assert [s.id for s in result.sources] == ["P1", "D2", "S2", "P2"]

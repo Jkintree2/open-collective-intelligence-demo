@@ -542,6 +542,8 @@ MAX_TOKENS = 700
 EMPTY = "The database does not say anything about this yet."
 PARTIAL = "There are more posts on this than one answer can read, so this answer may leave some out."
 FAILED = "The question could not be answered just now. Please try again in a minute."
+ARTICLE_SOLUTION = 'Also in the database: the solution "{name}", approved by {approves}, opposed by {opposes}.'
+ARTICLE_SOLUTIONS = 3  # lines of ARTICLE_SOLUTION in one answer
 
 ANSWERING_RULES = """
 You answer questions about a shared record of issues, solutions and evidence that people have
@@ -790,6 +792,45 @@ def numbered(paragraphs: list[dict[str, Any]], digest: Digest) -> tuple[list[dic
     return shown, [citable[sid] for sid in order]
 
 
+# John, 3 November: answers quoted Article 25 of the UDHR in 9 case runs of 9, but named the solution "Use money from
+# global carbon tax to realize Article 25 of the UDHR" in only 3, since two or three sentences keep the views most
+# people hold. A numbered article or principle, as in "Article 25" or "Principle 7d" (the number alone is compared).
+_ARTICLE = re.compile(r"\b(article|principle)\s+(\d+)", re.IGNORECASE)
+
+
+def _articles(text: str) -> set[tuple[str, str]]:
+    return {(kind.lower(), number) for kind, number in _ARTICLE.findall(text)}
+
+
+def with_article_solutions(paragraphs: list[dict[str, Any]], digest: Digest) -> list[dict[str, Any]]:
+    """The kept paragraphs, each one quoting a guiding document followed by a line for every solution in the digest
+    named after an article or principle it quotes that the answer does not already cite, ARTICLE_SOLUTIONS at most.
+    Built here, not by the reading service, so it never depends on what the answer chose to keep."""
+    try:
+        rows = json.loads(digest.text).get("solutions") or []
+    except (ValueError, AttributeError):
+        return paragraphs
+    cited = {sid for paragraph in paragraphs for sid in paragraph["sources"]}
+    out, added = [], 0
+    for paragraph in paragraphs:
+        out.append(paragraph)
+        if not DOCUMENTS.keys() & set(paragraph["sources"]):
+            continue
+        quoted = _articles(paragraph["text"])
+        for row in rows:
+            if added == ARTICLE_SOLUTIONS:
+                break
+            if row["id"] in cited or row["id"] not in digest.sources or not quoted & _articles(row["name"]):
+                continue
+            posts = row.get("proposed_in") or [pid for stance in row.get("stances", []) for pid in stance.get("posts", [])]
+            out.append({"text": ARTICLE_SOLUTION.format(name=row["name"], approves=row["approved_by"],
+                                                        opposes=row["opposed_by"]),
+                        "sources": [row["id"], *[pid for pid in posts if pid in digest.sources][:1]]})
+            cited.add(row["id"])
+            added += 1
+    return out
+
+
 def build_messages(question: str, earlier: list[str], digest: Digest) -> list[dict[str, str]]:
     user = ('{"record":' + digest.text + ',"earlier_questions":' + _dumps(earlier[-EARLIER_MAX:])
             + ',"question":' + _dumps(question) + "}")
@@ -817,7 +858,7 @@ def answer(question: str, earlier: list[str], digest: Digest, settings: Settings
         # Rule 10: an article or a principle only when the question names one (or an earlier one did).
         named = any(names_document(text) for text in [question, *earlier])
         paragraphs, counts = guard(reply.payload, digest, documents=named)
-        shown, sources = numbered(paragraphs, digest)
+        shown, sources = numbered(with_article_solutions(paragraphs, digest), digest)
         result = Answer("answered" if shown else "empty", shown, sources, partial=bool(shown and digest.posts_left_out))
         usage = reply.usage or {}
         entry.update(status="ok", prompt_tokens=usage.get("prompt_tokens"),
