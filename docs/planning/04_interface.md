@@ -1360,7 +1360,7 @@ Without JavaScript the same form posts to `/home`: a statement is posted as on t
 
 > **My most recent statements and questions**
 
-Five, newest first. A statement links to its post; a question links to the answer it got. The questions are the ones asked on this device (the database never keeps who asked a question). Below it, the latest statements, then "Questions people are asking", as on Ask the database.
+Five, newest first. A statement links to its post; a question links to the answer it got. The questions are the ones this member asked on this device, kept in the browser under an opaque name for the account, so a shared browser shows each member only their own (the database never keeps who asked a question). With Home off nothing is kept. Below it, the latest statements, then "Questions people are asking", as on Ask the database.
 
 ### The box on Issues, My statements and About
 

@@ -85,6 +85,7 @@ def switches() -> dict[str, bool]:
 
 templates.env.globals["switches"] = switches
 templates.env.globals["home_on"] = home.home_on
+templates.env.globals["home_mine_name"] = home.mine_name
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120

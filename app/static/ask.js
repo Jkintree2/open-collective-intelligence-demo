@@ -172,15 +172,19 @@
   }
 
   // v0.3: Home lists "My most recent statements and questions". The database never keeps who asked, so the
-  // questions are kept here, on this device: newest first, at most 20, the same question once. Storage that is
+  // questions are kept here, on this device, under the member the page names: newest first, at most 20, the same
+  // question once. Storage that is
   // blocked or full leaves the question out of the list, and nothing else changes.
   function keep(question, id) {
+    // The page names the member (<body data-mine>) only when Home is on for them; otherwise nothing is kept.
+    const owner = document.body && document.body.dataset ? document.body.dataset.mine : '';
+    if (!owner) return;
     const same = text => String(text).toLowerCase().replace(/[?.!\s]+$/, '');
     try {
-      const old = JSON.parse(localStorage.getItem(KEPT) || '[]');
+      const old = JSON.parse(localStorage.getItem(KEPT + '.' + owner) || '[]');
       const items = (Array.isArray(old) ? old : []).filter(item => item && same(item.text) !== same(question));
       items.unshift({id: id || null, text: question, at: new Date().toISOString()});
-      localStorage.setItem(KEPT, JSON.stringify(items.slice(0, KEEP)));
+      localStorage.setItem(KEPT + '.' + owner, JSON.stringify(items.slice(0, KEEP)));
     } catch {
       // the list leaves it out
     }

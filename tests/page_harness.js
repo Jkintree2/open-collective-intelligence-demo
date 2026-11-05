@@ -69,7 +69,9 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const location = {search: ''};
   const history = {replaced: [], replaceState(state, title, url) { this.replaced.push(url); }};
   const documentListeners = {};
-  const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text,
+  // v0.3 Home: <body data-mine> names the member's questions kept on this device, only when Home is on.
+  const body = {dataset: options.mine ? {mine: options.mine} : {}};
+  const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text, body,
       addEventListener: (name, fn) => (documentListeners[name] ||= []).push(fn)},
     window: win, location, Option: class extends Element { constructor(text, value) { super(); this.text = text; this.value = value; } },
     AbortController, URLSearchParams, fetch, history, ...storage,

@@ -10,13 +10,15 @@
   const box = find('home-ask'), unsure = find('home-unsure'), swap = find('home-switch');
   const switchTo = {question: 'Post it as a statement instead', statement: 'Ask it as a question instead'};
   const KEPT = 'oci.myQuestions', SHOWN = 5;
-  let way = null, last = '', sorting = false;
+  let way = null, last = '', sorting = false, sent = 0;  // sent: which send is the current one
 
   // "My most recent statements and questions": the page drew the writer's statements; the questions answered on
   // this device (ask.js keeps them) join them by time, newest first, five shown.
   function kept() {
+    const owner = document.body && document.body.dataset ? document.body.dataset.mine : '';
+    if (!owner) return [];
     try {
-      const items = JSON.parse(localStorage.getItem(KEPT) || '[]');
+      const items = JSON.parse(localStorage.getItem(KEPT + '.' + owner) || '[]');
       return Array.isArray(items) ? items.filter(item => item && typeof item.text === 'string' && item.at) : [];
     } catch {
       return [];  // storage blocked: the statements stay as drawn
@@ -61,6 +63,7 @@
   }
 
   function asStatement() {
+    sent += 1;  // an answer still on its way no longer speaks for the box
     if (!text.value.trim() && last) text.value = last;  // an answered question left the box empty
     box.hidden = true;
     went('statement');
@@ -74,9 +77,11 @@
     find('discard').click();  // stops a reading and puts the card away, as Discard does
     box.hidden = false;
     went('question');
+    const ticket = ++sent;
     const data = await window.ociAsk(box, question);
+    if (data && data.status === 'answered') drawMine();  // ask.js kept it, whichever way the text went since
+    if (ticket !== sent) return;  // sent the other way meanwhile: the reading owns the box now
     if (data && data.status && text.value.trim() === question) text.value = '';  // ready for "Tell me more"
-    if (data && data.status === 'answered') drawMine();
   }
 
   async function kindOf(value) {

@@ -83,3 +83,23 @@ def test_preview_member_only(boxed, switch):
     boxed.sign_in(key="acct:bob", name="Bob Tester", email="bob@example.org")
     page = draw(boxed.client, "/issues")
     assert "home-box" not in page and nav(page) == OLD_MENU
+
+
+# Final review, items 2 and 3: with Home on, <body> names the member for the questions kept on their device, by an
+# opaque name (never the account key) that differs per member; with Home off <body> is as it was.
+def body(html):
+    return re.search(r"<body[^>]*>", html).group(0)
+
+
+def test_body_names_the_member_only_with_home_on(boxed, switch):
+    first = body(draw(boxed.client, "/"))
+    assert re.fullmatch(r'<body data-mine="[0-9a-f]{16}">', first)
+    assert body(draw(boxed.client, "/issues")) == first and body(draw(boxed.client, "/ask")) == first
+    assert "acct:" not in first and "ada" not in first
+    boxed.sign_in(key="acct:bob", name="Bob Tester", email="bob@example.org")
+    other = body(draw(boxed.client, "/"))
+    assert re.fullmatch(r'<body data-mine="[0-9a-f]{16}">', other) and other != first
+    switch(home_enabled="off")
+    assert body(draw(boxed.client, "/")) == "<body>"
+    switch(home_enabled="preview", home_preview=("ada@example.org",))
+    assert body(draw(boxed.client, "/")) == "<body>"
