@@ -1317,3 +1317,60 @@ Under the language model line, a link: "Readings changed by their writers", to `
 > Posts where the writer changed what the language model found before posting, newest first. Each one is looked at, and a misreading is added to the tests the reading is checked against.
 
 Each post: "{name or Anonymous}, {2 November 2026}" (the date of its latest change), the statement, then "Taken out:" and "Added:" with one line each, in the card's verbs without the name ("opposes Limit or abolish the Security Council veto"). A post from before this list began (one kept with no reading of its own) adds "Worked out from the database as it is now." Under the list, when any: "{n} older readings could not be read again." (one: "1 older reading could not be read again."). Nothing listed: "No writer has changed a reading yet." Last line: a link "Back room".
+
+## v0.3: Write and Ask on one Home page (added 5 November 2026)
+
+Behind `HOME_ENABLED` (not client facing): unset or `off`, every page is as before; `preview`, only the accounts listed in `HOME_PREVIEW` see Home; `on`, every signed-in member. The passphrase site keeps the old pages. Every quote below is **client-facing**. John agreed the outline on 4 November 2026: one box, "or ask a question," in the sentence at the top, the writer's own five most recent statements and questions under the button, and the site asking back when it can't tell. On 5 November three points went back to him: the button's words, a second sentence for questions, and whether the statements and questions of others are one list.
+
+### Header
+
+> Home · Issues · Enter a person · My statements · My account · About
+
+"Write" and "Ask" leave the menu. `/ask` and its answer pages stay, for links, the box on each issue page, and answers without JavaScript.
+
+### Home (`/`)
+
+> Write what you think, or ask a question, about an issue that matters to you. Your issue, your claim, and any evidence and solution will be pulled out for you to check, then added to a database everyone here shares.
+>
+> Write or dictate your statement or question in the box.
+>
+> [ box, with 🎙 Dictate as on the Write page ]
+> [ Read my statement or question ]
+
+The site tells a statement from a question by rules, with no language model call. A final period or question mark is not needed (John, 4 November).
+
+**Read as a statement:** the reading and the card, exactly as on the Write page ("Here is what we found"), and under the button a link:
+
+> Ask it as a question instead
+
+**Read as a question:** the answer under the button, as on Ask the database: the waiting line ("Reading the database…"), the answer with its numbered sources, and the note "Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer answer." Under the button a link:
+
+> Post it as a statement instead
+
+After an answer the box is empty for the next question, and "Tell me more" goes on from the question before it. The link brings the question back into the box.
+
+**When the site can't tell:**
+
+> Is this a statement to post, or a question to ask?
+> [ Post it ] [ Ask it ]
+
+Without JavaScript the same form posts to `/home`: a statement is posted as on the Write page without JavaScript, a question's answer shows on the Ask page, and the two buttons above come back when the site can't tell.
+
+**Under the button**, for a signed-in member:
+
+> **My most recent statements and questions**
+
+Five, newest first. A statement links to its post; a question links to the answer it got. The questions are the ones asked on this device (the database never keeps who asked a question). Below it, the latest statements, then "Questions people are asking", as on Ask the database.
+
+### The box on Issues, My statements and About
+
+> Write what you think, or ask a question.
+>
+> [ smaller box, two rows ]
+> [ Read my statement or question ]
+
+It takes the text to Home, which carries on there. On About only for a reader who is signed in.
+
+### With `ASK_ENABLED` off (not client facing)
+
+Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, and the list under the button is "My most recent statements".

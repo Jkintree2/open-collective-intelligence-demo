@@ -6,6 +6,9 @@
   if (!form) return;
   const unavailable = 'The language model is not answering right now. You can fill in the form by hand, or try again in a minute.';
   const tooLong = 'That is longer than this demo can read at once. Please shorten it to a few paragraphs.';
+  // v0.3 Home with asking (data-home-ask): home.js sends the box, as a statement through read() or as a question.
+  const home = !!form.dataset && 'homeAsk' in form.dataset;
+  const readLabel = home ? 'Read my statement or question' : 'Read my statement';
   let readController, slowTimer, abandonTimer;
   async function request(url, body, signal) {
     const response = await fetch(url, {method: body ? 'POST' : 'GET', signal,
@@ -29,7 +32,7 @@
     readController?.abort(); readController = null;
     clearTimeout(slowTimer); clearTimeout(abandonTimer);
     state.reading = false; text.readOnly = false;
-    find('read').textContent = 'Read my statement'; find('stop').hidden = true;
+    find('read').textContent = readLabel; find('stop').hidden = true;
     updateText();
   }
   async function read() {
@@ -67,7 +70,7 @@
     find('counter').hidden = size < 3500; find('counter').textContent = `${size} / 4000`;
     card.grow(text);
   }
-  form.addEventListener('submit', event => { event.preventDefault(); read(); });
+  form.addEventListener('submit', event => { event.preventDefault(); if (!home) read(); });
   text.addEventListener('input', () => { state.metadata = {...state.metadata, source: 'manual'}; updateText(); card.changed(); });
   text.addEventListener('paste', event => {
     const paste = event.clipboardData.getData('text');
@@ -86,5 +89,6 @@
   find('post').addEventListener('click', card.post);
   // The summary above the form (about_issue.js) chooses positions through this.
   window.oci = {setPositionOnExisting: card.setPositionOnExisting, card};
-  find('read').textContent = 'Read my statement'; updateText(); card.loadCandidates();
+  window.ociStartReading = read;  // what Read my statement does; Home starts a statement with it
+  find('read').textContent = readLabel; updateText(); card.loadCandidates();
 })();

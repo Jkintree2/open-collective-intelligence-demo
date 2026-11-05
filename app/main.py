@@ -38,7 +38,7 @@ from app.auth import (
     reading_limit,
     post_spacing,
 )
-from app.config import get_settings
+from app.config import HOME_SENTENCE, get_settings
 from app.pages import loggable_path, write_notice
 from app.members import (
     RELOAD_AND_RETRY,
@@ -286,6 +286,7 @@ def _render_index(
         "index.html",
         {
             "site_sentence": settings.site_sentence,
+            "home_sentence": HOME_SENTENCE,
             "posts": posts,
             "name": name,
             "message": message,

@@ -19,6 +19,12 @@ SITE_SENTENCE = (
     "Write what you think about an issue that matters to you. Your issue, your claim, and any evidence and "
     "solution will be pulled out for you to check, then added to a database everyone here shares."
 )
+# v0.3: the sentence at the top of Home, with HOME_ENABLED and ASK_ENABLED (John, 4 November 2026: "or ask a
+# question," goes in after "Write what you think").
+HOME_SENTENCE = (
+    "Write what you think, or ask a question, about an issue that matters to you. Your issue, your claim, and any "
+    "evidence and solution will be pulled out for you to check, then added to a database everyone here shares."
+)
 DEFAULT_LLM_BASE_URL = "https://api.deepseek.com"
 DEFAULT_LLM_MODEL = "deepseek-v4-flash"
 

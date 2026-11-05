@@ -84,21 +84,18 @@
     return box.dataset.evidence ? {evidence: box.dataset.evidence} : {};
   }
 
-  async function submit(event) {
-    const form = event.target;
-    if (!form.matches || !form.matches('form.ask-form')) return;
-    event.preventDefault();
-    if (form.hasAttribute('aria-busy')) return;
-    const box = form.closest('[data-ask]');
+  // One question in one box, the answer shown in it; the box's form (none on Home) is busy meanwhile. Resolves to
+  // the answer's data, or null when nothing came back to show.
+  async function ask(box, text, form) {
+    const busy = form || box;
     const status = box.querySelector('[data-ask-status]');
     const answers = box.querySelector('[data-ask-answers]');
-    const field = form.querySelector('[name=question]');
-    const question = field.value.split(/\s+/).filter(Boolean).join(' ');
-    if (!question) { status.textContent = lines.noQuestion; return; }
-    if (question.length > QUESTION_MAX) { status.textContent = lines.tooLong; return; }
+    const question = text.split(/\s+/).filter(Boolean).join(' ');
+    if (!question) { status.textContent = lines.noQuestion; return null; }
+    if (question.length > QUESTION_MAX) { status.textContent = lines.tooLong; return null; }
     // Questions asked before this page was drawn (the answer page without JavaScript) start the list.
-    const asked = earlier.get(box) || [...form.querySelectorAll('[name=earlier]')].map(input => input.value);
-    form.setAttribute('aria-busy', 'true');
+    const asked = earlier.get(box) || (form ? [...form.querySelectorAll('[name=earlier]')].map(input => input.value) : []);
+    busy.setAttribute('aria-busy', 'true');
     status.textContent = lines.waiting;
     const still = setTimeout(() => { status.textContent = lines.waiting + ' ' + lines.still; }, STILL_AFTER);
     // The browser waits longer than the server's 40 seconds, so a late reply is the server's to report.
@@ -114,26 +111,40 @@
       data = null;
     } finally {
       clearTimeout(still); clearTimeout(giveUp);
-      form.removeAttribute('aria-busy');
+      busy.removeAttribute('aria-busy');
     }
     if (response && response.status === 401 && data && data.redirect) {
       location.href = data.redirect + '?next=' + encodeURIComponent(location.pathname + location.search);
-      return;
+      return null;
     }
     if (!data || typeof data !== 'object' || (!response.ok && !data.message) || response.status >= 500) {
       status.textContent = lines.failed;
-      return;
+      return null;
     }
-    if (!response.ok) { status.textContent = data.message; return; }  // a question too long, a limit
+    if (!response.ok) { status.textContent = data.message; return null; }  // a question too long, a limit
     status.textContent = '';
     if (data.status) {  // the language model was asked: this question goes with the next one
       asked.push(question);
       earlier.set(box, asked.slice(-EARLIER));
-      field.value = '';
     }
     if (data.status === 'answered') listed(box, question, data.question_id);
     answers.prepend(answerBlock(question, data));
+    return data;
   }
+
+  async function submit(event) {
+    const form = event.target;
+    if (!form.matches || !form.matches('form.ask-form')) return;
+    event.preventDefault();
+    if (form.hasAttribute('aria-busy')) return;
+    const field = form.querySelector('[name=question]');
+    const data = await ask(form.closest('[data-ask]'), field.value, form);
+    if (data && data.status) field.value = '';
+  }
+
+  // v0.3 Home: its one box asks through here (window.ociAsk), with Home's answer area as the box, which keeps its
+  // own earlier questions.
+  globalThis.ociAsk = (box, text) => (box.hasAttribute('aria-busy') ? Promise.resolve(null) : ask(box, text, null));
 
   // John, 28 October: an answered question is kept and listed for everyone; show it at the top here too.
   // John, 30 October: it links to the answer it got; one the server could not keep is a button, as before.

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block content %}{% set home_page = home_on(request) and not editing %}
+{% block content %}{% set home_page = home_on(request) and not editing %}{% set home_ask = home_page and switches().ask %}
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
-{% if not editing %}<p class="sentence">{{ site_sentence }}</p>{% endif %}
+{% if not editing %}<p class="sentence">{% if home_ask %}{{ home_sentence }}{% else %}{{ site_sentence }}{% endif %}</p>{% endif %}
 
-<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if start %} data-start{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
+<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if home_ask %} data-home-ask{% endif %}{% if start %} data-start{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
   {% if not member %}
   <div class="name-row">
     <div class="field">
@@ -15,14 +15,14 @@
   {% endif %}
   {% if about %}{% include "_about_" ~ (about.kind or "issue") ~ ".html" %}{% endif %}
   <div class="text-label">
-    <label for="text">Write or dictate your statement in the box.</label>
+    <label for="text">{% if home_ask %}Write or dictate your statement or question in the box.{% else %}Write or dictate your statement in the box.{% endif %}</label>
     <button type="button" id="dictate" class="quiet" aria-pressed="false" hidden>🎙 Dictate</button>
   </div>
   <textarea id="text" name="text" rows="4" maxlength="4000" required{% if not editing %} autofocus{% endif %}>{{ text }}</textarea>
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
   <p id="counter" hidden></p>
   <p id="compose-message" class="notice" role="status" aria-live="polite"></p>
-{% if home_page and switches().ask %}  <div id="home-unsure" class="home-unsure"{% if not unsure %} hidden{% endif %}>
+{% if home_ask %}  <div id="home-unsure" class="home-unsure"{% if not unsure %} hidden{% endif %}>
     <p>Is this a statement to post, or a question to ask?</p>
     <button type="submit" name="kind" value="statement" class="primary">Post it</button>
     <button type="submit" name="kind" value="question">Ask it</button>
@@ -34,11 +34,17 @@
   </div>
   {% endif %}
   <div class="compose-actions">
-    <button type="submit" class="primary" id="read">{% if editing %}Save changes{% else %}Post{% endif %}</button>
+    <button type="submit" class="primary" id="read">{% if editing %}Save changes{% elif home_ask %}Read my statement or question{% else %}Post{% endif %}</button>
     <button type="button" id="stop" class="quiet" hidden>Stop and fill it in myself</button>
     <button type="button" id="retry" class="quiet" hidden>Try again</button>
   </div>
-  <section id="card" class="card" hidden aria-labelledby="card-title">
+{% if home_ask %}  <button type="button" id="home-switch" class="quiet home-switch" hidden></button>
+  <section class="ask home-ask" id="home-ask" data-ask hidden aria-label="Answers">
+    <p class="ask-status" data-ask-status aria-live="polite"></p>
+    <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer answer.</p>
+    <div class="ask-answers" data-ask-answers aria-live="polite"></div>
+  </section>
+{% endif %}  <section id="card" class="card" hidden aria-labelledby="card-title">
     <h2 id="card-title">Here is what we found</h2>
     <p id="card-message" class="notice" role="status"></p>
     <p id="card-note" class="counts"></p>
@@ -67,7 +73,9 @@
 <script src="/static/card.js?v={{ asset_version }}" defer></script>
 <script src="/static/dictation.js?v={{ asset_version }}" defer></script>
 <script src="/static/app.js?v={{ asset_version }}" defer></script>
-<script src="/static/about_issue.js?v={{ asset_version }}" defer></script>
+{% if home_ask %}<script src="/static/ask.js?v={{ asset_version }}" defer></script>
+<script src="/static/home.js?v={{ asset_version }}" defer></script>
+{% endif %}<script src="/static/about_issue.js?v={{ asset_version }}" defer></script>
 {% if editing %}<script id="edit-post" type="application/json">{{ editing|tojson }}</script>
 <script src="/static/edit_post.js?v={{ asset_version }}" defer></script>{% endif %}
 <section class="feed" id="feed">
