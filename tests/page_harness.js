@@ -39,6 +39,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   if (options.home) get('compose').dataset = {...get('compose').dataset, home: '',
     ...(options.home === 'post-only' ? {} : {homeAsk: ''}), ...(options.start ? {start: ''} : {})};
   if (options.text) get('text').value = options.text;
+  if (options.prepare) options.prepare(get);  // elements the server drew, set up before the scripts run
   const recognizers = [], requests = [], timers = new Map();
   let timerId = 0;
   class Recognition {
@@ -51,6 +52,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   // Phase 3: card extras registered as if a script before card.js had pushed them (the card hook).
   if (options.cardExtras) win.ociCardExtras = [...options.cardExtras];
   if (options.ociAsk) win.ociAsk = options.ociAsk;  // ask.js's hook, stubbed by the Home tests
+  // v0.3 Home: the questions kept on this device; absent, reading localStorage throws, as a blocked one does.
+  const storage = options.localStorage ? {localStorage: options.localStorage} : {};
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
     // The feed fragment after a post is read as text, as the page reads it.
@@ -68,7 +71,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text,
       addEventListener: (name, fn) => (documentListeners[name] ||= []).push(fn)},
     window: win, location, Option: class extends Element { constructor(text, value) { super(); this.text = text; this.value = value; } },
-    AbortController, URLSearchParams, fetch,
+    AbortController, URLSearchParams, fetch, ...storage,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
     clearTimeout: id => timers.delete(id)};
   // The page loads these in this order (index.html); app.js wires up what the first two define.
@@ -84,7 +87,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const runTimer = async delay => { for (const [id, timer] of [...timers]) if (timer.delay === delay) { timers.delete(id); timer.fn(); } await flush(); };
   // Another script from app/static/, run in this same page after the three above.
   const load = file => vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
-  return {get, recognizers, requests, type, flush, runTimer, win, location, load};
+  return {get, recognizers, requests, type, flush, runTimer, win, location, load, documentListeners};
 }
 
 module.exports = {Element, setup};

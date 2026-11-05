@@ -267,6 +267,30 @@ def _about_issue(key: str | None) -> dict | None:
     }
 
 
+HOME_MINE = 5  # v0.3: the writer's own statements under Home's button (home.js adds this device's questions)
+HOME_MINE_CHARACTERS = 120
+
+
+def _home_mine(request: Request) -> list[dict]:
+    """v0.3 Home: the member's five most recent statements (Q24, as My statements reads them), newest first, each
+    with its time in UTC for home.js to place this device's questions among them."""
+    member = getattr(request.state, "member", None)
+    if member is None:
+        return []
+    now = datetime.now(timezone.utc)
+    mine = []
+    for post in graph_own_posts.my_posts(member.key, HOME_MINE):
+        created = post["created_at"]
+        created = created.to_native() if hasattr(created, "to_native") else created
+        created = created if created.tzinfo else created.replace(tzinfo=timezone.utc)
+        text = " ".join((post.get("text") or "").split())
+        if len(text) > HOME_MINE_CHARACTERS:
+            text = text[:HOME_MINE_CHARACTERS].rsplit(" ", 1)[0].rstrip(" ,;:.") + "…"
+        mine.append({"text": text, "at": created.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                     "when": relative_time(created, now)})
+    return mine
+
+
 def _render_index(
     request: Request,
     *,
@@ -281,6 +305,12 @@ def _render_index(
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
+    home_page = editing is None and home.home_on(request)
+    if home_page and settings.ask_enabled:
+        from app.routes_ask import recent_questions  # the router's own reader, as on the issue page
+        asked = recent_questions(None)
+    else:
+        asked = []
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -298,6 +328,8 @@ def _render_index(
             # from the box on another page for home.js to carry on with.
             "unsure": unsure,
             "start": start,
+            "home_mine": _home_mine(request) if home_page else [],
+            "recent_questions": asked,
             # Phase 2: the card reads evidence links only with the flag and a reading service; with the
             # flag alone a row with no link still says so (revision round).
             "evidence_check": settings.evidence_check_enabled,

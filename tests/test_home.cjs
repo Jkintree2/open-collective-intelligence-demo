@@ -177,3 +177,102 @@ test('tell me more passes the earlier question', async () => {
   requests[1].resolve({status: 'answered', paragraphs: [], sources: []});
   await second;
 });
+
+// Task 5: My most recent statements and questions. The page draws the writer's statements; home.js adds the
+// questions answered on this device (localStorage "oci.myQuestions", which ask.js keeps), newest first, five shown.
+const {Element} = require('./page_harness.js');
+function storage(questions) {
+  const data = questions === undefined ? {} : {'oci.myQuestions': JSON.stringify(questions)};
+  return {data, getItem: key => (key in data ? data[key] : null), setItem: (key, value) => { data[key] = String(value); }};
+}
+function statements(...rows) {
+  return get => {
+    get('home-mine').children = rows.map(([at, text]) => Object.assign(new Element(), {tag: 'li', textContent: text,
+      dataset: {at, kind: 'statement'}}));
+    get('home-mine-section').hidden = rows.length === 0;
+  };
+}
+const shown = page => page.get('home-mine').children.map(item => item.dataset ? item.textContent
+  : (item.children[0].href ? 'link ' + item.children[0].href + ' ' : 'button ') + item.children[0].textContent);
+
+test('list mixes statements and device questions by time', async () => {
+  const page = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.'],
+                                               ['2026-11-05T10:00:00Z', 'My ten o\'clock statement.']),
+    localStorage: storage([{id: 'q2', text: 'Asked at one?', at: '2026-11-05T13:00:00.000Z'},
+                           {id: 'q1', text: 'Asked at eleven?', at: '2026-11-05T11:00:00.000Z'},
+                           {id: null, text: 'Asked at nine?', at: '2026-11-05T09:00:00.000Z'},
+                           {id: 'q0', text: 'Asked at eight?', at: '2026-11-05T08:00:00.000Z'}])});
+  assert.deepEqual(shown(page), ['link /ask/answers/q2 Asked at one?', 'My noon statement.',
+    'link /ask/answers/q1 Asked at eleven?', 'My ten o\'clock statement.', 'button Asked at nine?']);
+  assert.equal(page.get('home-mine-section').hidden, false);
+});
+
+test('storage blocked still draws statements', async () => {
+  const page = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.'])});
+  assert.deepEqual(shown(page), ['My noon statement.']);
+  const broken = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.']),
+    localStorage: {getItem() { throw new Error('SecurityError'); }, setItem() { throw new Error('SecurityError'); }}});
+  assert.deepEqual(shown(broken), ['My noon statement.']);
+  const junk = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.']),
+    localStorage: {getItem: () => '{not json', setItem() {}}});
+  assert.deepEqual(shown(junk), ['My noon statement.']);
+});
+
+test('nothing posted and nothing asked keeps the list hidden; a first question shows it', async () => {
+  const kept = storage([]);
+  const asked = [];
+  const page = await home({prepare: statements(), localStorage: kept,
+    ociAsk: (box, text) => new Promise(resolve => asked.push({text, resolve}))});
+  assert.equal(page.get('home-mine-section').hidden, true);
+  await page.send(QUESTION);
+  await page.say('question');
+  kept.setItem('oci.myQuestions', JSON.stringify([{id: 'q9', text: QUESTION, at: '2026-11-05T14:00:00.000Z'}]));
+  asked[0].resolve({status: 'answered', question_id: 'q9'});
+  await page.flush();
+  assert.deepEqual(shown(page), [`link /ask/answers/q9 ${QUESTION}`]);
+  assert.equal(page.get('home-mine-section').hidden, false);
+});
+
+test('question without id is a button that refills the box', async () => {
+  const page = await home({prepare: statements(),
+    localStorage: storage([{id: null, text: 'Is the veto fair?', at: '2026-11-05T09:00:00.000Z'}])});
+  const button = page.get('home-mine').children[0].children[0];
+  assert.equal(button.className, 'home-again');
+  assert.equal(button.type, 'button');
+  for (const listener of page.documentListeners.click) listener({target: {closest: s => (s === '.home-again' ? button : null)}});
+  assert.equal(page.get('text').value, 'Is the veto fair?');
+});
+
+// ask.js keeps an answered question on this device for Home's list: newest first, at most 20, the same question
+// once, and nothing at all when storage is blocked.
+test('an answered question is kept on this device', async () => {
+  const kept = storage();
+  const requests = [];
+  const node = () => ({textContent: '', children: [], className: '', append() {}, prepend() {}});
+  const attrs = {};
+  const box = {dataset: {}, querySelector: selector => ({'[data-ask-status]': node(), '[data-ask-answers]': node()})[selector] || null,
+    setAttribute: (key, value) => { attrs[key] = value; }, removeAttribute: key => { delete attrs[key]; }, hasAttribute: key => key in attrs};
+  const context = {location: {pathname: '/', search: ''}, AbortController, localStorage: kept,
+    document: {addEventListener() {}, createElement: () => node(), createTextNode: text => text},
+    setTimeout: () => 0, clearTimeout() {},
+    fetch: (url, options) => new Promise(resolve => requests.push({body: JSON.parse(options.body),
+      resolve: data => resolve({ok: true, status: 200, json: async () => data})}))};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../app/static/ask.js'), 'utf8'), context);
+  const askOnce = async (text, reply) => {
+    const done = context.ociAsk(box, text);
+    await Promise.resolve();
+    requests.at(-1).resolve(reply);
+    await done;
+  };
+  await askOnce('Is the veto fair?', {status: 'answered', question_id: 'a1', paragraphs: [], sources: []});
+  await askOnce('Nothing to answer from?', {status: 'empty', paragraphs: [], sources: []});
+  let items = JSON.parse(kept.data['oci.myQuestions']);
+  assert.deepEqual(items.map(item => [item.id, item.text]), [['a1', 'Is the veto fair?']]);
+  assert.ok(!Number.isNaN(Date.parse(items[0].at)));
+  for (let n = 0; n < 21; n++) await askOnce(`Question ${n}?`, {status: 'answered', question_id: `n${n}`, paragraphs: [], sources: []});
+  await askOnce('is the veto fair', {status: 'answered', question_id: 'a2', paragraphs: [], sources: []});
+  items = JSON.parse(kept.data['oci.myQuestions']);
+  assert.equal(items.length, 20);
+  assert.deepEqual(items[0], {...items[0], id: 'a2', text: 'is the veto fair'});
+  assert.equal(items.filter(item => item.text.toLowerCase().startsWith('is the veto fair')).length, 1);
+});
