@@ -56,6 +56,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app.routes_item_pages import about_evidence, about_solution, evidence_href, solution_href
 from app import graph_own_posts
+from app import home
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
 from app import check, confidence, graph_accounts, graph_evidence, graph_item_pages, graph_places, places, search, sides, tidy
 
@@ -83,6 +84,7 @@ def switches() -> dict[str, bool]:
 
 
 templates.env.globals["switches"] = switches
+templates.env.globals["home_on"] = home.home_on
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
