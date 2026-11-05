@@ -26,7 +26,7 @@ app/graph_places.py Phase 3: issues near a place and the Near filter's prefill (
 app/graph_item_pages.py GitHub issue 55: the solution page (Q50, its issues in the order they took it up, and Q51) and the evidence page (Q52, what it speaks to in the order it was first cited for each, Q53, and Q54 for source confidence there); names behind anonymous edges never read
 app/graph_readings.py the back room's readings changed by their writers: the posts with a reading, newest change first (Q55); never reads the person behind a post
 app/graph_questions.py Phase 3: the questions people asked, kept once answered and without who asked, since 30 October with the answer each last got and an id (Q47), the latest for the Ask box (Q48), one by its id (Q49); since GitHub issue 55 a question asked on a solution's or a piece of evidence's page keeps that key
-app/home.py        v0.3: home_on(request), whether this reader gets the Home page (HOME_ENABLED on: every signed-in member; preview: the members in HOME_PREVIEW; never signed out or on the passphrase site)
+app/home.py        v0.3: home_on(request), whether this reader gets the Home page (HOME_ENABLED on: every signed-in member; preview: the members in HOME_PREVIEW; never signed out or on the passphrase site); kind_of(text), statement, question or unsure by rules, no model call (decision D2)
 app/backup.py      portable export format version 2 (version 1 still restores), typed values and validation; passwords and links never in a copy
 app/admin.py       Basic-auth back room routes, the reading service and sending email lines
 app/routes_accounts.py /sign-in, /sign-out, /account (My account), /my-statements (X1, its own page and menu item), /forgot-password, /reset/{link}
