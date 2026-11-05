@@ -342,6 +342,32 @@ Without a DeepSeek key, the page says "Asking needs the language model, which is
 
 Whoever helps you with the site can run its read only check against the live address. It now also says whether the About page and Ask are switched on or off, so a switch that did not take shows up straight away.
 
+## The Home page
+
+Home puts Write and Ask in one box. It has its own switch in Render, `HOME_ENABLED`, and until it is set the site looks exactly as it does now.
+
+The switch has three settings:
+
+* `preview`: only the accounts whose emails are listed in `HOME_PREVIEW`, separated by commas, see Home. Everyone else sees the site as before. This is how you try it first.
+* `on`: every signed-in member sees Home.
+* `off`, or no value: nobody does.
+
+To try it:
+
+1. Sign in to Render and open your service.
+2. Click **Environment**.
+3. Add `HOME_ENABLED` with the value `preview`, and `HOME_PREVIEW` with your account's email. Click **Save**. Render restarts the site. This takes a few minutes.
+
+When you are happy with it, change `HOME_ENABLED` to `on` and save. To go back, set it to `off`. Nothing in the database changes either way.
+
+With Home on, the menu reads Home, Issues, Enter a person, My statements, My account, About. Home invites people to write what they think, or ask a question. The site tells a statement from a question by itself, without calling the language model: a statement goes to the form as before, and a question gets its answer right under the button. When the site can't tell, it asks the writer: "Is this a statement to post, or a question to ask?" If it guessed wrong, a link under the button sends the same words the other way.
+
+Under the button, each person sees their own five most recent statements and questions. The questions are remembered on the phone or computer they were asked from, because the database never keeps who asked a question. Below that come "Questions people are asking" and the latest statements.
+
+The same box sits at the top of the Issues, My statements and About pages, and takes what is written there to Home.
+
+Home answers questions only when `ASK_ENABLED` is on as well. Without it, Home posts statements and nothing on it mentions asking.
+
 ## Who to ask
 
 For accounts, entering people and the back room, you are in charge. For anything that means changing how the site works, or putting a copy back, ask a developer. The list of things planned for later came with this guide. Hand it to whoever helps you, so nobody starts from scratch.
