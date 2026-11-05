@@ -117,5 +117,10 @@
     text.focus();
   });
   drawMine();
-  if ('start' in form.dataset && text.value.trim()) send(null);  // brought here by the box on another page
+  // New words in the box: the link and the two buttons were about the text before.
+  text.addEventListener('input', () => { swap.hidden = true; unsure.hidden = true; });
+  if ('start' in form.dataset && text.value.trim()) {  // brought here by the box on another page
+    history.replaceState(null, '', '/');  // the address was the form's /home; a reload must not send it again
+    send(null);
+  }
 })();

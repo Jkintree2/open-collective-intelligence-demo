@@ -99,8 +99,8 @@ def test_home_post_unsure_shows_both_buttons(homing):
     assert response.status_code == 200
     page = response.text
     assert "Is this a statement to post, or a question to ask?" in page
-    assert '<button type="submit" name="kind" value="statement"' in page and ">Post it</button>" in page
-    assert '<button type="submit" name="kind" value="question"' in page and ">Ask it</button>" in page
+    assert '<button type="submit" name="kind" value="statement" class="primary">Post it</button>' in page
+    assert '<button type="submit" name="kind" value="question" class="primary">Ask it</button>' in page
     assert f">{UNSURE}</textarea>" in page
     assert 'action="/home"' in page
     assert homing.raw == [] and homing.calls == []

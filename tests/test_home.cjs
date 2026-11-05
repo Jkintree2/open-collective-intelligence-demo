@@ -276,3 +276,25 @@ test('an answered question is kept on this device', async () => {
   assert.deepEqual(items[0], {...items[0], id: 'a2', text: 'is the veto fair'});
   assert.equal(items.filter(item => item.text.toLowerCase().startsWith('is the veto fair')).length, 1);
 });
+
+// Found in the browser check (5 November).
+test('a text brought from another page puts the address back to Home, so a reload does not post it again', async () => {
+  const page = await home({start: true, text: QUESTION});
+  assert.deepEqual(page.history.replaced, ['/']);
+  const plain = await home();
+  assert.deepEqual(plain.history.replaced, []);
+});
+
+test('typing something new puts the switch link and the two buttons away', async () => {
+  const page = await home();
+  await page.send(QUESTION);
+  await page.say('question');
+  assert.equal(page.get('home-switch').hidden, false);
+  await page.type('Something else entirely.');
+  assert.equal(page.get('home-switch').hidden, true);
+  const other = await home();
+  await other.send('What we need is a global referendum.');
+  await other.say('unsure');
+  await other.type('What we need is a global referendum now.');
+  assert.equal(other.get('home-unsure').hidden, true);
+});

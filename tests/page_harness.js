@@ -67,11 +67,12 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
       }})}));
   };
   const location = {search: ''};
+  const history = {replaced: [], replaceState(state, title, url) { this.replaced.push(url); }};
   const documentListeners = {};
   const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text,
       addEventListener: (name, fn) => (documentListeners[name] ||= []).push(fn)},
     window: win, location, Option: class extends Element { constructor(text, value) { super(); this.text = text; this.value = value; } },
-    AbortController, URLSearchParams, fetch, ...storage,
+    AbortController, URLSearchParams, fetch, history, ...storage,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
     clearTimeout: id => timers.delete(id)};
   // The page loads these in this order (index.html); app.js wires up what the first two define.
@@ -87,7 +88,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const runTimer = async delay => { for (const [id, timer] of [...timers]) if (timer.delay === delay) { timers.delete(id); timer.fn(); } await flush(); };
   // Another script from app/static/, run in this same page after the three above.
   const load = file => vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
-  return {get, recognizers, requests, type, flush, runTimer, win, location, load, documentListeners};
+  return {get, recognizers, requests, type, flush, runTimer, win, location, load, documentListeners, history};
 }
 
 module.exports = {Element, setup};
