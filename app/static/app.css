@@ -533,3 +533,5 @@ form.near button { min-height: 44px; }
 .home-unsure p { margin: 0 0 8px; }
 .home-switch { margin-top: 8px; }
 .home-ask { margin: 16px 0 0; }
+.home-box { margin: 12px 0 20px; }
+.home-box textarea { width: 100%; }
