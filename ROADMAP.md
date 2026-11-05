@@ -57,7 +57,7 @@ The platform starts to talk back: it answers questions from what people have pos
 *  v0.4,  Guidelines for reaching consensus decisions written, and copied into the system prompt.
 *  v0.5, Integrating the prototype with the Interplanetary File System so decisions made by assemblies and juries of people can be stored in IPFS.
 * v0.6 Enable the prototype to use tools such as a calculator, and external resources such as Wikidata.
-*  v1.0 Adapting the prototype to work with a small language, audio, and vision model such as LFM3 Omni can run on smartphones, and enable the decentralized processing of a shared database; the butterfly release.
+*  v1.0 Adapting the prototype to work with a small language, audio, and vision model such as LFM3 Omni to run on smartphones, and enable the decentralized processing of a shared database, with a voice interface so it can be used by people who have phones that do not have screens; the butterfly release.
 
 ## Taking part
 
