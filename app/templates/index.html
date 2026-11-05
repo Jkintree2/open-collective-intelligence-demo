@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block content %}
+{% block content %}{% set home_page = home_on(request) and not editing %}
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 {% if not editing %}<p class="sentence">{{ site_sentence }}</p>{% endif %}
 
-<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% else %}/posts{% endif %}" class="write" id="compose"{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
+<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if start %} data-start{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
   {% if not member %}
   <div class="name-row">
     <div class="field">
@@ -22,7 +22,12 @@
   {% if message %}<p class="notice" role="alert">{{ message }}</p>{% endif %}
   <p id="counter" hidden></p>
   <p id="compose-message" class="notice" role="status" aria-live="polite"></p>
-  {% if member %}
+{% if home_page and switches().ask %}  <div id="home-unsure" class="home-unsure"{% if not unsure %} hidden{% endif %}>
+    <p>Is this a statement to post, or a question to ask?</p>
+    <button type="submit" name="kind" value="statement" class="primary">Post it</button>
+    <button type="submit" name="kind" value="question">Ask it</button>
+  </div>
+{% endif %}  {% if member %}
   <div class="anonymous-row">
     <label class="check"><input id="anonymous" name="anonymous" type="checkbox"{% if editing and editing.anonymous %} checked{% endif %}> Post anonymously</label>
     <p class="counts">Your name is not shown to others. The database still knows the post is yours, so you can edit or delete it later.</p>

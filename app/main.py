@@ -276,6 +276,8 @@ def _render_index(
     about: dict | None = None,
     notice: str | None = None,
     editing: dict | None = None,
+    unsure: bool = False,
+    start: bool = False,
 ) -> Response:
     posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
@@ -291,6 +293,10 @@ def _render_index(
             "text": text,
             "about": about,
             "editing": editing,
+            # v0.3 Home: the two buttons when the site can't tell a statement from a question, and a text brought
+            # from the box on another page for home.js to carry on with.
+            "unsure": unsure,
+            "start": start,
             # Phase 2: the card reads evidence links only with the flag and a reading service; with the
             # flag alone a row with no link still says so (revision round).
             "evidence_check": settings.evidence_check_enabled,
