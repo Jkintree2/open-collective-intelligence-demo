@@ -78,4 +78,4 @@ def test_a_question_mark_inside_a_link_is_not_a_question():
 
 def test_capitals_and_spacing_do_not_matter():
     assert kind_of("  HOW DOES HOMELESSNESS RELATE TO THE UDHR  ") == "question"
-    assert kind_of("Is housing\na human right") == "question"
+    assert kind_of("Is housing   a\thuman right") == "question"

@@ -274,5 +274,70 @@
   "text": "Who has control now? The higher, the fewer. Autonomy requires controls, rules, and laws. I would like to see the principles of the Universal Declaration of Human Rights and the Earth Charter ratified as supreme law for all nations.",
   "kind": "unsure",
   "why": "seed post"
+ },
+ {
+  "text": "Why do we tolerate homelessness\nBecause we decided housing is earned and that is wrong",
+  "kind": "unsure",
+  "why": "review: two lines, a question answered on the next"
+ },
+ {
+  "text": "Do data centers raise prices\nYes they do and we should tax them",
+  "kind": "unsure",
+  "why": "review: two lines, a question answered on the next"
+ },
+ {
+  "text": "Why do we tolerate homelessness because we decided housing is earned",
+  "kind": "unsure",
+  "why": "review: one line with because"
+ },
+ {
+  "text": "How does the lack of affordable housing in St Louis relate to the principles of the Universal Declaration of Human Rights and the Earth Charter",
+  "kind": "unsure",
+  "why": "review: a long line with no mark"
+ },
+ {
+  "text": "how does homelessness relate to the UDHR\nand what can we do about it",
+  "kind": "question",
+  "why": "two lines, both questions"
+ },
+ {
+  "text": "Rents are too high\nThe city should build more homes",
+  "kind": "statement",
+  "why": "two lines, both claims"
+ },
+ {
+  "text": "what's the evidence on rent control",
+  "kind": "question",
+  "why": "review: contraction, no mark"
+ },
+ {
+  "text": "whats the evidence on rent control",
+  "kind": "question",
+  "why": "review: contraction without the apostrophe"
+ },
+ {
+  "text": "What’s the evidence on rent control",
+  "kind": "question",
+  "why": "review: curly apostrophe"
+ },
+ {
+  "text": "Who's opposing the carbon tax",
+  "kind": "question",
+  "why": "review: contraction"
+ },
+ {
+  "text": "where's the Earth Charter text",
+  "kind": "question",
+  "why": "review: contraction"
+ },
+ {
+  "text": "How's the vote on the veto going",
+  "kind": "question",
+  "why": "review: contraction"
+ },
+ {
+  "text": "what's it like to sleep outside in January",
+  "kind": "question",
+  "why": "a contraction already holds its verb"
  }
 ]
