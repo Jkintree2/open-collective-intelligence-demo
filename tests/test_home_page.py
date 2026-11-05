@@ -141,3 +141,10 @@ def test_gate_reader_has_no_list(live_like, switch):
     gate_in(live_like, switch, **ALL_ON, home_enabled="on")
     page = draw(live_like.client, "/")
     assert "home-mine" not in page and "Questions people are asking" not in page and "data-home" not in page
+
+
+def test_interface_describes_the_list_as_built():
+    """Final review, item 6: 04_interface.md is the text John approves against, so it says what the page does."""
+    assert "A statement links to its post" not in INTERFACE
+    assert "A statement links to My statements, where it is listed" in INTERFACE
+    assert 'Below it, "Questions people are asking", then the latest statements.' in INTERFACE
