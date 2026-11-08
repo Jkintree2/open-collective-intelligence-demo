@@ -339,3 +339,12 @@ def test_a_name_citing_an_article_comes_before_shorter_names_that_only_name_the_
     monkeypatch.setattr(ask.graph_ask, "solution_stances", lambda key: [{"key": key}])
     keys = [row["key"] for row in ask.document_solutions("How does homelessness relate to the principles of the UDHR?")]
     assert keys[0] == "a25" and len(keys) == ask.DOCUMENT_SOLUTIONS
+
+
+# QA of v0.3, 8 November: a question with no words of its own is answered but never kept or listed (routes_ask, home_lists).
+@pytest.mark.parametrize("question, own", [("Tell me more", False), ("Tell me more.", False), ("Why?", False),
+                                           ("List them all", False), ("In detail, please", False),
+                                           ("Who pays?", True), ("Is it fair?", True), (HOMELESSNESS_UDHR, True),
+                                           ("Tell me more about the carbon tax", True), ("What does the UDHR say?", True)])
+def test_a_question_has_words_of_its_own_or_only_follows_another(question, own):
+    assert ask.has_own_words(question) is own

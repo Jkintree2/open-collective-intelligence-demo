@@ -127,7 +127,8 @@
       asked.push(question);
       earlier.set(box, asked.slice(-EARLIER));
     }
-    if (data.status === 'answered') listed(box, question, data.question_id);
+    // A follow-up with no words of its own ("Tell me more") is answered but kept nowhere, so it is not listed.
+    if (data.status === 'answered' && !data.follow_up) listed(box, question, data.question_id);
     answers.prepend(answerBlock(question, data));
     return data;
   }

@@ -166,14 +166,14 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
     result = ask.answer(question, earlier, digest, settings, scope=about["kind"] if about else "record",
                         request_id=getattr(request.state, "request_id", None))
     partial = ask.PARTIAL if result.partial else None
-    question_id = None
-    if result.status == "answered":
+    question_id, follow_up = None, not ask.has_own_words(question)
+    if result.status == "answered" and not follow_up:
         on = {f"{about['kind']}_key": about["key"]} if about and about["kind"] != "issue" else {}
         question_id = _keep(request, question, issue, {"paragraphs": result.paragraphs, "partial": partial,
                                                        "sources": [_kept(source) for source in result.sources]}, **on)
     return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,
                  "sources": [_shown(source, settings) for source in result.sources],
-                 "partial": partial, **named, "question_id": question_id}
+                 "partial": partial, **named, "question_id": question_id, "follow_up": follow_up}
 
 
 def _keep(request: Request, question: str, issue: str | None, answer: dict[str, Any], **on: str) -> str | None:
@@ -205,7 +205,7 @@ def recent_questions(issue: str | None, **on: str) -> list[dict]:
     """The list under the box; a page without it is still the Ask page. `on` is solution_key or evidence_key for
     the box on that page (GitHub issue 55)."""
     limit = graph_questions.RECENT_ON_ISSUE if issue or on else graph_questions.RECENT
-    return home_lists.quietly(graph_questions.recent, issue, limit, **on)
+    return home_lists.listed(graph_questions.recent, issue, limit, **on)
 
 
 @router.get("/ask", dependencies=[Depends(ask_on), Depends(require_access)])

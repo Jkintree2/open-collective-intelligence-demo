@@ -119,7 +119,7 @@ def mine_list(page):
 def test_my_list_joins_my_questions_by_time(homepage):
     homepage.own_posts[:] = [own(1, -1), own(2, -3), own(3, -5)]
     homepage.own_questions[:] = [mine_question("Who pays?", 10, "01" * 16), mine_question("Is it fair?", -2, "02" * 16),
-                                 mine_question("Why now?", -4, "03" * 16)]
+                                 mine_question("Why the veto?", -4, "03" * 16)]
     page = draw(homepage.client, "/")
     assert "<h2>My most recent statements and questions</h2>" in page
     assert mine_list(page) == [
@@ -127,7 +127,7 @@ def test_my_list_joins_my_questions_by_time(homepage):
         ("/my-posts", "My statement number 1."),
         (f"/ask/answers/{'02' * 16}", "Is it fair?"),
         ("/my-posts", "My statement number 2."),
-        (f"/ask/answers/{'03' * 16}", "Why now?")]
+        (f"/ask/answers/{'03' * 16}", "Why the veto?")]
     assert '<section class="home-mine" id="home-mine-section">' in page
 
 
@@ -249,3 +249,16 @@ def test_home_mine_is_not_found_without_home(homepage, switch):
     homepage.client.cookies.clear()
     switch(home_enabled="on")
     assert homepage.client.get("/home/mine", follow_redirects=False).status_code in (303, 401)
+
+
+
+def test_recent_posts_and_my_posts_leave_out_follow_ups(homepage, monkeypatch):
+    """QA of v0.3, 8 November: a question with no words of its own ("Tell me more") kept before means nothing on a list."""
+    rows = [question("Tell me more", 30, qid="cd" * 16), question("Who pays for the carbon tax?", 20)]
+    monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: rows)
+    homepage.own_posts.clear()
+    homepage.own_questions[:] = [mine_question("Why?", 5, "ef" * 16), mine_question("Who pays?", 0, QID)]
+    page = draw(homepage.client, "/")
+    assert "Who pays for the carbon tax?" in feed(page) and "Tell me more" not in feed(page)
+    assert mine_list(page) == [(f"/ask/answers/{QID}", "Who pays?")]
+    assert "Why?" not in draw(homepage.client, "/my-posts")

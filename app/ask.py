@@ -163,18 +163,25 @@ def document_solutions(question: str) -> list[dict[str, Any]]:
 _ASKS_FOR_MORE = re.compile(r"\b(?:details?|detailed|list|explain|elaborate|expand|continue|go)\b", re.IGNORECASE)
 
 
+def _has_words(text: str) -> bool:
+    return issue_query(text) is not None or document_query(text) is not None
+
+
+def has_own_words(question: str) -> bool:
+    """Whether a question has words of its own to look up, beyond asking for more ("Tell me more", "in detail",
+    "list them all") or "Why?". One that has none follows another question: it is answered, but never kept or
+    listed, since on a list it would mean nothing (QA of v0.3, 8 November)."""
+    return _has_words(_ASKS_FOR_MORE.sub(" ", question))
+
+
 def lookup_question(question: str, earlier: list[str]) -> str:
     """The question a whole-record digest is looked up by: the question itself, or, when it has no words of its
-    own to look up, as when it only asks for more ("Tell me more", "in detail", "list them all") or asks "Why?",
-    the latest of the earlier questions the answer is given that has. The answer is still to the question asked,
-    and the top of the record is read either way."""
-    def has_words(text: str) -> bool:
-        return issue_query(text) is not None or document_query(text) is not None
-
-    if has_words(_ASKS_FOR_MORE.sub(" ", question)):
+    own, the latest of the earlier questions the answer is given that has. The answer is still to the question
+    asked, and the top of the record is read either way."""
+    if has_own_words(question):
         return question
     earlier = [text[:QUESTION_MAX] for text in earlier if isinstance(text, str) and text.strip()][-EARLIER_MAX:]
-    return next((text for text in reversed(earlier) if has_words(text)), question)
+    return next((text for text in reversed(earlier) if _has_words(text)), question)
 
 
 def known(digest: Digest) -> dict[str, Source]:
