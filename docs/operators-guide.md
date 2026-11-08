@@ -324,11 +324,11 @@ Once the form has opened, a new issue, solution or piece of evidence (never one 
 
 **Ask**, in the menu, opens a page for questions about the whole database. Each issue page also has a box, **Ask about this issue**, under the evidence and above the posts, for questions about that issue and the issues that are part of it. Anyone who can read the database can ask, in plain words.
 
-The answer is two or three sentences that sum up what the database holds, including views that differ and how many people hold each one. A question that asks for more, such as "Tell me more" after an answer, gets up to five short paragraphs. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown.
+The answer is two or three sentences that sum up what the database holds, including views that differ and how many people hold each one. A question that asks for more, such as "Tell me more" after an answer, gets up to five short paragraphs. It goes on from the question before it, so it is never kept or listed on its own. Each paragraph ends with numbered sources, the posts it comes from, each with a link to its issue. A paragraph that cannot be tied to a post is never shown.
 
 The three guiding documents can be asked about too. A question that names the Declaration, the Charter, the statement of purpose, an article or a principle, such as "What does the UDHR say about privacy?", is answered with the article or principle quoted word for word, and the source reads "Guiding document: Universal Declaration of Human Rights.", linked to that document on the About page. Asked whether a solution fits an article or a principle, the answer quotes it, says plainly whether it fits (yes, partly or no) judged by the words alone, says where the solution's own words meet it and where they do not, and gives the views people have posted. A quotation that is not word for word in the document is never shown. When the database holds nothing on the question, the answer says "The database does not say anything about this yet." Answers can still be wrong, so the page asks readers to open the posts and check. A person's earlier questions on the page go with the next one, so they can follow up.
 
-**The latest questions are listed for everyone.** Under the box, the Ask page shows the ten questions most recently answered anywhere, and each issue page the five asked about that issue, each a link to the answer it got. A question is kept only once it got an answer, and never with the name of who asked. The same question asked again moves to the top, with its newest answer. A kept answer is shown with the day it was given and an Ask again button, and only while the posts it rests on are unchanged: once one of them is edited or deleted, the page says so and offers Ask again instead, so an answer never keeps words a writer has taken back. Questions asked before 30 October 2026 have no answer kept; a tap puts one in the box. If a question or an answer that should not be listed ever appears, tell whoever helps you with the site; it can be removed from the database. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go.
+**The latest questions are listed for everyone.** Under the box, the Ask page shows the ten questions most recently answered anywhere, and each issue page the five asked about that issue, each a link to the answer it got. A question is kept only once it got an answer, and never shown with the name of who asked. With Home on (below), the database also notes who asked, so each person's own questions can be listed on their My posts page. The same question asked again moves to the top, with its newest answer. A kept answer is shown with the day it was given and an Ask again button, and only while the posts it rests on are unchanged: once one of them is edited or deleted, the page says so and offers Ask again instead, so an answer never keeps words a writer has taken back. Questions asked before 30 October 2026 have no answer kept; a tap puts one in the box. If a question or an answer that should not be listed ever appears, tell whoever helps you with the site; it can be removed from the database. DeepSeek reads each question together with the posts it is answered from; anonymous posts go without a name, and email addresses, countries and postal codes never go.
 
 **Cost:** a question costs at most about half a US cent, and less after the first question of a spell, because DeepSeek charges less for the long opening instructions it has just read. Each person can ask 30 questions a day, and the site answers 300 a day in all, so a full day at the limit costs at most about 1.50 US dollars.
 
@@ -341,6 +341,34 @@ Without a DeepSeek key, the page says "Asking needs the language model, which is
 ### After switching anything on
 
 Whoever helps you with the site can run its read only check against the live address. It now also says whether the About page and Ask are switched on or off, so a switch that did not take shows up straight away.
+
+## The Home page
+
+Home puts Write and Ask in one box. It has its own switch in Render, `HOME_ENABLED`, and until it is set the site looks exactly as it does now.
+
+The switch has three settings:
+
+* `preview`: only the accounts whose emails are listed in `HOME_PREVIEW`, separated by commas, see Home. Everyone else sees the site as before. This is how you try it first.
+* `on`: every signed-in member sees Home.
+* `off`, or no value: nobody does.
+
+To try it:
+
+1. Sign in to Render and open your service.
+2. Click **Environment**.
+3. Add `HOME_ENABLED` with the value `preview`, and `HOME_PREVIEW` with your account's email. Click **Save**. Render restarts the site. This takes a few minutes.
+
+When you are happy with it, change `HOME_ENABLED` to `on` and save. To go back, set it to `off`. Switching never changes what is already in the database. While Home is on for someone, the database notes which questions they asked, so their own list holds them on every phone and computer. The site never shows that to anyone else, but a copy downloaded from the back room includes it.
+
+With Home on, the menu reads Home, Issues, Enter a person, My posts, My account, About. Home invites people to write what they think, or ask a question. The site tells a statement from a question by itself, without calling the language model: a statement goes to the form as before, and a question gets its answer right under the button. When the site can't tell, it asks the writer: "Is this a statement to post, or a question to ask?" If it guessed wrong, a link under the button sends the same words the other way.
+
+Under the button, each person sees their own five most recent statements and questions. Below that comes "Recent posts": the statements and questions of everyone, mixed together, newest first. A statement looks as it always has; a question is a link to the answer it got, with the issue it was asked about, and never shows who asked it.
+
+My statements becomes My posts: each person's own statements and questions, mixed the same way, newest first. Questions asked before Home was on for that person are not in it, because the database did not note who asked them then.
+
+The same box sits at the top of the Issues, My posts and About pages, and takes what is written there to Home.
+
+Home answers questions only when `ASK_ENABLED` is on as well. Without it, Home posts statements, nothing on it mentions asking, and the lists hold statements only.
 
 ## Who to ask
 

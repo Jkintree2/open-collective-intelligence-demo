@@ -90,6 +90,9 @@ def sample():
             "source": "model", "anonymous": True, "seed": False}},
         {"label": "Change", "identity": "change", "properties": {"id": "change", "kind": "rename",
             "created_at": timestamp, "details": "{}"}},
+        # v0.3: a question a member asked (ASKED), as Ask keeps it.
+        {"label": "Question", "identity": "|who pays", "properties": {"key": "|who pays", "text": "Who pays?",
+            "created_at": timestamp, "asked_at": timestamp, "asked": 1, "id": "ab" * 16, "answer": "{}"}},
     ]
     refs = {n["label"]: {k: n[k] for k in ("label", "identity")} for n in nodes}
     from app.backup import DIRECTIONS

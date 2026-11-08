@@ -38,7 +38,7 @@ from app.auth import (
     reading_limit,
     post_spacing,
 )
-from app.config import get_settings
+from app.config import HOME_SENTENCE, get_settings
 from app.pages import loggable_path, write_notice
 from app.members import (
     RELOAD_AND_RETRY,
@@ -56,7 +56,8 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app.routes_item_pages import about_evidence, about_solution, evidence_href, solution_href
 from app import graph_own_posts
-from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
+from app import home, home_lists
+from app.text import TARGET_WORDS, TEXT_MAX, clean_name, count_line, make_key, relative_time, sentences
 from app import check, confidence, graph_accounts, graph_evidence, graph_item_pages, graph_places, places, search, sides, tidy
 
 settings = get_settings()
@@ -83,8 +84,9 @@ def switches() -> dict[str, bool]:
 
 
 templates.env.globals["switches"] = switches
+templates.env.globals["home_on"] = home.home_on
+templates.env.globals["home_asks"] = home.home_asks
 
-TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
 FEED_LIMIT = 60
 SORTS = (("people", "Most people"), ("recent", "Most recent"), ("evidence", "Most evidence"))
@@ -213,18 +215,22 @@ CHIP_PAGES = {"Issue": _issue_href, "Solution": solution_href, "Evidence": evide
 
 
 def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
-    """Relative times, chips and the sentence list for a page of posts."""
+    """Relative times, chips and the sentence list for a page of posts. Since v0.3 a page may hold questions too
+    (home_lists, kind "question"): they get their times only."""
     now = datetime.now(timezone.utc)
-    structure = graph.post_structure([post["id"] for post in posts])
+    ids = [post["id"] for post in posts if post.get("kind") != "question"]
+    structure = graph.post_structure(ids)
     # Only a member has own posts (with accounts off `me` is None and the record is asked nothing more).
-    flags = graph_own_posts.post_flags(me, [post["id"] for post in posts]) if me else {}
+    flags = graph_own_posts.post_flags(me, ids) if me else {}
     # Phase 3: the place under a post (Q44), read only with PLACES_ENABLED.
-    placed = graph_places.post_places([post["id"] for post in posts]) if settings.places_enabled else {}
+    placed = graph_places.post_places(ids) if settings.places_enabled else {}
     for post in posts:
         created = post.get("created_at")
         post["when"] = relative_time(created, now) if created else ""
         post["absolute"] = created.strftime("%Y-%m-%d %H:%M UTC") if created else ""
         post["iso"] = created.isoformat() if created else ""
+        if post.get("kind") == "question":
+            continue
         flag = flags.get(post["id"], {})
         post["mine"] = bool(flag.get("mine")) and not post.get("seed")
         post["edited"] = flag.get("edited_at") is not None
@@ -265,6 +271,37 @@ def _about_issue(key: str | None) -> dict | None:
     }
 
 
+HOME_MINE = 5  # v0.3: the writer's own statements and questions under Home's button
+HOME_MINE_CHARACTERS = 120
+
+
+def _home_mine(request: Request) -> list[dict]:
+    """v0.3 Home: the member's five most recent statements (Q24, as My posts reads them) and, with asking on,
+    questions (Q57), newest first, each cut to fit the list (_home_mine.html, drawn again from /home/mine)."""
+    key = request.state.member.key
+    questions = home_lists.my_questions(key, HOME_MINE) if home.home_asks(request) else []
+    now = datetime.now(timezone.utc)
+    return [{**item, "short": _short(item.get("text") or ""), "when": relative_time(item["created_at"], now)}
+            for item in home_lists.mixed(graph_own_posts.my_posts(key, HOME_MINE), questions, HOME_MINE)]
+
+
+def _short(text: str) -> str:
+    """Whole words up to HOME_MINE_CHARACTERS, then an ellipsis."""
+    text = " ".join(text.split())
+    if len(text) <= HOME_MINE_CHARACTERS:
+        return text
+    return text[:HOME_MINE_CHARACTERS].rsplit(" ", 1)[0].rstrip(" ,;:.") + "…"
+
+
+def _feed_posts(request: Request, *, mixed: bool) -> list[dict]:
+    """The latest statements; mixed (Home with asking, John, 7 November), with everyone's latest questions too,
+    newest first, as many in all as the feed holds. Only what is shown is decorated."""
+    posts = graph.list_posts(FEED_LIMIT)
+    if mixed:
+        posts = home_lists.mixed(posts, home_lists.everyones_questions(FEED_LIMIT), FEED_LIMIT)
+    return _decorate_posts(posts, me=member_key(request))
+
+
 def _render_index(
     request: Request,
     *,
@@ -274,14 +311,19 @@ def _render_index(
     about: dict | None = None,
     notice: str | None = None,
     editing: dict | None = None,
+    unsure: bool = False,
+    start: bool = False,
 ) -> Response:
-    posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
+    home_page = editing is None and home.home_on(request)
+    home_ask = home_page and home.home_asks(request)
+    posts = _feed_posts(request, mixed=home_ask)
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
     return templates.TemplateResponse(
         request,
         "index.html",
         {
             "site_sentence": settings.site_sentence,
+            "home_sentence": HOME_SENTENCE,
             "posts": posts,
             "name": name,
             "message": message,
@@ -289,6 +331,13 @@ def _render_index(
             "text": text,
             "about": about,
             "editing": editing,
+            # v0.3 Home: the two buttons when the site can't tell a statement from a question, and a text brought
+            # from the box on another page for home.js to carry on with.
+            "unsure": unsure,
+            "start": start,
+            "home_page": home_page,
+            "home_ask": home_ask,
+            "home_mine": _home_mine(request) if home_page else [],
             # Phase 2: the card reads evidence links only with the flag and a reading service; with the
             # flag alone a row with no link still says so (revision round).
             "evidence_check": settings.evidence_check_enabled,
@@ -687,7 +736,8 @@ def post_card(request: Request, data: PostRequest) -> Response:
 
 @app.get("/feed", dependencies=[Depends(require_access)])
 def feed(request: Request) -> Response:
-    return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))})
+    """card.js reloads the list from here after a post, so on Home it is the mixed list too."""
+    return templates.TemplateResponse(request, "_feed.html", {"posts": _feed_posts(request, mixed=home.home_asks(request))})
 
 
 @app.exception_handler(GateRequired)

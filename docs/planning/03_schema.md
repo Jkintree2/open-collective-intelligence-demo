@@ -10,6 +10,8 @@
 
 > **Extended 30 October 2026 for GitHub issue 55 (a page for each solution and each piece of evidence).** Added: queries Q50 to Q54, a third form of Q40 and two more forms of Q41 for Ask on those pages, and two properties on `Question` (`solution_key`, `evidence_key`) with Q47 to Q49 revised to carry them. No new label, relationship type, constraint or index. See "GitHub issue 55" at the end. No switch: the pages are part of the site; their Ask box shows only with `ASK_ENABLED`.
 
+> **Extended 8 November 2026 for v0.3 (John's email of 7 November: one "Recent posts" list and "My posts").** Added: the `ASKED` relationship (account to `Question`), written by Q47 while Home is on for the member who asked (Q56), and Q57, a member's own questions; Q48 returns `asked_at`. The Phase 3 rule that a question is kept "never with who asked" holds only for members without Home. See "v0.3: who asked a question" at the end.
+
 > **Revised 2 November 2026: no new sub-issues** (John: a reason someone gives is evidence, not a sub-issue). A post writes no `PART_OF` (statement 3b is gone, and the payload has no `parent`); tidying only makes a sub-issue top level (Q28). `PART_OF` stays in the schema: the seed's issues block still writes it, a back-room copy holding it still restores, and every query that reads it is unchanged, so a tree already in a record still shows. Merge (Q32) still moves an issue's sub-issues.
 
 Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kickoff decisions require: sub-issues, an anonymous flag on relationships, a source link on Evidence, timestamps, and a Post node so every edge traces back to the text that produced it.
@@ -1441,7 +1443,7 @@ RETURN post.id AS id, post.text AS text, post.display_name AS display_name, post
 
 ### Q47 to Q49. The questions people asked, and the answer each got
 
-Added 28 October 2026, after the call: John asked for the latest questions under the Ask box, as the Write page lists the latest statements. The one new label of Phase 3, with no relationship type: `Question {key, text, issue_key, created_at, asked_at, asked}`. A question is kept only when Ask answered it (status `answered`), never when it was refused, empty or failed, and never with who asked: no `Person`, no account key, no edge. `key` is the issue key (empty for the whole database), a bar and the question's words in lower case with spacing and a closing question mark or full stop dropped (`graph_questions.question_key`), so asking the same question again on the same issue moves it to the top and counts it. With `ASK_ENABLED`, startup makes a unique constraint on `Question.key` and a range index on `asked_at`. Copies carry it (`backup.LABEL_KEYS`); a restore needs no switch.
+Added 28 October 2026, after the call: John asked for the latest questions under the Ask box, as the Write page lists the latest statements. The one new label of Phase 3, with no relationship type: `Question {key, text, issue_key, created_at, asked_at, asked}`. A question is kept only when Ask answered it (status `answered`), never when it was refused, empty or failed, nor (since 8 November 2026) when it has no words of its own (`ask.has_own_words`: "Tell me more", "Why?"; every list also leaves out such questions kept before), and never with who asked: no `Person`, no account key, no edge (until v0.3: see "v0.3: who asked a question" at the end). `key` is the issue key (empty for the whole database), a bar and the question's words in lower case with spacing and a closing question mark or full stop dropped (`graph_questions.question_key`), so asking the same question again on the same issue moves it to the top and counts it. With `ASK_ENABLED`, startup makes a unique constraint on `Question.key` and a range index on `asked_at`. Copies carry it (`backup.LABEL_KEYS`); a restore needs no switch.
 
 Since 30 October 2026 (John: "Each item in the list of questions asked definitely needs to be a link to the answer.") a question also keeps `id`, a uuid4 hex given the first time it is answered (a question kept before has none until it is answered again), with a unique constraint `question_id` made beside the other two, and `answer`, the JSON text of the answer it last got: `{"paragraphs": [{"text", "refs"}], "sources": [{"id", "kind", "name", "date", "text", "href", "issue", "post_id"}], "partial": text or null}`, as the page showed it, each post source with its post's id. Asking again replaces it; `asked_at` is when it was answered. `/ask/answers/<id>` shows it only while every post it cites is there, not edited since `asked_at` and under the same name (Q46 by id), because the answer may quote or name a post and must not keep what its writer took back; otherwise it shows the question, a line saying so and Ask again. A copy checks `answer` as text.
 
@@ -1697,3 +1699,45 @@ LIMIT $limit
 ```
 
 `app/readings.py` keeps the rows whose reading and post differ: each side is turned into lines in the display verbs ("claims", "proposes solution … for …", "approves", "opposes", "submits evidence …, which supports issue of …"), and a post is listed when the two sets differ. A post without `reading_payload` (before this change) has its reading worked out from `extraction_raw` against the names as they are now, less what the post itself added (its rows that were new then, and its own proposal links), and says so; a row that cannot be read again is counted, not listed, and never stops the page.
+
+## v0.3: who asked a question (added 8 November 2026)
+
+John, 7 November: with Home on, "Recent posts" mixes everyone's statements and questions, newest first, and My statements becomes "My posts", the member's own statements and questions mixed the same way. For My posts to hold a member's questions on every device, the record keeps who asked:
+
+* **`ASKED`**, from an account (`Person` with an `email`) to a `Question`, one per pair (MERGE), with `asked_at`, the last time that member asked it (a datetime). Written by Q47 only while Home is on for the member who asked (`home.home_on`, so `HOME_ENABLED` `preview` with the member in `HOME_PREVIEW`, or `on`); otherwise nobody is linked, as in Phase 3. The question node is still shared: two members asking the same question on the same issue link to one `Question`, each with their own `asked_at`, and the answer is the newest either got.
+* **Never shown with a name.** Q57 reads a member's own links only (My posts, the list under Home's button); "Recent posts", Ask the database and the issue pages read questions through Q48, which never reads `ASKED`.
+* Questions asked before this went live, or while Home was off for the member, have no `ASKED` and are not on anyone's My posts.
+* A copy carries `ASKED` (`backup.DIRECTIONS`); `asked_at` is checked as a timestamp. Withdrawing an invitation (Q21) applies only to an account never accepted, so it never meets an `ASKED`.
+
+**Q56. Keep a question and link who asked** (Q47 as revised; `$person_key` null links nobody):
+
+```cypher
+MERGE (q:Question {key: $key})
+ON CREATE SET q.created_at = datetime($now), q.asked = 0
+SET q.id = coalesce(q.id, $id), q.text = $text, q.issue_key = $issue_key, q.asked_at = datetime($now),
+    q.asked = q.asked + 1, q.answer = $answer, q.solution_key = $solution_key, q.evidence_key = $evidence_key
+WITH q
+OPTIONAL MATCH (p:Person {key: $person_key})
+FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END |
+  MERGE (p)-[a:ASKED]->(q)
+  SET a.asked_at = datetime($now))
+RETURN q.id AS id
+```
+
+**Q48** returns `asked_at` as well, so "Recent posts" can place each question among the statements (`app/home_lists.py`, newest first, at most 60 in all). Q48 and Q57 share their tail in `graph_questions.py` (`_QUESTION_ROWS`): each ends `WITH q, <when> AS asked_at ORDER BY asked_at DESC LIMIT $limit`, then the three OPTIONAL MATCH lines and the RETURN below.
+
+**Q57. A member's own questions**, newest first by their own `asked_at`:
+
+```cypher
+MATCH (:Person {key: $person_key})-[a:ASKED]->(q:Question)
+WITH q, a.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
+OPTIONAL MATCH (i:Issue {key: q.issue_key})
+OPTIONAL MATCH (s:Solution {key: q.solution_key})
+OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
+       q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name,
+       asked_at
+ORDER BY asked_at DESC
+```
+
+My posts asks for one more of each than it shows (Q24 and Q57), mixes them and cuts to fifty, so "Show more" is offered exactly when more exist. A failed read of the questions is logged (`questions_not_read`) and leaves the statements.

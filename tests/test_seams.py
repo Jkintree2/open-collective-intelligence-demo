@@ -79,7 +79,8 @@ def test_a_new_routes_module_is_picked_up_by_its_file_name(monkeypatch, tmp_path
 
 def test_page_scripts_expose_the_card_to_later_scripts():
     source = Path("app/static/app.js").read_text(encoding="utf-8")
-    assert "window.oci = {setPositionOnExisting: card.setPositionOnExisting, card};" in source
+    # v0.3: home.js draws the lists again after an answer through the same object.
+    assert "window.oci = {setPositionOnExisting: card.setPositionOnExisting, card, refreshLists};" in source
 
 
 def test_css_keeps_one_anchor_per_parallel_sub_plan():

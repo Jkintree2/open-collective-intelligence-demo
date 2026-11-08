@@ -25,8 +25,9 @@ import httpx
 
 # Pages that need someone signed in; signed out, each one sends the reader to sign in.
 GATED = ("/", "/issues", "/people", "/my-statements", "/account", "/changes")
-SIGNED_IN = {"/": "Recent posts", "/issues": "Issues", "/my-statements": "<h1>My statements</h1>",
-             "/account": "<h1>My account</h1>"}
+# /my-statements reads "My posts" for an account Home is on for (v0.3, John, 7 November): either heading passes.
+SIGNED_IN = {"/": ("Recent posts",), "/issues": ("Issues",),
+             "/my-statements": ("<h1>My statements</h1>", "<h1>My posts</h1>"), "/account": ("<h1>My account</h1>",)}
 # Pages behind a switch in the Render dashboard, not found while it is off. /about opens signed out;
 # /ask, like the gated pages, sends a signed-out reader to sign in and shows its heading signed in.
 ABOUT = ("/about", "<h1>About this site</h1>")
@@ -100,9 +101,10 @@ def run(client: httpx.Client, static: dict[str, bytes], cookie: str | None = Non
     ask = client.get(ASK[0])
     checks.append(_switched("/ask signed out goes to sign in", ask, _sends_to_sign_in(ask)))
     if cookie:
-        for path, marker in SIGNED_IN.items():
+        for path, markers in SIGNED_IN.items():
             response = client.get(path, headers={"Cookie": f"oci_member={cookie}"})
-            checks.append(Check(f"{path} signed in", response.status_code == 200 and marker in response.text,
+            found = any(marker in response.text for marker in markers)
+            checks.append(Check(f"{path} signed in", response.status_code == 200 and found,
                                 f"answered {response.status_code}" + ("" if response.status_code != 200 else ", marker missing")))
         ask = client.get(ASK[0], headers={"Cookie": f"oci_member={cookie}"})
         checks.append(_switched("/ask signed in", ask, ask.status_code == 200 and ASK[1] in ask.text))

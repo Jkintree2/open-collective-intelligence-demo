@@ -45,7 +45,7 @@ def test_asked_again_the_question_keeps_its_id_and_shows_the_newest_answer(quest
     assert kept["issue_name"] == "Security Council veto"
     assert graph_questions.recent("veto") == [{"text": "why the veto", "issue_key": "veto",
                                                "issue_name": "Security Council veto", "id": first, "answered": True,
-                                               **NOT_ON_A_SOLUTION}]
+                                               **NOT_ON_A_SOLUTION, "asked_at": NOW + timedelta(hours=1)}]
 
 
 def test_a_question_kept_before_answers_were_gets_an_id_when_asked_again(questions):
@@ -53,13 +53,57 @@ def test_a_question_kept_before_answers_were_gets_an_id_when_asked_again(questio
         "CREATE (:Question {key: '|who pays', text: 'Who pays?', issue_key: null, created_at: datetime($now), "
         "asked_at: datetime($now), asked: 1})", now=NOW.isoformat(), database_=questions.database())
     assert graph_questions.recent() == [{"text": "Who pays?", "issue_key": None, "issue_name": None, "id": None,
-                                         "answered": False, **NOT_ON_A_SOLUTION}]
+                                         "answered": False, **NOT_ON_A_SOLUTION, "asked_at": NOW}]
     qid = graph_questions.keep("Who pays?", None, NOW + timedelta(hours=1), FIRST)
     assert graph_questions.recent()[0] == {"text": "Who pays?", "issue_key": None, "issue_name": None, "id": qid,
-                                           "answered": True, **NOT_ON_A_SOLUTION}
+                                           "answered": True, **NOT_ON_A_SOLUTION, "asked_at": NOW + timedelta(hours=1)}
 
 
 def test_question_ids_are_unique(questions):
     names = {record["name"] for record in
              questions.driver().execute_query("SHOW CONSTRAINTS", database_=questions.database()).records}
     assert {"question_key", "question_id"} <= names
+
+
+# v0.3 (John, 7 November: "My posts" lists his questions too). A member for whom Home is on is linked to each question
+# they ask (Q56), once, with when they last asked it, and reads them back newest first on any device (Q57).
+def member(questions, key):
+    questions.driver().execute_query("CREATE (:Person {key: $key, name: $key, email: $email})", key=key,
+                                     email=f"{key[5:]}@example.org", database_=questions.database())
+
+
+def asked_links(questions, key):
+    return questions.driver().execute_query("MATCH (:Person {key: $key})-[a:ASKED]->(:Question) RETURN count(a) AS n",
+                                            key=key, database_=questions.database()).records[0]["n"]
+
+
+def test_a_member_is_linked_once_to_each_question_and_reads_them_newest_first(questions):
+    member(questions, "acct:ada")
+    member(questions, "acct:bob")
+    veto = graph_questions.keep("Why the veto?", "veto", NOW, FIRST, person_key="acct:ada")
+    pays = graph_questions.keep("Who pays?", None, NOW + timedelta(hours=1), FIRST, person_key="acct:ada")
+    graph_questions.keep("Is it fair?", None, NOW + timedelta(hours=2), FIRST, person_key="acct:bob")
+    mine = graph_questions.mine("acct:ada", 10)
+    assert [(row["text"], row["id"], row["answered"], row["asked_at"]) for row in mine] == \
+        [("Who pays?", pays, True, NOW + timedelta(hours=1)), ("Why the veto?", veto, True, NOW)]
+    assert mine[1]["issue_key"] == "veto" and mine[0]["issue_key"] is None
+    # Asked again later: still one link, moved to the top with the new time and the newest wording.
+    graph_questions.keep("why the  veto", "veto", NOW + timedelta(hours=3), NEWER, person_key="acct:ada")
+    assert [(row["text"], row["asked_at"]) for row in graph_questions.mine("acct:ada", 10)] == \
+        [("why the veto", NOW + timedelta(hours=3)), ("Who pays?", NOW + timedelta(hours=1))]
+    assert asked_links(questions, "acct:ada") == 2
+    # Bob asking Ada's question links Bob too; Ada's own time for it does not move.
+    graph_questions.keep("Who pays?", None, NOW + timedelta(hours=4), FIRST, person_key="acct:bob")
+    assert graph_questions.mine("acct:ada", 10)[1]["asked_at"] == NOW + timedelta(hours=1)
+    assert [row["text"] for row in graph_questions.mine("acct:bob", 10)] == ["Who pays?", "Is it fair?"]
+    assert len(graph_questions.mine("acct:ada", 1)) == 1
+
+
+def test_without_a_member_nobody_is_linked(questions):
+    member(questions, "acct:ada")
+    graph_questions.keep("Why the veto?", "veto", NOW, FIRST)
+    graph_questions.keep("Who pays?", None, NOW, FIRST, person_key="acct:nobody")
+    total = questions.driver().execute_query("MATCH ()-[a:ASKED]->() RETURN count(a) AS n",
+                                             database_=questions.database()).records[0]["n"]
+    assert total == 0 and graph_questions.mine("acct:ada", 10) == []
+    assert len(graph_questions.recent()) == 2

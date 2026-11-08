@@ -1,0 +1,343 @@
+[
+ {
+  "text": "Which solutions to this issue have the most approval?",
+  "kind": "question"
+ },
+ {
+  "text": "Why do people oppose these solutions?",
+  "kind": "question"
+ },
+ {
+  "text": "Has opposition changed since the solution was amended?",
+  "kind": "question"
+ },
+ {
+  "text": "Which evidence is most supported by other evidence?",
+  "kind": "question"
+ },
+ {
+  "text": "What is the population of Mars?",
+  "kind": "question"
+ },
+ {
+  "text": "Should every solution here be approved?",
+  "kind": "question"
+ },
+ {
+  "text": "Is a carbon tax a good idea?",
+  "kind": "question"
+ },
+ {
+  "text": "Who opposes the global carbon tax?",
+  "kind": "question"
+ },
+ {
+  "text": "And why?",
+  "kind": "question"
+ },
+ {
+  "text": "Did anyone change their opposition to a solution after it was amended?",
+  "kind": "question"
+ },
+ {
+  "text": "What does the UDHR say about privacy?",
+  "kind": "question"
+ },
+ {
+  "text": "Is the proposed solution of a global carbon tax consistent with the Earth Charter, Article 7d?",
+  "kind": "question"
+ },
+ {
+  "text": "Does the lack of a global carbon tax violate the Universal Declaration of Human Rights?",
+  "kind": "question"
+ },
+ {
+  "text": "Tell me more.",
+  "kind": "question"
+ },
+ {
+  "text": "How does homelessness relate to the principles of the UDHR?",
+  "kind": "question"
+ },
+ {
+  "text": "What does Dana Reyes think, and what does Ada Okafor think?",
+  "kind": "question"
+ },
+ {
+  "text": "I keep hearing that the veto blocks action on wars. What have people here said about that?",
+  "kind": "unsure",
+  "why": "a claim, then a question"
+ },
+ {
+  "text": "how does homelessness relate to the UDHR",
+  "kind": "question",
+  "why": "John's example, no question mark"
+ },
+ {
+  "text": "data centers raise electricity prices",
+  "kind": "statement",
+  "why": "John's example, no period"
+ },
+ {
+  "text": "is housing a human right",
+  "kind": "question"
+ },
+ {
+  "text": "what are people saying about the veto",
+  "kind": "question"
+ },
+ {
+  "text": "Should the UN have a standing army",
+  "kind": "question"
+ },
+ {
+  "text": "where can I read the Earth Charter",
+  "kind": "question"
+ },
+ {
+  "text": "Can you explain why rents keep rising",
+  "kind": "question"
+ },
+ {
+  "text": "Global rules can be enforced without a world government",
+  "kind": "statement"
+ },
+ {
+  "text": "The Security Council veto should be abolished",
+  "kind": "statement"
+ },
+ {
+  "text": "Why?",
+  "kind": "question",
+  "why": "a follow-up"
+ },
+ {
+  "text": "More",
+  "kind": "question",
+  "why": "a follow-up"
+ },
+ {
+  "text": "tell me more",
+  "kind": "question",
+  "why": "a follow-up"
+ },
+ {
+  "text": "why",
+  "kind": "question",
+  "why": "a follow-up"
+ },
+ {
+  "text": "Explain the Uniting for Peace resolution",
+  "kind": "question"
+ },
+ {
+  "text": "Summarize the solutions for homelessness.",
+  "kind": "question"
+ },
+ {
+  "text": "List the evidence about carbon pricing",
+  "kind": "question"
+ },
+ {
+  "text": "Show me issues near St. Louis",
+  "kind": "question"
+ },
+ {
+  "text": "Please explain the Earth Charter",
+  "kind": "question"
+ },
+ {
+  "text": "What is the UDHR? How does it relate to homelessness",
+  "kind": "question",
+  "why": "two questions, the last without a mark"
+ },
+ {
+  "text": "I live in St. Louis. What is being done about homelessness here",
+  "kind": "unsure",
+  "why": "a claim, then a question without a mark"
+ },
+ {
+  "text": "Why do we tolerate homelessness? Because rents are too high.",
+  "kind": "unsure",
+  "why": "a question answered in the next sentence"
+ },
+ {
+  "text": "The veto blocks action. What we need is reform.",
+  "kind": "statement",
+  "why": "the second sentence is a claim with a period"
+ },
+ {
+  "text": "Homelessness in St. Louis has doubled since 2020 and the city should build more shelters.",
+  "kind": "statement"
+ },
+ {
+  "text": "What we need is a global referendum.",
+  "kind": "unsure",
+  "why": "starts like a question, reads as a claim"
+ },
+ {
+  "text": "How we treat the homeless shows who we are",
+  "kind": "unsure",
+  "why": "starts like a question, reads as a claim"
+ },
+ {
+  "text": "Tell your representatives to vote for the carbon tax.",
+  "kind": "unsure",
+  "why": "asks people, not the site"
+ },
+ {
+  "text": "Is it true that carbon pricing covers only a quarter of emissions.",
+  "kind": "unsure",
+  "why": "a question ending in a period"
+ },
+ {
+  "text": "Do not build more data centers in dry regions.",
+  "kind": "statement",
+  "why": "an instruction to people"
+ },
+ {
+  "text": "",
+  "kind": "statement",
+  "why": "empty"
+ },
+ {
+  "text": "   ",
+  "kind": "statement",
+  "why": "empty"
+ },
+ {
+  "text": "Our best protection from all of those risks might be using CTI software to ratify a World Constitution that is based on the principles of the Universal Declaration of Human Rights and the Earth Charter.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Laws are passed by elected representatives. Supreme laws are approved by referendums with direct votes by the people, whether it's at the local, state, national, or global level.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Ratification of the principles of the Universal Declaration of Human Rights and the Earth Charter by a global referendum would give those principles the force of supreme law for all nations.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "The International Court of Justice can rule on disputes between states, but its judgments are only enforced if the Security Council chooses to act. A court whose rulings depend on the goodwill of the parties is not a court in the ordinary sense.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Most states have never accepted the International Court of Justice's compulsory jurisdiction, and several that once did have since withdrawn. International law binds only those who agree to be bound.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Global rules can be enforced without a world government. The Montreal Protocol phased out ozone depleting chemicals through trade measures and a funding mechanism, and nearly every country complied.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Any one of the five permanent members can block a Security Council resolution, whatever the rest of the world thinks. Since 1946 the veto has been used hundreds of times, often to shield the member casting it or its allies.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "The General Assembly can act when the Council is blocked. The Uniting for Peace resolution of 1950 lets the Assembly recommend collective measures, and since 2022 the Assembly meets within ten days of any veto to debate it.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "A carbon tax approved by a global referendum would be supreme law for all nations. The referendum would specify how the carbon tax money, $1 trillion per year for instance, would be spent. If the damages caused by greenhouse gas emissions from burning fossil fuels was less than $1 trillion per year, the remainder could be spent on financing the transition to solar, wind, battery, and other technologies to reduce our greenhouse gas emissions.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "National climate pledges under the Paris Agreement are voluntary, and the gap between what countries have promised and what the science requires has not closed. Without a body that can set and enforce a shared limit, each country has a reason to wait for the others.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Carbon pricing now exists in dozens of countries, but it covers only about a quarter of global emissions and most prices are far below what would be needed to meet the Paris goals. A single global price would remove the incentive to move pollution across borders.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "No global body is directly elected. The General Assembly represents governments, not people, and a citizen of a large democracy has no more say in it than the ruler of a small dictatorship.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Estonia shows that a whole country can vote, sign and govern online with a trusted digital identity. The tools for direct participation at a large scale already exist.",
+  "kind": "statement",
+  "why": "seed post"
+ },
+ {
+  "text": "Who has control now? The higher, the fewer. Autonomy requires controls, rules, and laws. I would like to see the principles of the Universal Declaration of Human Rights and the Earth Charter ratified as supreme law for all nations.",
+  "kind": "unsure",
+  "why": "seed post"
+ },
+ {
+  "text": "Why do we tolerate homelessness\nBecause we decided housing is earned and that is wrong",
+  "kind": "unsure",
+  "why": "review: two lines, a question answered on the next"
+ },
+ {
+  "text": "Do data centers raise prices\nYes they do and we should tax them",
+  "kind": "unsure",
+  "why": "review: two lines, a question answered on the next"
+ },
+ {
+  "text": "Why do we tolerate homelessness because we decided housing is earned",
+  "kind": "unsure",
+  "why": "review: one line with because"
+ },
+ {
+  "text": "How does the lack of affordable housing in St Louis relate to the principles of the Universal Declaration of Human Rights and the Earth Charter",
+  "kind": "unsure",
+  "why": "review: a long line with no mark"
+ },
+ {
+  "text": "how does homelessness relate to the UDHR\nand what can we do about it",
+  "kind": "question",
+  "why": "two lines, both questions"
+ },
+ {
+  "text": "Rents are too high\nThe city should build more homes",
+  "kind": "statement",
+  "why": "two lines, both claims"
+ },
+ {
+  "text": "what's the evidence on rent control",
+  "kind": "question",
+  "why": "review: contraction, no mark"
+ },
+ {
+  "text": "whats the evidence on rent control",
+  "kind": "question",
+  "why": "review: contraction without the apostrophe"
+ },
+ {
+  "text": "What’s the evidence on rent control",
+  "kind": "question",
+  "why": "review: curly apostrophe"
+ },
+ {
+  "text": "Who's opposing the carbon tax",
+  "kind": "question",
+  "why": "review: contraction"
+ },
+ {
+  "text": "where's the Earth Charter text",
+  "kind": "question",
+  "why": "review: contraction"
+ },
+ {
+  "text": "How's the vote on the veto going",
+  "kind": "question",
+  "why": "review: contraction"
+ },
+ {
+  "text": "what's it like to sleep outside in January",
+  "kind": "question",
+  "why": "a contraction already holds its verb"
+ }
+]

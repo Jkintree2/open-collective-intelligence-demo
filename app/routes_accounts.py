@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 
-from app import accounts, config, emails, graph_accounts, graph_own_posts, mailer
+from app import accounts, config, emails, graph_accounts, graph_own_posts, home, home_lists, mailer
 from app.auth import TOO_MANY_TRIES, WRONG_PASSPHRASE_DELAY
 from app.members import (Member, clear_member_cookie, current_member, require_member, require_same_origin,
                          safe_next, set_member_cookie)
@@ -107,15 +107,26 @@ def account(request: Request, done: str | None = None, member: Member = Depends(
 @router.get("/my-statements")
 def my_statements(request: Request, shown: str = "", member: Member = Depends(require_member)) -> Response:
     """X1, its own page since John's 22 Oct email: the member's own posts, 50 at a time; one more is
-    asked for to know whether to offer "Show more". A hand-typed "shown" that is not a number is the first page."""
+    asked for to know whether to offer "Show more". A hand-typed "shown" that is not a number is the first page.
+    v0.3 (John, 7 November): with Home on it is "My posts", and with asking on it mixes in the questions the
+    member asked (Q57), newest first, counted in the 50."""
     from app import main as site
     shown = int(shown) if shown.lstrip("-").isdigit() and len(shown) < 8 else STATEMENTS_PAGE
     shown = min(max(shown, STATEMENTS_PAGE), STATEMENTS_MAX)
-    posts = graph_own_posts.my_posts(member.key, shown + 1)
+    questions = home_lists.my_questions(member.key, shown + 1) if home.home_asks(request) else []
+    items = home_lists.mixed(graph_own_posts.my_posts(member.key, shown + 1), questions, shown + 1)
+    path = "/my-posts" if home.home_on(request) else "/my-statements"
     return page(request, "my_statements.html",
-                {"posts": site._decorate_posts(posts[:shown], me=member.key),
-                 "more": shown + STATEMENTS_PAGE if len(posts) > shown and shown < STATEMENTS_MAX else None},
+                {"posts": site._decorate_posts(items[:shown], me=member.key),
+                 "more": shown + STATEMENTS_PAGE if len(items) > shown and shown < STATEMENTS_MAX else None,
+                 "my_path": path, "my_title": "My posts" if path == "/my-posts" else "My statements"},
                 private=True)
+
+
+@router.get("/my-posts", dependencies=[Depends(require_member), Depends(home.require_home)])
+def my_posts(request: Request, shown: str = "", member: Member = Depends(require_member)) -> Response:
+    """v0.3: the same page at the address the menu gives while Home is on; not found otherwise."""
+    return my_statements(request, shown=shown, member=member)
 
 
 @router.post("/account/details", dependencies=[Depends(require_same_origin)])

@@ -19,6 +19,12 @@ SITE_SENTENCE = (
     "Write what you think about an issue that matters to you. Your issue, your claim, and any evidence and "
     "solution will be pulled out for you to check, then added to a database everyone here shares."
 )
+# v0.3: the sentence at the top of Home, with HOME_ENABLED and ASK_ENABLED (John, 4 November 2026: "or ask a
+# question," goes in after "Write what you think").
+HOME_SENTENCE = (
+    "Write what you think, or ask a question, about an issue that matters to you. Your issue, your claim, and any "
+    "evidence and solution will be pulled out for you to check, then added to a database everyone here shares."
+)
 DEFAULT_LLM_BASE_URL = "https://api.deepseek.com"
 DEFAULT_LLM_MODEL = "deepseek-v4-flash"
 
@@ -63,6 +69,10 @@ class Settings:
     follow_ups_enabled: bool = False
     places_enabled: bool = False
     about_enabled: bool = False
+    # v0.3, one box for Write and Ask on the Home page: "off" (the default) leaves every page as it was, "preview"
+    # shows it only to the members whose emails are in HOME_PREVIEW, "on" to every signed-in member.
+    home_enabled: str = "off"
+    home_preview: tuple[str, ...] = ()
 
     @property
     def is_local(self) -> bool:
@@ -79,6 +89,20 @@ def _site_url_ok(url: str, local: bool) -> bool:
 
 def _on(env: dict[str, str], name: str) -> bool:
     return (env.get(name) or "").strip().lower() in ("1", "true", "yes")
+
+
+HOME_MODES = ("off", "preview", "on")
+
+
+def _mode(env: dict[str, str], name: str) -> str:
+    """HOME_ENABLED: off, preview or on; anything else is off."""
+    value = (env.get(name) or "").strip().lower()
+    return value if value in HOME_MODES else "off"
+
+
+def _emails(env: dict[str, str], name: str) -> tuple[str, ...]:
+    """HOME_PREVIEW: comma-separated emails, lower-cased, blanks dropped."""
+    return tuple(part.strip().lower() for part in (env.get(name) or "").split(",") if part.strip())
 
 
 def load_settings(env: dict[str, str] | None = None) -> Settings:
@@ -126,6 +150,8 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         follow_ups_enabled=_on(env, "FOLLOW_UPS_ENABLED"),
         places_enabled=_on(env, "PLACES_ENABLED"),
         about_enabled=_on(env, "ABOUT_ENABLED"),
+        home_enabled=_mode(env, "HOME_ENABLED"),
+        home_preview=_emails(env, "HOME_PREVIEW"),
     )
 
 

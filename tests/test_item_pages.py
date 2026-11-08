@@ -245,7 +245,8 @@ def asking(pages, switch, monkeypatch):
     monkeypatch.setattr(ask, "evidence_digest", lambda key, **kw: calls.append(("evidence", key)) or digest)
     monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
                         calls.append(("answer", kw["scope"])) or ANSWER)
-    monkeypatch.setattr(graph_questions, "keep", lambda text, issue, now, answer, **on:
+    # person_key: who asked, linked only with Home on (v0.3; tests/test_ask_routes.py covers it).
+    monkeypatch.setattr(graph_questions, "keep", lambda text, issue, now, answer, person_key=None, **on:
                         kept.append((text, issue, on, answer)) or "0f" * 16)
     monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: listed.append((issue, limit, on))
                         or [{"text": "Who pays?", "issue_key": None, "issue_name": None, "id": "0f" * 16,

@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block title %}My statements · {{ site_name }}{% endblock %}
+{% block title %}{{ my_title }} · {{ site_name }}{% endblock %}
 {% block content %}
-<h1>My statements</h1>
-{% for post in posts %}{% include "_post.html" %}{% else %}<p>You have not posted anything yet.</p>{% endfor %}
-{% if more %}<p class="show-more"><a href="/my-statements?shown={{ more }}">Show more</a></p>{% endif %}
+<h1>{{ my_title }}</h1>
+{% if home_asks(request) %}{% include "_home_box.html" %}
+{% endif %}{% for post in posts %}{% include "_" ~ (post.kind or "post") ~ ".html" %}{% else %}<p>You have not posted anything yet.</p>{% endfor %}
+{% if more %}<p class="show-more"><a href="{{ my_path }}?shown={{ more }}">Show more</a></p>{% endif %}
 {% endblock %}

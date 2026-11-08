@@ -231,6 +231,15 @@ test('a question with nothing to answer from is not listed', async () => {
   assert.deepEqual(listedTexts(recent), ['Who opposes it?']);
 });
 
+// QA of v0.3, 8 November: a question with no words of its own ("Tell me more", "Why?") follows another one; the
+// server says so (follow_up) and keeps nothing, so the list does not take it either.
+test('a follow-up with no words of its own is answered but not listed', async () => {
+  const recent = recentList('Who opposes it?');
+  const p = page(null, [], recent);
+  p.ask('Tell me more'); p.requests[0].resolve(json({...ANSWER, question_id: null, follow_up: true})); await p.flush();
+  assert.deepEqual(listedTexts(recent), ['Who opposes it?']);
+});
+
 test('a tap on a listed question puts it in the box', () => {
   const p = page(null, [], recentList('Who opposes it?'));
   let focused = false;

@@ -1,0 +1,9 @@
+{# v0.3 Home: the Write/Ask box on Issues, My statements and About, with HOME_ENABLED and ASK_ENABLED (John, 4 November
+   2026). It takes the text to Home, which carries on with it there (start set); without JavaScript Home shows it in
+   its box. #}
+<form class="home-box" method="post" action="/home">
+  <input type="hidden" name="start" value="1">
+  <label for="home-box-text">Write what you think, or ask a question.</label>
+  <textarea id="home-box-text" name="text" rows="2" maxlength="4000" required></textarea>
+  <button type="submit" class="primary">Read my statement or question</button>
+</form>

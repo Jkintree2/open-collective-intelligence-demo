@@ -1,0 +1,9 @@
+{# v0.3 (John, 7 November): a question in Home's "Recent posts" and on My posts, a link to the answer it last got;
+never with who asked. One kept before answers had links goes back in the box on Home. #}
+<article class="post question">
+  <p class="byline">Question · <time datetime="{{ post.iso }}" title="{{ post.absolute }}">{{ post.when }}</time></p>
+  <p class="statement">{% if post.id and post.answered %}<a class="ask-answered" href="/ask/answers/{{ post.id|urlencode }}">{{ post.text }}</a>{% else %}<button type="button" class="home-again">{{ post.text }}</button>{% endif %}</p>{% if post.issue_name %}
+  <p class="counts">On <a href="/issues/{{ post.issue_key|urlencode }}">{{ post.issue_name }}</a></p>{% elif post.solution_name %}
+  <p class="counts">On <a href="/solutions/{{ post.solution_key|urlencode }}">{{ post.solution_name }}</a></p>{% elif post.evidence_name %}
+  <p class="counts">On <a href="/evidence/{{ post.evidence_key|urlencode }}">{{ post.evidence_name }}</a></p>{% endif %}
+</article>

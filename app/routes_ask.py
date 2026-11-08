@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import ask, config, graph, graph_ask, graph_item_pages, graph_questions
+from app import ask, config, graph, graph_ask, graph_item_pages, graph_questions, home, home_lists
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.members import require_access, require_same_origin
 from app.pages import page
@@ -166,21 +166,23 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
     result = ask.answer(question, earlier, digest, settings, scope=about["kind"] if about else "record",
                         request_id=getattr(request.state, "request_id", None))
     partial = ask.PARTIAL if result.partial else None
-    question_id = None
-    if result.status == "answered":
+    question_id, follow_up = None, not ask.has_own_words(question)
+    if result.status == "answered" and not follow_up:
         on = {f"{about['kind']}_key": about["key"]} if about and about["kind"] != "issue" else {}
         question_id = _keep(request, question, issue, {"paragraphs": result.paragraphs, "partial": partial,
                                                        "sources": [_kept(source) for source in result.sources]}, **on)
     return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,
                  "sources": [_shown(source, settings) for source in result.sources],
-                 "partial": partial, **named, "question_id": question_id}
+                 "partial": partial, **named, "question_id": question_id, "follow_up": follow_up}
 
 
 def _keep(request: Request, question: str, issue: str | None, answer: dict[str, Any], **on: str) -> str | None:
     """The question's id. The answer is shown whatever happens here: a question that cannot be kept is only
-    logged, and listed without a link. `on` is a solution's or a piece of evidence's key (GitHub issue 55)."""
+    logged, and listed without a link. `on` is a solution's or a piece of evidence's key (GitHub issue 55). With Home
+    on for this member (v0.3, John, 7 November), the question is linked to them for My posts; otherwise to nobody."""
+    asker = request.state.member.key if home.home_on(request) else None
     try:
-        return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer, **on)
+        return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer, person_key=asker, **on)
     except Exception as exc:  # noqa: BLE001
         log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
                                 "error": type(exc).__name__}))
@@ -202,12 +204,8 @@ def _still_holds(answer: dict[str, Any], asked_at: datetime) -> bool:
 def recent_questions(issue: str | None, **on: str) -> list[dict]:
     """The list under the box; a page without it is still the Ask page. `on` is solution_key or evidence_key for
     the box on that page (GitHub issue 55)."""
-    try:
-        return graph_questions.recent(issue, graph_questions.RECENT_ON_ISSUE if issue or on else graph_questions.RECENT,
-                                      **on)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(json.dumps({"event": "questions_not_read", "error": type(exc).__name__}))
-        return []
+    limit = graph_questions.RECENT_ON_ISSUE if issue or on else graph_questions.RECENT
+    return home_lists.listed(graph_questions.recent, issue, limit, **on)
 
 
 @router.get("/ask", dependencies=[Depends(ask_on), Depends(require_access)])

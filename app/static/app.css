@@ -527,3 +527,11 @@ form.near button { min-height: 44px; }
 .source-line a { color: var(--accent); }
 .evidence li, .claimed, .crumbs { overflow-wrap: anywhere; }
 .solution-stances { border-bottom: 0; padding-top: 0; }
+
+/* v0.3 Home: the two buttons when the site can't tell, the link that sends a text the other way, the answers. */
+.home-unsure { margin: 12px 0; }
+.home-unsure p { margin: 0 0 8px; }
+.home-switch { margin-top: 8px; }
+.home-ask { margin: 16px 0 0; }
+.home-box { margin: 12px 0 20px; }
+.home-box textarea { width: 100%; }

@@ -10,12 +10,14 @@ class Element {
   addEventListener(name, handler) { (this.listeners[name] ||= []).push(handler); }
   emit(name, event = {}) { return Promise.all((this.listeners[name] || []).map(fn => fn({preventDefault() {}, ...event}))); }
   setAttribute(name, value) { this.attributes[name] = value; }
+  getAttribute(name) { return name in this.attributes ? this.attributes[name] : null; }
   append(...children) { for (const child of children) if (child instanceof Element) child.parent = this; this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
   add(child) { this.children.push(child); }
   remove() { if (this.parent) this.parent.children = this.parent.children.filter(c => c !== this); }
   after(...nodes) { this.afterNodes = nodes; }  // what the page put right after this element
   focus() {}
+  click() { return this.emit('click'); }
   querySelectorAll() { return []; }
   querySelector(selector) { return (this.queried ||= {})[selector] || null; }
   scrollIntoView(options) { (this.scrolled ||= []).push(options); }
@@ -25,7 +27,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   // Candidates may be passed alone, as the only thing a card test cares about.
   if (speech && typeof speech === 'object') { candidates = speech; speech = 'SpeechRecognition'; }
   const elements = new Map();
-  const get = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
+  const absent = new Set(options.absent || []);  // ids the page does not have (every other one is made on demand)
+  const get = id => { if (absent.has(id)) return null; if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   get('card').hidden = true;
   get('sentences-title').textContent = 'What this will add';  // index.html's heading over the list
   // A signed-in write page carries the account's name on the form (sub-plan A, members.posting_identity).
@@ -33,6 +36,12 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   // Phase 2: the write form asks for evidence links to be read (index.html, evidence_check.js).
   if (options.evidenceCheck) get('compose').dataset = {...get('compose').dataset, evidenceCheck: ''};
   if (options.noReading) get('compose').dataset = {...get('compose').dataset, noReading: ''};  // no reading service
+  // v0.3 Home: the form says Home is on (data-home), with asking (data-home-ask) unless 'post-only', and
+  // data-start when another page's box brought the text (index.html).
+  if (options.home) get('compose').dataset = {...get('compose').dataset, home: '',
+    ...(options.home === 'post-only' ? {} : {homeAsk: ''}), ...(options.start ? {start: ''} : {})};
+  if (options.text) get('text').value = options.text;
+  if (options.prepare) options.prepare(get);  // elements the server drew, set up before the scripts run
   const recognizers = [], requests = [], timers = new Map();
   let timerId = 0;
   class Recognition {
@@ -44,10 +53,15 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const win = new Element(); win.innerHeight = 800; if (speech) win[speech] = Recognition;
   // Phase 3: card extras registered as if a script before card.js had pushed them (the card hook).
   if (options.cardExtras) win.ociCardExtras = [...options.cardExtras];
+  if (options.ociAsk) win.ociAsk = options.ociAsk;  // ask.js's hook, stubbed by the Home tests
+  const fragments = [];  // the list fragments fetched, in order
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
-    // The feed fragment after a post is read as text, as the page reads it.
-    if (url === '/feed') return Promise.resolve({ok: true, status: 200, redirected: false, text: async () => ''});
+    // The lists drawn again after a post or an answer (app.js refreshLists) are read as text, as the page reads them.
+    if (url === '/feed' || url === '/home/mine') {
+      fragments.push(url);
+      return Promise.resolve({ok: true, status: 200, redirected: false, text: async () => ''});
+    }
     return new Promise(resolve => requests.push({url, options,
       resolve: data => resolve({ok: true, status: 200, json: async () => data}),
       // No body means a reply that is not ours, such as a gateway page during a restart.
@@ -57,15 +71,19 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
       }})}));
   };
   const location = {search: ''};
-  const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text},
+  const history = {replaced: [], replaceState(state, title, url) { this.replaced.push(url); }};
+  const documentListeners = {};
+  const body = {dataset: {}};
+  const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text, body,
+      addEventListener: (name, fn) => (documentListeners[name] ||= []).push(fn)},
     window: win, location, Option: class extends Element { constructor(text, value) { super(); this.text = text; this.value = value; } },
-    AbortController, URLSearchParams, fetch,
+    AbortController, URLSearchParams, fetch, history,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
     clearTimeout: id => timers.delete(id)};
   // The page loads these in this order (index.html); app.js wires up what the first two define.
   vm.createContext(context);
   // Phase 3: options.before names card scripts the page loads before card.js (followups.js, place.js).
-  for (const file of [...(options.evidenceCheck ? ['evidence_check.js'] : []), ...(options.before || []), 'card.js', 'dictation.js', 'app.js']) {
+  for (const file of [...(options.evidenceCheck ? ['evidence_check.js'] : []), ...(options.before || []), 'card.js', 'dictation.js', 'app.js', ...(options.after || [])]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
   }
   const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
@@ -75,7 +93,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const runTimer = async delay => { for (const [id, timer] of [...timers]) if (timer.delay === delay) { timers.delete(id); timer.fn(); } await flush(); };
   // Another script from app/static/, run in this same page after the three above.
   const load = file => vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
-  return {get, recognizers, requests, type, flush, runTimer, win, location, load};
+  return {get, recognizers, requests, fragments, type, flush, runTimer, win, location, load, documentListeners, history};
 }
 
 module.exports = {Element, setup};
