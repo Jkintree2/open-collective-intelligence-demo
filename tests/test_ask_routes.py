@@ -39,11 +39,12 @@ def asking(member_app, switch, monkeypatch):
     monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
                         calls.append(("answer", question, earlier, kw["scope"])) or ANSWERED)
     member_app.calls = calls
-    member_app.kept, member_app.answers, member_app.listed = [], [], []
+    member_app.kept, member_app.answers, member_app.listed, member_app.askers = [], [], [], []
 
-    def keep(text, issue, now, answer):
+    def keep(text, issue, now, answer, person_key=None):
         member_app.kept.append((text, issue))
         member_app.answers.append(answer)
+        member_app.askers.append(person_key)
         return QUESTION_ID
     monkeypatch.setattr(graph_questions, "keep", keep)
     monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10: list(member_app.listed))
@@ -494,3 +495,21 @@ def test_the_issue_page_menu_links_to_each_part(asking, switch, monkeypatch):
     assert menu(page)[0] == ("sub-issues", "Sub-issues (2)") and 'id="sub-issues"' in page
     switch(ask_enabled=False)
     assert ("ask-title", "Ask") not in menu(asking.client.get("/issues/veto").text)
+
+
+# v0.3 (John, 7 November: "My posts" lists his questions too): the member who asked is linked to the question only when
+# Home is on for them; with Home off, or for a member outside the preview, nobody is linked, as before.
+def test_with_home_on_the_member_who_asked_is_linked(asking, switch):
+    switch(home_enabled="on")
+    assert post(asking.client, {"question": "Why?", "issue": "veto"}).json()["question_id"] == QUESTION_ID
+    asking.client.post("/ask", data={"question": "Who decides?"}, headers=SAME_SITE)
+    assert asking.askers == ["acct:ada", "acct:ada"]
+
+
+def test_without_home_nobody_is_linked(asking, switch):
+    post(asking.client, {"question": "Why?", "issue": "veto"})
+    switch(home_enabled="preview", home_preview=("bob@example.org",))
+    post(asking.client, {"question": "Who decides?"})
+    switch(home_enabled="preview", home_preview=("ada@example.org",))
+    post(asking.client, {"question": "Who pays?"})
+    assert asking.askers == [None, None, "acct:ada"]

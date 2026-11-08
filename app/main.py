@@ -56,7 +56,7 @@ from app.graph import RecordAsleep
 from app.routes_stances import solution_anchor
 from app.routes_item_pages import about_evidence, about_solution, evidence_href, solution_href
 from app import graph_own_posts
-from app import home
+from app import home, home_lists
 from app.text import TARGET_WORDS, clean_name, count_line, make_key, relative_time, sentences
 from app import check, confidence, graph_accounts, graph_evidence, graph_item_pages, graph_places, places, search, sides, tidy
 
@@ -85,7 +85,6 @@ def switches() -> dict[str, bool]:
 
 templates.env.globals["switches"] = switches
 templates.env.globals["home_on"] = home.home_on
-templates.env.globals["home_mine_name"] = home.mine_name
 
 TEXT_MAX = 4000
 DISPLAY_NAME_MAX = 120
@@ -268,28 +267,42 @@ def _about_issue(key: str | None) -> dict | None:
     }
 
 
-HOME_MINE = 5  # v0.3: the writer's own statements under Home's button (home.js adds this device's questions)
+HOME_MINE = 5  # v0.3: the writer's own statements and questions under Home's button
 HOME_MINE_CHARACTERS = 120
 
 
 def _home_mine(request: Request) -> list[dict]:
-    """v0.3 Home: the member's five most recent statements (Q24, as My statements reads them), newest first, each
-    with its time in UTC for home.js to place this device's questions among them."""
+    """v0.3 Home: the member's five most recent statements (Q24, as My posts reads them) and, with Ask on, questions
+    (Q57), newest first. A statement links to My posts, where it is listed; a question to the answer it got. Each
+    carries its time in UTC, so home.js can put a question answered just now above them."""
     member = getattr(request.state, "member", None)
     if member is None:
         return []
     now = datetime.now(timezone.utc)
+    rows = [{"kind": "statement", "text": post.get("text"), "time": home_lists.utc(post["created_at"]),
+             "href": "/my-posts"} for post in graph_own_posts.my_posts(member.key, HOME_MINE)]
+    if settings.ask_enabled:
+        rows += [{"kind": "question", "text": asked["text"], "time": asked["at"],
+                  "href": f"/ask/answers/{quote(asked['id'], safe='')}" if asked["id"] and asked["answered"] else None}
+                 for asked in home_lists.my_questions(member.key, HOME_MINE) if asked["at"]]
+    rows.sort(key=lambda row: row["time"], reverse=True)
     mine = []
-    for post in graph_own_posts.my_posts(member.key, HOME_MINE):
-        created = post["created_at"]
-        created = created.to_native() if hasattr(created, "to_native") else created
-        created = created if created.tzinfo else created.replace(tzinfo=timezone.utc)
-        text = " ".join((post.get("text") or "").split())
+    for row in rows[:HOME_MINE]:
+        text = " ".join((row["text"] or "").split())
         if len(text) > HOME_MINE_CHARACTERS:
             text = text[:HOME_MINE_CHARACTERS].rsplit(" ", 1)[0].rstrip(" ,;:.") + "…"
-        mine.append({"text": text, "at": created.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                     "when": relative_time(created, now)})
+        mine.append({"kind": row["kind"], "text": text, "href": row["href"], "when": relative_time(row["time"], now),
+                     "at": row["time"].astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
     return mine
+
+
+def _feed_posts(request: Request, *, home_page: bool) -> list[dict]:
+    """The latest statements; on Home with Ask on (John, 7 November), mixed with everyone's latest questions, newest
+    first, as many in all as the feed holds."""
+    posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
+    if home_page and settings.ask_enabled:
+        return home_lists.mixed(posts, home_lists.everyones_questions(FEED_LIMIT), FEED_LIMIT)
+    return posts
 
 
 def _render_index(
@@ -304,14 +317,9 @@ def _render_index(
     unsure: bool = False,
     start: bool = False,
 ) -> Response:
-    posts = _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))
-    name = unquote(request.cookies.get(NAME_COOKIE, ""))
     home_page = editing is None and home.home_on(request)
-    if home_page and settings.ask_enabled:
-        from app.routes_ask import recent_questions  # the router's own reader, as on the issue page
-        asked = recent_questions(None)
-    else:
-        asked = []
+    posts = _feed_posts(request, home_page=home_page)
+    name = unquote(request.cookies.get(NAME_COOKIE, ""))
     return templates.TemplateResponse(
         request,
         "index.html",
@@ -330,7 +338,6 @@ def _render_index(
             "unsure": unsure,
             "start": start,
             "home_mine": _home_mine(request) if home_page else [],
-            "recent_questions": asked,
             # Phase 2: the card reads evidence links only with the flag and a reading service; with the
             # flag alone a row with no link still says so (revision round).
             "evidence_check": settings.evidence_check_enabled,
@@ -729,7 +736,9 @@ def post_card(request: Request, data: PostRequest) -> Response:
 
 @app.get("/feed", dependencies=[Depends(require_access)])
 def feed(request: Request) -> Response:
-    return templates.TemplateResponse(request, "_feed.html", {"posts": _decorate_posts(graph.list_posts(FEED_LIMIT), me=member_key(request))})
+    """card.js reloads the list from here after a post, so on Home it is the mixed list too."""
+    return templates.TemplateResponse(request, "_feed.html",
+                                      {"posts": _feed_posts(request, home_page=home.home_on(request))})
 
 
 @app.exception_handler(GateRequired)

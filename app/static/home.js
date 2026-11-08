@@ -9,22 +9,12 @@
   if (!form || !form.dataset || !('homeAsk' in form.dataset)) return;
   const box = find('home-ask'), unsure = find('home-unsure'), swap = find('home-switch');
   const switchTo = {question: 'Post it as a statement instead', statement: 'Ask it as a question instead'};
-  const KEPT = 'oci.myQuestions', SHOWN = 5;
+  const SHOWN = 5;
   let way = null, last = '', sorting = false, sent = 0;  // sent: which send is the current one
 
-  // "My most recent statements and questions": the page drew the writer's statements; the questions answered on
-  // this device (ask.js keeps them) join them by time, newest first, five shown.
-  function kept() {
-    const owner = document.body && document.body.dataset ? document.body.dataset.mine : '';
-    if (!owner) return [];
-    try {
-      const items = JSON.parse(localStorage.getItem(KEPT + '.' + owner) || '[]');
-      return Array.isArray(items) ? items.filter(item => item && typeof item.text === 'string' && item.at) : [];
-    } catch {
-      return [];  // storage blocked: the statements stay as drawn
-    }
-  }
-
+  // "My most recent statements and questions": the page drew the writer's own, from the record (since John's
+  // 7 November email the record keeps who asked). A question answered just now goes on top, the same question once,
+  // five shown; "Recent posts" is drawn again from /feed, as after a post.
   function questionItem(question) {
     const item = document.createElement('li');
     item.setAttribute('data-at', question.at);
@@ -43,16 +33,24 @@
     return item;
   }
 
-  function drawMine() {
+  function addMine(question, id) {
     const list = find('home-mine'), section = find('home-mine-section');
     if (!list || !section) return;
-    const statements = [...list.children].filter(item => item.dataset && item.dataset.kind === 'statement');
-    const entries = [...statements.map(node => ({at: node.dataset.at, node})),
-      ...kept().map(question => ({at: question.at, node: questionItem(question)}))];
-    entries.sort((a, b) => (Date.parse(b.at) || 0) - (Date.parse(a.at) || 0));
-    const items = entries.slice(0, SHOWN).map(entry => entry.node);
-    list.replaceChildren(...items);
-    section.hidden = items.length === 0;
+    const same = value => String(value).toLowerCase().replace(/[?.!\s]+$/, '');
+    const others = [...list.children].filter(item => !(item.getAttribute('data-kind') === 'question'
+      && same(item.children[0] ? item.children[0].textContent : '') === same(question)));
+    list.replaceChildren(questionItem({id, text: question, at: new Date().toISOString()}), ...others.slice(0, SHOWN - 1));
+    section.hidden = false;
+  }
+
+  async function redrawFeed() {
+    try {
+      const response = await fetch('/feed');
+      if (!response.ok || response.redirected) return;
+      find('feed').innerHTML = await response.text();
+    } catch {
+      // the list stays as it was until the page is opened again
+    }
   }
 
   function went(kind) {  // the way the text went, and the link that sends it the other way
@@ -79,7 +77,7 @@
     went('question');
     const ticket = ++sent;
     const data = await window.ociAsk(box, question);
-    if (data && data.status === 'answered') drawMine();  // ask.js kept it, whichever way the text went since
+    if (data && data.status === 'answered') { addMine(question, data.question_id); redrawFeed(); }  // either way it went since
     if (ticket !== sent) return;  // sent the other way meanwhile: the reading owns the box now
     if (data && data.status && text.value.trim() === question) text.value = '';  // ready for "Tell me more"
   }
@@ -121,7 +119,6 @@
     text.value = again.textContent;
     text.focus();
   });
-  drawMine();
   // New words in the box: the link and the two buttons were about the text before.
   text.addEventListener('input', () => { swap.hidden = true; unsure.hidden = true; });
   if ('start' in form.dataset && text.value.trim()) {  // brought here by the box on another page

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 
-from app import accounts, config, emails, graph_accounts, graph_own_posts, mailer
+from app import accounts, config, emails, graph_accounts, graph_own_posts, home, home_lists, mailer
 from app.auth import TOO_MANY_TRIES, WRONG_PASSPHRASE_DELAY
 from app.members import (Member, clear_member_cookie, current_member, require_member, require_same_origin,
                          safe_next, set_member_cookie)
@@ -105,17 +105,22 @@ def account(request: Request, done: str | None = None, member: Member = Depends(
 
 
 @router.get("/my-statements")
+@router.get("/my-posts")
 def my_statements(request: Request, shown: str = "", member: Member = Depends(require_member)) -> Response:
     """X1, its own page since John's 22 Oct email: the member's own posts, 50 at a time; one more is
-    asked for to know whether to offer "Show more". A hand-typed "shown" that is not a number is the first page."""
+    asked for to know whether to offer "Show more". A hand-typed "shown" that is not a number is the first page.
+    v0.3 (John, 7 November): with Home on it is "My posts", at either address, and with Ask on it mixes in the
+    questions the member asked (Q57), newest first, counted in the 50."""
     from app import main as site
     shown = int(shown) if shown.lstrip("-").isdigit() and len(shown) < 8 else STATEMENTS_PAGE
     shown = min(max(shown, STATEMENTS_PAGE), STATEMENTS_MAX)
-    posts = graph_own_posts.my_posts(member.key, shown + 1)
-    return page(request, "my_statements.html",
-                {"posts": site._decorate_posts(posts[:shown], me=member.key),
-                 "more": shown + STATEMENTS_PAGE if len(posts) > shown and shown < STATEMENTS_MAX else None},
-                private=True)
+    items = graph_own_posts.my_posts(member.key, shown + 1)
+    if home.home_on(request) and config.get_settings().ask_enabled:
+        items = home_lists.mixed(items, home_lists.my_questions(member.key, shown + 1), shown + 1)
+    more = shown + STATEMENTS_PAGE if len(items) > shown and shown < STATEMENTS_MAX else None
+    items = items[:shown]
+    site._decorate_posts([item for item in items if item.get("kind") != "question"], me=member.key)  # in place
+    return page(request, "my_statements.html", {"posts": items, "more": more}, private=True)
 
 
 @router.post("/account/details", dependencies=[Depends(require_same_origin)])

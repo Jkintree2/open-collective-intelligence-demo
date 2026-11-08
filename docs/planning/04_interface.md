@@ -1320,13 +1320,13 @@ Each post: "{name or Anonymous}, {2 November 2026}" (the date of its latest chan
 
 ## v0.3: Write and Ask on one Home page (added 5 November 2026)
 
-Behind `HOME_ENABLED` (not client facing): unset or `off`, every page is as before; `preview`, only the accounts listed in `HOME_PREVIEW` see Home; `on`, every signed-in member. The passphrase site keeps the old pages. Every quote below is **client-facing**. John agreed the outline on 4 November 2026: one box, "or ask a question," in the sentence at the top, the writer's own five most recent statements and questions under the button, and the site asking back when it can't tell. On 5 November three points went back to him: the button's words, a second sentence for questions, and whether the statements and questions of others are one list.
+Behind `HOME_ENABLED` (not client facing): unset or `off`, every page is as before; `preview`, only the accounts listed in `HOME_PREVIEW` see Home; `on`, every signed-in member. The passphrase site keeps the old pages. Every quote below is **client-facing**. John agreed the outline on 4 November 2026: one box, "or ask a question," in the sentence at the top, the writer's own five most recent statements and questions under the button, and the site asking back when it can't tell. On 5 November three points went back to him: the button's words, a second sentence for questions, and whether the statements and questions of others are one list. On 7 November he chose one list, "Recent posts", and "My posts" in place of My statements.
 
 ### Header
 
-> Home · Issues · Enter a person · My statements · My account · About
+> Home · Issues · Enter a person · My posts · My account · About
 
-"Write" and "Ask" leave the menu. `/ask` and its answer pages stay, for links, the box on each issue page, and answers without JavaScript.
+"Write" and "Ask" leave the menu, and My statements is "My posts" (John, 7 November), at `/my-posts`; `/my-statements` shows the same page. `/ask` and its answer pages stay, for links, the box on each issue page, and answers without JavaScript.
 
 ### Home (`/`)
 
@@ -1360,7 +1360,21 @@ Without JavaScript the same form posts to `/home`: a statement is posted as on t
 
 > **My most recent statements and questions**
 
-Five, newest first. A statement links to My statements, where it is listed (a post has no page of its own); a question links to the answer it got. The questions are the ones this member asked on this device, kept in the browser under an opaque name for the account, so a shared browser shows each member only their own (the database never keeps who asked a question). With Home off nothing is kept. Below it, "Questions people are asking", then the latest statements. Whether these become one list of what others have written and asked is open with John (5 November).
+Five, newest first. A statement links to My posts, where it is listed (a post has no page of its own); a question links to the answer it got. Since John's 7 November email the database keeps who asked a question while Home is on for them, so the list holds a member's questions on every device; it is never shown with anyone's name. A question answered on Home goes to the top at once.
+
+Below it, "Recent posts": statements and questions from everyone, mixed, newest first. It holds as many as the Write page lists (60). A statement shows exactly as in the Write page's list. A question shows as:
+
+> Question · 2 hours ago
+> [ the question, a link to the answer it got ]
+> On [ the issue, solution or piece of evidence it was asked about ]
+
+"Questions people are asking" is no longer a list of its own on Home (it stays on Ask the database and under each issue's box). After a question is answered on Home, "Recent posts" is drawn again, as after a post.
+
+### My posts (`/my-posts`, with Home on)
+
+> **My posts**
+
+The member's own statements and questions, mixed, newest first, fifty at a time with "Show more" as on My statements; a statement keeps its Edit and Delete, a question shows as in "Recent posts". Questions asked before this went live, or while Home was off for the member, were kept without who asked, so they are not listed. With `ASK_ENABLED` off, only statements.
 
 ### The box on Issues, My statements and About
 
@@ -1373,4 +1387,4 @@ It takes the text to Home, which carries on there. On About only for a reader wh
 
 ### With `ASK_ENABLED` off (not client facing)
 
-Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, and the list under the button is "My most recent statements".
+Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, the list under the button is "My most recent statements", and "Recent posts" and My posts hold statements only.

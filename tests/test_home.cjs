@@ -15,7 +15,7 @@ async function home(options = {}) {
   const asked = [];
   const ociAsk = (box, text) => new Promise(resolve => asked.push({box, text, resolve}));
   const page = await setup(undefined, {issues: {}, solutions: {}, evidence: {}},
-    {member: 'Ada Tester', home: true, mine: 'm1', ociAsk, after: ['home.js'], ...options});
+    {member: 'Ada Tester', home: true, ociAsk, after: ['home.js'], ...options});
   const urls = () => page.requests.map(request => request.url);
   const kinds = () => page.requests.filter(request => request.url === '/api/home/kind');
   // The answer to the latest /api/home/kind request.
@@ -178,103 +178,101 @@ test('tell me more passes the earlier question', async () => {
   await second;
 });
 
-// Task 5: My most recent statements and questions. The page draws the writer's statements; home.js adds the
-// questions answered on this device (localStorage "oci.myQuestions", which ask.js keeps), newest first, five shown.
+// Task 5: My most recent statements and questions. The page draws the writer's own statements and questions from the
+// record (since John's 7 November email it keeps who asked). A question answered here goes on top at once, the same
+// question once, five shown, and "Recent posts" is drawn again from /feed, as after a post.
 const {Element} = require('./page_harness.js');
-function storage(questions, owner = 'm1') {
-  const data = questions === undefined ? {} : {[`oci.myQuestions.${owner}`]: JSON.stringify(questions)};
-  return {data, getItem: key => (key in data ? data[key] : null), setItem: (key, value) => { data[key] = String(value); }};
-}
-function statements(...rows) {
+function mine(...rows) {  // [at, text, kind, href]; no href: a button that puts the question back in the box
   return get => {
-    get('home-mine').children = rows.map(([at, text]) => Object.assign(new Element(), {tag: 'li', textContent: text,
-      dataset: {at, kind: 'statement'}}));
+    get('home-mine').children = rows.map(([at, text, kind = 'statement', href = '/my-posts']) => {
+      const inner = Object.assign(new Element(), href ? {tag: 'a', href, textContent: text}
+        : {tag: 'button', className: 'home-again', type: 'button', textContent: text});
+      const item = Object.assign(new Element(), {tag: 'li', children: [inner]});
+      item.setAttribute('data-at', at);
+      item.setAttribute('data-kind', kind);
+      return item;
+    });
     get('home-mine-section').hidden = rows.length === 0;
+    get('feed').innerHTML = '<h2>Recent posts</h2> as drawn';
   };
 }
-const shown = page => page.get('home-mine').children.map(item => item.dataset ? item.textContent
-  : (item.children[0].href ? 'link ' + item.children[0].href + ' ' : 'button ') + item.children[0].textContent);
+const shown = page => page.get('home-mine').children.map(item =>
+  `${item.getAttribute('data-kind')} ${item.children[0].href || 'button'} ${item.children[0].textContent}`);
 
-test('list mixes statements and device questions by time', async () => {
-  const page = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.'],
-                                               ['2026-11-05T10:00:00Z', 'My ten o\'clock statement.']),
-    localStorage: storage([{id: 'q2', text: 'Asked at one?', at: '2026-11-05T13:00:00.000Z'},
-                           {id: 'q1', text: 'Asked at eleven?', at: '2026-11-05T11:00:00.000Z'},
-                           {id: null, text: 'Asked at nine?', at: '2026-11-05T09:00:00.000Z'},
-                           {id: 'q0', text: 'Asked at eight?', at: '2026-11-05T08:00:00.000Z'}])});
-  assert.deepEqual(shown(page), ['link /ask/answers/q2 Asked at one?', 'My noon statement.',
-    'link /ask/answers/q1 Asked at eleven?', 'My ten o\'clock statement.', 'button Asked at nine?']);
+async function answered(page, reply) {
+  await page.send(QUESTION);
+  await page.say('question');
+  page.asked.at(-1).resolve(reply);
+  await page.flush();
+}
+
+test('an answered question goes on top of my list at once, and Recent posts is drawn again', async () => {
+  const page = await home({prepare: mine(['2026-11-05T12:00:00Z', 'My noon statement.'],
+                                         ['2026-11-05T11:00:00Z', 'Asked at eleven?', 'question', '/ask/answers/q1'],
+                                         ['2026-11-05T10:00:00Z', 'My ten o\'clock statement.'])});
+  await answered(page, {status: 'answered', question_id: 'q9'});
+  assert.deepEqual(shown(page), [`question /ask/answers/q9 ${QUESTION}`, 'statement /my-posts My noon statement.',
+    'question /ask/answers/q1 Asked at eleven?', 'statement /my-posts My ten o\'clock statement.']);
   assert.equal(page.get('home-mine-section').hidden, false);
+  assert.equal(page.get('feed').innerHTML, '');  // the harness's /feed answers an empty list
 });
 
-test('storage blocked still draws statements', async () => {
-  const page = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.'])});
-  assert.deepEqual(shown(page), ['My noon statement.']);
-  const broken = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.']),
-    localStorage: {getItem() { throw new Error('SecurityError'); }, setItem() { throw new Error('SecurityError'); }}});
-  assert.deepEqual(shown(broken), ['My noon statement.']);
-  const junk = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.']),
-    localStorage: {getItem: () => '{not json', setItem() {}}});
-  assert.deepEqual(shown(junk), ['My noon statement.']);
+test('five shown, and the same question once', async () => {
+  const page = await home({prepare: mine(['2026-11-05T13:00:00Z', 'How does homelessness relate to the UDHR?', 'question', '/ask/answers/q0'],
+                                         ['2026-11-05T12:00:00Z', 'One.'], ['2026-11-05T11:00:00Z', 'Two.'],
+                                         ['2026-11-05T10:00:00Z', 'Three.'], ['2026-11-05T09:00:00Z', 'Four.'])});
+  await answered(page, {status: 'answered', question_id: 'q0'});
+  assert.deepEqual(shown(page), [`question /ask/answers/q0 ${QUESTION}`, 'statement /my-posts One.',
+    'statement /my-posts Two.', 'statement /my-posts Three.', 'statement /my-posts Four.']);
+  const full = await home({prepare: mine(['2026-11-05T12:00:00Z', 'One.'], ['2026-11-05T11:00:00Z', 'Two.'],
+    ['2026-11-05T10:00:00Z', 'Three.'], ['2026-11-05T09:00:00Z', 'Four.'], ['2026-11-05T08:00:00Z', 'Five.'])});
+  await answered(full, {status: 'answered', question_id: 'q9'});
+  assert.deepEqual(shown(full).map(line => line.split(' ').at(-1)), ['UDHR', 'One.', 'Two.', 'Three.', 'Four.']);
 });
 
 test('nothing posted and nothing asked keeps the list hidden; a first question shows it', async () => {
-  const kept = storage([]);
-  const asked = [];
-  const page = await home({prepare: statements(), localStorage: kept,
-    ociAsk: (box, text) => new Promise(resolve => asked.push({text, resolve}))});
+  const page = await home({prepare: mine()});
   assert.equal(page.get('home-mine-section').hidden, true);
-  await page.send(QUESTION);
-  await page.say('question');
-  kept.setItem('oci.myQuestions.m1', JSON.stringify([{id: 'q9', text: QUESTION, at: '2026-11-05T14:00:00.000Z'}]));
-  asked[0].resolve({status: 'answered', question_id: 'q9'});
-  await page.flush();
-  assert.deepEqual(shown(page), [`link /ask/answers/q9 ${QUESTION}`]);
+  await answered(page, {status: 'answered', question_id: 'q9'});
+  assert.deepEqual(shown(page), [`question /ask/answers/q9 ${QUESTION}`]);
   assert.equal(page.get('home-mine-section').hidden, false);
 });
 
-test('question without id is a button that refills the box', async () => {
-  const page = await home({prepare: statements(),
-    localStorage: storage([{id: null, text: 'Is the veto fair?', at: '2026-11-05T09:00:00.000Z'}])});
+test('a question with no answer adds nothing and leaves Recent posts as drawn', async () => {
+  const page = await home({prepare: mine(['2026-11-05T12:00:00Z', 'My noon statement.'])});
+  await answered(page, {status: 'empty', paragraphs: [], sources: []});
+  assert.deepEqual(shown(page), ['statement /my-posts My noon statement.']);
+  assert.equal(page.get('feed').innerHTML, '<h2>Recent posts</h2> as drawn');
+});
+
+test('a question with no answer link is a button that refills the box', async () => {
+  const page = await home({prepare: mine(['2026-11-05T09:00:00Z', 'Is the veto fair?', 'question', null])});
   const button = page.get('home-mine').children[0].children[0];
   assert.equal(button.className, 'home-again');
-  assert.equal(button.type, 'button');
   for (const listener of page.documentListeners.click) listener({target: {closest: s => (s === '.home-again' ? button : null)}});
   assert.equal(page.get('text').value, 'Is the veto fair?');
 });
 
-// ask.js keeps an answered question on this device for Home's list: newest first, at most 20, the same question
-// once, and nothing at all when storage is blocked.
-test('an answered question is kept on this device', async () => {
-  const kept = storage();
+// Since John's 7 November email nothing is kept on the device: ask.js never touches the browser's storage.
+test('ask.js keeps nothing on the device', async () => {
+  const touched = [];
+  const spy = {getItem: key => touched.push(['get', key]) && null, setItem: key => touched.push(['set', key])};
   const requests = [];
   const node = () => ({textContent: '', children: [], className: '', append() {}, prepend() {}});
   const attrs = {};
   const box = {dataset: {}, querySelector: selector => ({'[data-ask-status]': node(), '[data-ask-answers]': node()})[selector] || null,
     setAttribute: (key, value) => { attrs[key] = value; }, removeAttribute: key => { delete attrs[key]; }, hasAttribute: key => key in attrs};
-  const context = {location: {pathname: '/', search: ''}, AbortController, localStorage: kept,
+  const context = {location: {pathname: '/', search: ''}, AbortController, localStorage: spy,
     document: {addEventListener() {}, createElement: () => node(), createTextNode: text => text, body: {dataset: {mine: 'm1'}}},
     setTimeout: () => 0, clearTimeout() {},
-    fetch: (url, options) => new Promise(resolve => requests.push({body: JSON.parse(options.body),
+    fetch: (url, options) => new Promise(resolve => requests.push({
       resolve: data => resolve({ok: true, status: 200, json: async () => data})}))};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../app/static/ask.js'), 'utf8'), context);
-  const askOnce = async (text, reply) => {
-    const done = context.ociAsk(box, text);
-    await Promise.resolve();
-    requests.at(-1).resolve(reply);
-    await done;
-  };
-  await askOnce('Is the veto fair?', {status: 'answered', question_id: 'a1', paragraphs: [], sources: []});
-  await askOnce('Nothing to answer from?', {status: 'empty', paragraphs: [], sources: []});
-  let items = JSON.parse(kept.data['oci.myQuestions.m1']);
-  assert.deepEqual(items.map(item => [item.id, item.text]), [['a1', 'Is the veto fair?']]);
-  assert.ok(!Number.isNaN(Date.parse(items[0].at)));
-  for (let n = 0; n < 21; n++) await askOnce(`Question ${n}?`, {status: 'answered', question_id: `n${n}`, paragraphs: [], sources: []});
-  await askOnce('is the veto fair', {status: 'answered', question_id: 'a2', paragraphs: [], sources: []});
-  items = JSON.parse(kept.data['oci.myQuestions.m1']);
-  assert.equal(items.length, 20);
-  assert.deepEqual(items[0], {...items[0], id: 'a2', text: 'is the veto fair'});
-  assert.equal(items.filter(item => item.text.toLowerCase().startsWith('is the veto fair')).length, 1);
+  const done = context.ociAsk(box, 'Is the veto fair?');
+  await Promise.resolve();
+  requests[0].resolve({status: 'answered', question_id: 'a1', paragraphs: [], sources: []});
+  await done;
+  assert.deepEqual(touched, []);
 });
 
 // Found in the browser check (5 November).
@@ -313,33 +311,4 @@ test('switching to a statement while the answer is still coming keeps the words 
   assert.equal(page.get('text').value, QUESTION);
   assert.equal(page.get('home-switch').textContent, 'Ask it as a question instead');
   assert.equal(page.get('home-ask').hidden, true);
-});
-
-// Final review, items 2 and 3: the questions kept on a device belong to the member the page names (an opaque name,
-// never the account key), so a shared browser shows each member only their own; with Home off the page names no
-// one and nothing is kept at all.
-test('another member on the same browser does not see these questions', async () => {
-  const kept = storage([{id: 'q1', text: 'Asked by someone else?', at: '2026-11-05T13:00:00.000Z'}], 'm2');
-  const page = await home({prepare: statements(['2026-11-05T12:00:00Z', 'My noon statement.']), localStorage: kept});
-  assert.deepEqual(shown(page), ['My noon statement.']);
-});
-
-test('with Home off nothing is kept on the device', async () => {
-  const kept = storage();
-  const requests = [];
-  const node = () => ({textContent: '', children: [], className: '', append() {}, prepend() {}});
-  const attrs = {};
-  const box = {dataset: {}, querySelector: selector => ({'[data-ask-status]': node(), '[data-ask-answers]': node()})[selector] || null,
-    setAttribute: (key, value) => { attrs[key] = value; }, removeAttribute: key => { delete attrs[key]; }, hasAttribute: key => key in attrs};
-  const context = {location: {pathname: '/', search: ''}, AbortController, localStorage: kept,
-    document: {addEventListener() {}, createElement: () => node(), createTextNode: text => text, body: {dataset: {}}},
-    setTimeout: () => 0, clearTimeout() {},
-    fetch: (url, options) => new Promise(resolve => requests.push({
-      resolve: data => resolve({ok: true, status: 200, json: async () => data})}))};
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../app/static/ask.js'), 'utf8'), context);
-  const done = context.ociAsk(box, 'Is the veto fair?');
-  await Promise.resolve();
-  requests[0].resolve({status: 'answered', question_id: 'a1', paragraphs: [], sources: []});
-  await done;
-  assert.deepEqual(kept.data, {});
 });

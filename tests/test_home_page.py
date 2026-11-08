@@ -78,8 +78,8 @@ def test_wording_strings_match_04_interface():
     assert f"'{TO_STATEMENT}'" in script and f"'{TO_QUESTION}'" in script
 
 
-# Task 5: the writer's own recent statements under the button; with JavaScript, home.js adds the questions asked on
-# this device (tests/test_home.cjs). Others' questions show as on Ask the database.
+# Task 5: the writer's own recent statements under the button, with their questions since John's 7 November email
+# (tests/test_home_posts.py). Everyone's questions are in "Recent posts" with the statements.
 def own(number, minutes_ago):
     from datetime import datetime, timedelta, timezone
     return {"id": f"mine-{number}", "text": f"My statement number {number}.", "display_name": "Ada Tester",
@@ -90,7 +90,7 @@ def own(number, minutes_ago):
 def mine_list(page):
     import re
     found = re.search(r'<ul id="home-mine">(.*?)</ul>', page, re.S)
-    return re.findall(r'<li data-at="([^"]+)" data-kind="statement"><a href="/my-statements">([^<]*)</a>', found.group(1))
+    return re.findall(r'<li data-at="([^"]+)" data-kind="statement"><a href="/my-posts">([^<]*)</a>', found.group(1))
 
 
 def test_my_recent_statements_under_the_box(homepage):
@@ -123,17 +123,16 @@ def test_with_ask_off_the_list_is_statements_only(homepage, switch):
     assert "<h2>My most recent statements</h2>" in page and "and questions" not in page
 
 
-def test_questions_people_are_asking_on_home(homepage, monkeypatch):
+def test_questions_are_in_recent_posts_not_a_list_of_their_own(homepage, monkeypatch):
+    """John, 7 November: one "Recent posts" list of statements and questions (tests/test_home_posts.py has the rest)."""
+    from datetime import datetime, timezone
     listed = [{"text": "Why do people oppose the carbon tax?", "issue_key": "climate", "issue_name": "Climate",
-               "id": "ab" * 16, "answered": True},
-              {"text": "Is the veto fair?", "issue_key": None, "issue_name": None, "id": None, "answered": False}]
+               "id": "ab" * 16, "answered": True, "solution_key": None, "solution_name": None, "evidence_key": None,
+               "evidence_name": None, "asked_at": datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)}]
     monkeypatch.setattr("app.graph_questions.recent", lambda issue, limit, **on: listed)
     page = draw(homepage.client, "/")
-    assert "<h3>Questions people are asking</h3>" in page
-    assert f'<a class="ask-answered" href="/ask/answers/{"ab" * 16}">Why do people oppose the carbon tax?</a>' in page
-    assert '<span class="counts">On <a href="/issues/climate">Climate</a></span>' in page
-    assert '<button type="button" class="home-again">Is the veto fair?</button>' in page
-    assert page.index("Questions people are asking") < page.index('id="feed"')
+    assert "Questions people are asking" not in page and "home-questions" not in page
+    assert page.index('id="feed"') < page.index(f'href="/ask/answers/{"ab" * 16}">Why do people oppose the carbon tax?')
 
 
 def test_gate_reader_has_no_list(live_like, switch):
@@ -146,5 +145,5 @@ def test_gate_reader_has_no_list(live_like, switch):
 def test_interface_describes_the_list_as_built():
     """Final review, item 6: 04_interface.md is the text John approves against, so it says what the page does."""
     assert "A statement links to its post" not in INTERFACE
-    assert "A statement links to My statements, where it is listed" in INTERFACE
-    assert 'Below it, "Questions people are asking", then the latest statements.' in INTERFACE
+    assert "A statement links to My posts, where it is listed" in INTERFACE
+    assert 'Below it, "Recent posts": statements and questions from everyone, mixed, newest first.' in INTERFACE

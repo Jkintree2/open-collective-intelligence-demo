@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import re
 from typing import Literal
 
@@ -48,16 +46,6 @@ def home_on(request: Request) -> bool:
     if member is None:
         return False
     return settings.home_enabled == "on" or member.email.strip().lower() in settings.home_preview
-
-
-def mine_name(request: Request) -> str:
-    """The name the browser keeps this member's answered questions under, for "My most recent statements and
-    questions": a keyed hash of the account, never the key itself, so a shared browser shows each member only their
-    own. Empty unless Home is on for this reader, and then nothing is kept at all."""
-    if not home_on(request):
-        return ""
-    secret = config.get_settings().secret_key.encode("utf-8")
-    return hmac.new(secret, f"home-mine:{request.state.member.key}".encode("utf-8"), hashlib.sha256).hexdigest()[:16]
 
 
 def _sentences(text: str) -> list[str]:

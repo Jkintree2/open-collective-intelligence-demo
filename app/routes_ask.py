@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import ask, config, graph, graph_ask, graph_item_pages, graph_questions
+from app import ask, config, graph, graph_ask, graph_item_pages, graph_questions, home
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.members import require_access, require_same_origin
 from app.pages import page
@@ -178,9 +178,11 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
 
 def _keep(request: Request, question: str, issue: str | None, answer: dict[str, Any], **on: str) -> str | None:
     """The question's id. The answer is shown whatever happens here: a question that cannot be kept is only
-    logged, and listed without a link. `on` is a solution's or a piece of evidence's key (GitHub issue 55)."""
+    logged, and listed without a link. `on` is a solution's or a piece of evidence's key (GitHub issue 55). With Home
+    on for this member (v0.3, John, 7 November), the question is linked to them for My posts; otherwise to nobody."""
+    asker = request.state.member.key if home.home_on(request) else None
     try:
-        return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer, **on)
+        return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer, person_key=asker, **on)
     except Exception as exc:  # noqa: BLE001
         log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
                                 "error": type(exc).__name__}))

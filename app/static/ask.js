@@ -12,7 +12,6 @@
     failed: 'The question could not be answered just now. Please try again in a minute.',
   };
   const QUESTION_MAX = 500, EARLIER = 3, STILL_AFTER = 10000, WAIT_FOR = 50000;
-  const KEPT = 'oci.myQuestions', KEEP = 20;  // v0.3: answered questions kept on this device for Home's list
   const earlier = new WeakMap();  // each box's own questions
 
   function el(tag, className, text) {
@@ -128,7 +127,7 @@
       asked.push(question);
       earlier.set(box, asked.slice(-EARLIER));
     }
-    if (data.status === 'answered') { listed(box, question, data.question_id); keep(question, data.question_id); }
+    if (data.status === 'answered') listed(box, question, data.question_id);
     answers.prepend(answerBlock(question, data));
     return data;
   }
@@ -169,25 +168,6 @@
     }
     list.prepend(item);
     recent.hidden = false;
-  }
-
-  // v0.3: Home lists "My most recent statements and questions". The database never keeps who asked, so the
-  // questions are kept here, on this device, under the member the page names: newest first, at most 20, the same
-  // question once. Storage that is
-  // blocked or full leaves the question out of the list, and nothing else changes.
-  function keep(question, id) {
-    // The page names the member (<body data-mine>) only when Home is on for them; otherwise nothing is kept.
-    const owner = document.body && document.body.dataset ? document.body.dataset.mine : '';
-    if (!owner) return;
-    const same = text => String(text).toLowerCase().replace(/[?.!\s]+$/, '');
-    try {
-      const old = JSON.parse(localStorage.getItem(KEPT + '.' + owner) || '[]');
-      const items = (Array.isArray(old) ? old : []).filter(item => item && same(item.text) !== same(question));
-      items.unshift({id: id || null, text: question, at: new Date().toISOString()});
-      localStorage.setItem(KEPT + '.' + owner, JSON.stringify(items.slice(0, KEEP)));
-    } catch {
-      // the list leaves it out
-    }
   }
 
   // A tap on a listed question puts it in the box, ready to ask or change.

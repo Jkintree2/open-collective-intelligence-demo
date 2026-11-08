@@ -31,6 +31,7 @@ DIRECTIONS = {
     "REFUTES": ("Evidence", {"Issue", "Solution", "Evidence"}),
     "ENTERED": ("Person", {"Person"}),
     "MADE": ("Person", {"Change"}), "CHANGED": ("Change", {"Issue"}),
+    "ASKED": ("Person", {"Question"}),  # v0.3: a member and a question they asked, with `asked_at`
 }
 TEMPORALS = {"DateTime": DateTime, "Date": Date, "Time": Time, "Duration": Duration}
 # Phase 2 (03_schema.md): how a page was read, on a post's SUPPORTS or REFUTES edge.

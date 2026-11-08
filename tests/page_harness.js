@@ -10,6 +10,7 @@ class Element {
   addEventListener(name, handler) { (this.listeners[name] ||= []).push(handler); }
   emit(name, event = {}) { return Promise.all((this.listeners[name] || []).map(fn => fn({preventDefault() {}, ...event}))); }
   setAttribute(name, value) { this.attributes[name] = value; }
+  getAttribute(name) { return name in this.attributes ? this.attributes[name] : null; }
   append(...children) { for (const child of children) if (child instanceof Element) child.parent = this; this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
   add(child) { this.children.push(child); }
@@ -52,8 +53,6 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   // Phase 3: card extras registered as if a script before card.js had pushed them (the card hook).
   if (options.cardExtras) win.ociCardExtras = [...options.cardExtras];
   if (options.ociAsk) win.ociAsk = options.ociAsk;  // ask.js's hook, stubbed by the Home tests
-  // v0.3 Home: the questions kept on this device; absent, reading localStorage throws, as a blocked one does.
-  const storage = options.localStorage ? {localStorage: options.localStorage} : {};
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
     // The feed fragment after a post is read as text, as the page reads it.
@@ -69,12 +68,11 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const location = {search: ''};
   const history = {replaced: [], replaceState(state, title, url) { this.replaced.push(url); }};
   const documentListeners = {};
-  // v0.3 Home: <body data-mine> names the member's questions kept on this device, only when Home is on.
-  const body = {dataset: options.mine ? {mine: options.mine} : {}};
+  const body = {dataset: {}};
   const context = {document: {getElementById: get, createElement: tag => Object.assign(new Element(), {tag}), createTextNode: text => text, body,
       addEventListener: (name, fn) => (documentListeners[name] ||= []).push(fn)},
     window: win, location, Option: class extends Element { constructor(text, value) { super(); this.text = text; this.value = value; } },
-    AbortController, URLSearchParams, fetch, history, ...storage,
+    AbortController, URLSearchParams, fetch, history,
     setTimeout: (fn, delay) => { const id = ++timerId; timers.set(id, {fn, delay}); return id; },
     clearTimeout: id => timers.delete(id)};
   // The page loads these in this order (index.html); app.js wires up what the first two define.
