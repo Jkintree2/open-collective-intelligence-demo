@@ -221,3 +221,11 @@ def test_ask_off_my_posts_lists_statements_only(homepage, switch, monkeypatch):
 def test_a_copy_carries_who_asked():
     from app.backup import DIRECTIONS
     assert DIRECTIONS["ASKED"] == ("Person", {"Question"})
+
+
+def test_my_posts_address_is_not_found_without_home(homepage, switch):
+    """Review of 04d36d4: /my-posts exists only while Home is on for the reader; /my-statements always."""
+    for fields in ({"home_enabled": "off"}, {"home_enabled": "preview", "home_preview": ("bob@example.org",)}):
+        switch(**fields)
+        assert homepage.client.get("/my-posts").status_code == 404
+        assert homepage.client.get("/my-statements").status_code == 200

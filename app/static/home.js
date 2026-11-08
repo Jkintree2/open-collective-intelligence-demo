@@ -9,7 +9,7 @@
   if (!form || !form.dataset || !('homeAsk' in form.dataset)) return;
   const box = find('home-ask'), unsure = find('home-unsure'), swap = find('home-switch');
   const switchTo = {question: 'Post it as a statement instead', statement: 'Ask it as a question instead'};
-  const SHOWN = 5;
+  const SHOWN = 5, CUT = 120;  // as the server draws the list (main.HOME_MINE, HOME_MINE_CHARACTERS)
   let way = null, last = '', sorting = false, sent = 0;  // sent: which send is the current one
 
   // "My most recent statements and questions": the page drew the writer's own, from the record (since John's
@@ -28,17 +28,35 @@
       inner.className = 'home-again';
       inner.type = 'button';
     }
-    inner.textContent = question.text;
-    item.append(inner);
+    inner.textContent = cut(question.text);
+    const when = document.createElement('span');
+    when.className = 'counts';
+    when.textContent = 'just now';
+    item.append(inner, ' ', when);
     return item;
+  }
+
+  function cut(text) {  // main._home_mine's cut: whole words, then an ellipsis
+    const flat = String(text).split(/\s+/).join(' ').trim();
+    if (flat.length <= CUT) return flat;
+    const head = flat.slice(0, CUT);
+    return (head.includes(' ') ? head.slice(0, head.lastIndexOf(' ')) : head).replace(/[ ,;:.]+$/, '') + '…';
+  }
+
+  // The same question is the same answer link (the server may have cut its words); without a link, the same words.
+  function sameQuestion(item, question, id) {
+    if (item.getAttribute('data-kind') !== 'question' || !item.children[0]) return false;
+    const inner = item.children[0];
+    if (id) return String((inner.getAttribute && inner.getAttribute('href')) || inner.href || '')
+      .endsWith('/ask/answers/' + encodeURIComponent(id));
+    const same = value => String(value).toLowerCase().replace(/[?.!\s]+$/, '');
+    return same(inner.textContent) === same(question);
   }
 
   function addMine(question, id) {
     const list = find('home-mine'), section = find('home-mine-section');
     if (!list || !section) return;
-    const same = value => String(value).toLowerCase().replace(/[?.!\s]+$/, '');
-    const others = [...list.children].filter(item => !(item.getAttribute('data-kind') === 'question'
-      && same(item.children[0] ? item.children[0].textContent : '') === same(question)));
+    const others = [...list.children].filter(item => !sameQuestion(item, question, id));
     list.replaceChildren(questionItem({id, text: question, at: new Date().toISOString()}), ...others.slice(0, SHOWN - 1));
     section.hidden = false;
   }

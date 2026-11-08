@@ -230,6 +230,29 @@ test('five shown, and the same question once', async () => {
   assert.deepEqual(shown(full).map(line => line.split(' ').at(-1)), ['UDHR', 'One.', 'Two.', 'Three.', 'Four.']);
 });
 
+// Review of 04d36d4: the same question is the same answer link, whatever the server cut from its words; the same
+// words asked about something else are another question and stay. Drawn as the server draws it: cut at 120
+// characters, with its time.
+test('a question asked again is matched by its answer, not its words', async () => {
+  const page = await home({prepare: mine(['2026-11-05T13:00:00Z', 'How does homelessness relate…', 'question', '/ask/answers/q7'],
+                                         ['2026-11-05T12:00:00Z', QUESTION, 'question', '/ask/answers/q1'])});
+  await answered(page, {status: 'answered', question_id: 'q7'});
+  assert.deepEqual(shown(page), [`question /ask/answers/q7 ${QUESTION}`, `question /ask/answers/q1 ${QUESTION}`]);
+});
+
+test('a long question is cut as the server cuts it, with its time', async () => {
+  const long = 'Why ' + 'does the veto keep blocking every resolution on climate and housing '.repeat(3) + 'today?';
+  const page = await home({prepare: mine()});
+  await page.send(long);
+  await page.say('question');
+  page.asked.at(-1).resolve({status: 'answered', question_id: 'q8'});
+  await page.flush();
+  const item = page.get('home-mine').children[0];
+  const text = item.children[0].textContent;
+  assert.ok(text.length <= 121 && text.endsWith('…') && long.startsWith(text.slice(0, -1)), text);
+  assert.equal(item.children.at(-1).textContent, 'just now');
+});
+
 test('nothing posted and nothing asked keeps the list hidden; a first question shows it', async () => {
   const page = await home({prepare: mine()});
   assert.equal(page.get('home-mine-section').hidden, true);

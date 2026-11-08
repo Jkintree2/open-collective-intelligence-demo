@@ -8,7 +8,7 @@ STATIC = {"app.css": b"body {}", "card.js": b"// card"}
 
 
 def site(static=STATIC, version=None, cookie_ok="good", gate=lambda path: "/sign-in?next=" + path,
-         about=False, ask=False, head=True):
+         about=False, ask=False, head=True, my_heading="My statements"):
     seen = []
 
     def answer(request: httpx.Request) -> httpx.Response:
@@ -35,7 +35,7 @@ def site(static=STATIC, version=None, cookie_ok="good", gate=lambda path: "/sign
             return httpx.Response(303, headers={"location": "https://site.example/sign-in?next=/ask"})
         if path in GATED:
             if cookie == f"oci_member={cookie_ok}":
-                pages = {"/": "Recent posts", "/issues": "Issues", "/my-statements": "<h1>My statements</h1>",
+                pages = {"/": "Recent posts", "/issues": "Issues", "/my-statements": f"<h1>{my_heading}</h1>",
                          "/account": "<h1>My account</h1>"}
                 return httpx.Response(200, text=pages.get(path, ""))
             return httpx.Response(303, headers={"location": "https://site.example" + gate(path)})
@@ -104,3 +104,11 @@ def test_a_site_that_refuses_the_uptime_monitors_head_check_fails():
     client, _ = site(head=False)
     assert failed(run(client, STATIC)) == ["HEAD /health (the uptime monitors' check)",
                                            "HEAD / signed out goes to sign in"]
+
+
+def test_my_statements_may_read_my_posts_when_home_is_on_for_the_smoke_account():
+    """v0.3 (John, 7 November): with Home on for the account whose cookie smoke uses, the page is "My posts"."""
+    client, _ = site(my_heading="My posts")
+    assert failed(run(client, STATIC, cookie="good")) == []
+    client, _ = site(my_heading="Something else")
+    assert failed(run(client, STATIC, cookie="good")) == ["/my-statements signed in"]

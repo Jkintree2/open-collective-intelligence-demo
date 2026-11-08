@@ -105,7 +105,6 @@ def account(request: Request, done: str | None = None, member: Member = Depends(
 
 
 @router.get("/my-statements")
-@router.get("/my-posts")
 def my_statements(request: Request, shown: str = "", member: Member = Depends(require_member)) -> Response:
     """X1, its own page since John's 22 Oct email: the member's own posts, 50 at a time; one more is
     asked for to know whether to offer "Show more". A hand-typed "shown" that is not a number is the first page.
@@ -121,6 +120,14 @@ def my_statements(request: Request, shown: str = "", member: Member = Depends(re
     items = items[:shown]
     site._decorate_posts([item for item in items if item.get("kind") != "question"], me=member.key)  # in place
     return page(request, "my_statements.html", {"posts": items, "more": more}, private=True)
+
+
+@router.get("/my-posts")
+def my_posts(request: Request, shown: str = "", member: Member = Depends(require_member)) -> Response:
+    """v0.3: the same page at the address the menu gives while Home is on; not found otherwise."""
+    if not home.home_on(request):
+        raise HTTPException(404)
+    return my_statements(request, shown=shown, member=member)
 
 
 @router.post("/account/details", dependencies=[Depends(require_same_origin)])

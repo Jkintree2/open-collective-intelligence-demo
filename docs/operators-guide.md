@@ -358,7 +358,7 @@ To try it:
 2. Click **Environment**.
 3. Add `HOME_ENABLED` with the value `preview`, and `HOME_PREVIEW` with your account's email. Click **Save**. Render restarts the site. This takes a few minutes.
 
-When you are happy with it, change `HOME_ENABLED` to `on` and save. To go back, set it to `off`. Switching never changes what is already in the database. While Home is on for someone, the database notes which questions they asked, so their own list holds them on every phone and computer.
+When you are happy with it, change `HOME_ENABLED` to `on` and save. To go back, set it to `off`. Switching never changes what is already in the database. While Home is on for someone, the database notes which questions they asked, so their own list holds them on every phone and computer. The site never shows that to anyone else, but a copy downloaded from the back room includes it.
 
 With Home on, the menu reads Home, Issues, Enter a person, My posts, My account, About. Home invites people to write what they think, or ask a question. The site tells a statement from a question by itself, without calling the language model: a statement goes to the form as before, and a question gets its answer right under the button. When the site can't tell, it asks the writer: "Is this a statement to post, or a question to ask?" If it guessed wrong, a link under the button sends the same words the other way.
 
