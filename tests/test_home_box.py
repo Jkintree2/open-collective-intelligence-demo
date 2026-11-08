@@ -7,7 +7,7 @@ import re
 import pytest
 
 from test_home_switch import live_like  # noqa: F401
-from test_phase3_switches import ALL_ON, draw, pages  # noqa: F401
+from test_phase3_switches import ALL_ON, draw, nav, pages  # noqa: F401
 
 THREE = {"issues": "/issues", "my_statements": "/my-statements", "about": "/about"}
 BOX = ('<form class="home-box" method="post" action="/home">\n'
@@ -28,10 +28,6 @@ def boxed(live_like, switch):
     live_like.sign_in()
     switch(**ALL_ON, home_enabled="on")
     return live_like
-
-
-def nav(html):
-    return re.search(r"<nav>.*?</nav>", html).group(0)
 
 
 @pytest.mark.parametrize("name", THREE)

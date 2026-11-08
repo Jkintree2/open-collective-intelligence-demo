@@ -5,10 +5,11 @@ from __future__ import annotations
 import re
 from typing import Literal
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 from app import config
-from app.graph_questions import QUESTION_MAX
+from app.accounts import normalise_email
+from app.ask import QUESTION_MAX  # what Ask refuses, so a longer text is never sent there as a question
 
 Kind = Literal["statement", "question", "unsure"]
 
@@ -40,12 +41,23 @@ def home_on(request: Request) -> bool:
     It reads only the member require_access (or the About page) already found, never the database, so an error or
     asleep page that draws the menu cannot fail on it."""
     settings = config.get_settings()
-    if settings.home_enabled not in ("preview", "on") or not settings.accounts_enabled:
+    if settings.home_enabled == "off" or not settings.accounts_enabled:
         return False
     member = getattr(request.state, "member", None)
     if member is None:
         return False
-    return settings.home_enabled == "on" or member.email.strip().lower() in settings.home_preview
+    return settings.home_enabled == "on" or normalise_email(member.email) in settings.home_preview
+
+
+def home_asks(request: Request) -> bool:
+    """Home with asking: the one box takes questions too, and the lists hold them (ASK_ENABLED as well)."""
+    return home_on(request) and config.get_settings().ask_enabled
+
+
+def require_home(request: Request) -> None:
+    """A dependency after require_access or require_member, which found the member: not found without Home."""
+    if not home_on(request):
+        raise HTTPException(404)
 
 
 def _sentences(text: str) -> list[str]:
@@ -75,8 +87,8 @@ def _opener(word: str) -> tuple[str, bool]:
 
 
 def _sentence_kind(sentence: str, alone: bool) -> str:
-    """question, claim or unsure, for one sentence. `alone`: the whole text is this sentence. A sentence the writer
-    ended with a period or ! among others is theirs to call a claim; one with no mark at all (the last, or one cut
+    """question, statement or unsure, for one sentence. `alone`: the whole text is this sentence. A sentence the writer
+    ended with a period or ! among others is theirs to call a statement; one with no mark at all (the last, or one cut
     by a line break) is judged by its words. A question that runs long or says "because" with no mark may be a
     statement: unsure, since a question that is answered is listed for everyone."""
     bare = sentence.rstrip(_CLOSERS)
@@ -88,19 +100,19 @@ def _sentence_kind(sentence: str, alone: bool) -> str:
     while len(words) > 1 and words[0] in LEADING:
         words = words[1:]
     if not words:
-        return "claim"
+        return "statement"
     (first, contracted), second = _opener(words[0]), words[1] if len(words) > 1 else ""
     ended = bare.endswith((".", "!"))
     if first in ASKING_WORDS:
         return "question"
     if first in ASKING_FOR_ME:
-        return "question" if second in ("me", "us") else "unsure" if alone else "claim"
+        return "question" if second in ("me", "us") else "unsure" if alone else "statement"
     if first not in WH_WORDS and first not in AUX_WORDS:
-        return "claim"
+        return "statement"
     if first in ("do", "don't") and (second == "not" or first == "don't" and second not in SUBJECTS):
-        return "claim"  # "Do not build ...": an instruction to people
+        return "statement"  # "Do not build ...": an instruction to people
     if ended:
-        return "unsure" if alone else "claim"
+        return "unsure" if alone else "statement"
     if first in WH_WORDS and second in SUBJECTS and not contracted:
         return "unsure"  # "What we need is ...", "How we treat ..."
     if len(words) > LONG_UNMARKED or "because" in words:
@@ -119,8 +131,4 @@ def kind_of(text: str) -> Kind:
         return "unsure" if flat.rstrip(_CLOSERS).endswith("?") else "statement"
     sentences = _sentences(text)
     kinds = {_sentence_kind(sentence, len(sentences) == 1) for sentence in sentences}
-    if kinds == {"question"}:
-        return "question"
-    if kinds == {"claim"}:
-        return "statement"
-    return "unsure"
+    return kinds.pop() if len(kinds) == 1 else "unsure"

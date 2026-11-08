@@ -7,25 +7,18 @@ statement."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from app import config, home
 from app.members import require_access, require_same_origin
+from app.pages import page
+from app.text import TEXT_MAX
 
 router = APIRouter()
-TEXT_MAX = 4000  # the write box's limit, as main.TEXT_MAX
 CHOICES = ("statement", "question")
-
-
-def home_only(request: Request) -> None:
-    """After require_access, which found the member: not found unless this reader gets Home."""
-    if not home.home_on(request):
-        raise HTTPException(404)
-
-
-GUARDS = [Depends(require_access), Depends(require_same_origin), Depends(home_only)]
+GUARDS = [Depends(require_access), Depends(require_same_origin), Depends(home.require_home)]
 
 
 def kind_for(text: str, choice: str = "") -> str:
@@ -57,3 +50,11 @@ def home_form(request: Request, text: str = Form("", max_length=4 * TEXT_MAX), k
     if chosen == "question":
         return routes_ask.ask_form(request, question=text, issue="", solution="", evidence="", earlier=[])
     return main._render_index(request, text=text.strip(), unsure=True)
+
+
+@router.get("/home/mine", dependencies=[Depends(require_access), Depends(home.require_home)])
+def home_mine(request: Request) -> Response:
+    """The list under Home's button, which app.js draws again after a post or an answer."""
+    from app import main
+    return page(request, "_home_mine.html", {"home_mine": main._home_mine(request), "home_ask": home.home_asks(request)},
+                private=True)

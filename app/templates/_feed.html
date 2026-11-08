@@ -1,6 +1,6 @@
 <h2>Recent posts</h2>
 {% for post in posts %}
-{% if post.kind == "question" %}{% include "_question.html" %}{% else %}{% include "_post.html" %}{% endif %}
+{% include "_" ~ (post.kind or "post") ~ ".html" %}
 {% else %}
 <p class="empty">Nothing here yet. Be the first to write something.</p>
 {% endfor %}

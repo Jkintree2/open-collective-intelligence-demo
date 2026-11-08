@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const fs = require('node:fs');
 const path = require('node:path');
-const {setup} = require('./page_harness.js');
+const {setup, Element} = require('./page_harness.js');
 
 const QUESTION = 'how does homelessness relate to the UDHR';
 const STATEMENT = 'Data centers raise electricity prices.';
@@ -178,27 +178,8 @@ test('tell me more passes the earlier question', async () => {
   await second;
 });
 
-// Task 5: My most recent statements and questions. The page draws the writer's own statements and questions from the
-// record (since John's 7 November email it keeps who asked). A question answered here goes on top at once, the same
-// question once, five shown, and "Recent posts" is drawn again from /feed, as after a post.
-const {Element} = require('./page_harness.js');
-function mine(...rows) {  // [at, text, kind, href]; no href: a button that puts the question back in the box
-  return get => {
-    get('home-mine').children = rows.map(([at, text, kind = 'statement', href = '/my-posts']) => {
-      const inner = Object.assign(new Element(), href ? {tag: 'a', href, textContent: text}
-        : {tag: 'button', className: 'home-again', type: 'button', textContent: text});
-      const item = Object.assign(new Element(), {tag: 'li', children: [inner]});
-      item.setAttribute('data-at', at);
-      item.setAttribute('data-kind', kind);
-      return item;
-    });
-    get('home-mine-section').hidden = rows.length === 0;
-    get('feed').innerHTML = '<h2>Recent posts</h2> as drawn';
-  };
-}
-const shown = page => page.get('home-mine').children.map(item =>
-  `${item.getAttribute('data-kind')} ${item.children[0].href || 'button'} ${item.children[0].textContent}`);
-
+// Task 5: My most recent statements and questions, and "Recent posts". The server draws both (since John's
+// 7 November email it knows who asked); after an answer, as after a post, app.js asks it for both again.
 async function answered(page, reply) {
   await page.send(QUESTION);
   await page.say('question');
@@ -206,72 +187,32 @@ async function answered(page, reply) {
   await page.flush();
 }
 
-test('an answered question goes on top of my list at once, and Recent posts is drawn again', async () => {
-  const page = await home({prepare: mine(['2026-11-05T12:00:00Z', 'My noon statement.'],
-                                         ['2026-11-05T11:00:00Z', 'Asked at eleven?', 'question', '/ask/answers/q1'],
-                                         ['2026-11-05T10:00:00Z', 'My ten o\'clock statement.'])});
+test('an answered question has the server draw both lists again', async () => {
+  const page = await home();
   await answered(page, {status: 'answered', question_id: 'q9'});
-  assert.deepEqual(shown(page), [`question /ask/answers/q9 ${QUESTION}`, 'statement /my-posts My noon statement.',
-    'question /ask/answers/q1 Asked at eleven?', 'statement /my-posts My ten o\'clock statement.']);
-  assert.equal(page.get('home-mine-section').hidden, false);
-  assert.equal(page.get('feed').innerHTML, '');  // the harness's /feed answers an empty list
+  assert.deepEqual(page.fragments, ['/feed', '/home/mine']);
 });
 
-test('five shown, and the same question once', async () => {
-  const page = await home({prepare: mine(['2026-11-05T13:00:00Z', 'How does homelessness relate to the UDHR?', 'question', '/ask/answers/q0'],
-                                         ['2026-11-05T12:00:00Z', 'One.'], ['2026-11-05T11:00:00Z', 'Two.'],
-                                         ['2026-11-05T10:00:00Z', 'Three.'], ['2026-11-05T09:00:00Z', 'Four.'])});
-  await answered(page, {status: 'answered', question_id: 'q0'});
-  assert.deepEqual(shown(page), [`question /ask/answers/q0 ${QUESTION}`, 'statement /my-posts One.',
-    'statement /my-posts Two.', 'statement /my-posts Three.', 'statement /my-posts Four.']);
-  const full = await home({prepare: mine(['2026-11-05T12:00:00Z', 'One.'], ['2026-11-05T11:00:00Z', 'Two.'],
-    ['2026-11-05T10:00:00Z', 'Three.'], ['2026-11-05T09:00:00Z', 'Four.'], ['2026-11-05T08:00:00Z', 'Five.'])});
-  await answered(full, {status: 'answered', question_id: 'q9'});
-  assert.deepEqual(shown(full).map(line => line.split(' ').at(-1)), ['UDHR', 'One.', 'Two.', 'Three.', 'Four.']);
-});
-
-// Review of 04d36d4: the same question is the same answer link, whatever the server cut from its words; the same
-// words asked about something else are another question and stay. Drawn as the server draws it: cut at 120
-// characters, with its time.
-test('a question asked again is matched by its answer, not its words', async () => {
-  const page = await home({prepare: mine(['2026-11-05T13:00:00Z', 'How does homelessness relate…', 'question', '/ask/answers/q7'],
-                                         ['2026-11-05T12:00:00Z', QUESTION, 'question', '/ask/answers/q1'])});
-  await answered(page, {status: 'answered', question_id: 'q7'});
-  assert.deepEqual(shown(page), [`question /ask/answers/q7 ${QUESTION}`, `question /ask/answers/q1 ${QUESTION}`]);
-});
-
-test('a long question is cut as the server cuts it, with its time', async () => {
-  const long = 'Why ' + 'does the veto keep blocking every resolution on climate and housing '.repeat(3) + 'today?';
-  const page = await home({prepare: mine()});
-  await page.send(long);
-  await page.say('question');
-  page.asked.at(-1).resolve({status: 'answered', question_id: 'q8'});
-  await page.flush();
-  const item = page.get('home-mine').children[0];
-  const text = item.children[0].textContent;
-  assert.ok(text.length <= 121 && text.endsWith('…') && long.startsWith(text.slice(0, -1)), text);
-  assert.equal(item.children.at(-1).textContent, 'just now');
-});
-
-test('nothing posted and nothing asked keeps the list hidden; a first question shows it', async () => {
-  const page = await home({prepare: mine()});
-  assert.equal(page.get('home-mine-section').hidden, true);
-  await answered(page, {status: 'answered', question_id: 'q9'});
-  assert.deepEqual(shown(page), [`question /ask/answers/q9 ${QUESTION}`]);
-  assert.equal(page.get('home-mine-section').hidden, false);
-});
-
-test('a question with no answer adds nothing and leaves Recent posts as drawn', async () => {
-  const page = await home({prepare: mine(['2026-11-05T12:00:00Z', 'My noon statement.'])});
+test('a question with no answer draws nothing again', async () => {
+  const page = await home();
   await answered(page, {status: 'empty', paragraphs: [], sources: []});
-  assert.deepEqual(shown(page), ['statement /my-posts My noon statement.']);
-  assert.equal(page.get('feed').innerHTML, '<h2>Recent posts</h2> as drawn');
+  assert.deepEqual(page.fragments, []);
 });
 
-test('a question with no answer link is a button that refills the box', async () => {
-  const page = await home({prepare: mine(['2026-11-05T09:00:00Z', 'Is the veto fair?', 'question', null])});
-  const button = page.get('home-mine').children[0].children[0];
-  assert.equal(button.className, 'home-again');
+test('the Write page draws only the feed again; Home its own list too', async () => {
+  const write = await setup(undefined, {issues: {}, solutions: {}, evidence: {}}, {absent: ['home-mine-section']});
+  await write.win.oci.refreshLists();
+  assert.deepEqual(write.fragments, ['/feed']);
+  const page = await home();
+  page.get('home-mine-section').outerHTML = '<section>as drawn</section>';
+  await page.win.oci.refreshLists();
+  assert.deepEqual(page.fragments, ['/feed', '/home/mine']);
+  assert.equal(page.get('home-mine-section').outerHTML, '');  // the harness serves an empty fragment
+});
+
+test('a question with no answer link in Recent posts is a button that refills the box', async () => {
+  const page = await home();
+  const button = Object.assign(new Element(), {tag: 'button', className: 'home-again', textContent: 'Is the veto fair?'});
   for (const listener of page.documentListeners.click) listener({target: {closest: s => (s === '.home-again' ? button : null)}});
   assert.equal(page.get('text').value, 'Is the veto fair?');
 });

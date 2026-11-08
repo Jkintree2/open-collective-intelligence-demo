@@ -1360,7 +1360,7 @@ Without JavaScript the same form posts to `/home`: a statement is posted as on t
 
 > **My most recent statements and questions**
 
-Five, newest first. A statement links to My posts, where it is listed (a post has no page of its own); a question links to the answer it got. Since John's 7 November email the database keeps who asked a question while Home is on for them, so the list holds a member's questions on every device; it is never shown with anyone's name. A question answered on Home goes to the top at once.
+Five, newest first. A statement links to My posts, where it is listed (a post has no page of its own); a question links to the answer it got. Since John's 7 November email the database keeps who asked a question while Home is on for them, so the list holds a member's questions on every device; it is never shown with anyone's name. After a statement is posted or a question answered on Home, the server draws the list again.
 
 Below it, "Recent posts": statements and questions from everyone, mixed, newest first. It holds as many as the Write page lists (60). A statement shows exactly as in the Write page's list. A question shows as:
 

@@ -33,36 +33,33 @@ FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END |
 RETURN q.id AS id
 """
 
-# Q48. The latest questions, everywhere or on one issue, solution or piece of evidence, with the name of what
-# each was asked on while it still exists.
+# Q48 and Q57 end alike: after `WITH q, <when> AS asked_at`, each question with the name of what it was asked on
+# while that still exists, newest first.
+_QUESTION_ROWS = """
+OPTIONAL MATCH (i:Issue {key: q.issue_key})
+OPTIONAL MATCH (s:Solution {key: q.solution_key})
+OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
+       q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name,
+       asked_at
+ORDER BY asked_at DESC
+"""
+
+# Q48. The latest questions, everywhere or on one issue, solution or piece of evidence.
 RECENT_QUESTIONS = """
 MATCH (q:Question)
 WHERE ($issue_key IS NULL OR q.issue_key = $issue_key)
   AND ($solution_key IS NULL OR q.solution_key = $solution_key)
   AND ($evidence_key IS NULL OR q.evidence_key = $evidence_key)
-WITH q ORDER BY q.asked_at DESC LIMIT $limit
-OPTIONAL MATCH (i:Issue {key: q.issue_key})
-OPTIONAL MATCH (s:Solution {key: q.solution_key})
-OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
-RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
-       q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name,
-       q.asked_at AS asked_at
-ORDER BY q.asked_at DESC
-"""
+WITH q, q.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
+""" + _QUESTION_ROWS
 
-# Q57 (v0.3). The questions one member asked, newest first by when they last asked each, for My posts and the list
-# under Home's button; `asked_at` is the member's own time, not the question's.
+# Q57 (v0.3). The questions one member asked, for My posts and the list under Home's button, by the member's own
+# time of asking, not the question's.
 MY_QUESTIONS = """
 MATCH (:Person {key: $person_key})-[a:ASKED]->(q:Question)
-WITH q, a ORDER BY a.asked_at DESC LIMIT $limit
-OPTIONAL MATCH (i:Issue {key: q.issue_key})
-OPTIONAL MATCH (s:Solution {key: q.solution_key})
-OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
-RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
-       q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name,
-       a.asked_at AS asked_at
-ORDER BY a.asked_at DESC
-"""
+WITH q, a.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
+""" + _QUESTION_ROWS
 
 # Q49. One question and the answer it last got, by its id.
 ONE_QUESTION = """

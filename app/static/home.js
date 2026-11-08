@@ -2,74 +2,15 @@
 // on one Home page"). On Read my statement or question the site says what the text is (/api/home/kind): a
 // statement starts the reading and the card (app.js, window.ociStartReading), a question is answered in place under
 // the button (ask.js, window.ociAsk), and when the site can't tell, two buttons let the writer choose. A link under
-// the box sends the same text the other way. Without this file the form posts to /home, which does the same.
+// the box sends the same text the other way, and after an answer the server draws the lists again (app.js,
+// window.oci.refreshLists), as after a post. Without this file the form posts to /home, which does the same.
 (() => {
   const find = id => document.getElementById(id);
   const form = find('compose'), text = find('text');
-  if (!form || !form.dataset || !('homeAsk' in form.dataset)) return;
+  if (form?.dataset?.homeAsk === undefined) return;
   const box = find('home-ask'), unsure = find('home-unsure'), swap = find('home-switch');
   const switchTo = {question: 'Post it as a statement instead', statement: 'Ask it as a question instead'};
-  const SHOWN = 5, CUT = 120;  // as the server draws the list (main.HOME_MINE, HOME_MINE_CHARACTERS)
   let way = null, last = '', sorting = false, sent = 0;  // sent: which send is the current one
-
-  // "My most recent statements and questions": the page drew the writer's own, from the record (since John's
-  // 7 November email the record keeps who asked). A question answered just now goes on top, the same question once,
-  // five shown; "Recent posts" is drawn again from /feed, as after a post.
-  function questionItem(question) {
-    const item = document.createElement('li');
-    item.setAttribute('data-at', question.at);
-    item.setAttribute('data-kind', 'question');
-    // One with no kept answer is a button that puts it back in the box, as on Ask the database.
-    const inner = document.createElement(question.id ? 'a' : 'button');
-    if (question.id) {
-      inner.className = 'ask-answered';
-      inner.href = '/ask/answers/' + encodeURIComponent(question.id);
-    } else {
-      inner.className = 'home-again';
-      inner.type = 'button';
-    }
-    inner.textContent = cut(question.text);
-    const when = document.createElement('span');
-    when.className = 'counts';
-    when.textContent = 'just now';
-    item.append(inner, ' ', when);
-    return item;
-  }
-
-  function cut(text) {  // main._home_mine's cut: whole words, then an ellipsis
-    const flat = String(text).split(/\s+/).join(' ').trim();
-    if (flat.length <= CUT) return flat;
-    const head = flat.slice(0, CUT);
-    return (head.includes(' ') ? head.slice(0, head.lastIndexOf(' ')) : head).replace(/[ ,;:.]+$/, '') + '…';
-  }
-
-  // The same question is the same answer link (the server may have cut its words); without a link, the same words.
-  function sameQuestion(item, question, id) {
-    if (item.getAttribute('data-kind') !== 'question' || !item.children[0]) return false;
-    const inner = item.children[0];
-    if (id) return String((inner.getAttribute && inner.getAttribute('href')) || inner.href || '')
-      .endsWith('/ask/answers/' + encodeURIComponent(id));
-    const same = value => String(value).toLowerCase().replace(/[?.!\s]+$/, '');
-    return same(inner.textContent) === same(question);
-  }
-
-  function addMine(question, id) {
-    const list = find('home-mine'), section = find('home-mine-section');
-    if (!list || !section) return;
-    const others = [...list.children].filter(item => !sameQuestion(item, question, id));
-    list.replaceChildren(questionItem({id, text: question, at: new Date().toISOString()}), ...others.slice(0, SHOWN - 1));
-    section.hidden = false;
-  }
-
-  async function redrawFeed() {
-    try {
-      const response = await fetch('/feed');
-      if (!response.ok || response.redirected) return;
-      find('feed').innerHTML = await response.text();
-    } catch {
-      // the list stays as it was until the page is opened again
-    }
-  }
 
   function went(kind) {  // the way the text went, and the link that sends it the other way
     way = kind;
@@ -95,7 +36,7 @@
     went('question');
     const ticket = ++sent;
     const data = await window.ociAsk(box, question);
-    if (data && data.status === 'answered') { addMine(question, data.question_id); redrawFeed(); }  // either way it went since
+    if (data && data.status === 'answered') window.oci.refreshLists().catch(() => {});  // a reload shows them anyway
     if (ticket !== sent) return;  // sent the other way meanwhile: the reading owns the box now
     if (data && data.status && text.value.trim() === question) text.value = '';  // ready for "Tell me more"
   }

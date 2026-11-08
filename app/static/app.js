@@ -7,7 +7,7 @@
   const unavailable = 'The language model is not answering right now. You can fill in the form by hand, or try again in a minute.';
   const tooLong = 'That is longer than this demo can read at once. Please shorten it to a few paragraphs.';
   // v0.3 Home with asking (data-home-ask): home.js sends the box, as a statement through read() or as a question.
-  const home = !!form.dataset && 'homeAsk' in form.dataset;
+  const home = form.dataset?.homeAsk !== undefined;
   const readLabel = home ? 'Read my statement or question' : 'Read my statement';
   let readController, slowTimer, abandonTimer;
   async function request(url, body, signal) {
@@ -23,7 +23,19 @@
     if (response.status === 401 && data && data.redirect) location.href = data.redirect;
     throw failure;
   }
-  const card = window.ociCard({find, request, unavailable, stopDictation: () => dictation.stop(), stopReading, updateText});
+  // After a post or an answer the server draws the lists again: the feed, and on Home the writer's own list.
+  async function fragment(url) {
+    const response = await fetch(url);
+    if (!response.ok || response.redirected) throw new Error(url);
+    return response.text();
+  }
+  async function refreshLists() {
+    find('feed').innerHTML = await fragment('/feed');
+    const mine = find('home-mine-section');
+    if (mine) mine.outerHTML = await fragment('/home/mine');
+  }
+  const card = window.ociCard({find, request, unavailable, stopDictation: () => dictation.stop(), stopReading, updateText,
+    refreshLists});
   const {state} = card;
   const dictation = window.ociDictation({find, tooLong, updateText, busy: () => state.reading || state.posting,
     // Spoken words are the writer's own, as typed ones are; the reading they follow still goes with them.
@@ -88,7 +100,7 @@
   find('discard').addEventListener('click', () => { dictation.stop(); stopReading(); find('card').hidden = true; card.changed(); text.focus(); });
   find('post').addEventListener('click', card.post);
   // The summary above the form (about_issue.js) chooses positions through this.
-  window.oci = {setPositionOnExisting: card.setPositionOnExisting, card};
+  window.oci = {setPositionOnExisting: card.setPositionOnExisting, card, refreshLists};
   window.ociStartReading = read;  // what Read my statement does; Home starts a statement with it
   find('read').textContent = readLabel; updateText(); card.loadCandidates();
 })();

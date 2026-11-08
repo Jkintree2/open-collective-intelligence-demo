@@ -112,7 +112,7 @@ def mine_question(text, minutes, qid):
 
 def mine_list(page):
     found = re.search(r'<ul id="home-mine">(.*?)</ul>', page, re.S).group(1)
-    return re.findall(r'<li data-at="([^"]+)" data-kind="(\w+)"><a (?:class="ask-answered" )?href="([^"]+)">([^<]*)</a>',
+    return re.findall(r'<li><a (?:class="ask-answered" )?href="([^"]+)">([^<]*)</a> <span class="counts">[^<]*</span></li>',
                       found)
 
 
@@ -123,11 +123,11 @@ def test_my_list_joins_my_questions_by_time(homepage):
     page = draw(homepage.client, "/")
     assert "<h2>My most recent statements and questions</h2>" in page
     assert mine_list(page) == [
-        ("2026-11-05T12:10:00Z", "question", f"/ask/answers/{'01' * 16}", "Who pays?"),
-        ("2026-11-05T11:59:00Z", "statement", "/my-posts", "My statement number 1."),
-        ("2026-11-05T11:58:00Z", "question", f"/ask/answers/{'02' * 16}", "Is it fair?"),
-        ("2026-11-05T11:57:00Z", "statement", "/my-posts", "My statement number 2."),
-        ("2026-11-05T11:56:00Z", "question", f"/ask/answers/{'03' * 16}", "Why now?")]
+        (f"/ask/answers/{'01' * 16}", "Who pays?"),
+        ("/my-posts", "My statement number 1."),
+        (f"/ask/answers/{'02' * 16}", "Is it fair?"),
+        ("/my-posts", "My statement number 2."),
+        (f"/ask/answers/{'03' * 16}", "Why now?")]
     assert '<section class="home-mine" id="home-mine-section">' in page
 
 
@@ -143,7 +143,7 @@ def test_with_ask_off_my_list_is_statements_only(homepage, switch, monkeypatch):
     switch(ask_enabled=False)
     homepage.own_posts[:] = [own(1, -1)]
     page = draw(homepage.client, "/")
-    assert [kind for _, kind, _, _ in mine_list(page)] == ["statement"]
+    assert [href for href, _ in mine_list(page)] == ["/my-posts"]
 
 
 def test_the_page_no_longer_names_the_member_for_the_device(homepage):
@@ -229,3 +229,23 @@ def test_my_posts_address_is_not_found_without_home(homepage, switch):
         switch(**fields)
         assert homepage.client.get("/my-posts").status_code == 404
         assert homepage.client.get("/my-statements").status_code == 200
+
+
+# The list under the button, served alone so app.js can draw it again after a post or an answer (review, 8 November).
+def test_home_mine_serves_the_list_alone(homepage):
+    homepage.own_posts[:] = [own(1, -1)]
+    homepage.own_questions[:] = [mine_question("Who pays?", 10, QID)]
+    response = homepage.client.get("/home/mine")
+    assert response.status_code == 200 and "no-store" in response.headers.get("cache-control", "")
+    assert response.text.startswith('<section class="home-mine" id="home-mine-section">')
+    assert mine_list(response.text) == [(f"/ask/answers/{QID}", "Who pays?"), ("/my-posts", "My statement number 1.")]
+    assert "<nav>" not in response.text and "<html" not in response.text
+
+
+def test_home_mine_is_not_found_without_home(homepage, switch):
+    for fields in ({"home_enabled": "off"}, {"home_enabled": "preview", "home_preview": ("bob@example.org",)}):
+        switch(**fields)
+        assert homepage.client.get("/home/mine").status_code == 404
+    homepage.client.cookies.clear()
+    switch(home_enabled="on")
+    assert homepage.client.get("/home/mine", follow_redirects=False).status_code in (303, 401)

@@ -1724,20 +1724,20 @@ FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END |
 RETURN q.id AS id
 ```
 
-**Q48** returns `q.asked_at AS asked_at` as well, so "Recent posts" can place each question among the statements (`app/home_lists.py`, newest first, at most 60 in all).
+**Q48** returns `asked_at` as well, so "Recent posts" can place each question among the statements (`app/home_lists.py`, newest first, at most 60 in all). Q48 and Q57 share their tail in `graph_questions.py` (`_QUESTION_ROWS`): each ends `WITH q, <when> AS asked_at ORDER BY asked_at DESC LIMIT $limit`, then the three OPTIONAL MATCH lines and the RETURN below.
 
 **Q57. A member's own questions**, newest first by their own `asked_at`:
 
 ```cypher
 MATCH (:Person {key: $person_key})-[a:ASKED]->(q:Question)
-WITH q, a ORDER BY a.asked_at DESC LIMIT $limit
+WITH q, a.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
 OPTIONAL MATCH (i:Issue {key: q.issue_key})
 OPTIONAL MATCH (s:Solution {key: q.solution_key})
 OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
 RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
        q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name,
-       a.asked_at AS asked_at
-ORDER BY a.asked_at DESC
+       asked_at
+ORDER BY asked_at DESC
 ```
 
 My posts asks for one more of each than it shows (Q24 and Q57), mixes them and cuts to fifty, so "Show more" is offered exactly when more exist. A failed read of the questions is logged (`questions_not_read`) and leaves the statements.

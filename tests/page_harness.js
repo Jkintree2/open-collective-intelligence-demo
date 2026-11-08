@@ -27,7 +27,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   // Candidates may be passed alone, as the only thing a card test cares about.
   if (speech && typeof speech === 'object') { candidates = speech; speech = 'SpeechRecognition'; }
   const elements = new Map();
-  const get = id => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
+  const absent = new Set(options.absent || []);  // ids the page does not have (every other one is made on demand)
+  const get = id => { if (absent.has(id)) return null; if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
   get('card').hidden = true;
   get('sentences-title').textContent = 'What this will add';  // index.html's heading over the list
   // A signed-in write page carries the account's name on the form (sub-plan A, members.posting_identity).
@@ -53,10 +54,14 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   // Phase 3: card extras registered as if a script before card.js had pushed them (the card hook).
   if (options.cardExtras) win.ociCardExtras = [...options.cardExtras];
   if (options.ociAsk) win.ociAsk = options.ociAsk;  // ask.js's hook, stubbed by the Home tests
+  const fragments = [];  // the list fragments fetched, in order
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
-    // The feed fragment after a post is read as text, as the page reads it.
-    if (url === '/feed') return Promise.resolve({ok: true, status: 200, redirected: false, text: async () => ''});
+    // The lists drawn again after a post or an answer (app.js refreshLists) are read as text, as the page reads them.
+    if (url === '/feed' || url === '/home/mine') {
+      fragments.push(url);
+      return Promise.resolve({ok: true, status: 200, redirected: false, text: async () => ''});
+    }
     return new Promise(resolve => requests.push({url, options,
       resolve: data => resolve({ok: true, status: 200, json: async () => data}),
       // No body means a reply that is not ours, such as a gateway page during a restart.
@@ -88,7 +93,7 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const runTimer = async delay => { for (const [id, timer] of [...timers]) if (timer.delay === delay) { timers.delete(id); timer.fn(); } await flush(); };
   // Another script from app/static/, run in this same page after the three above.
   const load = file => vm.runInContext(fs.readFileSync(path.join(__dirname, '../app/static', file), 'utf8'), context, {filename: file});
-  return {get, recognizers, requests, type, flush, runTimer, win, location, load, documentListeners, history};
+  return {get, recognizers, requests, fragments, type, flush, runTimer, win, location, load, documentListeners, history};
 }
 
 module.exports = {Element, setup};

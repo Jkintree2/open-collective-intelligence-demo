@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
-from app import ask, config, graph, graph_ask, graph_item_pages, graph_questions, home
+from app import ask, config, graph, graph_ask, graph_item_pages, graph_questions, home, home_lists
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.members import require_access, require_same_origin
 from app.pages import page
@@ -204,12 +204,8 @@ def _still_holds(answer: dict[str, Any], asked_at: datetime) -> bool:
 def recent_questions(issue: str | None, **on: str) -> list[dict]:
     """The list under the box; a page without it is still the Ask page. `on` is solution_key or evidence_key for
     the box on that page (GitHub issue 55)."""
-    try:
-        return graph_questions.recent(issue, graph_questions.RECENT_ON_ISSUE if issue or on else graph_questions.RECENT,
-                                      **on)
-    except Exception as exc:  # noqa: BLE001
-        log.warning(json.dumps({"event": "questions_not_read", "error": type(exc).__name__}))
-        return []
+    limit = graph_questions.RECENT_ON_ISSUE if issue or on else graph_questions.RECENT
+    return home_lists.quietly(graph_questions.recent, issue, limit, **on)
 
 
 @router.get("/ask", dependencies=[Depends(ask_on), Depends(require_access)])

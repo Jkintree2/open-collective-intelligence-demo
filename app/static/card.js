@@ -1,6 +1,6 @@
 // The card under the statement: its rows, the preview of what it will add, and Post.
 // Everything the card holds is in `state`, so a reading, a choice in the panel and a post see the same card.
-window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updateText}) => {
+window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updateText, refreshLists}) => {
   const form = find('compose'), text = find('text'), card = find('card');
   const state = {
     candidates: {issues: {}, solutions: {}, evidence: {}}, candidatesReady: false, prefillConsumed: false,
@@ -333,12 +333,8 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
       extras.forEach(extra => extra.posted?.());  // the next statement starts afresh (place.js)
       find('compose-message').textContent = 'Added to the database';
       setTimeout(() => { if (find('compose-message').textContent === 'Added to the database') find('compose-message').textContent = ''; }, 6000);
-      try {
-        const response = await fetch('/feed');
-        if (!response.ok || response.redirected) throw new Error();
-        find('feed').innerHTML = await response.text();
-        showNewest();
-      } catch { find('compose-message').textContent = 'Added to the database. Reload the page to see the updated database.'; }
+      try { await refreshLists(); showNewest(); }
+      catch { find('compose-message').textContent = 'Added to the database. Reload the page to see the updated database.'; }
       loadCandidates();
     } catch (error) { find('card-errors').textContent = error.message; failed = true; }
     finally {

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 ARTICLES = ("the", "a", "an")
 NAME_MAX = 300
+TEXT_MAX = 4000  # the write box's limit, in characters
 TRAILING_PUNCTUATION = ".,;:!?"
 _NOT_ALPHANUMERIC = re.compile(r"[\W_]+")
 

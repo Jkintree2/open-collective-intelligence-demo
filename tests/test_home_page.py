@@ -90,24 +90,20 @@ def own(number, minutes_ago):
 def mine_list(page):
     import re
     found = re.search(r'<ul id="home-mine">(.*?)</ul>', page, re.S)
-    return re.findall(r'<li data-at="([^"]+)" data-kind="statement"><a href="/my-posts">([^<]*)</a>', found.group(1))
+    return re.findall(r'<li><a href="/my-posts">([^<]*)</a> <span class="counts">[^<]*</span></li>', found.group(1))
 
 
 def test_my_recent_statements_under_the_box(homepage):
     homepage.own_posts[:] = [own(n, n) for n in range(1, 8)]
     page = draw(homepage.client, "/")
     assert "<h2>My most recent statements and questions</h2>" in page
-    assert mine_list(page) == [("2026-11-05T11:59:00Z", "My statement number 1."),
-                               ("2026-11-05T11:58:00Z", "My statement number 2."),
-                               ("2026-11-05T11:57:00Z", "My statement number 3."),
-                               ("2026-11-05T11:56:00Z", "My statement number 4."),
-                               ("2026-11-05T11:55:00Z", "My statement number 5.")]
+    assert mine_list(page) == [f"My statement number {n}." for n in range(1, 6)]
     assert page.index('id="read"') < page.index('id="home-mine"') < page.index('id="feed"')
 
 
 def test_a_long_statement_is_cut_in_the_list(homepage):
     homepage.own_posts[:] = [{**own(1, 1), "text": "word " * 60}]
-    (_, text), = mine_list(draw(homepage.client, "/"))
+    text, = mine_list(draw(homepage.client, "/"))
     assert len(text) <= 121 and text.endswith("…")
 
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block content %}{% set home_page = home_on(request) and not editing %}{% set home_ask = home_page and switches().ask %}
+{% block content %}
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 {% if not editing %}<p class="sentence">{% if home_ask %}{{ home_sentence }}{% else %}{{ site_sentence }}{% endif %}</p>{% endif %}
 
@@ -62,12 +62,7 @@
     <p id="credit" class="counts"></p>
   </section>
 </form>
-{% if home_page and member %}<section class="home-mine" id="home-mine-section"{% if not home_mine %} hidden{% endif %}>
-  <h2>{% if home_ask %}My most recent statements and questions{% else %}My most recent statements{% endif %}</h2>
-  <ul id="home-mine">{% for mine in home_mine %}
-    <li data-at="{{ mine.at }}" data-kind="{{ mine.kind }}">{% if mine.href %}<a {% if mine.kind == "question" %}class="ask-answered" {% endif %}href="{{ mine.href }}">{{ mine.text }}</a>{% else %}<button type="button" class="home-again">{{ mine.text }}</button>{% endif %} <span class="counts">{{ mine.when }}</span></li>{% endfor %}
-  </ul>
-</section>
+{% if home_page %}{% include "_home_mine.html" %}
 {% endif %}<script>
   var anon = document.getElementById('anonymous'), nameField = document.getElementById('display_name');
   function syncName() { if (!nameField) return; if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
