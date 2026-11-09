@@ -135,10 +135,10 @@ def test_it_names_johns_repository_and_the_site_name(about, switch):
     switch(ask_enabled=True)
     html = about.client.get("/about").text
     assert f'<a href="{routes_about.REPOSITORY}" rel="noopener noreferrer">' in html
-    # John's wording of 31 October, word for word with Ask on.
-    assert (f"<p>{about.settings.site_name} is a small test of a conversational platform for constructing a shared database"
+    # John's wording, word for word with Ask on: his own edit on GitHub, 9 November ("a test", "a form").
+    assert (f"<p>{about.settings.site_name} is a test of a conversational platform for constructing a shared database"
             " of issues, evidence, and solutions for collective problem solving. People write statements about issues they"
-            " care about. The site reads each statement, and extracts the issues, evidence, and solutions into a short form;"
+            " care about. The site reads each statement, and extracts the issues, evidence, and solutions into a form;"
             " the person checks and corrects the form; and it joins a database that everyone here can read, ask questions of,"
             " and build on. Development of this prototype software began in September of 2026.</p>") in html
 
