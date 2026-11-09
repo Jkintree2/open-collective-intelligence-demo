@@ -390,3 +390,16 @@ def test_the_box_carries_a_solution_to_home(home_asking, monkeypatch):
     page = home(home_asking.client, start="1", text="Tax the rich.", solution="carbon tax").text
     assert 'id="about-issue"' in page and 'data-start="/?solution=carbon%20tax"' in page
     assert f'{HOME_ASK} data-solution="carbon tax" hidden' in page
+
+
+@pytest.mark.parametrize("url,kind,key", ITEMS)
+def test_with_home_asking_the_lower_box_is_gone_and_its_questions_stay(home_asking, monkeypatch, url, kind, key):
+    """John, 9 November 2026: the Ask box further down a solution's or a piece of evidence's page asked what the box
+    at the top asks; only the questions asked about the item stay."""
+    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [
+        {"id": "cd" * 16, "answered": True, "text": "Who pays the carbon tax in the end?"}])
+    page = home_asking.client.get(url).text
+    assert f"Ask about this {kind}" not in page and 'class="ask-form"' not in page
+    assert f'<h2 id="questions">Questions asked about this {kind}</h2>' in page
+    assert f'<a class="ask-answered" href="/ask/answers/{"cd" * 16}">Who pays the carbon tax in the end?</a>' in page
+    assert '<a href="#questions">Questions</a>' in page and 'href="#ask-title"' not in page

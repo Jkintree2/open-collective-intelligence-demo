@@ -12,7 +12,7 @@
 <nav class="issue-menu" aria-label="On this page">
   <a href="#speaks-to">Supports or refutes ({{ evidence.targets|length }})</a>
   {% if evidence.evidence %}<a href="#evidence">Evidence ({{ evidence.evidence|length }})</a>{% endif %}
-  {% if switches().ask %}<a href="#ask-title">Ask</a>{% endif %}
+  {% if switches().ask %}{% if not home_asks(request) %}<a href="#ask-title">Ask</a>{% elif recent_questions %}<a href="#questions">Questions</a>{% endif %}{% endif %}
   <a href="#posts">Posts</a>
 </nav>
 
