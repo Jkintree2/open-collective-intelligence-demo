@@ -178,8 +178,8 @@ test('tell me more passes the earlier question', async () => {
   await second;
 });
 
-// Task 5: My most recent statements and questions, and "Recent posts". The server draws both (since John's
-// 7 November email it knows who asked); after an answer, as after a post, app.js asks it for both again.
+// "Recent posts", which the server draws (since John's 7 November email it knows who asked); after an answer, as
+// after a post, app.js asks it for the list again (John, 9 November: Home's one list).
 async function answered(page, reply) {
   await page.send(QUESTION);
   await page.say('question');

@@ -7,7 +7,7 @@ from dataclasses import replace
 import httpx
 import pytest
 
-from app import ask, routes_about
+from app import about_site, ask
 from app.config import Settings
 from app.principles import guiding_block
 
@@ -20,6 +20,7 @@ SOURCES = {
 }
 DIGEST = ask.Digest('{"asked_about":"the issue Climate","issues":[]}', SOURCES, posts_in=2, posts_left_out=0,
                     issue_keys=["climate"])
+NOTHING = ask.Digest('{"asked_about":"the whole record","issues":[]}', {}, issue_keys=[])  # a record that holds nothing
 
 
 def reply(*paragraphs, in_record=True):
@@ -328,7 +329,7 @@ def test_a_question_that_names_a_guiding_document(question, names):
 
 
 def test_an_empty_record_still_asks_when_the_question_names_a_document():
-    empty = ask.Digest('{"asked_about":"the whole record","issues":[]}', {}, issue_keys=[])
+    empty = NOTHING
     calls = []
     content = json.dumps(reply((f"Article 12 says: “{ARTICLE_12}”", ["D2"])))
     result = ask.answer("What does the UDHR say about privacy?", [], empty, SETTINGS, transport=service(content, calls))
@@ -397,7 +398,6 @@ def test_the_answer_gives_the_solution_naming_the_article_it_quotes():
 # site itself is answered from the About page's text above the three documents, given after the rules as D4.
 ABOUT_ON = replace(SETTINGS, ask_enabled=True, about_enabled=True, llm_base_url="https://api.deepseek.com",
                    llm_model="deepseek-v4-flash")
-NOTHING = ask.Digest('{"asked_about":"the whole record","issues":[]}', {}, issue_keys=[])
 JOHNS = "Which language model is being used by the prototype?"
 
 
@@ -420,7 +420,7 @@ def test_does_not_name_site(question):
 
 
 def test_the_about_page_follows_the_rules_as_d4():
-    about = routes_about.site_text(ABOUT_ON)
+    about = about_site.site_text(ABOUT_ON)
     prompt = ask.system_prompt(about)
     assert prompt.startswith(ask.SYSTEM_PROMPT) and prompt.endswith("\n\nD4, About this site:\n" + about)
     assert "Never cite D4 for a question about an issue, a solution or evidence." in " ".join(prompt.split())
@@ -438,7 +438,7 @@ def test_a_question_about_the_site_is_answered_from_d4_on_an_empty_record():
     calls = []
     result = ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
     assert len(calls) == 1
-    assert calls[0]["messages"][0]["content"] == ask.system_prompt(routes_about.site_text(ABOUT_ON))
+    assert calls[0]["messages"][0]["content"] == ask.system_prompt(about_site.site_text(ABOUT_ON))
     assert result.status == "answered" and result.sources == [ask.SITE]
     assert (ask.SITE.id, ask.SITE.kind, ask.SITE.name, ask.SITE.href) == ("D4", "about", "About this site", "/about")
 
@@ -469,12 +469,11 @@ def test_without_about_a_site_question_on_an_empty_record_is_not_sent():
     assert calls == [] and result.status == "empty"
 
 
-def test_the_case_runner_asks_as_the_live_site_runs():
-    """The cases (scripts/asks.py) are asked with the live site's switches, so S1 and S2 get the About page."""
+def test_the_case_runner_asks_with_the_about_page_on():
+    """The cases (scripts/asks.py) are asked with the About page on, so S1 and S2 get D4."""
     from scripts import asks
-    live = asks.as_live(SETTINGS)
-    assert live.switches == {"ask": True, "follow_ups": True, "places": True, "about": True}
-    assert live.evidence_check_enabled and live.llm_api_key == SETTINGS.llm_api_key
+    asked = asks.with_about(SETTINGS)
+    assert asked.about_enabled and asked.ask_enabled and asked.llm_api_key == SETTINGS.llm_api_key
 
 
 def test_a_follow_up_to_a_question_about_the_site_stays_on_the_site():
@@ -489,7 +488,7 @@ def test_an_about_page_that_will_not_draw_never_stops_ask(monkeypatch, caplog):
     """Review, 9 November: John edits templates on GitHub; a broken _about_site.html must not fail every question."""
     def broken(settings):
         raise RuntimeError("template error")
-    monkeypatch.setattr(routes_about, "site_text", broken)
+    monkeypatch.setattr(about_site, "site_text", broken)
     calls = []
     content = json.dumps(reply(("Ada wants a tax.", ["P1"]), ("The site uses DeepSeek.", ["D4"])))
     with caplog.at_level(logging.WARNING, logger="oci"):

@@ -79,7 +79,7 @@ def about_solution(key: str | None) -> dict | None:
     if solution is None:
         return None
     first = solution["issues"][0] if solution["issues"] else {"key": "", "name": ""}
-    return {"kind": "solution", "solution": solution, "issue_key": first["key"], "issue_name": first["name"],
+    return {"kind": "solution", "key": key, "solution": solution, "issue_key": first["key"], "issue_name": first["name"],
             "issue_keys": [item["key"] for item in solution["issues"]], "href": solution_href(key)}
 
 
@@ -93,7 +93,7 @@ def about_evidence(key: str | None) -> dict | None:
         target["verb"] = VERBS[target["stance"]].lower()
     home = next(((t["key"], t["name"]) if t["kind"] == "issue" else (t["home_key"], t["home_name"])
                  for t in evidence["targets"] if t["kind"] == "issue" or t["home_key"]), ("", ""))
-    return {"kind": "evidence", "evidence": evidence, "issue_key": home[0], "issue_name": home[1],
+    return {"kind": "evidence", "key": key, "evidence": evidence, "issue_key": home[0], "issue_name": home[1],
             "href": evidence_href(key)}
 
 

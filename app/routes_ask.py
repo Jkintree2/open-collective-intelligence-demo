@@ -74,9 +74,9 @@ def _take(key: str) -> str | None:
 
 
 def _linked(source: ask.Source, settings: config.Settings) -> ask.Source:
-    """A guiding document links to its place on the About page, and the About page as a source (D4) to it, only
-    while that page is switched on."""
-    if source.kind in ("document", "about") and not settings.about_enabled:
+    """A source links into the About page (a guiding document's place there, or the page itself, D4) only while
+    that page is switched on."""
+    if source.href and source.href.startswith("/about") and not settings.about_enabled:
         return replace(source, href=None)
     return source
 

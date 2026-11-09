@@ -4,6 +4,7 @@ opened from them, the links in from chips and answers, and Ask on those pages. O
 import json
 import re
 from datetime import datetime, timezone
+from urllib.parse import quote
 
 import pytest
 
@@ -11,6 +12,8 @@ from app import ask, graph_item_pages, graph_questions, routes_ask
 from app import extract as reading
 from app.auth import DailyLimit, KeyedLimit, MinuteBucket
 from app.extract import Candidates
+from test_home_posts import HOME_ASK
+from test_home_routes import home
 
 SAME_SITE = {"sec-fetch-site": "same-origin"}
 TAX = {"key": "carbon tax", "name": "Carbon tax", "proposers": 2, "proposed_by": ["Ada Tester", "Anonymous"],
@@ -356,34 +359,34 @@ def test_a_kept_source_gets_its_page_from_its_name(asking, monkeypatch):
 
 
 # John, 9 November: with Home asking, the Write/Ask box takes the place of "Write about this", carrying the item.
-ITEMS = [("/solutions/carbon%20tax", "solution", "carbon tax", "carbon%20tax"),
-         ("/evidence/who%20pays", "evidence", "who pays", "who%20pays")]
+ITEMS = [("/solutions/carbon%20tax", "solution", "carbon tax"), ("/evidence/who%20pays", "evidence", "who pays")]
 
 
-@pytest.mark.parametrize("url,kind,key,href", ITEMS)
-def test_the_box_takes_the_place_of_the_link(pages, switch, monkeypatch, url, kind, key, href):
+@pytest.fixture
+def home_asking(pages, switch, monkeypatch):
     monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [])
     switch(ask_enabled=True, home_enabled="on")
-    page = pages.client.get(url).text
+    return pages
+
+
+@pytest.mark.parametrize("url,kind,key", ITEMS)
+def test_the_box_takes_the_place_of_the_link(home_asking, url, kind, key):
+    page = home_asking.client.get(url).text
     assert '<form class="home-box" method="post" action="/home">' in page
     assert f'<input type="hidden" name="{kind}" value="{key}">' in page and "Write about this" not in page
 
 
-@pytest.mark.parametrize("ask_on,home", [(False, "on"), (True, "off")])
-@pytest.mark.parametrize("url,kind,key,href", ITEMS)
-def test_the_link_stays_without_home_asking(pages, switch, monkeypatch, ask_on, home, url, kind, key, href):
-    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [])
-    switch(ask_enabled=ask_on, home_enabled=home)
-    page = pages.client.get(url).text
-    assert f'<a class="write-issue" href="/?{kind}={href}">Write about this {kind}</a>' in page
+@pytest.mark.parametrize("ask_on,home_mode", [(False, "on"), (True, "off")])
+@pytest.mark.parametrize("url,kind,key", ITEMS)
+def test_the_link_stays_without_home_asking(home_asking, switch, ask_on, home_mode, url, kind, key):
+    switch(ask_enabled=ask_on, home_enabled=home_mode)
+    page = home_asking.client.get(url).text
+    assert f'<a class="write-issue" href="/?{kind}={quote(key)}">Write about this {kind}</a>' in page
     assert "home-box" not in page
 
 
-def test_the_box_carries_a_solution_to_home(pages, switch, monkeypatch):
-    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [])
+def test_the_box_carries_a_solution_to_home(home_asking, monkeypatch):
     monkeypatch.setattr("app.main.graph.list_posts", lambda limit: [])
-    switch(ask_enabled=True, home_enabled="on")
-    page = pages.client.post("/home", data={"start": "1", "text": "Tax the rich.", "solution": "carbon tax"},
-                             headers=SAME_SITE).text
+    page = home(home_asking.client, start="1", text="Tax the rich.", solution="carbon tax").text
     assert 'id="about-issue"' in page and 'data-start="/?solution=carbon%20tax"' in page
-    assert '<section class="ask home-ask" id="home-ask" data-ask data-solution="carbon tax" hidden' in page
+    assert f'{HOME_ASK} data-solution="carbon tax" hidden' in page

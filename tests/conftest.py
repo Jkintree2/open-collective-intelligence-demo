@@ -91,7 +91,7 @@ def member_app(monkeypatch):
     monkeypatch.setattr("app.graph_own_posts.my_posts", lambda me, limit: own_posts[:limit])
     monkeypatch.setattr("app.graph_own_posts.post_flags", lambda me, ids: {i: {"id": i, "mine": True, "edited_at": None}
                                                                          for i in ids})
-    # v0.3 Home: the questions a member asked (Q57), on My posts and under Home's button; a test that needs them puts
+    # v0.3 Home: the questions a member asked (Q57), on My posts; a test that needs them puts
     # them in `own_questions`.
     own_questions = []
     monkeypatch.setattr("app.graph_questions.mine", lambda me, limit: own_questions[:limit])

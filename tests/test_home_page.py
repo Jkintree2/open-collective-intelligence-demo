@@ -53,8 +53,7 @@ def test_editing_is_plain_write_form(owned, switch, monkeypatch):
     switch(**ALL_ON, home_enabled="on")
     page = owned.client.get("/posts/mine-1/edit").text
     assert 'action="/posts/mine-1/edit"' in page and ">Save changes</button>" in page
-    for absent in ("data-home", "/home", "home.js", "home-ask", "home-unsure", "home-switch", LABEL, BUTTON,
-                   "My most recent"):
+    for absent in ("data-home", "/home", "home.js", "home-ask", "home-unsure", "home-switch", LABEL, BUTTON):
         assert absent not in page, absent
 
 
@@ -81,10 +80,7 @@ def test_wording_strings_match_04_interface():
 # John, 9 November: no list of the writer's own under the button; "Recent posts" is the one list on Home
 # (tests/test_home_posts.py). My posts keeps the writer's own statements and questions.
 def test_home_has_no_list_of_ones_own(homepage):
-    from datetime import datetime, timezone
-    homepage.own_posts[:] = [{"id": "mine-1", "text": "My statement number 1.", "display_name": "Ada Tester",
-                              "anonymous": False, "seed": False,
-                              "created_at": datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)}]
+    assert homepage.own_posts  # the member has a post of their own (test_phase3_switches.pages)
     page = draw(homepage.client, "/")
     assert "home-mine" not in page and "My most recent" not in page
     assert page.index('id="read"') < page.index('id="feed"')

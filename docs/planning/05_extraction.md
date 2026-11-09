@@ -415,7 +415,7 @@ Return exactly:
 
 #### The About page as D4 (John, 9 November 2026)
 
-John asked "which language model is being used by the prototype?" and got "The database does not say anything about this yet." while the About page says it. With `ABOUT_ENABLED` on, the instructions end with the About page's text above the three documents (`app/templates/_about_site.html`, drawn with the site's switches and turned into plain words by `routes_about.site_text`), after this block (`ask.ABOUT_RULES`). With it off, the instructions are byte for byte the ones above.
+John asked "which language model is being used by the prototype?" and got "The database does not say anything about this yet." while the About page says it. With `ABOUT_ENABLED` on, the instructions end with the About page's text above the three documents (`app/templates/_about_site.html`, drawn with the site's switches and turned into plain words by `about_site.site_text`), after this block (`ask.ABOUT_RULES`). With it off, the instructions are byte for byte the ones above.
 
 ```
 One more document follows, with the id D4: this site's About page, as people here read it. Use it only for
@@ -430,7 +430,7 @@ D4, About this site:
 {the About page's text}
 ```
 
-John edits the site's description in `_about_site.html`, so what Ask knows about the site changes with the page. Cases S1 and S2 in `tests/ask_cases.json` ask about it; `scripts/asks.py` asks every case with the live site's switches on.
+John edits the site's description in `_about_site.html`, so what Ask knows about the site changes with the page. Cases S1 and S2 in `tests/ask_cases.json` ask about it; `scripts/asks.py` asks every case with the About page on.
 
 #### Contract
 

@@ -32,6 +32,11 @@ def home(client, headers=SAME_SITE, **fields):
     return client.post("/home", data=fields, headers=headers, follow_redirects=False)
 
 
+def compose_form(page):
+    """Home's own form, #compose, as drawn."""
+    return page.split('id="compose"', 1)[1].split("</form>", 1)[0]
+
+
 def answered(homing):
     return [call for call in homing.calls if call[0] == "answer"]
 
@@ -164,8 +169,8 @@ def test_without_javascript_a_question_from_an_issue_page_is_asked_about_it(homi
 def test_unsure_keeps_the_item(homing):
     """Review, 9 November: when the site can't tell, Home comes back with the item still on it."""
     response = home(homing.client, text=UNSURE, issue="veto")
-    form = response.text.split('id="compose"', 1)[1].split("</form>", 1)[0]
-    assert 'id="about-issue"' in response.text and '<input type="hidden" name="issue" value="veto">' in form
+    assert 'id="about-issue"' in response.text
+    assert '<input type="hidden" name="issue" value="veto">' in compose_form(response.text)
 
 
 def test_cross_site_refused(homing):

@@ -279,34 +279,27 @@ def test_an_empty_record_answers_a_question_about_the_site_only_with_about_on(as
     assert body["status"] == ("answered" if called else "empty")
 
 
-def test_the_about_page_as_a_source_reads_as_its_name(asking, monkeypatch, switch):
-    monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
-                        ask.Answer("answered", [{"text": "The site uses DeepSeek.", "refs": [1]}], [ask.SITE]))
-    switch(about_enabled=True)
-    body = post(asking.client, {"question": "Which language model does the site use?"}).json()
-    assert body["sources"] == [{"id": "D4", "kind": "about", "name": "About this site", "date": None, "text": None,
-                                "href": "/about", "issue": None, "when": None}]
-    page = asking.client.post("/ask", data={"question": "Which language model does the site use?"}, headers=SAME_SITE).text
-    line = re.search(r'<ol class="ask-sources">\s*<li>(.*?)</li>', page, flags=re.S).group(1)
-    assert line == '<a href="/about">About this site</a>.'
-    switch(about_enabled=False)
-    assert post(asking.client, {"question": "Which language model does the site use?"}).json()["sources"][0]["href"] is None
+UDHR_LINE = '<a href="/about#udhr">Universal Declaration of Human Rights</a>'
 
 
-@pytest.mark.parametrize("about_on, href", [(True, "/about#udhr"), (False, None)])
-def test_a_document_source_links_to_the_about_page_only_while_it_is_on(asking, monkeypatch, switch, about_on, href):
-    document = ask.DOCUMENTS["D2"]
+@pytest.mark.parametrize("sid, about_on, line", [
+    ("D2", True, f"Guiding document: {UDHR_LINE}."),
+    ("D2", False, "Guiding document: Universal Declaration of Human Rights."),
+    # John, 9 November: the About page itself, D4, reads as its name.
+    ("D4", True, '<a href="/about">About this site</a>.'),
+    ("D4", False, "About this site.")])
+def test_a_document_source_links_to_the_about_page_only_while_it_is_on(asking, monkeypatch, switch, sid, about_on,
+                                                                        line):
+    document = {**ask.DOCUMENTS, ask.SITE.id: ask.SITE}[sid]
     monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
                         ask.Answer("answered", [{"text": "Article 12 protects privacy.", "refs": [1]}], [document]))
     switch(about_enabled=about_on)
     body = post(asking.client, {"question": "What does the UDHR say about privacy?"}).json()
-    assert body["sources"] == [{"id": "D2", "kind": "document", "name": "Universal Declaration of Human Rights",
-                                "date": None, "text": None, "href": href, "issue": None, "when": None}]
-    assert document.href == "/about#udhr"  # the shared source is never changed in place
+    assert body["sources"] == [{"id": sid, "kind": document.kind, "name": document.name, "date": None, "text": None,
+                                "href": document.href if about_on else None, "issue": None, "when": None}]
+    assert document.href in ("/about#udhr", "/about")  # the shared source is never changed in place
     page = asking.client.post("/ask", data={"question": "What does the UDHR say about privacy?"}, headers=SAME_SITE).text
-    line = re.search(r'<ol class="ask-sources">\s*<li>(.*?)</li>', page, flags=re.S).group(1)
-    assert line == ("Guiding document: <a href=\"/about#udhr\">Universal Declaration of Human Rights</a>." if about_on
-                    else "Guiding document: Universal Declaration of Human Rights.")
+    assert re.search(r'<ol class="ask-sources">\s*<li>(.*?)</li>', page, flags=re.S).group(1) == line
 
 
 def test_a_use_can_be_given_back():

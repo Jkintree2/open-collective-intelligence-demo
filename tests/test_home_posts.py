@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app import graph_questions
+from test_home_routes import compose_form, home
 from test_home_switch import live_like  # noqa: F401
 from test_phase3_switches import ALL_ON, POST, draw, pages  # noqa: F401
 
@@ -206,7 +207,6 @@ def test_recent_posts_and_my_posts_leave_out_follow_ups(homepage, monkeypatch):
 
 # John, 9 November: on an issue page the Write/Ask box takes the place of "Write about this issue" and carries the
 # issue to Home: a statement is written about it, and a question is asked about it (as the page's Ask box does).
-SAME_SITE = {"sec-fetch-site": "same-origin"}
 HOME_ASK = '<section class="ask home-ask" id="home-ask" data-ask'
 
 
@@ -223,14 +223,13 @@ def test_without_asking_the_issue_page_keeps_the_link(homepage, switch):
 
 
 def test_the_box_carries_the_issue_to_home(homepage):
-    page = homepage.client.post("/home", data={"start": "1", "text": "Rent caps help.", "issue": "veto"},
-                                headers=SAME_SITE).text
+    page = home(homepage.client, start="1", text="Rent caps help.", issue="veto").text
     assert 'id="about-issue"' in page and 'data-start="/?issue=veto"' in page
     assert f'{HOME_ASK} data-issue="veto" hidden' in page and ">Rent caps help.</textarea>" in page
 
 
 def test_a_gone_item_still_opens_home(homepage):
-    page = homepage.client.post("/home", data={"start": "1", "text": "x y z", "issue": "gone"}, headers=SAME_SITE).text
+    page = home(homepage.client, start="1", text="x y z", issue="gone").text
     assert 'id="about-issue"' not in page and re.search(r' data-start[ >]', page)
     assert f"{HOME_ASK} hidden" in page and ">x y z</textarea>" in page
 
@@ -240,14 +239,9 @@ def test_a_reload_from_an_item_asks_about_it(homepage):
     assert f'{HOME_ASK} data-issue="veto" hidden' in page and "data-start" not in page
 
 
-def compose_form(page):
-    return page.split('id="compose"', 1)[1].split("</form>", 1)[0]
-
-
 def test_without_javascript_home_carries_the_item_on(homepage):
     """Review, 9 November: the box on an item page brings the text to Home, whose own form must carry the item on,
     so a question sent from there without JavaScript is asked about that item."""
-    page = homepage.client.post("/home", data={"start": "1", "text": "Why the veto?", "issue": "veto"},
-                                headers=SAME_SITE).text
+    page = home(homepage.client, start="1", text="Why the veto?", issue="veto").text
     assert '<input type="hidden" name="issue" value="veto">' in compose_form(page)
     assert 'type="hidden" name="issue"' not in compose_form(draw(homepage.client, "/"))

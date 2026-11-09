@@ -263,6 +263,8 @@ def _about_issue(key: str | None) -> dict | None:
     if header is None:
         return None
     return {
+        "kind": "issue",
+        "key": key,
         "issue": header,
         "solutions": graph.issue_solutions(key),
         "evidence": graph.issue_evidence(key),
@@ -290,7 +292,6 @@ def _render_index(
     editing: dict | None = None,
     unsure: bool = False,
     start: bool = False,
-    box_on: dict | None = None,
 ) -> Response:
     home_page = editing is None and home.home_on(request)
     home_ask = home_page and home.home_asks(request)
@@ -313,8 +314,6 @@ def _render_index(
             # from the box on another page for home.js to carry on with.
             "unsure": unsure,
             "start": start,
-            # John, 9 November: the item ({kind, key}) the text came from, so Home writes and asks about it.
-            "box_on": box_on,
             "home_page": home_page,
             "home_ask": home_ask,
             # Phase 2: the card reads evidence links only with the flag and a reading service; with the
@@ -447,18 +446,18 @@ def enter_submit(
 def write_page(request: Request, issue: str | None = Query(None, max_length=200),
                solution: str | None = Query(None, max_length=400), evidence: str | None = Query(None, max_length=400),
                done: str | None = Query(None, max_length=20)) -> Response:
-    about, box_on = about_for(issue, solution, evidence)
-    return _render_index(request, about=about, box_on=box_on, notice=write_notice(done, current_member(request)))
+    return _render_index(request, about=about_for(issue, solution, evidence),
+                         notice=write_notice(done, current_member(request)))
 
 
-def about_for(issue: str | None, solution: str | None, evidence: str | None) -> tuple[dict | None, dict | None]:
+def about_for(issue: str | None, solution: str | None, evidence: str | None) -> dict | None:
     """What the database holds about the item the writer came from (GitHub issue 55: an issue, a solution or a piece
-    of evidence) and that item as {kind, key} (John, 9 November: Home writes and asks about it); neither when it is
-    not in the record."""
-    kind, key = next(((kind, key) for kind, key in (("issue", issue), ("solution", solution), ("evidence", evidence))
-                      if key), (None, None))
-    about = {"issue": _about_issue, "solution": about_solution, "evidence": about_evidence}[kind](key) if kind else None
-    return about, ({"kind": kind, "key": key} if about else None)
+    of evidence), with its kind and key, so Home writes and asks about it (John, 9 November); None when it is not in
+    the record."""
+    for key, read in ((issue, _about_issue), (solution, about_solution), (evidence, about_evidence)):
+        if key:
+            return read(key)
+    return None
 
 
 def _valid_anon_id(value: str | None) -> str | None:

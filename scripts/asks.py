@@ -85,11 +85,10 @@ def test_settings() -> Settings:
     return Settings("unused", "unused", "unused", uri, "neo4j", os.environ.get("OCI_TEST_NEO4J_PASSWORD", "testpass1"))
 
 
-def as_live(settings: Settings) -> Settings:
-    """The switches the live site runs with, so each case is asked as a tester's question is (the About page as D4
-    included, John, 9 November 2026)."""
-    return replace(settings, ask_enabled=True, follow_ups_enabled=True, places_enabled=True, about_enabled=True,
-                   evidence_check_enabled=True)
+def with_about(settings: Settings) -> Settings:
+    """The cases are asked with the About page on, so its text goes with them as D4 (John, 9 November 2026), and with
+    Ask on, which that text describes."""
+    return replace(settings, ask_enabled=True, about_enabled=True)
 
 
 def run_cases(settings: Settings, only: set[str] | None = None) -> dict[str, int]:
@@ -156,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
             load_fixture()
             seed.print_counts()
         if args.cases is not None:
-            totals = run_cases(as_live(settings), set(filter(None, args.cases.split(","))) or None)
+            totals = run_cases(with_about(settings), set(filter(None, args.cases.split(","))) or None)
             return 1 if totals["failed"] else 0
         return 0
     finally:

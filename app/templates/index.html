@@ -3,8 +3,8 @@
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 {% if not editing %}<p class="sentence">{% if home_ask %}{{ home_sentence }}{% else %}{{ site_sentence }}{% endif %}</p>{% endif %}
 
-<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if home_ask %} data-home-ask{% endif %}{% if start %} data-start{% if box_on %}="/?{{ box_on.kind }}={{ box_on.key|urlencode }}"{% endif %}{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
-{% if home_page and box_on %}  <input type="hidden" name="{{ box_on.kind }}" value="{{ box_on.key }}">
+<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if home_ask %} data-home-ask{% endif %}{% if start %} data-start{% if about %}="/?{{ about.kind }}={{ about.key|urlencode }}"{% endif %}{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
+{% if home_page and about %}  <input type="hidden" name="{{ about.kind }}" value="{{ about.key }}">
 {% endif %}  {% if not member %}
   <div class="name-row">
     <div class="field">
@@ -40,7 +40,7 @@
     <button type="button" id="retry" class="quiet" hidden>Try again</button>
   </div>
 {% if home_ask %}  <button type="button" id="home-switch" class="quiet home-switch" hidden></button>
-  <section class="ask home-ask" id="home-ask" data-ask{% if box_on %} data-{{ box_on.kind }}="{{ box_on.key }}"{% endif %} hidden aria-label="Answers">
+  <section class="ask home-ask" id="home-ask" data-ask{% if about %} data-{{ about.kind }}="{{ about.key }}"{% endif %} hidden aria-label="Answers">
     <p class="ask-status" data-ask-status aria-live="polite"></p>
     <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer answer.</p>
     <div class="ask-answers" data-ask-answers aria-live="polite"></div>

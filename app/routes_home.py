@@ -2,7 +2,8 @@
 POST /api/home/kind what a text is, then starts the reading or the answer in place. Without JavaScript the box posts
 to /home: a statement is posted as POST /posts posts it, a question is answered as POST /ask answers it (on the Ask
 page), and when the site can't tell, Home comes back with the text and two buttons. The box on Issues, My statements
-and About posts to /home with start set, and Home carries on with the text. With ASK_ENABLED off, every text is a
+and About, and on an issue's, a solution's or a piece of evidence's page (with that item), posts to /home with start
+set, and Home carries on with the text. With ASK_ENABLED off, every text is a
 statement."""
 
 from __future__ import annotations
@@ -45,12 +46,12 @@ def home_form(request: Request, text: str = Form("", max_length=4 * TEXT_MAX), k
     """The item fields come from the box on an item's page (John, 9 November), and Home's own form carries them on:
     Home writes and asks about that item, with or without JavaScript."""
     from app import main, routes_ask  # main loads the routers last
-    about, box_on = main.about_for(issue, solution, evidence)
     if start:
-        return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True, about=about, box_on=box_on)
+        return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True,
+                                  about=main.about_for(issue, solution, evidence))
     chosen = kind_for(text, kind)
     if chosen == "statement":
         return main.create_post(request, display_name="", anonymous=anonymous, text=text)
     if chosen == "question":
         return routes_ask.ask_form(request, question=text, issue=issue, solution=solution, evidence=evidence, earlier=[])
-    return main._render_index(request, text=text.strip(), unsure=True, about=about, box_on=box_on)
+    return main._render_index(request, text=text.strip(), unsure=True, about=main.about_for(issue, solution, evidence))
