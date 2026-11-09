@@ -159,13 +159,15 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
         raise HTTPException(404)
     # Nothing to answer from: the empty line, with no call and no count. A question about a guiding
     # document can still be answered from the document (John, 28 October).
-    if digest.empty and not ask.answerable_without_record(question, earlier, settings):
+    # Questions about the site (the About page as D4) are for the readers Home is on for (the builder, 9 November).
+    site_questions = settings.about_enabled and home.home_on(request)
+    if digest.empty and not ask.answerable_without_record(question, earlier, site_questions):
         return 200, {"status": "empty", "message": ask.EMPTY, "paragraphs": [], "sources": [], "partial": None,
                      **named}
     if (refused := _take(reader_key(request))) is not None:
         return 429, {"message": refused}
-    result = ask.answer(question, earlier, digest, settings, scope=about["kind"] if about else "record",
-                        request_id=getattr(request.state, "request_id", None))
+    result = ask.answer(question, earlier, digest, settings, site_questions=site_questions,
+                        scope=about["kind"] if about else "record", request_id=getattr(request.state, "request_id", None))
     partial = ask.PARTIAL if result.partial else None
     question_id, follow_up = None, not ask.has_own_words(question)
     if result.status == "answered" and not follow_up:

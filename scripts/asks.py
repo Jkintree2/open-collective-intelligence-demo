@@ -100,7 +100,7 @@ def run_cases(settings: Settings, only: set[str] | None = None) -> dict[str, int
             continue
         digest = ask.issue_digest(case["issue"]) if case["issue"] else \
             ask.record_digest(ask.lookup_question(case["question"], case.get("earlier", [])))
-        result = ask.answer(case["question"], case.get("earlier", []), digest, settings,
+        result = ask.answer(case["question"], case.get("earlier", []), digest, settings, site_questions=True,
                             scope="issue" if case["issue"] else "record", request_id=case["id"])
         line = result.log
         print(f"\n=== {case['id']} ({case['issue'] or 'whole record'}): {case['question']}")

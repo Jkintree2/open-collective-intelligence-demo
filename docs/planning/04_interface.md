@@ -1038,7 +1038,7 @@ The About page itself (added 9 November 2026, John: "which language model is bei
 
 > 5. About this site.
 
-linked to the About page. It is cited only for a question about the site itself, and only while About is switched on.
+linked to the About page. It is cited only for a question about the site itself, only while About is switched on, and only for a reader Home is on for (for now the preview; every other reader's Ask is as before).
 
 "On {issue name}" is left off when the evidence belongs to no issue. A solution under more than one issue, and evidence reached through it, say the issue the question is about, and their own first issue when the question is about none of theirs (added 3 November 2026, John: a solution in an answer about homelessness said "On Need for world government"). Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
 
