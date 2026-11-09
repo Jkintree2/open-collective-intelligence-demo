@@ -93,6 +93,17 @@ test('a guiding document links to its place on the About page, or reads as text 
   assert.equal(sources.children[1].children.some(c => typeof c === 'object' && c.href), false);
 });
 
+test('the About page as a source reads as its name, linked (John, 9 November)', async () => {
+  const p = page();
+  p.ask('Which language model is being used by the prototype?');
+  p.requests[0].resolve(json({...ANSWER, paragraphs: [{text: 'The site uses DeepSeek.', refs: [1]}],
+    sources: [{kind: 'about', name: 'About this site', when: null, text: null, issue: null, href: '/about'}]}));
+  await p.flush();
+  const sources = p.answers.children[0].find('ask-sources');
+  assert.equal(sources.children[0].text, 'About this site.');
+  assert.equal(sources.children[0].children[0].href, '/about');
+});
+
 test('the last three questions go with the next one, never the answers', async () => {
   const p = page();
   for (const q of ['one?', 'two?', 'three?', 'four?']) {

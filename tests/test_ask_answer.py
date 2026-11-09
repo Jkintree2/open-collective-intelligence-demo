@@ -2,11 +2,12 @@
 
 import json
 import logging
+from dataclasses import replace
 
 import httpx
 import pytest
 
-from app import ask
+from app import ask, routes_about
 from app.config import Settings
 from app.principles import guiding_block
 
@@ -390,3 +391,80 @@ def test_the_answer_gives_the_solution_naming_the_article_it_quotes():
                         transport=service(content, calls))
     assert result.paragraphs[2] == {"text": A25_LINE["text"], "refs": [3, 4]}
     assert [s.id for s in result.sources] == ["P1", "D2", "S2", "P2"]
+
+
+# John, 9 November: "which language model is being used by the prototype?" got the empty line. A question about the
+# site itself is answered from the About page's text above the three documents, given after the rules as D4.
+ABOUT_ON = replace(SETTINGS, ask_enabled=True, about_enabled=True, llm_base_url="https://api.deepseek.com",
+                   llm_model="deepseek-v4-flash")
+NOTHING = ask.Digest('{"asked_about":"the whole record","issues":[]}', {}, issue_keys=[])
+JOHNS = "Which language model is being used by the prototype?"
+
+
+@pytest.mark.parametrize("question", [JOHNS, "Where does this site run?", "Is the code open source?",
+                                      "Who built this platform?"])
+def test_names_site(question):
+    assert ask.names_site(question)
+
+
+@pytest.mark.parametrize("question", ["What can be done about homelessness in St. Louis?", "Tell me more", "Why?"])
+def test_does_not_name_site(question):
+    assert not ask.names_site(question)
+
+
+def test_the_about_page_follows_the_rules_as_d4():
+    about = routes_about.site_text(ABOUT_ON)
+    prompt = ask.system_prompt(about)
+    assert prompt.startswith(ask.SYSTEM_PROMPT) and prompt.endswith("\n\nD4, About this site:\n" + about)
+    assert "Never cite D4 for a question about an issue, a solution or evidence." in " ".join(prompt.split())
+
+
+def test_without_about_the_prompt_is_todays():
+    assert ask.system_prompt(None) == ask.SYSTEM_PROMPT
+
+
+def site_reply(text="The site uses DeepSeek, version deepseek-v4-flash.", sources=("D4",)):
+    return json.dumps(reply((text, list(sources))))
+
+
+def test_a_question_about_the_site_is_answered_from_d4_on_an_empty_record():
+    calls = []
+    result = ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
+    assert len(calls) == 1
+    assert calls[0]["messages"][0]["content"] == ask.system_prompt(routes_about.site_text(ABOUT_ON))
+    assert result.status == "answered" and result.sources == [ask.SITE]
+    assert (ask.SITE.id, ask.SITE.kind, ask.SITE.name, ask.SITE.href) == ("D4", "about", "About this site", "/about")
+
+
+def test_d4_is_not_citable_for_a_question_about_an_issue():
+    calls = []
+    result = ask.answer("What is proposed for the climate?", [], DIGEST, ABOUT_ON, transport=service(site_reply(), calls))
+    assert len(calls) == 1 and result.status == "empty"
+
+
+def test_a_follow_up_keeps_the_about_page():
+    calls = []
+    result = ask.answer("Tell me more", [JOHNS], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
+    assert len(calls) == 1 and result.status == "answered"
+
+
+def test_a_quote_said_to_be_from_d4_must_be_in_it():
+    calls = []
+    content = site_reply('The About page says "the site is run by a large team of engineers".')
+    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(content, calls)).status == "empty"
+    content = site_reply('It is "a test of a conversational platform" for collective problem solving.')
+    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(content, calls)).status == "answered"
+
+
+def test_without_about_a_site_question_on_an_empty_record_is_not_sent():
+    calls = []
+    result = ask.answer(JOHNS, [], NOTHING, SETTINGS, transport=service(site_reply(), calls))
+    assert calls == [] and result.status == "empty"
+
+
+def test_the_case_runner_asks_as_the_live_site_runs():
+    """The cases (scripts/asks.py) are asked with the live site's switches, so S1 and S2 get the About page."""
+    from scripts import asks
+    live = asks.as_live(SETTINGS)
+    assert live.switches == {"ask": True, "follow_ups": True, "places": True, "about": True}
+    assert live.evidence_check_enabled and live.llm_api_key == SETTINGS.llm_api_key

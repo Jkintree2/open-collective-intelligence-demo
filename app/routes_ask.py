@@ -74,8 +74,9 @@ def _take(key: str) -> str | None:
 
 
 def _linked(source: ask.Source, settings: config.Settings) -> ask.Source:
-    """A guiding document links to its place on the About page only while that page is switched on."""
-    if source.kind == "document" and not settings.about_enabled:
+    """A guiding document links to its place on the About page, and the About page as a source (D4) to it, only
+    while that page is switched on."""
+    if source.kind in ("document", "about") and not settings.about_enabled:
         return replace(source, href=None)
     return source
 
@@ -158,7 +159,7 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
         raise HTTPException(404)
     # Nothing to answer from: the empty line, with no call and no count. A question about a guiding
     # document can still be answered from the document (John, 28 October).
-    if digest.empty and not ask.names_document(question):
+    if digest.empty and not ask.answerable_without_record(question, earlier, settings):
         return 200, {"status": "empty", "message": ask.EMPTY, "paragraphs": [], "sources": [], "partial": None,
                      **named}
     if (refused := _take(reader_key(request))) is not None:

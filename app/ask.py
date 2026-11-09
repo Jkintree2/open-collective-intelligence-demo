@@ -23,7 +23,7 @@ from datetime import date, datetime
 from typing import Any, Iterable
 from urllib.parse import quote
 
-from app import graph, graph_ask, graph_item_pages, graph_own_posts, graph_search, search
+from app import graph, graph_ask, graph_item_pages, graph_own_posts, graph_search, routes_about, search
 from app.check import MONTHS, source_words
 from app.config import Settings
 from app.extract import call_model
@@ -50,7 +50,7 @@ READ_AS = {"supports": "agrees", "partly": "partly agrees", "refutes": "contradi
 class Source:
     """What the page shows for one id an answer cites."""
     id: str
-    kind: str  # post, solution, evidence or document
+    kind: str  # post, solution, evidence, document or about (the About page, D4)
     name: str  # the writer's name or Anonymous; the solution's, evidence's or document's name
     date: str | None = None
     text: str | None = None  # a post's first SNIPPET characters
@@ -108,6 +108,26 @@ _NAMES_DOCUMENT = re.compile(r"\b(?:udhr|declaration|human rights|charter|statem
 
 def names_document(question: str) -> bool:
     return bool(_NAMES_DOCUMENT.search(question))
+
+
+# John, 9 November: a question about the site itself is answered from the About page's text above the documents
+# (routes_about.site_text), given after the rules as D4 while ABOUT_ENABLED is on.
+SITE = Source("D4", "about", "About this site", href="/about")
+_NAMES_SITE = re.compile(r"\b(?:language models?|llm|ai|artificial intelligence|deepseek|chatgpt|openai|prototype|"
+                         r"(?:this|the) (?:site|website|platform|app)|software|source code|open source|licen[cs]e|"
+                         r"github|repository|render|neo4j|hosted|hosting|who (?:built|made|runs|created))\b",
+                         re.IGNORECASE)
+
+
+def names_site(question: str) -> bool:
+    return bool(_NAMES_SITE.search(question))
+
+
+def answerable_without_record(question: str, earlier: list[str], settings: Settings) -> bool:
+    """A record that holds nothing still gets a call when the question, or the one a wordless follow-up refers to,
+    names a guiding document or, with the About page on, the site itself."""
+    looked_up = lookup_question(question, earlier)
+    return names_document(looked_up) or (settings.about_enabled and names_site(looked_up))
 
 
 # The guiding documents' own names, which say what a question quotes, not what it is about.
@@ -185,8 +205,9 @@ def lookup_question(question: str, earlier: list[str]) -> str:
 
 
 def known(digest: Digest) -> dict[str, Source]:
-    """What an answer may cite: the digest's own ids and the three documents."""
-    return {**digest.sources, **DOCUMENTS}
+    """What an answer's ids may name: the digest's own, the three documents and the About page (guard decides
+    which of the documents a given answer may cite)."""
+    return {**digest.sources, **DOCUMENTS, SITE.id: SITE}
 
 
 def _dumps(value: Any) -> str:
@@ -632,6 +653,23 @@ Return exactly:
 
 # The same bytes on every call, after the guiding block, so the reading service's cache holds them.
 SYSTEM_PROMPT = "\n" + guiding_block() + "\n" + ANSWERING_RULES
+
+# John, 9 November: after the rules, while the About page is on, its text above the three documents.
+ABOUT_RULES = """
+One more document follows, with the id D4: this site's About page, as people here read it. Use it only for
+questions about this site itself: what it is for, how it reads statements and answers questions, which language
+model it uses, what is sent to that model, its software and where it runs. For those questions, rules 1 and 3 treat
+it as they treat the guiding documents: answer from it, and a paragraph that sums it up or quotes it cites D4 and
+needs no post. Never cite D4 for a question about an issue, a solution or evidence.
+
+D4, About this site:
+"""
+
+
+def system_prompt(about: str | None) -> str:
+    """The instructions: SYSTEM_PROMPT, then with the About page on its text (`about`) as D4. The same bytes on
+    every call while the switches and the page stay as they are, so the cache still holds them."""
+    return SYSTEM_PROMPT if about is None else SYSTEM_PROMPT + ABOUT_RULES + about
 _IDS_IN_BRACKETS = re.compile(r"\s*[\[(]\s*(?:[PSED]\d{1,3}\s*[,;]?\s*(?:and\s+)?)+[\])]")
 _BARE_ID = re.compile(r"\b[PSED]\d{1,3}\b")
 _SOURCE_ID = re.compile(r"^[PSED]\d{1,4}$")
@@ -700,10 +738,10 @@ def _plain(text: str) -> str:
     return " ".join(text.replace("\u2019", "'").replace('\\"', '"').lower().split())
 
 
-def _quotes_hold(text: str, cited: list[str], digest: Digest) -> bool:
-    """Every quote in a paragraph that cites a guiding document is found, word for word, in a document it
-    cites or in the record it was given; a quote may be cut short or split by an ellipsis."""
-    within = _plain(" ".join([_DOCUMENT_TEXT[sid] for sid in cited if sid in _DOCUMENT_TEXT] + [digest.text]))
+def _quotes_hold(text: str, cited: list[str], digest: Digest, texts: dict[str, str]) -> bool:
+    """Every quote in a paragraph that cites a document is found, word for word, in a document it cites (`texts`,
+    by id) or in the record it was given; a quote may be cut short or split by an ellipsis."""
+    within = _plain(" ".join([texts[sid] for sid in cited if sid in texts] + [digest.text]))
     for quote in _QUOTED.findall(text):
         for piece in _ELLIPSIS.split(quote):
             piece = _plain(piece).strip(" .,;:")
@@ -735,13 +773,14 @@ def _without_missing_posts(text: str) -> str:
                    if not _NO_POST.search(m.group(0))).strip()
 
 
-def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
+def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True, about: str | None = None
           ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """The paragraphs the page may show, each {"text", "sources"} with ids from the digest only, and
     the counts that are logged. A paragraph keeps a P id, or is a count line citing S or E only: each
     sentence at most 200 characters with a figure, or a count in words beside what it counts; or cites a guiding document
     (D), whose quotes must then be found in it; any other is dropped. With `documents` false (no question
-    named a document) a D id counts as not in the digest. At most 5 paragraphs, kept in order
+    named a document) D1 to D3 count as not in the digest; D4, the About page, is citable only with its text,
+    `about`, given (the question named the site), and counts as a document. At most 5 paragraphs, kept in order
     while the total stays within 1,200 characters; the one that would pass it is dropped with the rest. Beside a
     paragraph citing a post, one citing a document and no post loses any sentence saying no post speaks to it."""
     counts = {"paragraphs_dropped": 0, "sources_kept": 0, "sources_dropped": 0}
@@ -749,7 +788,8 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
     if not reply.get("in_record"):
         return kept, counts
     total, full = 0, False
-    citable = known(digest) if documents else digest.sources
+    texts = {**(_DOCUMENT_TEXT if documents else {}), **({SITE.id: about} if about is not None else {})}
+    citable = {**digest.sources, **{sid: known(digest)[sid] for sid in texts}}
     for item in reply["answer"]:
         ids = [str(raw).strip().upper() for raw in item.get("sources") or [] if isinstance(raw, (str, int))]
         sources = list(dict.fromkeys(i for i in ids if _SOURCE_ID.match(i) and i in citable))
@@ -759,14 +799,14 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
         # The case run of 30 October: a short answer may be only counts, a sentence for each solution.
         count_line = bool(sources) and all(len(sentence) <= COUNT_LINE_CHARS and _COUNTED.search(sentence)
                                            for sentence in _SENTENCE_END.split(text))
-        documents = [i for i in sources if i in DOCUMENTS]
-        if not (posts or count_line or documents):
+        cited_documents = [i for i in sources if i in texts]
+        if not (posts or count_line or cited_documents):
             # Case A4, 3 November: a point about evidence that cites no post takes the posts that cited it (rule 3).
             sources = list(dict.fromkeys(sources + [p for e in sources for p in digest.evidence_posts.get(e, [])
                                                     if p in citable]))
             posts = any(i.startswith("P") for i in sources)
-        usable = bool(text) and (posts or count_line or bool(documents))
-        if usable and documents and not _quotes_hold(text, documents, digest):
+        usable = bool(text) and (posts or count_line or bool(cited_documents))
+        if usable and cited_documents and not _quotes_hold(text, cited_documents, digest, texts):
             usable = False
         full = full or len(kept) == PARAGRAPHS_MAX or (usable and total + len(text) > ANSWER_CHARS)
         if full or not usable:
@@ -777,7 +817,7 @@ def guard(reply: dict[str, Any], digest: Digest, *, documents: bool = True
         kept.append({"text": text, "sources": sources})
     if any(i.startswith("P") for paragraph in kept for i in paragraph["sources"]):
         for paragraph in list(kept):
-            if any(i.startswith("P") for i in paragraph["sources"]) or not DOCUMENTS.keys() & paragraph["sources"]:
+            if any(i.startswith("P") for i in paragraph["sources"]) or not texts.keys() & paragraph["sources"]:
                 continue
             paragraph["text"] = _without_missing_posts(paragraph["text"])
             if not paragraph["text"]:
@@ -838,20 +878,22 @@ def with_article_solutions(paragraphs: list[dict[str, Any]], digest: Digest) -> 
     return out
 
 
-def build_messages(question: str, earlier: list[str], digest: Digest) -> list[dict[str, str]]:
+def build_messages(question: str, earlier: list[str], digest: Digest, about: str | None = None
+                   ) -> list[dict[str, str]]:
     user = ('{"record":' + digest.text + ',"earlier_questions":' + _dumps(earlier[-EARLIER_MAX:])
             + ',"question":' + _dumps(question) + "}")
-    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
+    return [{"role": "system", "content": system_prompt(about)}, {"role": "user", "content": user}]
 
 
 def answer(question: str, earlier: list[str], digest: Digest, settings: Settings, *,
            request_id: str | None = None, scope: str = "issue", transport: Any = None) -> Answer:
     """One attempt, 40 seconds. Without a reading service the route never gets here."""
-    if digest.empty and not names_document(question):
+    if digest.empty and not answerable_without_record(question, earlier, settings):
         return Answer("empty")
     started = time.perf_counter()
     earlier = [text[:QUESTION_MAX] for text in earlier if isinstance(text, str) and text.strip()][-EARLIER_MAX:]
-    reply = call_model(build_messages(question, earlier, digest), settings, request_id=request_id,
+    about = routes_about.site_text(settings) if settings.about_enabled else None
+    reply = call_model(build_messages(question, earlier, digest, about), settings, request_id=request_id,
                        chars=len(question), transport=transport, parse=parse_answer, event="ask_call",
                        max_tokens=MAX_TOKENS, timeout=TIMEOUT, attempts=1)
     entry: dict[str, Any] = {"event": "ask", "request_id": request_id, "scope": scope, "chars": len(question),
@@ -864,7 +906,8 @@ def answer(question: str, earlier: list[str], digest: Digest, settings: Settings
     else:
         # Rule 10: an article or a principle only when the question names one (or an earlier one did).
         named = any(names_document(text) for text in [question, *earlier])
-        paragraphs, counts = guard(reply.payload, digest, documents=named)
+        site = about is not None and any(names_site(text) for text in [question, *earlier])
+        paragraphs, counts = guard(reply.payload, digest, documents=named, about=about if site else None)
         shown, sources = numbered(with_article_solutions(paragraphs, digest), digest)
         result = Answer("answered" if shown else "empty", shown, sources, partial=bool(shown and digest.posts_left_out))
         usage = reply.usage or {}

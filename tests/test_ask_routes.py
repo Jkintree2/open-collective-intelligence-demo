@@ -268,6 +268,31 @@ def test_an_empty_record_still_answers_a_question_about_a_guiding_document(askin
     assert len(routes_ask.person_limit.uses["acct:ada"]) == 1
 
 
+@pytest.mark.parametrize("about_on, called", [(True, True), (False, False)])
+def test_an_empty_record_answers_a_question_about_the_site_only_with_about_on(asking, monkeypatch, switch, about_on,
+                                                                              called):
+    """John, 9 November: "Which language model is being used by the prototype?" found no post and got the empty line."""
+    monkeypatch.setattr(ask, "record_digest", lambda question, **kw: ask.Digest("{}", {}, issue_keys=[]))
+    switch(about_enabled=about_on)
+    body = post(asking.client, {"question": "Which language model is being used by the prototype?"}).json()
+    assert any(call[0] == "answer" for call in asking.calls) is called
+    assert body["status"] == ("answered" if called else "empty")
+
+
+def test_the_about_page_as_a_source_reads_as_its_name(asking, monkeypatch, switch):
+    monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
+                        ask.Answer("answered", [{"text": "The site uses DeepSeek.", "refs": [1]}], [ask.SITE]))
+    switch(about_enabled=True)
+    body = post(asking.client, {"question": "Which language model does the site use?"}).json()
+    assert body["sources"] == [{"id": "D4", "kind": "about", "name": "About this site", "date": None, "text": None,
+                                "href": "/about", "issue": None, "when": None}]
+    page = asking.client.post("/ask", data={"question": "Which language model does the site use?"}, headers=SAME_SITE).text
+    line = re.search(r'<ol class="ask-sources">\s*<li>(.*?)</li>', page, flags=re.S).group(1)
+    assert line == '<a href="/about">About this site</a>.'
+    switch(about_enabled=False)
+    assert post(asking.client, {"question": "Which language model does the site use?"}).json()["sources"][0]["href"] is None
+
+
 @pytest.mark.parametrize("about_on, href", [(True, "/about#udhr"), (False, None)])
 def test_a_document_source_links_to_the_about_page_only_while_it_is_on(asking, monkeypatch, switch, about_on, href):
     document = ask.DOCUMENTS["D2"]

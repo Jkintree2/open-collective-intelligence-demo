@@ -1034,6 +1034,12 @@ A guiding document (added 28 October 2026, John: answers quote the Declaration a
 
 Its name links to the document on the About page while About is switched on; otherwise it is plain text.
 
+The About page itself (added 9 November 2026, John: "which language model is being used by the prototype?" got the empty line) reads:
+
+> 5. About this site.
+
+linked to the About page. It is cited only for a question about the site itself, and only while About is switched on.
+
 "On {issue name}" is left off when the evidence belongs to no issue. A solution under more than one issue, and evidence reached through it, say the issue the question is about, and their own first issue when the question is about none of theirs (added 3 November 2026, John: a solution in an answer about homelessness said "On Need for world government"). Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
 
 **When a paragraph quotes a numbered article or principle** of a guiding document and a solution the answer read names that same article or principle but the answer does not cite it, the site adds a line right under that paragraph, at most three in one answer, citing the solution and the post that proposed it (added 3 November 2026, John: an answer on homelessness quoted Article 25 but left out "Use money from global carbon tax to realize Article 25 of the UDHR"; wording approved by John, 4 November 2026: "The wording is great."):
