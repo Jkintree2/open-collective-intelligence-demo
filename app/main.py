@@ -59,6 +59,7 @@ from app import graph_own_posts
 from app import home, home_lists
 from app.text import TARGET_WORDS, TEXT_MAX, clean_name, count_line, make_key, relative_time, sentences
 from app import check, confidence, graph_accounts, graph_evidence, graph_item_pages, graph_places, places, search, sides, tidy
+from app import graph_stances
 
 settings = get_settings()
 
@@ -312,6 +313,8 @@ def _render_index(
     home_page = editing is None and home.home_on(request)
     home_ask = home_page and home.home_asks(request)
     posts = _feed_posts(request, mixed=home_ask)
+    if about is not None and about["kind"] != "evidence":  # the panel's positions say the member's own (Q58)
+        about = {**about, "held": graph_stances.held_stances(member_key(request))}
     name = unquote(request.cookies.get(NAME_COOKIE, ""))
     return templates.TemplateResponse(
         request,
@@ -611,19 +614,18 @@ def _poster(data: ReadingRequest | PostRequest, member=None) -> tuple[str | None
 
 
 @app.get("/api/candidates", dependencies=[Depends(require_access)])
-def card_candidates() -> dict:
-    return asdict(graph.candidates())
+def card_candidates(request: Request) -> dict:
+    # `held`: the member's own stances, so the form says "You approve this already." (John, 9 November 2026).
+    return {**asdict(graph.candidates()), "held": graph_stances.held_stances(member_key(request))}
 
 
 @app.get("/api/place", dependencies=[Depends(require_access)])
-def place_choices(request: Request) -> Response:
-    """Phase 3: the Place row's list, and the account's country to start a named post with."""
+def place_choices() -> Response:
+    """Phase 3: the Place row's list. A new post starts at "Not about one place", not the account's country
+    (John, 9 November 2026), so the account is not read."""
     if not settings.places_enabled:
         return JSONResponse({"message": "Not found"}, status_code=404)
-    member = current_member(request)
-    details = graph_accounts.own_details(member.key) if member is not None else None
-    return JSONResponse({"not_one_place": places.NOT_ONE_PLACE, "choices": places.choices(),
-                         "country": places.country_code((details or {}).get("country"))})
+    return JSONResponse({"not_one_place": places.NOT_ONE_PLACE, "choices": places.choices()})
 
 
 @app.post("/api/extract", dependencies=[Depends(require_access), Depends(require_same_origin)])

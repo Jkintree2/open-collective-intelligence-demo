@@ -1,5 +1,6 @@
-// Phase 3: the card's Place row (place.js, PLACES_ENABLED). The country starts as the account's for a named
-// statement and empty for an anonymous one; a town needs a country; the place goes with the card as {country, area}.
+// Phase 3: the card's Place row (place.js, PLACES_ENABLED). A new statement starts at "Not about one place", named
+// or anonymous, whatever the account's country (John, 9 November 2026); a town needs a country; the place goes with
+// the card as {country, area}.
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const {Element, setup} = require('./page_harness.js');
@@ -32,10 +33,13 @@ test('the row sits under the card rows, with the list and the town field labelle
   assert.equal(p.area.maxLength, 80);
 });
 
-test('a named statement starts at the account country and sends it', async () => {
+test('a named statement starts at "Not about one place", not the account country', async () => {
   const p = await page();
-  assert.equal(p.country.value, 'US');
+  assert.equal(p.country.value, '');
   assert.equal(p.note.hidden, true);
+  assert.deepEqual((await sent(p)).place, {country: null, area: null});
+  // A country the writer picks is sent.
+  p.country.value = 'US'; await p.country.emit('change');
   assert.deepEqual((await sent(p)).place, {country: 'US', area: null});
 });
 
@@ -46,9 +50,9 @@ test('an anonymous statement starts empty and says what a town can tell', async 
   assert.equal(p.note.hidden, false);
   assert.equal(p.note.textContent, 'A town can tell others who wrote an anonymous statement. Add one only if you are happy with that.');
   assert.deepEqual((await sent(p)).place, {country: null, area: null});
-  // Back to the name: the account country again, as long as the writer has not chosen.
+  // Back to the name: still "Not about one place", as long as the writer has not chosen.
   p.get('anonymous').checked = false; await p.get('anonymous').emit('change');
-  assert.equal(p.country.value, 'US');
+  assert.equal(p.country.value, '');
 });
 
 test('the writer\'s own choice stays through a reading and the anonymous box', async () => {
@@ -97,7 +101,7 @@ test('without place.js the card sends no place', async () => {
   assert.equal('place' in JSON.parse(p.requests.filter(r => r.url === '/api/preview').at(-1).options.body), false);
 });
 
-test('after a post the next statement starts afresh, empty when anonymous', async () => {
+test('after a post the next statement starts afresh at "Not about one place"', async () => {
   const p = await page();
   await p.type('The river floods every spring'); await p.get('stop').emit('click');
   const row = p.get('issue-rows').children.at(-1);
@@ -110,7 +114,7 @@ test('after a post the next statement starts afresh, empty when anonymous', asyn
   assert.equal(posted.url, '/api/posts');
   assert.deepEqual(JSON.parse(posted.options.body).place, {country: 'DE', area: 'Hamburg'});
   posted.resolve({id: 'p1'}); await clicking; await p.flush();
-  assert.deepEqual([p.country.value, p.area.value], ['US', '']);
+  assert.deepEqual([p.country.value, p.area.value], ['', '']);
   p.get('anonymous').checked = true; await p.get('anonymous').emit('change');
   await p.type('A second statement'); await p.get('stop').emit('click');
   assert.deepEqual([p.country.value, p.area.value], ['', '']);

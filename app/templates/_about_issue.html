@@ -14,6 +14,8 @@
       <label class="check"><input type="radio" name="{{ group }}" value="{{ value }}" data-solution="{{ solution.name }}"{% if value == "none" %} checked{% endif %}> {{ label }}</label>
       {% endfor %}
     </fieldset>
+    {%- set held = (about.held or {}).get(solution.key) %}{% if held %}
+    <p class="held-note">{{ "You approve this already." if held == "approve" else "You oppose this already." }}</p>{% endif %}
   </div>
   {% else %}<p class="empty">No solutions proposed yet.</p>{% endfor %}
   <p class="ev-label">Evidence</p>

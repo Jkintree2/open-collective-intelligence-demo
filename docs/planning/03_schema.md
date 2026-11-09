@@ -667,6 +667,15 @@ For a post made with `ACCOUNTS_ENABLED` set (always an account's), the write pat
 
 A stance that a post made and a click later replaced or withdrew is gone from that post's "show what was added" list; the statement itself is unchanged.
 
+**Q58. The member's own stances** (John, 9 November 2026), read for the panel above the form and returned as `held` by `/api/candidates`, so the form says "You approve this already." beside a solution the member holds a stance on ("no position" there never withdraws it). Read only, `$person_key` the signed-in account (signed out, nothing is read); a 0.1 pair holding both stances says neither.
+
+```cypher
+MATCH (:Person {key: $person_key})-[r:APPROVE|OPPOSE]->(s:Solution)
+WITH s, collect(DISTINCT type(r)) AS kinds
+WHERE size(kinds) = 1
+RETURN s.key AS key, kinds[0] AS stance
+```
+
 **Q4, revised** (with `ACCOUNTS_ENABLED` set; until then Q4 as in 0.1). Solutions are ranked by net support. A 0.1 Person who holds both stances counts once each way, so adds nothing net. `$me` is the signed-in account key, or null, which matches nothing.
 
 ```cypher

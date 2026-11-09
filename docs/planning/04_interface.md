@@ -68,6 +68,13 @@ Top to bottom:
 
 "Part of" and "Sub-issues" show only for a tree a record still holds (the seed, an older copy): since 2 November 2026 there are no new sub-issues (John), and the line telling testers how to add one is gone.
 
+Under the three positions of a solution the signed-in member already approves or opposes, **client-facing**:
+
+> You approve this already.
+> You oppose this already.
+
+The positions still start at "no position", which never withdraws a stance. The card's solution rows say the same under their positions, for a solution typed by hand too, but not on the edit page, where the post's own rows hold its stance (John, 9 November 2026: the form seemed to say he had not approved a solution he had; Q58).
+
 Each proposed solution carries the same three position choices as a card row. Choosing "I approve this" or "I oppose this" opens the card and adds that solution as a row, already tied to this issue and with the position set, so the tester can post it. Choosing "no position" again removes the row.
 
 When the choice cannot be taken the panel puts the solution back to "no position" and says why, in the card's message line when the card is open and in the line under the buttons otherwise. **Client-facing**:
@@ -1108,7 +1115,7 @@ A "Place" row under the card's rows, before Post:
 > Place: [ list, first choice "Not about one place", then countries A to Z ]
 > Town or area, optional: [ input ]
 
-For a named statement the country starts as the account's country; for an anonymous one both start empty, with:
+A new statement starts at "Not about one place" with the town empty, named or anonymous (John, 9 November 2026: a global statement started at his account's country, the United States, since the language model never chooses the place; until then a named statement started at the account's country). For an anonymous one the row adds:
 
 > A town can tell others who wrote an anonymous statement. Add one only if you are happy with that.
 
@@ -1275,6 +1282,7 @@ For a solution:
 > no position
 > I approve this
 > I oppose this
+> You approve this already. (or "You oppose this already.", when the member holds that stance)
 > Evidence
 > {evidence name} (supports)
 > No evidence attached to this solution yet.

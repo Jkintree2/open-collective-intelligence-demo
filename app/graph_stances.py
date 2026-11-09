@@ -6,7 +6,23 @@ from typing import Any
 from neo4j.exceptions import ServiceUnavailable
 
 from app.graph import OPPOSITE_STANCE, STANCE_TYPES
-from app.graph_runtime import RecordAsleep, database, driver
+from app.graph_runtime import RecordAsleep, _read, database, driver
+
+# Q58. The member's own stances, by solution key, so the form says "You approve this already." beside a solution
+# they hold one on (John, 9 November 2026). A 0.1 pair holding both stances says neither.
+HELD_STANCES = """
+MATCH (:Person {key: $person_key})-[r:APPROVE|OPPOSE]->(s:Solution)
+WITH s, collect(DISTINCT type(r)) AS kinds
+WHERE size(kinds) = 1
+RETURN s.key AS key, kinds[0] AS stance
+"""
+
+
+def held_stances(person_key: str | None) -> dict[str, str]:
+    """{solution key: 'approve' or 'oppose'} for the signed-in account; empty when signed out."""
+    if not person_key:
+        return {}
+    return {row["key"]: row["stance"].lower() for row in _read(HELD_STANCES, person_key=person_key)}
 
 # Both write locks are taken before anything is read, the same trick as MERGE_PART_OF, so two
 # quick presses from two tabs are applied one after the other. {stance} and {other} come from
