@@ -47,14 +47,13 @@ def places_on(member_app, switch, monkeypatch):
     return member_app
 
 
-def test_the_place_list_and_the_accounts_country(places_on):
+def test_the_place_list_without_the_accounts_country(places_on):
+    # John, 9 November 2026: a new post starts at "Not about one place", so the account's country is not sent.
     places_on.accounts["acct:ada"]["country"] = "U.S.A."
     answer = places_on.client.get("/api/place").json()
     assert answer["not_one_place"] == "Not about one place"
     assert answer["choices"][0] == ["AF", "Afghanistan"] and ["US", "United States"] in answer["choices"]
-    assert answer["country"] == "US"
-    places_on.accounts["acct:ada"]["country"] = "Somewhere else"
-    assert places_on.client.get("/api/place").json()["country"] is None
+    assert "country" not in answer
 
 
 def test_the_place_list_is_not_there_with_the_switch_off(member_app):

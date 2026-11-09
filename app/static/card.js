@@ -13,6 +13,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     previewPending: null, previewSettle: null
   };
   const UNREAD = 'Your statement has not been read yet. Press "Read my statement" to fill in the form from it.';
+  const HELD = {approve: 'You approve this already.', oppose: 'You oppose this already.'};
   const key = value => {
     let result = value.normalize('NFKC').toLowerCase().trim().replace(/^(the|a|an)( |$)/u, '');
     result = result.replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -139,6 +140,10 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         }
         row.badge.textContent = row.name.value.trim() ? known ? 'existing' : 'new' : ''; grow(row.name);
         if (row.issueNote) row.issueNote.hidden = !known;
+        if (row.heldNote) {  // the member's own stance; on the edit page the post's own rows say it already
+          row.heldNote.textContent = state.editing ? '' : HELD[candidates.held?.[key(row.name.value)]] || '';
+          row.heldNote.hidden = !row.heldNote.textContent;
+        }
         if (row.for_issue) {
           options(row.for_issue, [['On this form', issues], [fam.label, fam.names], ['All issues', names]], 'Choose an issue');
           if (!row.for_issue.value && issues.length) row.for_issue.value = issues[0];
@@ -229,7 +234,9 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
         label.append(input, document.createTextNode(['no position', 'I approve this', 'I oppose this'][index]));
         choices.append(label); return input;
       });
-      row.element.append(choices);
+      // John, 9 November 2026: "no position" here never withdraws a stance, so a stance held already says so.
+      row.heldNote = node('p', '', 'held-note'); row.heldNote.hidden = true;
+      row.element.append(choices, row.heldNote);
     }
     if (group === 'evidence') {
       field(row, 'url', 'Link (optional)').value = item.url || '';

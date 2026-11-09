@@ -171,3 +171,22 @@ def test_proposers_count_an_accounts_anonymous_proposals_apart(live_graph):
                     "created_at: $now}]->(s)")
     for ranked in (False, True):
         assert live_graph.issue_solutions("veto", ranked=ranked)[0]["proposers"] == 4  # Ada twice, Grace, anon:1
+
+
+def test_held_stances_are_the_members_own_one_per_solution(live_graph):
+    """Q58 (John, 9 November 2026): the form says "You approve this already." from these. A 0.1 pair holding both
+    stances says neither; another person's stances are not the member's."""
+    run(live_graph, SETUP + """
+CREATE (t:Solution {key: 'expand', name: 'Expand the council', seed: false})
+CREATE (u:Solution {key: 'rotate', name: 'Rotate the seats', seed: false})
+WITH t, u
+MATCH (ada:Person {key: 'acct:ada'}), (grace:Person {key: 'name:grace'})
+CREATE (ada)-[:APPROVE {created_at: $now}]->(u), (ada)-[:OPPOSE {created_at: $now}]->(u)
+CREATE (grace)-[:APPROVE {created_at: $now}]->(t)
+""")
+    assert graph_stances.held_stances("acct:ada") == {}
+    graph_stances.set_stance("acct:ada", "abolish", "approve", NOW)
+    graph_stances.set_stance("acct:ada", "expand", "oppose", NOW)
+    assert graph_stances.held_stances("acct:ada") == {"abolish": "approve", "expand": "oppose"}
+    assert graph_stances.held_stances("name:grace") == {"expand": "approve"}
+    assert graph_stances.held_stances(None) == {} and graph_stances.held_stances("acct:nobody") == {}

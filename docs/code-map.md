@@ -16,7 +16,7 @@ app/graph_runtime.py process driver, query execution (a write returns its rows),
 app/graph_posts.py post and seed write orchestration; write_payload() is shared by posting and editing, with the one_stance switch; no Cypher of its own (it runs the statements in graph.py)
 app/graph_backup.py admin deletion, export and restore transactions; no Cypher
 app/graph_accounts.py account Cypher (Q12 to Q22)
-app/graph_stances.py one stance per person and solution (Q23)
+app/graph_stances.py one stance per person and solution (Q23); the member's own stances for the form (Q58)
 app/graph_own_posts.py own posts: Q24, Q25 and the feed's yes or no flags (Q7)
 app/graph_search.py keyword search (Q26, Q27)
 app/graph_tidy.py  move, rename, merge and their change record (Q28 to Q32)

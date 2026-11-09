@@ -95,6 +95,9 @@ def member_app(monkeypatch):
     # them in `own_questions`.
     own_questions = []
     monkeypatch.setattr("app.graph_questions.mine", lambda me, limit: own_questions[:limit])
+    # The member's own stances (Q58), for "You approve this already."; a test that needs some puts them in `held`.
+    held = {}
+    monkeypatch.setattr("app.graph_stances.held_stances", lambda me: dict(held) if me else {})
     writes = []
     monkeypatch.setattr(main.graph, "merge_post", lambda *args, **kwargs: writes.append((args, kwargs)) or "post-id")
     record = {}
@@ -114,7 +117,8 @@ def member_app(monkeypatch):
         return record[key]
 
     yield SimpleNamespace(client=client, main=main, settings=settings, sign_in=sign_in, set_cookie=set_cookie,
-                          accounts=record, writes=writes, own_posts=own_posts, own_questions=own_questions)
+                          accounts=record, writes=writes, own_posts=own_posts, own_questions=own_questions,
+                          held=held)
     client.close()
 
 
