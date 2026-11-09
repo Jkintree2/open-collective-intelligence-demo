@@ -1,8 +1,0 @@
-{# v0.3 Home: the member's own five most recent statements and questions (main._home_mine), drawn again from
-   /home/mine after a post or an answer. A statement opens My posts, where it is listed; a question its answer. -#}
-<section class="home-mine" id="home-mine-section"{% if not home_mine %} hidden{% endif %}>
-  <h2>{% if home_ask %}My most recent statements and questions{% else %}My most recent statements{% endif %}</h2>
-  <ul id="home-mine">{% for mine in home_mine %}
-    <li>{% if mine.kind == "question" %}<a class="ask-answered" href="/ask/answers/{{ mine.id|urlencode }}">{% else %}<a href="/my-posts">{% endif %}{{ mine.short }}</a> <span class="counts">{{ mine.when }}</span></li>{% endfor %}
-  </ul>
-</section>

@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app import graph_questions
+from test_home_routes import compose_form, home
 from test_home_switch import live_like  # noqa: F401
 from test_phase3_switches import ALL_ON, POST, draw, pages  # noqa: F401
 
@@ -98,52 +99,9 @@ def test_without_home_the_feed_is_statements_only(homepage, switch, monkeypatch)
         assert "The veto blocks action." in draw(homepage.client, "/")
 
 
-# Home: the member's own five, from the record on every device.
-def own(number, minutes):
-    return {"id": f"mine-{number}", "text": f"My statement number {number}.", "display_name": "Ada Tester",
-            "anonymous": False, "seed": False,
-            "created_at": datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc) + timedelta(minutes=minutes)}
-
-
 def mine_question(text, minutes, qid):
     return {**question(text, 0, qid=qid), "asked_at": datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)
             + timedelta(minutes=minutes)}
-
-
-def mine_list(page):
-    found = re.search(r'<ul id="home-mine">(.*?)</ul>', page, re.S).group(1)
-    return re.findall(r'<li><a (?:class="ask-answered" )?href="([^"]+)">([^<]*)</a> <span class="counts">[^<]*</span></li>',
-                      found)
-
-
-def test_my_list_joins_my_questions_by_time(homepage):
-    homepage.own_posts[:] = [own(1, -1), own(2, -3), own(3, -5)]
-    homepage.own_questions[:] = [mine_question("Who pays?", 10, "01" * 16), mine_question("Is it fair?", -2, "02" * 16),
-                                 mine_question("Why the veto?", -4, "03" * 16)]
-    page = draw(homepage.client, "/")
-    assert "<h2>My most recent statements and questions</h2>" in page
-    assert mine_list(page) == [
-        (f"/ask/answers/{'01' * 16}", "Who pays?"),
-        ("/my-posts", "My statement number 1."),
-        (f"/ask/answers/{'02' * 16}", "Is it fair?"),
-        ("/my-posts", "My statement number 2."),
-        (f"/ask/answers/{'03' * 16}", "Why the veto?")]
-    assert '<section class="home-mine" id="home-mine-section">' in page
-
-
-def test_with_only_a_question_the_list_shows(homepage):
-    homepage.own_posts.clear()
-    homepage.own_questions[:] = [mine_question("Who pays?", 0, QID)]
-    page = draw(homepage.client, "/")
-    assert '<section class="home-mine" id="home-mine-section">' in page and len(mine_list(page)) == 1
-
-
-def test_with_ask_off_my_list_is_statements_only(homepage, switch, monkeypatch):
-    monkeypatch.setattr(graph_questions, "mine", lambda *a, **kw: pytest.fail("no questions with Ask off"))
-    switch(ask_enabled=False)
-    homepage.own_posts[:] = [own(1, -1)]
-    page = draw(homepage.client, "/")
-    assert [href for href, _ in mine_list(page)] == ["/my-posts"]
 
 
 def test_the_page_no_longer_names_the_member_for_the_device(homepage):
@@ -231,25 +189,9 @@ def test_my_posts_address_is_not_found_without_home(homepage, switch):
         assert homepage.client.get("/my-statements").status_code == 200
 
 
-# The list under the button, served alone so app.js can draw it again after a post or an answer (review, 8 November).
-def test_home_mine_serves_the_list_alone(homepage):
-    homepage.own_posts[:] = [own(1, -1)]
-    homepage.own_questions[:] = [mine_question("Who pays?", 10, QID)]
-    response = homepage.client.get("/home/mine")
-    assert response.status_code == 200 and "no-store" in response.headers.get("cache-control", "")
-    assert response.text.startswith('<section class="home-mine" id="home-mine-section">')
-    assert mine_list(response.text) == [(f"/ask/answers/{QID}", "Who pays?"), ("/my-posts", "My statement number 1.")]
-    assert "<nav>" not in response.text and "<html" not in response.text
-
-
-def test_home_mine_is_not_found_without_home(homepage, switch):
-    for fields in ({"home_enabled": "off"}, {"home_enabled": "preview", "home_preview": ("bob@example.org",)}):
-        switch(**fields)
-        assert homepage.client.get("/home/mine").status_code == 404
-    homepage.client.cookies.clear()
-    switch(home_enabled="on")
-    assert homepage.client.get("/home/mine", follow_redirects=False).status_code in (303, 401)
-
+# John, 9 November: the list under the button is gone, and so is the address that drew it again.
+def test_home_mine_is_gone(homepage):
+    assert homepage.client.get("/home/mine").status_code == 404
 
 
 def test_recent_posts_and_my_posts_leave_out_follow_ups(homepage, monkeypatch):
@@ -260,5 +202,46 @@ def test_recent_posts_and_my_posts_leave_out_follow_ups(homepage, monkeypatch):
     homepage.own_questions[:] = [mine_question("Why?", 5, "ef" * 16), mine_question("Who pays?", 0, QID)]
     page = draw(homepage.client, "/")
     assert "Who pays for the carbon tax?" in feed(page) and "Tell me more" not in feed(page)
-    assert mine_list(page) == [(f"/ask/answers/{QID}", "Who pays?")]
     assert "Why?" not in draw(homepage.client, "/my-posts")
+
+
+# John, 9 November: on an issue page the Write/Ask box takes the place of "Write about this issue" and carries the
+# issue to Home: a statement is written about it, and a question is asked about it (as the page's Ask box does).
+HOME_ASK = '<section class="ask home-ask" id="home-ask" data-ask'
+
+
+def test_the_box_on_an_issue_page_takes_the_place_of_the_link(homepage):
+    page = draw(homepage.client, "/issues/veto")
+    assert '<form class="home-box" method="post" action="/home">' in page
+    assert '<input type="hidden" name="issue" value="veto">' in page and "Write about this" not in page
+
+
+def test_without_asking_the_issue_page_keeps_the_link(homepage, switch):
+    switch(ask_enabled=False)
+    page = draw(homepage.client, "/issues/veto")
+    assert '<a class="write-issue" href="/?issue=veto">Write about this issue</a>' in page and "home-box" not in page
+
+
+def test_the_box_carries_the_issue_to_home(homepage):
+    page = home(homepage.client, start="1", text="Rent caps help.", issue="veto").text
+    assert 'id="about-issue"' in page and 'data-start="/?issue=veto"' in page
+    assert f'{HOME_ASK} data-issue="veto" hidden' in page and ">Rent caps help.</textarea>" in page
+
+
+def test_a_gone_item_still_opens_home(homepage):
+    page = home(homepage.client, start="1", text="x y z", issue="gone").text
+    assert 'id="about-issue"' not in page and re.search(r' data-start[ >]', page)
+    assert f"{HOME_ASK} hidden" in page and ">x y z</textarea>" in page
+
+
+def test_a_reload_from_an_item_asks_about_it(homepage):
+    page = draw(homepage.client, "/?issue=veto")
+    assert f'{HOME_ASK} data-issue="veto" hidden' in page and "data-start" not in page
+
+
+def test_without_javascript_home_carries_the_item_on(homepage):
+    """Review, 9 November: the box on an item page brings the text to Home, whose own form must carry the item on,
+    so a question sent from there without JavaScript is asked about that item."""
+    page = home(homepage.client, start="1", text="Why the veto?", issue="veto").text
+    assert '<input type="hidden" name="issue" value="veto">' in compose_form(page)
+    assert 'type="hidden" name="issue"' not in compose_form(draw(homepage.client, "/"))

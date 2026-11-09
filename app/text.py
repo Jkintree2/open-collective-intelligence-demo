@@ -156,3 +156,4 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
         if statement:
             rest.append(f"{statement['name']} {statement['stance']} {about(item)}")
     return claims + rest + ([f"Place: {place}"] if place else [])
+

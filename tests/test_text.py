@@ -78,3 +78,4 @@ def test_relative_time_singular_units():
     assert relative_time(NOW - timedelta(minutes=1), NOW) == "1 minute ago"
     assert relative_time(NOW - timedelta(hours=1), NOW) == "1 hour ago"
     assert relative_time(NOW - timedelta(days=1), NOW) == "1 day ago"
+

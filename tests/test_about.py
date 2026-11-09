@@ -5,7 +5,7 @@ import re
 import pytest
 from markupsafe import escape
 
-from app import principles, routes_about
+from app import about_site, principles
 
 # "language model" is John's own wording for this page (28 October); any other "model" is still out.
 FORBIDDEN = re.compile(r"\b(node|edge|graph|cypher|(?<!language )model|extraction|entity)s?\b", re.I)
@@ -23,7 +23,7 @@ def own_words(html: str) -> str:
     """The page's own copy: everything inside <main>, without the three documents and the repository address."""
     body = html.split('<main class="column">', 1)[1].split("</main>", 1)[0]
     body = re.sub(r'<div class="guiding-text">.*?</div>', "", body, flags=re.S)
-    return re.sub(r"<[^>]+>", " ", body.replace(routes_about.REPOSITORY, ""))
+    return re.sub(r"<[^>]+>", " ", body.replace(about_site.REPOSITORY, ""))
 
 
 def test_switch_off_means_not_found(member_app):
@@ -54,17 +54,17 @@ def test_the_three_documents_are_the_files_the_instructions_use(about):
 def test_it_names_the_reading_service_and_its_version(about):
     html = about.client.get("/about").text
     assert "<p>DeepSeek, version deepseek-v4-flash. It reads statements," in html
-    assert routes_about.NO_READING_SERVICE not in html
+    assert about_site.NO_READING_SERVICE not in html
     assert "private-test-key" not in html
 
 
 def test_without_a_key_it_says_no_reading_service_is_set_up(about, switch):
     switch(llm_api_key=None)
     html = about.client.get("/about").text
-    assert f"<p>{routes_about.NO_READING_SERVICE_CARDS}</p>" in html
+    assert f"<p>{about_site.NO_READING_SERVICE_CARDS}</p>" in html
     assert "DeepSeek" not in html
     switch(ask_enabled=True)
-    assert f"<p>{routes_about.NO_READING_SERVICE}</p>" in about.client.get("/about").text
+    assert f"<p>{about_site.NO_READING_SERVICE}</p>" in about.client.get("/about").text
 
 
 def text_of(html: str) -> str:
@@ -128,17 +128,17 @@ def test_each_switch_adds_only_its_own_part(about, switch, fields, reads, given)
                                        ("https://reader.example.org/v1", "reader.example.org"),
                                        ("https://api.provider.example/v1", "provider.example")])
 def test_provider_comes_from_the_base_address(url, name):
-    assert routes_about.provider(url) == name
+    assert about_site.provider(url) == name
 
 
 def test_it_names_johns_repository_and_the_site_name(about, switch):
     switch(ask_enabled=True)
     html = about.client.get("/about").text
-    assert f'<a href="{routes_about.REPOSITORY}" rel="noopener noreferrer">' in html
-    # John's wording of 31 October, word for word with Ask on.
-    assert (f"<p>{about.settings.site_name} is a small test of a conversational platform for constructing a shared database"
+    assert f'<a href="{about_site.REPOSITORY}" rel="noopener noreferrer">' in html
+    # John's wording, word for word with Ask on: his own edit on GitHub, 9 November ("a test", "a form").
+    assert (f"<p>{about.settings.site_name} is a test of a conversational platform for constructing a shared database"
             " of issues, evidence, and solutions for collective problem solving. People write statements about issues they"
-            " care about. The site reads each statement, and extracts the issues, evidence, and solutions into a short form;"
+            " care about. The site reads each statement, and extracts the issues, evidence, and solutions into a form;"
             " the person checks and corrects the form; and it joins a database that everyone here can read, ask questions of,"
             " and build on. Development of this prototype software began in September of 2026.</p>") in html
 
@@ -178,3 +178,27 @@ def test_the_sign_in_page_links_here(about):
 
 def test_switched_off_the_sign_in_page_has_no_link(member_app):
     assert 'href="/about"' not in member_app.client.get("/sign-in").text
+
+
+# John, 9 November: the About text above the three documents goes to Ask as plain words (about_site.site_text),
+# so a question about the site itself can be answered. The page draws the same partial, _about_site.html.
+def test_site_text_is_the_about_page_above_the_documents(about, switch):
+    settings = switch(ask_enabled=True)
+    site = about_site.site_text(settings)
+    assert site.startswith("What it is for\n\n" + settings.site_name + " is a test of a conversational platform")
+    assert "ask questions of" in site and "\n\nThe language model\n\nDeepSeek, version deepseek-v4-flash." in site
+    assert "\n\nGuiding principles\n\nThe language model is given the Statement of purpose" in site
+    assert about_site.REPOSITORY in site
+    assert "<" not in site and "{%" not in site and "All human beings are born free" not in site
+
+
+def test_site_text_follows_the_switches(about, switch):
+    site = about_site.site_text(switch(ask_enabled=False))
+    assert "ask questions of" not in site and "answers questions" not in site
+
+
+def test_markup_john_may_add_reaches_ask_as_words():
+    """A list, bold or a link John adds to _about_site.html reaches Ask as words, with no tags (fetch_page.html_text)."""
+    html = ('<h2>Software</h2>\n<p>Code at <a href="https://x.org/r">the repository</a> &amp; more.</p>'
+            '\n<ul><li>One</li><li><strong>Two</strong></li></ul>')
+    assert about_site.html_text(html)[0] == "Software\n\nCode at the repository & more.\n\nOne\n\nTwo"

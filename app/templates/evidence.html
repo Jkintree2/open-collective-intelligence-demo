@@ -4,8 +4,7 @@
 {% block content %}
 <p class="crumbs">{% for crumb in crumbs %}<a href="{{ crumb.href }}">{{ crumb.name }}</a> › {% endfor %}{{ evidence.name }}</p>
 <h1>{{ evidence.name }}</h1>
-<a class="write-issue" href="/?evidence={{ evidence.key|urlencode }}">Write about this evidence</a>
-{% if evidence.url %}<p class="source-line">Source: <a href="{{ evidence.url }}" target="_blank" rel="noopener noreferrer">{{ evidence.url }}</a></p>
+{% set box_on = {"kind": "evidence", "key": evidence.key} %}{% include "_write_about.html" %}{% if evidence.url %}<p class="source-line">Source: <a href="{{ evidence.url }}" target="_blank" rel="noopener noreferrer">{{ evidence.url }}</a></p>
 {% elif evidence.answers_key %}<p class="source-line">The writer's own words about <a href="/evidence/{{ evidence.answers_key|urlencode }}">{{ evidence.answers_name }}</a>.</p>
 {% elif source_note %}<p class="source-line">{{ source_note }}</p>{% endif %}
 {% if evidence.submitted_by %}<p class="claimed">Submitted by {{ evidence.submitted_by|join(", ") }}</p>{% endif %}

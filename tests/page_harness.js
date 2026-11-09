@@ -37,9 +37,9 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   if (options.evidenceCheck) get('compose').dataset = {...get('compose').dataset, evidenceCheck: ''};
   if (options.noReading) get('compose').dataset = {...get('compose').dataset, noReading: ''};  // no reading service
   // v0.3 Home: the form says Home is on (data-home), with asking (data-home-ask) unless 'post-only', and
-  // data-start when another page's box brought the text (index.html).
+  // data-start when another page's box brought the text (index.html), its value the item page's address.
   if (options.home) get('compose').dataset = {...get('compose').dataset, home: '',
-    ...(options.home === 'post-only' ? {} : {homeAsk: ''}), ...(options.start ? {start: ''} : {})};
+    ...(options.home === 'post-only' ? {} : {homeAsk: ''}), ...(options.start ? {start: options.start === true ? '' : options.start} : {})};
   if (options.text) get('text').value = options.text;
   if (options.prepare) options.prepare(get);  // elements the server drew, set up before the scripts run
   const recognizers = [], requests = [], timers = new Map();
@@ -57,8 +57,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const fragments = [];  // the list fragments fetched, in order
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
-    // The lists drawn again after a post or an answer (app.js refreshLists) are read as text, as the page reads them.
-    if (url === '/feed' || url === '/home/mine') {
+    // The feed drawn again after a post or an answer (app.js refreshLists) is read as text, as the page reads it.
+    if (url === '/feed') {
       fragments.push(url);
       return Promise.resolve({ok: true, status: 200, redirected: false, text: async () => ''});
     }

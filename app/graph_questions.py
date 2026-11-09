@@ -54,7 +54,7 @@ WHERE ($issue_key IS NULL OR q.issue_key = $issue_key)
 WITH q, q.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
 """ + _QUESTION_ROWS
 
-# Q57 (v0.3). The questions one member asked, for My posts and the list under Home's button, by the member's own
+# Q57 (v0.3). The questions one member asked, for My posts, by the member's own
 # time of asking, not the question's.
 MY_QUESTIONS = """
 MATCH (:Person {key: $person_key})-[a:ASKED]->(q:Question)

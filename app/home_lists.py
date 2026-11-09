@@ -1,6 +1,6 @@
 """v0.3, John's email of 7 November 2026: with Home on, "Recent posts" holds statements and questions from everyone,
-mixed newest first, and "My posts" (My statements, renamed while Home is on) holds the member's own the same way, as
-does the list under Home's button. Everyone's questions come from Q48; a member's own from Q57, which reads who asked
+mixed newest first, and "My posts" (My statements, renamed while Home is on) holds the member's own the same way.
+Everyone's questions come from Q48; a member's own from Q57, which reads who asked
 (linked since v0.3, so it holds on every device). A question row takes its time of asking as `created_at` and
 `kind` "question", so it sorts and is drawn beside a post (main._decorate_posts gives both their times). A failed
 read of the questions is logged and leaves the statements alone, and a question with no words of its own ("Tell me

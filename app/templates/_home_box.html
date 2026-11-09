@@ -1,9 +1,11 @@
 {# v0.3 Home: the Write/Ask box on Issues, My statements and About, with HOME_ENABLED and ASK_ENABLED (John, 4 November
-   2026). It takes the text to Home, which carries on with it there (start set); without JavaScript Home shows it in
-   its box. #}
+   2026), and in place of "Write about this" on an issue's, a solution's or a piece of evidence's page (John, 9
+   November, _write_about.html), where `box_on` ({kind, key}) names that item. It takes the text to Home, which carries on with it there
+   (start set), about that item; without JavaScript Home shows it in its box. #}
 <form class="home-box" method="post" action="/home">
   <input type="hidden" name="start" value="1">
-  <label for="home-box-text">Write what you think, or ask a question.</label>
+{% if box_on %}  <input type="hidden" name="{{ box_on.kind }}" value="{{ box_on.key }}">
+{% endif %}  <label for="home-box-text">Write what you think, or ask a question.</label>
   <textarea id="home-box-text" name="text" rows="2" maxlength="4000" required></textarea>
   <button type="submit" class="primary">Read my statement or question</button>
 </form>

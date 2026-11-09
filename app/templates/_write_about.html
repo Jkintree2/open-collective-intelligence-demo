@@ -1,0 +1,5 @@
+{# John, 9 November: on an issue's, a solution's or a piece of evidence's page (box_on: {kind, key}), the Write/Ask box
+   with Home asking; otherwise the "Write about this" link, byte for byte as before. -#}
+{% if home_asks(request) %}{% include "_home_box.html" %}
+{% else %}<a class="write-issue" href="/?{{ box_on.kind }}={{ box_on.key|urlencode }}">Write about this {{ box_on.kind }}</a>
+{% endif %}

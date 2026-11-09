@@ -129,6 +129,18 @@
         "How does homelessness relate to the principles of the UDHR?"
       ],
       "expect": "The longer answer to A19's question, read from what A19 reads (John, 3 November): up to five short paragraphs on homelessness and the Declaration, the referendum with its count, and the climate solution that uses carbon tax money to realize Article 25, citing it and its post."
+    },
+    {
+      "id": "S1",
+      "issue": null,
+      "question": "Which language model is being used by the prototype?",
+      "expect": "John, 9 November: names the language model and its version from the About page, citing D4 (About this site); no post."
+    },
+    {
+      "id": "S2",
+      "issue": null,
+      "question": "Where does this site run, and is its code open?",
+      "expect": "Render's Starter plan and a free Neo4j Aura database; open under the MIT licence in John Kintree's repository; cites D4."
     }
   ]
 }

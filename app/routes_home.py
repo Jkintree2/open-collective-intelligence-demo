@@ -2,7 +2,8 @@
 POST /api/home/kind what a text is, then starts the reading or the answer in place. Without JavaScript the box posts
 to /home: a statement is posted as POST /posts posts it, a question is answered as POST /ask answers it (on the Ask
 page), and when the site can't tell, Home comes back with the text and two buttons. The box on Issues, My statements
-and About posts to /home with start set, and Home carries on with the text. With ASK_ENABLED off, every text is a
+and About, and on an issue's, a solution's or a piece of evidence's page (with that item), posts to /home with start
+set, and Home carries on with the text. With ASK_ENABLED off, every text is a
 statement."""
 
 from __future__ import annotations
@@ -13,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from app import config, home
 from app.members import require_access, require_same_origin
-from app.pages import page
 from app.text import TEXT_MAX
 
 router = APIRouter()
@@ -40,21 +40,18 @@ def kind(data: KindRequest) -> dict[str, str]:
 
 @router.post("/home", dependencies=GUARDS)
 def home_form(request: Request, text: str = Form("", max_length=4 * TEXT_MAX), kind: str = Form("", max_length=20),
-              anonymous: str | None = Form(None), start: str = Form("", max_length=5)) -> Response:
+              anonymous: str | None = Form(None), start: str = Form("", max_length=5),
+              issue: str = Form("", max_length=200), solution: str = Form("", max_length=400),
+              evidence: str = Form("", max_length=400)) -> Response:
+    """The item fields come from the box on an item's page (John, 9 November), and Home's own form carries them on:
+    Home writes and asks about that item, with or without JavaScript."""
     from app import main, routes_ask  # main loads the routers last
     if start:
-        return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True)
+        return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True,
+                                  about=main.about_for(issue, solution, evidence))
     chosen = kind_for(text, kind)
     if chosen == "statement":
         return main.create_post(request, display_name="", anonymous=anonymous, text=text)
     if chosen == "question":
-        return routes_ask.ask_form(request, question=text, issue="", solution="", evidence="", earlier=[])
-    return main._render_index(request, text=text.strip(), unsure=True)
-
-
-@router.get("/home/mine", dependencies=[Depends(require_access), Depends(home.require_home)])
-def home_mine(request: Request) -> Response:
-    """The list under Home's button, which app.js draws again after a post or an answer."""
-    from app import main
-    return page(request, "_home_mine.html", {"home_mine": main._home_mine(request), "home_ask": home.home_asks(request)},
-                private=True)
+        return routes_ask.ask_form(request, question=text, issue=issue, solution=solution, evidence=evidence, earlier=[])
+    return main._render_index(request, text=text.strip(), unsure=True, about=main.about_for(issue, solution, evidence))

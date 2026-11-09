@@ -23,7 +23,7 @@
     if (response.status === 401 && data && data.redirect) location.href = data.redirect;
     throw failure;
   }
-  // After a post or an answer the server draws the lists again: the feed, and on Home the writer's own list.
+  // After a post or an answer the server draws the feed again.
   async function fragment(url) {
     const response = await fetch(url);
     if (!response.ok || response.redirected) throw new Error(url);
@@ -31,8 +31,6 @@
   }
   async function refreshLists() {
     find('feed').innerHTML = await fragment('/feed');
-    const mine = find('home-mine-section');
-    if (mine) mine.outerHTML = await fragment('/home/mine');
   }
   const card = window.ociCard({find, request, unavailable, stopDictation: () => dictation.stop(), stopReading, updateText,
     refreshLists});

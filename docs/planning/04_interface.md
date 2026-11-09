@@ -1034,6 +1034,12 @@ A guiding document (added 28 October 2026, John: answers quote the Declaration a
 
 Its name links to the document on the About page while About is switched on; otherwise it is plain text.
 
+The About page itself (added 9 November 2026, John: "which language model is being used by the prototype?" got the empty line) reads:
+
+> 5. About this site.
+
+linked to the About page. It is cited only for a question about the site itself, and only while About is switched on.
+
 "On {issue name}" is left off when the evidence belongs to no issue. A solution under more than one issue, and evidence reached through it, say the issue the question is about, and their own first issue when the question is about none of theirs (added 3 November 2026, John: a solution in an answer about homelessness said "On Need for world government"). Each issue name links to its issue page. A count line reads, for example, "Approved by 5, opposed by 2, as of 30 October."
 
 **When a paragraph quotes a numbered article or principle** of a guiding document and a solution the answer read names that same article or principle but the answer does not cite it, the site adds a line right under that paragraph, at most three in one answer, citing the solution and the post that proposed it (added 3 November 2026, John: an answer on homelessness quoted Article 25 but left out "Use money from global carbon tax to realize Article 25 of the UDHR"; wording approved by John, 4 November 2026: "The wording is great."):
@@ -1322,7 +1328,7 @@ Each post: "{name or Anonymous}, {2 November 2026}" (the date of its latest chan
 
 ## v0.3: Write and Ask on one Home page (added 5 November 2026)
 
-Behind `HOME_ENABLED` (not client facing): unset or `off`, every page is as before; `preview`, only the accounts listed in `HOME_PREVIEW` see Home; `on`, every signed-in member. The passphrase site keeps the old pages. Every quote below is **client-facing**. John agreed the outline on 4 November 2026: one box, "or ask a question," in the sentence at the top, the writer's own five most recent statements and questions under the button, and the site asking back when it can't tell. On 5 November three points went back to him: the button's words, a second sentence for questions, and whether the statements and questions of others are one list. On 7 November he chose one list, "Recent posts", and "My posts" in place of My statements.
+Behind `HOME_ENABLED` (not client facing): unset or `off`, every page is as before; `preview`, only the accounts listed in `HOME_PREVIEW` see Home; `on`, every signed-in member. The passphrase site keeps the old pages. Every quote below is **client-facing**. John agreed the outline on 4 November 2026: one box, "or ask a question," in the sentence at the top, the writer's own five most recent statements and questions under the button, and the site asking back when it can't tell. On 5 November three points went back to him: the button's words, a second sentence for questions, and whether the statements and questions of others are one list. On 7 November he chose one list, "Recent posts", and "My posts" in place of My statements. On 9 November he took the list of the writer's own out from under the button.
 
 ### Header
 
@@ -1358,11 +1364,7 @@ After an answer the box is empty for the next question, and "Tell me more" goes 
 
 Without JavaScript the same form posts to `/home`: a statement is posted as on the Write page without JavaScript, a question's answer shows on the Ask page, and the two buttons above come back when the site can't tell.
 
-**Under the button**, for a signed-in member:
-
-> **My most recent statements and questions**
-
-Five, newest first. A statement links to My posts, where it is listed (a post has no page of its own); a question links to the answer it got. Since John's 7 November email the database keeps who asked a question while Home is on for them, so the list holds a member's questions on every device; it is never shown with anyone's name. After a statement is posted or a question answered on Home, the server draws the list again.
+**Under the button**, nothing of the writer's own: on 9 November John took out the list of their five most recent statements and questions, which My posts holds. Since John's 7 November email the database keeps who asked a question while Home is on for them, so My posts holds a member's questions on every device; it is never shown with anyone's name.
 
 Below it, "Recent posts": statements and questions from everyone, mixed, newest first. It holds as many as the Write page lists (60). A statement shows exactly as in the Write page's list. A question shows as:
 
@@ -1387,6 +1389,10 @@ The member's own statements and questions, mixed, newest first, fifty at a time 
 
 It takes the text to Home, which carries on there. On About only for a reader who is signed in.
 
+### The box on an issue's, a solution's or a piece of evidence's page (John, 9 November 2026)
+
+With Home on and `ASK_ENABLED` set, the same box takes the place of "Write about this issue", "Write about this solution" or "Write about this evidence", right under the page's name. It takes the text to Home with that item: a statement opens the card with "Already in the database for …" above it and the item on the card, as the link did; a question is answered about that item, as the Ask box further down the page answers it, and is listed there and in "Recent posts". Home's address then names the item (`/?issue=…`, `/?solution=…` or `/?evidence=…`), so a reload neither sends the text again nor loses the item. With Home off, or Ask off, the link stays as it was. The Ask box further down these pages stays for now.
+
 ### With `ASK_ENABLED` off (not client facing)
 
-Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, the list under the button is "My most recent statements", and "Recent posts" and My posts hold statements only.
+Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, and "Recent posts" and My posts hold statements only.

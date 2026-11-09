@@ -3,8 +3,9 @@
 {% if notice %}<p class="notice" role="status">{{ notice }}</p>{% endif %}
 {% if not editing %}<p class="sentence">{% if home_ask %}{{ home_sentence }}{% else %}{{ site_sentence }}{% endif %}</p>{% endif %}
 
-<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if home_ask %} data-home-ask{% endif %}{% if start %} data-start{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
-  {% if not member %}
+<form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if home_ask %} data-home-ask{% endif %}{% if start %} data-start{% if about %}="/?{{ about.kind }}={{ about.key|urlencode }}"{% endif %}{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
+{% if home_page and about %}  <input type="hidden" name="{{ about.kind }}" value="{{ about.key }}">
+{% endif %}  {% if not member %}
   <div class="name-row">
     <div class="field">
       <label for="display_name">Your name</label>
@@ -39,7 +40,7 @@
     <button type="button" id="retry" class="quiet" hidden>Try again</button>
   </div>
 {% if home_ask %}  <button type="button" id="home-switch" class="quiet home-switch" hidden></button>
-  <section class="ask home-ask" id="home-ask" data-ask hidden aria-label="Answers">
+  <section class="ask home-ask" id="home-ask" data-ask{% if about %} data-{{ about.kind }}="{{ about.key }}"{% endif %} hidden aria-label="Answers">
     <p class="ask-status" data-ask-status aria-live="polite"></p>
     <p class="ask-note">Answers sum up what is in the database in two or three sentences, including views that differ; ask “Tell me more” for a longer answer.</p>
     <div class="ask-answers" data-ask-answers aria-live="polite"></div>
@@ -62,8 +63,7 @@
     <p id="credit" class="counts"></p>
   </section>
 </form>
-{% if home_page %}{% include "_home_mine.html" %}
-{% endif %}<script>
+<script>
   var anon = document.getElementById('anonymous'), nameField = document.getElementById('display_name');
   function syncName() { if (!nameField) return; if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
   anon.addEventListener('change', syncName); syncName();

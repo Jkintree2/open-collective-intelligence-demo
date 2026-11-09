@@ -4,8 +4,7 @@
 {% block content %}{% if member %}<script src="/static/stances.js?v={{ asset_version }}" defer></script>{% endif %}
 <p class="crumbs">{% for crumb in crumbs %}<a href="{{ crumb.href }}">{{ crumb.name }}</a> › {% endfor %}{{ solution.name }}</p>
 <h1>{{ solution.name }}</h1>
-<a class="write-issue" href="/?solution={{ solution.key|urlencode }}">Write about this solution</a>
-<p class="claimed">Proposed by {{ solution.proposers }} {{ "person" if solution.proposers == 1 else "people" }}{% if solution.proposed_by %}: {{ solution.proposed_by|join(", ") }}{% endif %}</p>
+{% set box_on = {"kind": "solution", "key": solution.key} %}{% include "_write_about.html" %}<p class="claimed">Proposed by {{ solution.proposers }} {{ "person" if solution.proposers == 1 else "people" }}{% if solution.proposed_by %}: {{ solution.proposed_by|join(", ") }}{% endif %}</p>
 <nav class="issue-menu" aria-label="On this page">
   <a href="#issues">Issues ({{ solution.issues|length }})</a>
   <a href="#evidence">Evidence ({{ solution.evidence|length }})</a>

@@ -2,11 +2,12 @@
 
 import json
 import logging
+from dataclasses import replace
 
 import httpx
 import pytest
 
-from app import ask
+from app import about_site, ask
 from app.config import Settings
 from app.principles import guiding_block
 
@@ -19,6 +20,7 @@ SOURCES = {
 }
 DIGEST = ask.Digest('{"asked_about":"the issue Climate","issues":[]}', SOURCES, posts_in=2, posts_left_out=0,
                     issue_keys=["climate"])
+NOTHING = ask.Digest('{"asked_about":"the whole record","issues":[]}', {}, issue_keys=[])  # a record that holds nothing
 
 
 def reply(*paragraphs, in_record=True):
@@ -327,7 +329,7 @@ def test_a_question_that_names_a_guiding_document(question, names):
 
 
 def test_an_empty_record_still_asks_when_the_question_names_a_document():
-    empty = ask.Digest('{"asked_about":"the whole record","issues":[]}', {}, issue_keys=[])
+    empty = NOTHING
     calls = []
     content = json.dumps(reply((f"Article 12 says: “{ARTICLE_12}”", ["D2"])))
     result = ask.answer("What does the UDHR say about privacy?", [], empty, SETTINGS, transport=service(content, calls))
@@ -390,3 +392,107 @@ def test_the_answer_gives_the_solution_naming_the_article_it_quotes():
                         transport=service(content, calls))
     assert result.paragraphs[2] == {"text": A25_LINE["text"], "refs": [3, 4]}
     assert [s.id for s in result.sources] == ["P1", "D2", "S2", "P2"]
+
+
+# John, 9 November: "which language model is being used by the prototype?" got the empty line. A question about the
+# site itself is answered from the About page's text above the three documents, given after the rules as D4.
+ABOUT_ON = replace(SETTINGS, ask_enabled=True, about_enabled=True, llm_base_url="https://api.deepseek.com",
+                   llm_model="deepseek-v4-flash")
+JOHNS = "Which language model is being used by the prototype?"
+
+
+@pytest.mark.parametrize("question", [JOHNS, "Where does this site run?", "Is the code open source?",
+                                      "Who built this platform?", "What is sent to the model?",
+                                      "Which model do you use?", "Where is the data stored?",
+                                      "How are my questions used?", "What AI does the site use?"])
+def test_names_site(question):
+    assert ask.names_site(question)
+
+
+@pytest.mark.parametrize("question", ["What can be done about homelessness in St. Louis?", "Tell me more", "Why?",
+                                      "Who runs the city council?", "Who made the decision on rents?",
+                                      "What do people say about AI in schools?", "Should cities be hosting the Olympics?",
+                                      "Is a driver's license a right?", "What would render this solution useless?",
+                                      "Who owns the site of the old steel plant?",
+                                      "What do people say about artificial intelligence?"])
+def test_does_not_name_site(question):
+    assert not ask.names_site(question)
+
+
+def test_the_about_page_follows_the_rules_as_d4():
+    about = about_site.site_text(ABOUT_ON)
+    prompt = ask.system_prompt(about)
+    assert prompt.startswith(ask.SYSTEM_PROMPT) and prompt.endswith("\n\nD4, About this site:\n" + about)
+    assert "Never cite D4 for a question about an issue, a solution or evidence." in " ".join(prompt.split())
+
+
+def test_without_about_the_prompt_is_todays():
+    assert ask.system_prompt(None) == ask.SYSTEM_PROMPT
+
+
+def site_reply(text="The site uses DeepSeek, version deepseek-v4-flash.", sources=("D4",)):
+    return json.dumps(reply((text, list(sources))))
+
+
+def test_a_question_about_the_site_is_answered_from_d4_on_an_empty_record():
+    calls = []
+    result = ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
+    assert len(calls) == 1
+    assert calls[0]["messages"][0]["content"] == ask.system_prompt(about_site.site_text(ABOUT_ON))
+    assert result.status == "answered" and result.sources == [ask.SITE]
+    assert (ask.SITE.id, ask.SITE.kind, ask.SITE.name, ask.SITE.href) == ("D4", "about", "About this site", "/about")
+
+
+def test_d4_is_not_citable_for_a_question_about_an_issue():
+    calls = []
+    result = ask.answer("What is proposed for the climate?", [], DIGEST, ABOUT_ON, transport=service(site_reply(), calls))
+    assert len(calls) == 1 and result.status == "empty"
+
+
+def test_a_follow_up_keeps_the_about_page():
+    calls = []
+    result = ask.answer("Tell me more", [JOHNS], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
+    assert len(calls) == 1 and result.status == "answered"
+
+
+def test_a_quote_said_to_be_from_d4_must_be_in_it():
+    calls = []
+    content = site_reply('The About page says "the site is run by a large team of engineers".')
+    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(content, calls)).status == "empty"
+    content = site_reply('It is "a test of a conversational platform" for collective problem solving.')
+    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(content, calls)).status == "answered"
+
+
+def test_without_about_a_site_question_on_an_empty_record_is_not_sent():
+    calls = []
+    result = ask.answer(JOHNS, [], NOTHING, SETTINGS, transport=service(site_reply(), calls))
+    assert calls == [] and result.status == "empty"
+
+
+def test_the_case_runner_asks_with_the_about_page_on():
+    """The cases (scripts/asks.py) are asked with the About page on, so S1 and S2 get D4."""
+    from scripts import asks
+    asked = asks.with_about(SETTINGS)
+    assert asked.about_enabled and asked.ask_enabled and asked.llm_api_key == SETTINGS.llm_api_key
+
+
+def test_a_follow_up_to_a_question_about_the_site_stays_on_the_site():
+    """QA, 9 November: "Tell me more" after John's question summed up the whole database instead of the site."""
+    rules = " ".join(ask.ABOUT_RULES.split())
+    assert ('A follow-up with no words of its own, such as "Tell me more" or "Why?", after a question about the site '
+            "asks for more about the site: answer it from D4 alone.") in rules
+
+
+
+def test_an_about_page_that_will_not_draw_never_stops_ask(monkeypatch, caplog):
+    """Review, 9 November: John edits templates on GitHub; a broken _about_site.html must not fail every question."""
+    def broken(settings):
+        raise RuntimeError("template error")
+    monkeypatch.setattr(about_site, "site_text", broken)
+    calls = []
+    content = json.dumps(reply(("Ada wants a tax.", ["P1"]), ("The site uses DeepSeek.", ["D4"])))
+    with caplog.at_level(logging.WARNING, logger="oci"):
+        result = ask.answer(JOHNS, [], DIGEST, ABOUT_ON, transport=service(content, calls))
+    assert calls[0]["messages"][0]["content"] == ask.SYSTEM_PROMPT
+    assert result.status == "answered" and [s.id for s in result.sources] == ["P1"]
+    assert any('"event": "about_text_failed"' in r.message for r in caplog.records)

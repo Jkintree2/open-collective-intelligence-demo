@@ -2,7 +2,7 @@
 // on one Home page"). On Read my statement or question the site says what the text is (/api/home/kind): a
 // statement starts the reading and the card (app.js, window.ociStartReading), a question is answered in place under
 // the button (ask.js, window.ociAsk), and when the site can't tell, two buttons let the writer choose. A link under
-// the box sends the same text the other way, and after an answer the server draws the lists again (app.js,
+// the box sends the same text the other way, and after an answer the server draws the feed again (app.js,
 // window.oci.refreshLists), as after a post. Without this file the form posts to /home, which does the same.
 (() => {
   const find = id => document.getElementById(id);
@@ -81,7 +81,9 @@
   // New words in the box: the link and the two buttons were about the text before.
   text.addEventListener('input', () => { swap.hidden = true; unsure.hidden = true; });
   if ('start' in form.dataset && text.value.trim()) {  // brought here by the box on another page
-    history.replaceState(null, '', '/');  // the address was the form's /home; a reload must not send it again
+    // The address was the form's /home; a reload must not send it again. From an item's page it keeps the item
+    // (John, 9 November), so the reading and the card find it as from the old "Write about this" link.
+    history.replaceState(null, '', form.dataset.start || '/');
     send(null);
   }
 })();

@@ -178,8 +178,8 @@ test('tell me more passes the earlier question', async () => {
   await second;
 });
 
-// Task 5: My most recent statements and questions, and "Recent posts". The server draws both (since John's
-// 7 November email it knows who asked); after an answer, as after a post, app.js asks it for both again.
+// "Recent posts", which the server draws (since John's 7 November email it knows who asked); after an answer, as
+// after a post, app.js asks it for the list again (John, 9 November: Home's one list).
 async function answered(page, reply) {
   await page.send(QUESTION);
   await page.say('question');
@@ -187,10 +187,10 @@ async function answered(page, reply) {
   await page.flush();
 }
 
-test('an answered question has the server draw both lists again', async () => {
+test('an answered question has the server draw the feed again', async () => {
   const page = await home();
   await answered(page, {status: 'answered', question_id: 'q9'});
-  assert.deepEqual(page.fragments, ['/feed', '/home/mine']);
+  assert.deepEqual(page.fragments, ['/feed']);  // John, 9 November: Recent posts is Home's one list
 });
 
 test('a question with no answer draws nothing again', async () => {
@@ -199,15 +199,13 @@ test('a question with no answer draws nothing again', async () => {
   assert.deepEqual(page.fragments, []);
 });
 
-test('the Write page draws only the feed again; Home its own list too', async () => {
-  const write = await setup(undefined, {issues: {}, solutions: {}, evidence: {}}, {absent: ['home-mine-section']});
+test('the Write page and Home both draw only the feed again', async () => {
+  const write = await setup(undefined, {issues: {}, solutions: {}, evidence: {}});
   await write.win.oci.refreshLists();
   assert.deepEqual(write.fragments, ['/feed']);
   const page = await home();
-  page.get('home-mine-section').outerHTML = '<section>as drawn</section>';
   await page.win.oci.refreshLists();
-  assert.deepEqual(page.fragments, ['/feed', '/home/mine']);
-  assert.equal(page.get('home-mine-section').outerHTML, '');  // the harness serves an empty fragment
+  assert.deepEqual(page.fragments, ['/feed']);
 });
 
 test('a question with no answer link in Recent posts is a button that refills the box', async () => {
@@ -245,6 +243,12 @@ test('a text brought from another page puts the address back to Home, so a reloa
   assert.deepEqual(page.history.replaced, ['/']);
   const plain = await home();
   assert.deepEqual(plain.history.replaced, []);
+});
+
+test('a text brought from an item page keeps the item in the address and is sent once (John, 9 November)', async () => {
+  const page = await home({start: '/?issue=veto', text: QUESTION});
+  assert.deepEqual(page.history.replaced, ['/?issue=veto']);
+  assert.equal(page.kinds().length, 1);
 });
 
 test('typing something new puts the switch link and the two buttons away', async () => {

@@ -413,6 +413,25 @@ Return exactly:
                                {"text": "one short paragraph", "sources": ["D2"]}]}
 ```
 
+#### The About page as D4 (John, 9 November 2026)
+
+John asked "which language model is being used by the prototype?" and got "The database does not say anything about this yet." while the About page says it. With `ABOUT_ENABLED` on, the instructions end with the About page's text above the three documents (`app/templates/_about_site.html`, drawn with the site's switches and turned into plain words by `about_site.site_text`), after this block (`ask.ABOUT_RULES`). With it off, the instructions are byte for byte the ones above.
+
+```
+One more document follows, with the id D4: this site's About page, as people here read it. Use it only for
+questions about this site itself: what it is for, how it reads statements and answers questions, which language
+model it uses, what is sent to that model, its software and where it runs. For those questions, rules 1 and 3 treat
+it as they treat the guiding documents: answer from it, and a paragraph that sums it up or quotes it cites D4 and
+needs no post. Never cite D4 for a question about an issue, a solution or evidence. A follow-up with no words of its
+own, such as "Tell me more" or "Why?", after a question about the site asks for more about the site: answer it from
+D4 alone.
+
+D4, About this site:
+{the About page's text}
+```
+
+John edits the site's description in `_about_site.html`, so what Ask knows about the site changes with the page. Cases S1 and S2 in `tests/ask_cases.json` ask about it; `scripts/asks.py` asks every case with the About page on.
+
 #### Contract
 
 ```
@@ -428,7 +447,8 @@ Return exactly:
 * `D` ids are kept only when the question, or an earlier question on the page, names a document, an article or a principle (`ask.names_document`); otherwise they count as not in the digest (live run of 28 October: "Is a carbon tax a good idea?" got an Earth Charter paragraph unasked).
 * A paragraph that cites a guiding document needs no post (John, 28 October 2026: "what does the UDHR say about privacy" and "is a global carbon tax consistent with Earth Charter 7d" were answered "nothing in the record"). Every quotation in it (straight or curly quotation marks, 12 characters or more, an ellipsis splitting it into pieces) must be found word for word in a document it cites or in the digest, spaces and case aside; otherwise the paragraph is dropped. The article number itself is not checked.
 * When a paragraph shown cites a post, a paragraph that cites a guiding document and no post loses each sentence outside a quotation that says no post speaks to it ("no post", "no posts", "none of the posts", "not a post", "nothing in the database"), and goes when nothing is left (John, 3 November 2026: an answer citing three posts on homelessness ended "The database holds no post that sets homelessness beside this article."). Rule 3 asks for that line only when no post speaks to the question, and the case run of 3 November found that saying so in the rules dropped more paragraphs elsewhere (9 answers of 54 against 2), so it is done here.
-* A question that names a document, an article or a principle (`ask.names_document`: udhr, declaration, human rights, charter, statement of purpose, guiding, article, principle) goes to the call even when the digest holds no post and no solution, and is counted.
+* A question that names a document, an article or a principle (`ask.names_document`: udhr, declaration, human rights, charter, statement of purpose, guiding, article, principle) goes to the call even when the digest holds no post and no solution, and is counted. So does, with the About page on, a question that names the site itself (`ask.names_site`: language model, LLM, AI, DeepSeek, ChatGPT, OpenAI, prototype, this or the site, website, platform or app, software, source code, open source, licence, GitHub, repository, Render, Neo4j, hosted, who built, made, runs or created). A follow-up with no words of its own ("Tell me more") is judged by the question it refers to (`ask.answerable_without_record`; John, 9 November 2026).
+* `D4`, the About page, is kept only when the question, or an earlier question on the page, names the site; then it counts as a document: a paragraph citing it needs no post, and its quotations must be found in the About text.
 * A paragraph keeps at least one `P` id, or it is dropped; the one exception is a count line, which may cite `S` or `E` ids only, recognised as a paragraph whose every sentence has at most 200 characters and a figure, or a count in words ("no", "none", "one" to "ten") beside what it counts (approved, opposed, people, posts, pieces, evidence, stances, supported, refuted), so "No evidence here is supported or refuted by other evidence." stands on the evidence it speaks of, and "One solution is to ban cars." on a solution id alone does not. Sentence by sentence since 30 October 2026: a short answer to "Which solutions have the most approval?" is the counts alone, a sentence a solution, 211 characters in 3 runs of 3, and the 200 character limit on the whole paragraph dropped the answer.
 * A paragraph that cites evidence (`E`) and no post, and is neither a count line nor on a guiding document, first takes the posts the digest has citing that evidence (the `post` in each piece's `about`, kept as `Digest.evidence_posts`), and is dropped only when the digest has none (case A4, 3 November 2026: "Which evidence is most supported by other evidence?" was answered rightly in 6 runs of 6, citing the three pieces and no post, and the page showed "The database does not say anything about this yet."). Rule 3 asks for those posts; the guard adds the ones the reply leaves out.
 * Ids written into the text are taken out: a bracketed list goes, a bare `S`, `E` or `D` id reads as its name, a bare `P` id as "a post". The numbers the page shows come from "sources" only. The word "digest" in an answer reads "database", and "the record" reads "the database" (John, 28 October 2026).

@@ -4,38 +4,12 @@
 {# Only what is switched on is described (Ask the record, follow-up questions, the evidence check).
    John's wording since 28 October, now site wide: database, form and language model. #}
 {% set on = switches() %}
-{% macro and_list(items) %}{{ items[:-1]|join(", ") }}{% if items|length > 1 %} and {% endif %}{{ items[-1] }}{% endmacro %}
+{# The text above the documents, with its and_list macro, is _about_site.html. #}
 <article class="about">
 <h1>About this site</h1>
 {% if home_asks(request) %}{% include "_home_box.html" %}
 {% endif %}
-<h2>What it is for</h2>
-<p>{{ site_name }} is a test of a conversational platform for constructing a shared database of issues, evidence, and solutions for collective problem solving. People write statements about issues they care about. The site reads each statement, and extracts the issues, evidence, and solutions into a form; the person checks and corrects the form; and it joins a database that everyone here can read{% if on.ask %}, ask questions of,{% endif %} and build on. Development of this prototype software began in September of 2026.</p>
-
-<h2>How statements are read{% if on.ask %} and questions are answered{% endif %}</h2>
-<p>A language model fills in the form from the statement. Nothing joins the database until the writer has checked the form and posted it.</p>
-{% if on.ask %}
-<p>When you ask a question, the site gathers what the database holds about it: the issues, the solutions with how many people approve and oppose them and since when, the evidence and how its pages were read, and the posts themselves, newest first. The language model writes an answer of two or three sentences from that alone, or a longer one when the question asks for more, and from the guiding documents below when a question asks about them. Each part of the answer names the posts or the document it comes from; a part that names neither is left out. A question that gets an answer is kept with its answer and listed under the Ask box for everyone here, without the name of who asked; a listed question opens the answer it got, while the posts it rests on are unchanged.</p>
-{% endif %}
-
-<h2>The language model</h2>
-{% if service %}
-<p>{{ service.provider }}, version {{ service.version }}. It {{ and_list(["reads statements"] + (["answers questions"] if on.ask else []) + (["suggests follow-up questions"] if on.follow_ups else [])) }}, with the guiding principles below at the start of its instructions each time.{% if evidence_check %} When it checks the page behind an evidence link it is given no principles, so that each link stays quick and cheap to read.{% endif %}</p>
-{% else %}
-<p>{{ no_service if on.ask else no_service_cards }}</p>
-{% endif %}
-
-<h2>What is sent to the language model</h2>
-<p>The statement being written and its form; {% if on.ask %}the question and your earlier questions on the page; and what the database holds that an answer is built from: posts under the name they were posted with, or none when anonymous, and {% else %}and {% endif %}the names of issues, solutions and evidence. Never an email address, a password, or an account's country or postal code.</p>
-
-<h2>Software</h2>
-<p>The site is written in Python with FastAPI and keeps the records in a Neo4j database. Its code is open, under the MIT licence, in John Kintree's repository: <a href="{{ repository }}" rel="noopener noreferrer">{{ repository }}</a>.</p>
-
-<h2>Where it runs</h2>
-<p>On Render's Starter plan, with the records in a free Neo4j Aura database.</p>
-
-<h2>Guiding principles</h2>
-<p>The language model is given the Statement of purpose, and the full text of the Universal Declaration of Human Rights and the Earth Charter at the start of the system prompt, its instructions for {{ and_list(["reading statements"] + (["answering questions"] if on.ask else []) + (["asking follow-up questions"] if on.follow_ups else [])) }}. They guide it; they are not a test that posts must pass. {% if on.ask %}It does not judge a post against them unless a question asks, and names an article or a principle only when the question or a post does.{% else %}It does not judge a post against them, and names an article or a principle only when a post does.{% endif %} Each person still checks their own form.</p>
+{% include "_about_site.html" %}
 {% for anchor, title, text in documents %}
 <section class="guiding" id="{{ anchor }}">
 <h3>{{ title }}</h3>

@@ -79,8 +79,7 @@ templates.env.filters["anchor"] = solution_anchor
 
 def switches() -> dict[str, bool]:
     """Phase 3's switches for templates, read when the page is drawn (tests replace main.settings)."""
-    return {"ask": settings.ask_enabled, "follow_ups": settings.follow_ups_enabled,
-            "places": settings.places_enabled, "about": settings.about_enabled}
+    return settings.switches
 
 
 templates.env.globals["switches"] = switches
@@ -264,33 +263,13 @@ def _about_issue(key: str | None) -> dict | None:
     if header is None:
         return None
     return {
+        "kind": "issue",
+        "key": key,
         "issue": header,
         "solutions": graph.issue_solutions(key),
         "evidence": graph.issue_evidence(key),
         "href": _issue_href(key),
     }
-
-
-HOME_MINE = 5  # v0.3: the writer's own statements and questions under Home's button
-HOME_MINE_CHARACTERS = 120
-
-
-def _home_mine(request: Request) -> list[dict]:
-    """v0.3 Home: the member's five most recent statements (Q24, as My posts reads them) and, with asking on,
-    questions (Q57), newest first, each cut to fit the list (_home_mine.html, drawn again from /home/mine)."""
-    key = request.state.member.key
-    questions = home_lists.my_questions(key, HOME_MINE) if home.home_asks(request) else []
-    now = datetime.now(timezone.utc)
-    return [{**item, "short": _short(item.get("text") or ""), "when": relative_time(item["created_at"], now)}
-            for item in home_lists.mixed(graph_own_posts.my_posts(key, HOME_MINE), questions, HOME_MINE)]
-
-
-def _short(text: str) -> str:
-    """Whole words up to HOME_MINE_CHARACTERS, then an ellipsis."""
-    text = " ".join(text.split())
-    if len(text) <= HOME_MINE_CHARACTERS:
-        return text
-    return text[:HOME_MINE_CHARACTERS].rsplit(" ", 1)[0].rstrip(" ,;:.") + "…"
 
 
 def _feed_posts(request: Request, *, mixed: bool) -> list[dict]:
@@ -337,7 +316,6 @@ def _render_index(
             "start": start,
             "home_page": home_page,
             "home_ask": home_ask,
-            "home_mine": _home_mine(request) if home_page else [],
             # Phase 2: the card reads evidence links only with the flag and a reading service; with the
             # flag alone a row with no link still says so (revision round).
             "evidence_check": settings.evidence_check_enabled,
@@ -468,10 +446,18 @@ def enter_submit(
 def write_page(request: Request, issue: str | None = Query(None, max_length=200),
                solution: str | None = Query(None, max_length=400), evidence: str | None = Query(None, max_length=400),
                done: str | None = Query(None, max_length=20)) -> Response:
-    # GitHub issue 55: the write page opened from a solution's or a piece of evidence's page says what the
-    # database holds about it, as it does for an issue.
-    about = _about_issue(issue) if issue else about_solution(solution) if solution else about_evidence(evidence)
-    return _render_index(request, about=about, notice=write_notice(done, current_member(request)))
+    return _render_index(request, about=about_for(issue, solution, evidence),
+                         notice=write_notice(done, current_member(request)))
+
+
+def about_for(issue: str | None, solution: str | None, evidence: str | None) -> dict | None:
+    """What the database holds about the item the writer came from (GitHub issue 55: an issue, a solution or a piece
+    of evidence), with its kind and key, so Home writes and asks about it (John, 9 November); None when it is not in
+    the record."""
+    for key, read in ((issue, _about_issue), (solution, about_solution), (evidence, about_evidence)):
+        if key:
+            return read(key)
+    return None
 
 
 def _valid_anon_id(value: str | None) -> str | None:
