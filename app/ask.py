@@ -113,10 +113,14 @@ def names_document(question: str) -> bool:
 # John, 9 November: a question about the site itself is answered from the About page's text above the documents
 # (routes_about.site_text), given after the rules as D4 while ABOUT_ENABLED is on.
 SITE = Source("D4", "about", "About this site", href="/about")
-_NAMES_SITE = re.compile(r"\b(?:language models?|llm|ai|artificial intelligence|deepseek|chatgpt|openai|prototype|"
-                         r"(?:this|the) (?:site|website|platform|app)|software|source code|open source|licen[cs]e|"
-                         r"github|repository|render|neo4j|hosted|hosting|who (?:built|made|runs|created))\b",
-                         re.IGNORECASE)
+# The review of 9 November: words that name the site itself, never a civic question's ("who runs the city council",
+# "AI in schools", "hosting the Olympics", "the site of the old steel plant").
+_SITE = r"(?:site|website|platform|app|prototype|software|code)"
+_NAMES_SITE = re.compile(r"\b(?:language models?|llms?|deepseek|chatgpt|openai|prototype|this " + _SITE + r"|the (?:website|platform)|"
+                         r"(?:which|what) (?:ai|models?|language models?)|ai models?|the model|source code|open source|"
+                         r"github|repository|neo4j|my (?:data|questions|posts|email|password)|"
+                         r"data (?:is |are )?(?:stored|kept|sent)|who (?:built|made|runs|created|wrote) (?:this|the) "
+                         + _SITE + r")\b", re.IGNORECASE)
 
 
 def names_site(question: str) -> bool:
@@ -880,6 +884,18 @@ def with_article_solutions(paragraphs: list[dict[str, Any]], digest: Digest) -> 
     return out
 
 
+def _about_text(settings: Settings, request_id: str | None) -> str | None:
+    """D4's text while the About page is on. John edits its template on GitHub, so one that will not draw is
+    logged and Ask answers without D4 rather than failing every question (the review of 9 November)."""
+    if not settings.about_enabled:
+        return None
+    try:
+        return routes_about.site_text(settings)
+    except Exception as exc:  # noqa: BLE001
+        log.warning(json.dumps({"event": "about_text_failed", "request_id": request_id, "error": type(exc).__name__}))
+        return None
+
+
 def build_messages(question: str, earlier: list[str], digest: Digest, about: str | None = None
                    ) -> list[dict[str, str]]:
     user = ('{"record":' + digest.text + ',"earlier_questions":' + _dumps(earlier[-EARLIER_MAX:])
@@ -894,7 +910,7 @@ def answer(question: str, earlier: list[str], digest: Digest, settings: Settings
         return Answer("empty")
     started = time.perf_counter()
     earlier = [text[:QUESTION_MAX] for text in earlier if isinstance(text, str) and text.strip()][-EARLIER_MAX:]
-    about = routes_about.site_text(settings) if settings.about_enabled else None
+    about = _about_text(settings, request_id)
     reply = call_model(build_messages(question, earlier, digest, about), settings, request_id=request_id,
                        chars=len(question), transport=transport, parse=parse_answer, event="ask_call",
                        max_tokens=MAX_TOKENS, timeout=TIMEOUT, attempts=1)

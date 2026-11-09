@@ -42,14 +42,15 @@ def home_form(request: Request, text: str = Form("", max_length=4 * TEXT_MAX), k
               anonymous: str | None = Form(None), start: str = Form("", max_length=5),
               issue: str = Form("", max_length=200), solution: str = Form("", max_length=400),
               evidence: str = Form("", max_length=400)) -> Response:
-    """The item fields come from the box on an item's page (John, 9 November): Home writes and asks about it."""
+    """The item fields come from the box on an item's page (John, 9 November), and Home's own form carries them on:
+    Home writes and asks about that item, with or without JavaScript."""
     from app import main, routes_ask  # main loads the routers last
+    about, box_on = main.about_for(issue, solution, evidence)
     if start:
-        about, box_on = main.about_for(issue, solution, evidence)
         return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True, about=about, box_on=box_on)
     chosen = kind_for(text, kind)
     if chosen == "statement":
         return main.create_post(request, display_name="", anonymous=anonymous, text=text)
     if chosen == "question":
         return routes_ask.ask_form(request, question=text, issue=issue, solution=solution, evidence=evidence, earlier=[])
-    return main._render_index(request, text=text.strip(), unsure=True)
+    return main._render_index(request, text=text.strip(), unsure=True, about=about, box_on=box_on)

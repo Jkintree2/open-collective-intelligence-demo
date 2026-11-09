@@ -4,7 +4,8 @@
 {% if not editing %}<p class="sentence">{% if home_ask %}{{ home_sentence }}{% else %}{{ site_sentence }}{% endif %}</p>{% endif %}
 
 <form method="post" action="{% if editing %}/posts/{{ editing.id|urlencode }}/edit{% elif home_page %}/home{% else %}/posts{% endif %}" class="write" id="compose"{% if home_page %} data-home{% if home_ask %} data-home-ask{% endif %}{% if start %} data-start{% if box_on %}="/?{{ box_on.kind }}={{ box_on.key|urlencode }}"{% endif %}{% endif %}{% endif %}{% if evidence_check %} data-evidence-check{% endif %}{% if not reading_on %} data-no-reading{% endif %}{% if member %} data-member="{{ member.name }}"{% endif %}>
-  {% if not member %}
+{% if home_page and box_on %}  <input type="hidden" name="{{ box_on.kind }}" value="{{ box_on.key }}">
+{% endif %}  {% if not member %}
   <div class="name-row">
     <div class="field">
       <label for="display_name">Your name</label>

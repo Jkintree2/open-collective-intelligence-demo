@@ -238,3 +238,16 @@ def test_a_gone_item_still_opens_home(homepage):
 def test_a_reload_from_an_item_asks_about_it(homepage):
     page = draw(homepage.client, "/?issue=veto")
     assert f'{HOME_ASK} data-issue="veto" hidden' in page and "data-start" not in page
+
+
+def compose_form(page):
+    return page.split('id="compose"', 1)[1].split("</form>", 1)[0]
+
+
+def test_without_javascript_home_carries_the_item_on(homepage):
+    """Review, 9 November: the box on an item page brings the text to Home, whose own form must carry the item on,
+    so a question sent from there without JavaScript is asked about that item."""
+    page = homepage.client.post("/home", data={"start": "1", "text": "Why the veto?", "issue": "veto"},
+                                headers=SAME_SITE).text
+    assert '<input type="hidden" name="issue" value="veto">' in compose_form(page)
+    assert 'type="hidden" name="issue"' not in compose_form(draw(homepage.client, "/"))

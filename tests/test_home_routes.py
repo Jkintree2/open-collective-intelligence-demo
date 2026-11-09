@@ -161,6 +161,13 @@ def test_without_javascript_a_question_from_an_issue_page_is_asked_about_it(homi
     assert response.status_code == 200 and ("issue", "veto") in homing.calls
 
 
+def test_unsure_keeps_the_item(homing):
+    """Review, 9 November: when the site can't tell, Home comes back with the item still on it."""
+    response = home(homing.client, text=UNSURE, issue="veto")
+    form = response.text.split('id="compose"', 1)[1].split("</form>", 1)[0]
+    assert 'id="about-issue"' in response.text and '<input type="hidden" name="issue" value="veto">' in form
+
+
 def test_cross_site_refused(homing):
     cross = {"sec-fetch-site": "cross-site"}
     assert kind(homing.client, QUESTION, headers=cross).status_code == 403

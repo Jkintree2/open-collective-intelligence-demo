@@ -402,12 +402,19 @@ JOHNS = "Which language model is being used by the prototype?"
 
 
 @pytest.mark.parametrize("question", [JOHNS, "Where does this site run?", "Is the code open source?",
-                                      "Who built this platform?"])
+                                      "Who built this platform?", "What is sent to the model?",
+                                      "Which model do you use?", "Where is the data stored?",
+                                      "How are my questions used?", "What AI does the site use?"])
 def test_names_site(question):
     assert ask.names_site(question)
 
 
-@pytest.mark.parametrize("question", ["What can be done about homelessness in St. Louis?", "Tell me more", "Why?"])
+@pytest.mark.parametrize("question", ["What can be done about homelessness in St. Louis?", "Tell me more", "Why?",
+                                      "Who runs the city council?", "Who made the decision on rents?",
+                                      "What do people say about AI in schools?", "Should cities be hosting the Olympics?",
+                                      "Is a driver's license a right?", "What would render this solution useless?",
+                                      "Who owns the site of the old steel plant?",
+                                      "What do people say about artificial intelligence?"])
 def test_does_not_name_site(question):
     assert not ask.names_site(question)
 
@@ -475,3 +482,18 @@ def test_a_follow_up_to_a_question_about_the_site_stays_on_the_site():
     rules = " ".join(ask.ABOUT_RULES.split())
     assert ('A follow-up with no words of its own, such as "Tell me more" or "Why?", after a question about the site '
             "asks for more about the site: answer it from D4 alone.") in rules
+
+
+
+def test_an_about_page_that_will_not_draw_never_stops_ask(monkeypatch, caplog):
+    """Review, 9 November: John edits templates on GitHub; a broken _about_site.html must not fail every question."""
+    def broken(settings):
+        raise RuntimeError("template error")
+    monkeypatch.setattr(routes_about, "site_text", broken)
+    calls = []
+    content = json.dumps(reply(("Ada wants a tax.", ["P1"]), ("The site uses DeepSeek.", ["D4"])))
+    with caplog.at_level(logging.WARNING, logger="oci"):
+        result = ask.answer(JOHNS, [], DIGEST, ABOUT_ON, transport=service(content, calls))
+    assert calls[0]["messages"][0]["content"] == ask.SYSTEM_PROMPT
+    assert result.status == "answered" and [s.id for s in result.sources] == ["P1"]
+    assert any('"event": "about_text_failed"' in r.message for r in caplog.records)
