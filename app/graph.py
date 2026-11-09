@@ -257,15 +257,21 @@ ORDER BY post.created_at DESC
 LIMIT $limit
 """
 
+# A stance a later post took again is that post's too (last_post_id; `restated`, John, 9 November 2026).
 POST_STRUCTURE = """
 MATCH (a)-[r]->(b)
-WHERE r.post_id IN $post_ids
-OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(b)
-WHERE b:Solution
-WITH r, a, b, head(collect(DISTINCT home.key)) AS home_key
-RETURN r.post_id AS post_id, labels(a)[0] AS from_label, a.key AS from_key, a.name AS from_name,
+WHERE r.post_id IN $post_ids OR (type(r) IN ['APPROVE', 'OPPOSE'] AND r.last_post_id IN $post_ids)
+UNWIND [r.post_id, r.last_post_id] AS pid
+WITH DISTINCT a, r, b, pid, type(r) IN ['APPROVE', 'OPPOSE'] AS stance
+WHERE pid IN $post_ids AND (pid = r.post_id OR stance)
+OPTIONAL MATCH (home:Issue)-[:HAVE_PROPOSED]->(b) WHERE b:Solution
+WITH r, a, b, pid, stance, collect(DISTINCT home) AS homes
+OPTIONAL MATCH (post:Post {id: pid}) WHERE stance
+RETURN pid AS post_id, labels(a)[0] AS from_label, a.key AS from_key, a.name AS from_name,
        type(r) AS rel, labels(b)[0] AS to_label, b.key AS to_key, b.name AS to_name,
-       r.anonymous AS anonymous, home_key
+       CASE WHEN pid = r.post_id THEN r.anonymous ELSE post.anonymous END AS anonymous,
+       head([h IN homes | h.key]) AS home_key, pid <> coalesce(r.post_id, '') AS restated,
+       [h IN homes | {key: h.key, name: h.name}] AS homes, post.payload AS payload
 ORDER BY r.created_at
 """
 

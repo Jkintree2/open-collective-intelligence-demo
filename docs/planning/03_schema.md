@@ -273,6 +273,8 @@ ORDER BY r.created_at
 
 The feed shows each post's chips (one per distinct Issue, Solution, Evidence touched, linking to the issue page) and, expanded on tap, the sentences in John's format. Person names on edges with `anonymous = true` render as "Anonymous".
 
+**Q7's structure query, revised 9 November 2026 (John).** A post that takes again a stance its writer already holds, on a solution already under the issue its card names, wrote no edge of its own: the stance edge only took it as `last_post_id`, and GitHub issue 4 left the issue out, so the post had no chips and no sentences although Q6 and Q51 list it. The structure query now also reads `APPROVE` and `OPPOSE` by `last_post_id`, as Q6, Q40, Q44 and Q51 already do. Each such row is `restated`, and its `anonymous` is the later post's own, so an anonymous post never shows the name the first stance was taken under. Every stance row also carries the solution's issues (`homes`) and the post's stored `payload`, and the chips add the issue the card named for that stance (`for_issue_key`) while the solution is still proposed for it. The edit card leaves `restated` rows out, so a stance held before the post still shows as no position. In `app/graph.py` (`POST_STRUCTURE`) and `main._stance_issue`.
+
 ### Q8. Candidates for the extraction prompt and the card's autocomplete
 
 ```cypher

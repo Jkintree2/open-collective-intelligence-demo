@@ -133,7 +133,8 @@ def current_card(post_id: str, stored_json: str | None, *, readings: bool = Fals
     """The edit card from the record as it is now, and this post's own proposal links: each solution
     key mapped to the keys of the issues whose HAVE_PROPOSED link to it this post made. `readings`
     (EVIDENCE_CHECK_ENABLED) puts each evidence row's stored reading on the card."""
-    rows = graph.post_structure([post_id]).get(post_id, [])
+    # A stance held before the post that the post took again is not its own (edit_card's docstring).
+    rows = [row for row in graph.post_structure([post_id]).get(post_id, []) if not row.get("restated")]
     stored = json.loads(stored_json or "{}")
     keys = {row["to_key"] for row in rows if row["rel"] == "CLAIM"}
     keys |= {row["from_key"] for row in rows if row["rel"] == "HAVE_PROPOSED"}
