@@ -239,8 +239,9 @@ def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
         chips: dict[tuple[str, str], dict] = {}
         sentences: list[str] = []
         for row in rows:
-            for label, key, name in ((row["from_label"], row["from_key"], row["from_name"]),
-                                     (row["to_label"], row["to_key"], row["to_name"])):
+            named = _stance_issue(row)
+            for label, key, name in ((("Issue", named["key"], named["name"]),) if named else ()) + (
+                    (row["from_label"], row["from_key"], row["from_name"]), (row["to_label"], row["to_key"], row["to_name"])):
                 if label not in CHIP_PAGES or not key or (label, key) in chips:
                     continue
                 # GitHub issue 55: a solution or evidence chip opens its own page, as an issue chip does.
@@ -253,6 +254,21 @@ def _decorate_posts(posts: list[dict], me: str | None = None) -> list[dict]:
         post["chips"] = list(chips.values())
         post["sentences"] = sentences
     return posts
+
+
+def _stance_issue(row: dict) -> dict | None:
+    """The issue a post's card named for its stance on a solution, while the solution is still proposed for it.
+    A stance on a solution already under that issue claims nothing (GitHub issue 4), so no edge of the post
+    reaches the issue; the card's payload still names it (John, 9 November 2026)."""
+    if row["rel"] not in ("APPROVE", "OPPOSE") or not row.get("payload"):
+        return None
+    try:
+        solutions = json.loads(row["payload"]).get("solutions") or []
+    except (ValueError, AttributeError):
+        return None
+    named = next((item.get("for_issue_key") for item in solutions
+                  if isinstance(item, dict) and item.get("key") == row["to_key"]), None)
+    return next((home for home in row.get("homes") or [] if home["key"] == named), None)
 
 
 def _about_issue(key: str | None) -> dict | None:
