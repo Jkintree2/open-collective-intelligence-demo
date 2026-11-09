@@ -140,11 +140,14 @@ def cited_documents(question: str, earlier: list[str], about: str | None) -> dic
     return texts
 
 
-def answerable_without_record(question: str, earlier: list[str], settings: Settings) -> bool:
-    """A record that holds nothing still gets a call when the question, or the one a wordless follow-up refers to,
-    names a guiding document or, with the About page on, the site itself."""
+def answerable_without_record(question: str, earlier: list[str], site_questions: bool) -> bool:
+    """A record that holds nothing still gets a call when the question names a guiding document. For a reader who
+    gets questions about the site (`site_questions`: Home on for them and the About page on; the builder, 9 November),
+    also when it names the site, each judged by the question a wordless follow-up refers to."""
+    if not site_questions:
+        return names_document(question)
     looked_up = lookup_question(question, earlier)
-    return names_document(looked_up) or (settings.about_enabled and names_site(looked_up))
+    return names_document(looked_up) or names_site(looked_up)
 
 
 # The guiding documents' own names, which say what a question quotes, not what it is about.
@@ -915,14 +918,17 @@ def build_messages(question: str, earlier: list[str], digest: Digest, about: str
     return [{"role": "system", "content": system_prompt(about)}, {"role": "user", "content": user}]
 
 
-def answer(question: str, earlier: list[str], digest: Digest, settings: Settings, *,
+def answer(question: str, earlier: list[str], digest: Digest, settings: Settings, *, site_questions: bool = False,
            request_id: str | None = None, scope: str = "issue", transport: Any = None) -> Answer:
-    """One attempt, 40 seconds. Without a reading service the route never gets here."""
-    if digest.empty and not answerable_without_record(question, earlier, settings):
+    """One attempt, 40 seconds. Without a reading service the route never gets here. Only a reader who gets
+    questions about the site (`site_questions`, Home on for them; the builder, 9 November) gets the About page as D4;
+    every other reader's Ask is as it was."""
+    site_questions = site_questions and settings.about_enabled
+    if digest.empty and not answerable_without_record(question, earlier, site_questions):
         return Answer("empty")
     started = time.perf_counter()
     earlier = [text[:QUESTION_MAX] for text in earlier if isinstance(text, str) and text.strip()][-EARLIER_MAX:]
-    about = _about_text(settings, request_id)
+    about = _about_text(settings, request_id) if site_questions else None
     reply = call_model(build_messages(question, earlier, digest, about), settings, request_id=request_id,
                        chars=len(question), transport=transport, parse=parse_answer, event="ask_call",
                        max_tokens=MAX_TOKENS, timeout=TIMEOUT, attempts=1)

@@ -436,7 +436,7 @@ def site_reply(text="The site uses DeepSeek, version deepseek-v4-flash.", source
 
 def test_a_question_about_the_site_is_answered_from_d4_on_an_empty_record():
     calls = []
-    result = ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
+    result = ask.answer(JOHNS, [], NOTHING, ABOUT_ON, site_questions=True, transport=service(site_reply(), calls))
     assert len(calls) == 1
     assert calls[0]["messages"][0]["content"] == ask.system_prompt(about_site.site_text(ABOUT_ON))
     assert result.status == "answered" and result.sources == [ask.SITE]
@@ -445,27 +445,27 @@ def test_a_question_about_the_site_is_answered_from_d4_on_an_empty_record():
 
 def test_d4_is_not_citable_for_a_question_about_an_issue():
     calls = []
-    result = ask.answer("What is proposed for the climate?", [], DIGEST, ABOUT_ON, transport=service(site_reply(), calls))
+    result = ask.answer("What is proposed for the climate?", [], DIGEST, ABOUT_ON, site_questions=True, transport=service(site_reply(), calls))
     assert len(calls) == 1 and result.status == "empty"
 
 
 def test_a_follow_up_keeps_the_about_page():
     calls = []
-    result = ask.answer("Tell me more", [JOHNS], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
+    result = ask.answer("Tell me more", [JOHNS], NOTHING, ABOUT_ON, site_questions=True, transport=service(site_reply(), calls))
     assert len(calls) == 1 and result.status == "answered"
 
 
 def test_a_quote_said_to_be_from_d4_must_be_in_it():
     calls = []
     content = site_reply('The About page says "the site is run by a large team of engineers".')
-    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(content, calls)).status == "empty"
+    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, site_questions=True, transport=service(content, calls)).status == "empty"
     content = site_reply('It is "a test of a conversational platform" for collective problem solving.')
-    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(content, calls)).status == "answered"
+    assert ask.answer(JOHNS, [], NOTHING, ABOUT_ON, site_questions=True, transport=service(content, calls)).status == "answered"
 
 
 def test_without_about_a_site_question_on_an_empty_record_is_not_sent():
     calls = []
-    result = ask.answer(JOHNS, [], NOTHING, SETTINGS, transport=service(site_reply(), calls))
+    result = ask.answer(JOHNS, [], NOTHING, SETTINGS, site_questions=True, transport=service(site_reply(), calls))
     assert calls == [] and result.status == "empty"
 
 
@@ -492,7 +492,25 @@ def test_an_about_page_that_will_not_draw_never_stops_ask(monkeypatch, caplog):
     calls = []
     content = json.dumps(reply(("Ada wants a tax.", ["P1"]), ("The site uses DeepSeek.", ["D4"])))
     with caplog.at_level(logging.WARNING, logger="oci"):
-        result = ask.answer(JOHNS, [], DIGEST, ABOUT_ON, transport=service(content, calls))
+        result = ask.answer(JOHNS, [], DIGEST, ABOUT_ON, site_questions=True, transport=service(content, calls))
     assert calls[0]["messages"][0]["content"] == ask.SYSTEM_PROMPT
     assert result.status == "answered" and [s.id for s in result.sources] == ["P1"]
     assert any('"event": "about_text_failed"' in r.message for r in caplog.records)
+
+
+
+# the builder, 9 November: questions about the site are for the readers Home is on for (the preview, for now); every
+# other reader's Ask is exactly as it was, D4 and the follow-up gate included.
+def test_without_home_a_reader_asks_as_before():
+    calls = []
+    result = ask.answer(JOHNS, [], DIGEST, ABOUT_ON, transport=service(site_reply(), calls))
+    assert calls[0]["messages"][0]["content"] == ask.SYSTEM_PROMPT and result.status == "empty"
+    result = ask.answer(JOHNS, [], NOTHING, ABOUT_ON, transport=service(site_reply(), calls))
+    assert len(calls) == 1 and result.status == "empty"
+
+
+@pytest.mark.parametrize("site_questions, answerable", [(False, False), (True, True)])
+def test_a_wordless_follow_up_on_an_empty_record_is_as_before_without_home(site_questions, answerable):
+    earlier = ["What does the UDHR say about privacy?"]
+    assert ask.answerable_without_record("Tell me more", earlier, site_questions) is answerable
+    assert ask.answerable_without_record("What does the UDHR say about privacy?", [], site_questions)

@@ -268,15 +268,28 @@ def test_an_empty_record_still_answers_a_question_about_a_guiding_document(askin
     assert len(routes_ask.person_limit.uses["acct:ada"]) == 1
 
 
-@pytest.mark.parametrize("about_on, called", [(True, True), (False, False)])
-def test_an_empty_record_answers_a_question_about_the_site_only_with_about_on(asking, monkeypatch, switch, about_on,
-                                                                              called):
-    """John, 9 November: "Which language model is being used by the prototype?" found no post and got the empty line."""
+@pytest.mark.parametrize("about_on, home_mode, called", [(True, "on", True), (True, "off", False),
+                                                      (False, "on", False)])
+def test_an_empty_record_answers_a_question_about_the_site_only_for_a_home_reader(asking, monkeypatch, switch,
+                                                                                   about_on, home_mode, called):
+    """John, 9 November: "Which language model is being used by the prototype?" found no post and got the empty line.
+    the builder, 9 November: only readers Home is on for get such answers; everyone else's Ask is as before."""
     monkeypatch.setattr(ask, "record_digest", lambda question, **kw: ask.Digest("{}", {}, issue_keys=[]))
-    switch(about_enabled=about_on)
+    switch(about_enabled=about_on, home_enabled=home_mode)
     body = post(asking.client, {"question": "Which language model is being used by the prototype?"}).json()
     assert any(call[0] == "answer" for call in asking.calls) is called
     assert body["status"] == ("answered" if called else "empty")
+
+
+@pytest.mark.parametrize("home_mode, site_questions", [("on", True), ("off", False)])
+def test_ask_is_told_whether_the_reader_gets_questions_about_the_site(asking, monkeypatch, switch, home_mode,
+                                                                      site_questions):
+    seen = []
+    monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
+                        seen.append(kw["site_questions"]) or ask.Answer("empty"))
+    switch(about_enabled=True, home_enabled=home_mode)
+    post(asking.client, {"question": "Why oppose the veto?", "issue": "veto"})
+    assert seen == [site_questions]
 
 
 UDHR_LINE = '<a href="/about#udhr">Universal Declaration of Human Rights</a>'
