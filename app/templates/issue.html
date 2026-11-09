@@ -9,7 +9,7 @@
   {% if issue.children %}<a href="#sub-issues">Sub-issues ({{ issue.children|length }})</a>{% endif %}
   <a href="#solutions">Solutions ({{ solutions|length }})</a>
   <a href="#evidence">Evidence ({{ evidence|length }})</a>
-  {% if switches().ask %}<a href="#ask-title">Ask</a>{% endif %}
+  {% if switches().ask %}{% if not home_asks(request) %}<a href="#ask-title">Ask</a>{% elif recent_questions %}<a href="#questions">Questions</a>{% endif %}{% endif %}
   <a href="#posts">Posts</a>
   {% if tidy %}<a href="#tidy">Tidy</a>{% endif %}
 </nav>

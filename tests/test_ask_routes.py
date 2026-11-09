@@ -566,3 +566,41 @@ def test_lists_leave_out_follow_ups_kept_before(asking):
                         {"text": "Who decides?", "issue_key": None, "issue_name": None, "id": "bb" * 16, "answered": True}]
     page = asking.client.get("/ask").text
     assert "Who decides?" in page and "Tell me more" not in page.split('data-ask-recent')[1]
+
+
+# John, 9 November 2026: with Home's box at the top of the page, the Ask box further down asked the same thing twice.
+# It is gone for a reader Home asks for; the questions asked about the item stay, and the menu's "Ask" becomes
+# "Questions". Without Home (off, or preview for others) the page is as before.
+LISTED = [{"id": "ab" * 16, "answered": True, "text": "Why do people oppose abolishing the veto?"},
+          {"id": None, "answered": False, "text": "Who would enforce it?"}]
+
+
+def test_with_home_asking_the_issue_page_lists_its_questions_without_the_box(asking, switch):
+    asking.listed[:] = [dict(row) for row in LISTED]
+    switch(home_enabled="on")
+    page = asking.client.get("/issues/veto").text
+    assert '<form class="home-box" method="post" action="/home">' in page
+    assert "Ask about this issue" not in page and 'class="ask-form"' not in page and 'id="ask-title"' not in page
+    assert '<h2 id="questions">Questions asked about this issue</h2>' in page
+    assert f'<a class="ask-answered" href="/ask/answers/{"ab" * 16}">Why do people oppose abolishing the veto?</a>' in page
+    assert '<span class="ask-unanswered">Who would enforce it?</span>' in page
+    assert '<a href="#questions">Questions</a>' in page and 'href="#ask-title"' not in page
+    assert page.index("Evidence about this issue") < page.index("Questions asked about this issue") < page.index(
+        "Posts about this issue")
+    # The Ask page itself keeps its box.
+    assert '<textarea name="question" rows="2" aria-labelledby="ask-title" autofocus>' in asking.client.get("/ask").text
+
+
+def test_with_home_asking_and_no_questions_there_is_nothing_down_there(asking, switch):
+    switch(home_enabled="on")
+    page = asking.client.get("/issues/veto").text
+    assert "Questions asked about" not in page and 'href="#questions"' not in page and "Ask about this issue" not in page
+
+
+def test_without_home_for_the_reader_the_box_stays(asking, switch):
+    asking.listed[:] = [dict(row) for row in LISTED]
+    switch(home_enabled="preview", home_preview=("someone.else@example.org",))
+    page = asking.client.get("/issues/veto").text
+    assert '<h2 id="ask-title">Ask about this issue</h2>' in page and '<a href="#ask-title">Ask</a>' in page
+    assert '<h3>Questions asked about this issue</h3>' in page and 'class="ask-again">Who would enforce it?</button>' in page
+    assert 'id="questions"' not in page and "home-box" not in page

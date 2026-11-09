@@ -486,6 +486,8 @@ form.search button { min-height: 44px; }
 .ask-recent a:hover { color: var(--accent-hover); text-decoration-color: currentColor; }
 /* John, 30 October: a listed question opens the answer it got, on a page of its own with Ask again. */
 .ask-recent .ask-answered { display: block; padding: 10px 0 0; }
+/* John, 9 November: under Home's box an item's page lists its questions only; one kept before answers were is text. */
+.ask-recent .ask-unanswered { display: block; padding: 10px 0; overflow-wrap: anywhere; }
 .ask-lead a { color: var(--accent); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
 .ask-again-form { margin-top: 12px; }
 

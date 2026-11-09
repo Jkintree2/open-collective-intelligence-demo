@@ -3,7 +3,7 @@
    ASK_ENABLED. Without JavaScript the form posts to /ask and the answer comes back there. #}
 {% set ask_kind = "issue" if ask_issue else "solution" if ask_solution else "evidence" if ask_evidence else none %}
 {% set ask_item = ask_issue or ask_solution or ask_evidence %}
-<section class="ask" data-ask{% if ask_item %} data-{{ ask_kind }}="{{ ask_item.key }}"{% endif %}>
+{% if ask_item and not ask_page and home_asks(request) %}{% include "_ask_listed.html" %}{% else %}<section class="ask" data-ask{% if ask_item %} data-{{ ask_kind }}="{{ ask_item.key }}"{% endif %}>
   {% if not ask_page %}<h2 id="ask-title">Ask about this {{ ask_kind }}</h2>{% endif %}
   <form class="ask-form" method="post" action="/ask">
     {% if ask_item %}<input type="hidden" name="{{ ask_kind }}" value="{{ ask_item.key }}">{% endif %}
@@ -32,4 +32,4 @@
     </ul>
   </div>
 </section>
-<script src="/static/ask.js?v={{ asset_version }}" defer></script>
+<script src="/static/ask.js?v={{ asset_version }}" defer></script>{% endif %}

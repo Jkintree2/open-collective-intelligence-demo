@@ -8,7 +8,7 @@
 <nav class="issue-menu" aria-label="On this page">
   <a href="#issues">Issues ({{ solution.issues|length }})</a>
   <a href="#evidence">Evidence ({{ solution.evidence|length }})</a>
-  {% if switches().ask %}<a href="#ask-title">Ask</a>{% endif %}
+  {% if switches().ask %}{% if not home_asks(request) %}<a href="#ask-title">Ask</a>{% elif recent_questions %}<a href="#questions">Questions</a>{% endif %}{% endif %}
   <a href="#posts">Posts</a>
 </nav>
 

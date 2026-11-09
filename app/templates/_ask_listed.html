@@ -1,0 +1,13 @@
+{# John, 9 November 2026: on an issue's, a solution's or a piece of evidence's page with Home's box at the top
+   (home_asks), the Ask box further down asked the same thing twice, so it is gone. Only the questions asked about
+   the item stay, each opening the answer it got; one kept before answers were is plain text, as there is no box
+   down here to put it in. Nothing shows when none has been asked. #}
+{% if recent_questions %}<section class="ask ask-listed">
+  <div class="ask-recent">
+    <h2 id="questions">Questions asked about this {{ ask_kind }}</h2>
+    <ul>{% for asked in recent_questions %}
+      <li>{% if asked.id and asked.answered %}<a class="ask-answered" href="/ask/answers/{{ asked.id }}">{{ asked.text }}</a>{% else %}<span class="ask-unanswered">{{ asked.text }}</span>{% endif %}</li>{% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
