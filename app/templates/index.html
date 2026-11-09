@@ -62,8 +62,7 @@
     <p id="credit" class="counts"></p>
   </section>
 </form>
-{% if home_page %}{% include "_home_mine.html" %}
-{% endif %}<script>
+<script>
   var anon = document.getElementById('anonymous'), nameField = document.getElementById('display_name');
   function syncName() { if (!nameField) return; if (anon.checked) { nameField.value = ''; } nameField.disabled = anon.checked; }
   anon.addEventListener('change', syncName); syncName();

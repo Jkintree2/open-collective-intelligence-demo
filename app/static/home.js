@@ -2,7 +2,7 @@
 // on one Home page"). On Read my statement or question the site says what the text is (/api/home/kind): a
 // statement starts the reading and the card (app.js, window.ociStartReading), a question is answered in place under
 // the button (ask.js, window.ociAsk), and when the site can't tell, two buttons let the writer choose. A link under
-// the box sends the same text the other way, and after an answer the server draws the lists again (app.js,
+// the box sends the same text the other way, and after an answer the server draws the feed again (app.js,
 // window.oci.refreshLists), as after a post. Without this file the form posts to /home, which does the same.
 (() => {
   const find = id => document.getElementById(id);

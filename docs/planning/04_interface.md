@@ -1322,7 +1322,7 @@ Each post: "{name or Anonymous}, {2 November 2026}" (the date of its latest chan
 
 ## v0.3: Write and Ask on one Home page (added 5 November 2026)
 
-Behind `HOME_ENABLED` (not client facing): unset or `off`, every page is as before; `preview`, only the accounts listed in `HOME_PREVIEW` see Home; `on`, every signed-in member. The passphrase site keeps the old pages. Every quote below is **client-facing**. John agreed the outline on 4 November 2026: one box, "or ask a question," in the sentence at the top, the writer's own five most recent statements and questions under the button, and the site asking back when it can't tell. On 5 November three points went back to him: the button's words, a second sentence for questions, and whether the statements and questions of others are one list. On 7 November he chose one list, "Recent posts", and "My posts" in place of My statements.
+Behind `HOME_ENABLED` (not client facing): unset or `off`, every page is as before; `preview`, only the accounts listed in `HOME_PREVIEW` see Home; `on`, every signed-in member. The passphrase site keeps the old pages. Every quote below is **client-facing**. John agreed the outline on 4 November 2026: one box, "or ask a question," in the sentence at the top, the writer's own five most recent statements and questions under the button, and the site asking back when it can't tell. On 5 November three points went back to him: the button's words, a second sentence for questions, and whether the statements and questions of others are one list. On 7 November he chose one list, "Recent posts", and "My posts" in place of My statements. On 9 November he took the list of the writer's own out from under the button.
 
 ### Header
 
@@ -1358,11 +1358,7 @@ After an answer the box is empty for the next question, and "Tell me more" goes 
 
 Without JavaScript the same form posts to `/home`: a statement is posted as on the Write page without JavaScript, a question's answer shows on the Ask page, and the two buttons above come back when the site can't tell.
 
-**Under the button**, for a signed-in member:
-
-> **My most recent statements and questions**
-
-Five, newest first. A statement links to My posts, where it is listed (a post has no page of its own); a question links to the answer it got. Since John's 7 November email the database keeps who asked a question while Home is on for them, so the list holds a member's questions on every device; it is never shown with anyone's name. After a statement is posted or a question answered on Home, the server draws the list again.
+**Under the button**, nothing of the writer's own: on 9 November John took out the list of their five most recent statements and questions, which My posts holds. Since John's 7 November email the database keeps who asked a question while Home is on for them, so My posts holds a member's questions on every device; it is never shown with anyone's name.
 
 Below it, "Recent posts": statements and questions from everyone, mixed, newest first. It holds as many as the Write page lists (60). A statement shows exactly as in the Write page's list. A question shows as:
 
@@ -1389,4 +1385,4 @@ It takes the text to Home, which carries on there. On About only for a reader wh
 
 ### With `ASK_ENABLED` off (not client facing)
 
-Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, the list under the button is "My most recent statements", and "Recent posts" and My posts hold statements only.
+Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, and "Recent posts" and My posts hold statements only.

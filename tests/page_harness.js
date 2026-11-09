@@ -57,8 +57,8 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   const fragments = [];  // the list fragments fetched, in order
   const fetch = (url, options = {}) => {
     if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
-    // The lists drawn again after a post or an answer (app.js refreshLists) are read as text, as the page reads them.
-    if (url === '/feed' || url === '/home/mine') {
+    // The feed drawn again after a post or an answer (app.js refreshLists) is read as text, as the page reads it.
+    if (url === '/feed') {
       fragments.push(url);
       return Promise.resolve({ok: true, status: 200, redirected: false, text: async () => ''});
     }

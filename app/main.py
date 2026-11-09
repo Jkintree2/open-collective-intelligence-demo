@@ -271,28 +271,6 @@ def _about_issue(key: str | None) -> dict | None:
     }
 
 
-HOME_MINE = 5  # v0.3: the writer's own statements and questions under Home's button
-HOME_MINE_CHARACTERS = 120
-
-
-def _home_mine(request: Request) -> list[dict]:
-    """v0.3 Home: the member's five most recent statements (Q24, as My posts reads them) and, with asking on,
-    questions (Q57), newest first, each cut to fit the list (_home_mine.html, drawn again from /home/mine)."""
-    key = request.state.member.key
-    questions = home_lists.my_questions(key, HOME_MINE) if home.home_asks(request) else []
-    now = datetime.now(timezone.utc)
-    return [{**item, "short": _short(item.get("text") or ""), "when": relative_time(item["created_at"], now)}
-            for item in home_lists.mixed(graph_own_posts.my_posts(key, HOME_MINE), questions, HOME_MINE)]
-
-
-def _short(text: str) -> str:
-    """Whole words up to HOME_MINE_CHARACTERS, then an ellipsis."""
-    text = " ".join(text.split())
-    if len(text) <= HOME_MINE_CHARACTERS:
-        return text
-    return text[:HOME_MINE_CHARACTERS].rsplit(" ", 1)[0].rstrip(" ,;:.") + "…"
-
-
 def _feed_posts(request: Request, *, mixed: bool) -> list[dict]:
     """The latest statements; mixed (Home with asking, John, 7 November), with everyone's latest questions too,
     newest first, as many in all as the feed holds. Only what is shown is decorated."""
@@ -337,7 +315,6 @@ def _render_index(
             "start": start,
             "home_page": home_page,
             "home_ask": home_ask,
-            "home_mine": _home_mine(request) if home_page else [],
             # Phase 2: the card reads evidence links only with the flag and a reading service; with the
             # flag alone a row with no link still says so (revision round).
             "evidence_check": settings.evidence_check_enabled,

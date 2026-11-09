@@ -72,51 +72,22 @@ def test_ask_off_no_ask_wording(homepage, switch):
 
 def test_wording_strings_match_04_interface():
     for line in (HOME_SENTENCE, LABEL, BUTTON, UNSURE, "Post it", "Ask it", TO_STATEMENT, TO_QUESTION,
-                 "My most recent statements and questions", "Home · Issues · Enter a person"):
+                 "Home · Issues · Enter a person"):
         assert line in INTERFACE, line
     script = HOME_JS.read_text(encoding="utf-8")
     assert f"'{TO_STATEMENT}'" in script and f"'{TO_QUESTION}'" in script
 
 
-# Task 5: the writer's own recent statements under the button, with their questions since John's 7 November email
-# (tests/test_home_posts.py). Everyone's questions are in "Recent posts" with the statements.
-def own(number, minutes_ago):
-    from datetime import datetime, timedelta, timezone
-    return {"id": f"mine-{number}", "text": f"My statement number {number}.", "display_name": "Ada Tester",
-            "anonymous": False, "seed": False,
-            "created_at": datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc) - timedelta(minutes=minutes_ago)}
-
-
-def mine_list(page):
-    import re
-    found = re.search(r'<ul id="home-mine">(.*?)</ul>', page, re.S)
-    return re.findall(r'<li><a href="/my-posts">([^<]*)</a> <span class="counts">[^<]*</span></li>', found.group(1))
-
-
-def test_my_recent_statements_under_the_box(homepage):
-    homepage.own_posts[:] = [own(n, n) for n in range(1, 8)]
+# John, 9 November: no list of the writer's own under the button; "Recent posts" is the one list on Home
+# (tests/test_home_posts.py). My posts keeps the writer's own statements and questions.
+def test_home_has_no_list_of_ones_own(homepage):
+    from datetime import datetime, timezone
+    homepage.own_posts[:] = [{"id": "mine-1", "text": "My statement number 1.", "display_name": "Ada Tester",
+                              "anonymous": False, "seed": False,
+                              "created_at": datetime(2026, 11, 5, 12, 0, tzinfo=timezone.utc)}]
     page = draw(homepage.client, "/")
-    assert "<h2>My most recent statements and questions</h2>" in page
-    assert mine_list(page) == [f"My statement number {n}." for n in range(1, 6)]
-    assert page.index('id="read"') < page.index('id="home-mine"') < page.index('id="feed"')
-
-
-def test_a_long_statement_is_cut_in_the_list(homepage):
-    homepage.own_posts[:] = [{**own(1, 1), "text": "word " * 60}]
-    text, = mine_list(draw(homepage.client, "/"))
-    assert len(text) <= 121 and text.endswith("…")
-
-
-def test_the_list_waits_hidden_when_there_is_nothing_yet(homepage):
-    homepage.own_posts.clear()
-    page = draw(homepage.client, "/")
-    assert '<section class="home-mine" id="home-mine-section" hidden>' in page
-
-
-def test_with_ask_off_the_list_is_statements_only(homepage, switch):
-    switch(ask_enabled=False)
-    page = draw(homepage.client, "/")
-    assert "<h2>My most recent statements</h2>" in page and "and questions" not in page
+    assert "home-mine" not in page and "My most recent" not in page
+    assert page.index('id="read"') < page.index('id="feed"')
 
 
 def test_questions_are_in_recent_posts_not_a_list_of_their_own(homepage, monkeypatch):
@@ -140,6 +111,5 @@ def test_gate_reader_has_no_list(live_like, switch):
 
 def test_interface_describes_the_list_as_built():
     """Final review, item 6: 04_interface.md is the text John approves against, so it says what the page does."""
-    assert "A statement links to its post" not in INTERFACE
-    assert "A statement links to My posts, where it is listed" in INTERFACE
+    assert "My most recent" not in INTERFACE  # John, 9 November: the list under the button is gone
     assert 'Below it, "Recent posts": statements and questions from everyone, mixed, newest first.' in INTERFACE

@@ -362,7 +362,7 @@ When you are happy with it, change `HOME_ENABLED` to `on` and save. To go back, 
 
 With Home on, the menu reads Home, Issues, Enter a person, My posts, My account, About. Home invites people to write what they think, or ask a question. The site tells a statement from a question by itself, without calling the language model: a statement goes to the form as before, and a question gets its answer right under the button. When the site can't tell, it asks the writer: "Is this a statement to post, or a question to ask?" If it guessed wrong, a link under the button sends the same words the other way.
 
-Under the button, each person sees their own five most recent statements and questions. Below that comes "Recent posts": the statements and questions of everyone, mixed together, newest first. A statement looks as it always has; a question is a link to the answer it got, with the issue it was asked about, and never shows who asked it.
+Under the button comes "Recent posts": the statements and questions of everyone, mixed together, newest first. A statement looks as it always has; a question is a link to the answer it got, with the issue it was asked about, and never shows who asked it.
 
 My statements becomes My posts: each person's own statements and questions, mixed the same way, newest first. Questions asked before Home was on for that person are not in it, because the database did not note who asked them then.
 

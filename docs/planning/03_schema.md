@@ -1705,7 +1705,7 @@ LIMIT $limit
 John, 7 November: with Home on, "Recent posts" mixes everyone's statements and questions, newest first, and My statements becomes "My posts", the member's own statements and questions mixed the same way. For My posts to hold a member's questions on every device, the record keeps who asked:
 
 * **`ASKED`**, from an account (`Person` with an `email`) to a `Question`, one per pair (MERGE), with `asked_at`, the last time that member asked it (a datetime). Written by Q47 only while Home is on for the member who asked (`home.home_on`, so `HOME_ENABLED` `preview` with the member in `HOME_PREVIEW`, or `on`); otherwise nobody is linked, as in Phase 3. The question node is still shared: two members asking the same question on the same issue link to one `Question`, each with their own `asked_at`, and the answer is the newest either got.
-* **Never shown with a name.** Q57 reads a member's own links only (My posts, the list under Home's button); "Recent posts", Ask the database and the issue pages read questions through Q48, which never reads `ASKED`.
+* **Never shown with a name.** Q57 reads a member's own links only (My posts); "Recent posts", Ask the database and the issue pages read questions through Q48, which never reads `ASKED`.
 * Questions asked before this went live, or while Home was off for the member, have no `ASKED` and are not on anyone's My posts.
 * A copy carries `ASKED` (`backup.DIRECTIONS`); `asked_at` is checked as a timestamp. Withdrawing an invitation (Q21) applies only to an account never accepted, so it never meets an `ASKED`.
 

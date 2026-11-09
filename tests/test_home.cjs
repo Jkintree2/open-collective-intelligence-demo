@@ -187,10 +187,10 @@ async function answered(page, reply) {
   await page.flush();
 }
 
-test('an answered question has the server draw both lists again', async () => {
+test('an answered question has the server draw the feed again', async () => {
   const page = await home();
   await answered(page, {status: 'answered', question_id: 'q9'});
-  assert.deepEqual(page.fragments, ['/feed', '/home/mine']);
+  assert.deepEqual(page.fragments, ['/feed']);  // John, 9 November: Recent posts is Home's one list
 });
 
 test('a question with no answer draws nothing again', async () => {
@@ -199,15 +199,13 @@ test('a question with no answer draws nothing again', async () => {
   assert.deepEqual(page.fragments, []);
 });
 
-test('the Write page draws only the feed again; Home its own list too', async () => {
-  const write = await setup(undefined, {issues: {}, solutions: {}, evidence: {}}, {absent: ['home-mine-section']});
+test('the Write page and Home both draw only the feed again', async () => {
+  const write = await setup(undefined, {issues: {}, solutions: {}, evidence: {}});
   await write.win.oci.refreshLists();
   assert.deepEqual(write.fragments, ['/feed']);
   const page = await home();
-  page.get('home-mine-section').outerHTML = '<section>as drawn</section>';
   await page.win.oci.refreshLists();
-  assert.deepEqual(page.fragments, ['/feed', '/home/mine']);
-  assert.equal(page.get('home-mine-section').outerHTML, '');  // the harness serves an empty fragment
+  assert.deepEqual(page.fragments, ['/feed']);
 });
 
 test('a question with no answer link in Recent posts is a button that refills the box', async () => {

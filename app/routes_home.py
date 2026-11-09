@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 
 from app import config, home
 from app.members import require_access, require_same_origin
-from app.pages import page
 from app.text import TEXT_MAX
 
 router = APIRouter()
@@ -50,11 +49,3 @@ def home_form(request: Request, text: str = Form("", max_length=4 * TEXT_MAX), k
     if chosen == "question":
         return routes_ask.ask_form(request, question=text, issue="", solution="", evidence="", earlier=[])
     return main._render_index(request, text=text.strip(), unsure=True)
-
-
-@router.get("/home/mine", dependencies=[Depends(require_access), Depends(home.require_home)])
-def home_mine(request: Request) -> Response:
-    """The list under Home's button, which app.js draws again after a post or an answer."""
-    from app import main
-    return page(request, "_home_mine.html", {"home_mine": main._home_mine(request), "home_ask": home.home_asks(request)},
-                private=True)
