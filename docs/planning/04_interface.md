@@ -1389,6 +1389,10 @@ The member's own statements and questions, mixed, newest first, fifty at a time 
 
 It takes the text to Home, which carries on there. On About only for a reader who is signed in.
 
+### The box on an issue's, a solution's or a piece of evidence's page (John, 9 November 2026)
+
+With Home on and `ASK_ENABLED` set, the same box takes the place of "Write about this issue", "Write about this solution" or "Write about this evidence", right under the page's name. It takes the text to Home with that item: a statement opens the card with "Already in the database for …" above it and the item on the card, as the link did; a question is answered about that item, as the Ask box further down the page answers it, and is listed there and in "Recent posts". Home's address then names the item (`/?issue=…`, `/?solution=…` or `/?evidence=…`), so a reload neither sends the text again nor loses the item. With Home off, or Ask off, the link stays as it was. The Ask box further down these pages stays for now.
+
 ### With `ASK_ENABLED` off (not client facing)
 
 Home only posts. The sentence, the label and the button are the Write page's, nothing mentions asking, and "Recent posts" and My posts hold statements only.

@@ -353,3 +353,37 @@ def test_a_kept_source_gets_its_page_from_its_name(asking, monkeypatch):
     assert 'Evidence: <a href="/evidence/who%20pays%20study">Who pays study</a>.' in page
     assert routes_ask._from_kept(sources[2]).page is None
     assert routes_ask._shown(routes_ask._from_kept(sources[2]), routes_ask.config.get_settings()).get("page") is None
+
+
+# John, 9 November: with Home asking, the Write/Ask box takes the place of "Write about this", carrying the item.
+ITEMS = [("/solutions/carbon%20tax", "solution", "carbon tax", "carbon%20tax"),
+         ("/evidence/who%20pays", "evidence", "who pays", "who%20pays")]
+
+
+@pytest.mark.parametrize("url,kind,key,href", ITEMS)
+def test_the_box_takes_the_place_of_the_link(pages, switch, monkeypatch, url, kind, key, href):
+    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [])
+    switch(ask_enabled=True, home_enabled="on")
+    page = pages.client.get(url).text
+    assert '<form class="home-box" method="post" action="/home">' in page
+    assert f'<input type="hidden" name="{kind}" value="{key}">' in page and "Write about this" not in page
+
+
+@pytest.mark.parametrize("ask_on,home", [(False, "on"), (True, "off")])
+@pytest.mark.parametrize("url,kind,key,href", ITEMS)
+def test_the_link_stays_without_home_asking(pages, switch, monkeypatch, ask_on, home, url, kind, key, href):
+    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [])
+    switch(ask_enabled=ask_on, home_enabled=home)
+    page = pages.client.get(url).text
+    assert f'<a class="write-issue" href="/?{kind}={href}">Write about this {kind}</a>' in page
+    assert "home-box" not in page
+
+
+def test_the_box_carries_a_solution_to_home(pages, switch, monkeypatch):
+    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [])
+    monkeypatch.setattr("app.main.graph.list_posts", lambda limit: [])
+    switch(ask_enabled=True, home_enabled="on")
+    page = pages.client.post("/home", data={"start": "1", "text": "Tax the rich.", "solution": "carbon tax"},
+                             headers=SAME_SITE).text
+    assert 'id="about-issue"' in page and 'data-start="/?solution=carbon%20tax"' in page
+    assert '<section class="ask home-ask" id="home-ask" data-ask data-solution="carbon tax" hidden' in page

@@ -245,6 +245,12 @@ test('a text brought from another page puts the address back to Home, so a reloa
   assert.deepEqual(plain.history.replaced, []);
 });
 
+test('a text brought from an item page keeps the item in the address and is sent once (John, 9 November)', async () => {
+  const page = await home({start: '/?issue=veto', text: QUESTION});
+  assert.deepEqual(page.history.replaced, ['/?issue=veto']);
+  assert.equal(page.kinds().length, 1);
+});
+
 test('typing something new puts the switch link and the two buttons away', async () => {
   const page = await home();
   await page.send(QUESTION);

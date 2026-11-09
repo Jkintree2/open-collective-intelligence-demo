@@ -155,6 +155,12 @@ def test_box_from_another_page_starts_on_home(homing):
     assert homing.raw == [] and homing.calls == []
 
 
+def test_without_javascript_a_question_from_an_issue_page_is_asked_about_it(homing):
+    """John, 9 November: the box on an issue page carries the issue; without JavaScript the question is asked there."""
+    response = home(homing.client, text=QUESTION, issue="veto")
+    assert response.status_code == 200 and ("issue", "veto") in homing.calls
+
+
 def test_cross_site_refused(homing):
     cross = {"sec-fetch-site": "cross-site"}
     assert kind(homing.client, QUESTION, headers=cross).status_code == 403

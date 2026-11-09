@@ -39,13 +39,17 @@ def kind(data: KindRequest) -> dict[str, str]:
 
 @router.post("/home", dependencies=GUARDS)
 def home_form(request: Request, text: str = Form("", max_length=4 * TEXT_MAX), kind: str = Form("", max_length=20),
-              anonymous: str | None = Form(None), start: str = Form("", max_length=5)) -> Response:
+              anonymous: str | None = Form(None), start: str = Form("", max_length=5),
+              issue: str = Form("", max_length=200), solution: str = Form("", max_length=400),
+              evidence: str = Form("", max_length=400)) -> Response:
+    """The item fields come from the box on an item's page (John, 9 November): Home writes and asks about it."""
     from app import main, routes_ask  # main loads the routers last
     if start:
-        return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True)
+        about, box_on = main.about_for(issue, solution, evidence)
+        return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True, about=about, box_on=box_on)
     chosen = kind_for(text, kind)
     if chosen == "statement":
         return main.create_post(request, display_name="", anonymous=anonymous, text=text)
     if chosen == "question":
-        return routes_ask.ask_form(request, question=text, issue="", solution="", evidence="", earlier=[])
+        return routes_ask.ask_form(request, question=text, issue=issue, solution=solution, evidence=evidence, earlier=[])
     return main._render_index(request, text=text.strip(), unsure=True)

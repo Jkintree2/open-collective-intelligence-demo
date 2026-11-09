@@ -37,8 +37,10 @@ def test_box_on_three_pages_when_on(boxed, name):
     assert page.index("<h1") < page.index(BOX)
 
 
-@pytest.mark.parametrize("path", ["/", "/issues/veto", "/ask"])
-def test_no_small_box_on_home_the_issue_page_or_ask(boxed, path):
+@pytest.mark.parametrize("path", ["/", "/ask"])
+def test_no_small_box_on_home_or_ask(boxed, path):
+    """Since John's 9 November email the issue page has the box in place of "Write about this issue"
+    (tests/test_home_posts.py)."""
     assert "home-box" not in draw(boxed.client, path)
 
 

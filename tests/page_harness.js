@@ -37,9 +37,9 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   if (options.evidenceCheck) get('compose').dataset = {...get('compose').dataset, evidenceCheck: ''};
   if (options.noReading) get('compose').dataset = {...get('compose').dataset, noReading: ''};  // no reading service
   // v0.3 Home: the form says Home is on (data-home), with asking (data-home-ask) unless 'post-only', and
-  // data-start when another page's box brought the text (index.html).
+  // data-start when another page's box brought the text (index.html), its value the item page's address.
   if (options.home) get('compose').dataset = {...get('compose').dataset, home: '',
-    ...(options.home === 'post-only' ? {} : {homeAsk: ''}), ...(options.start ? {start: ''} : {})};
+    ...(options.home === 'post-only' ? {} : {homeAsk: ''}), ...(options.start ? {start: options.start === true ? '' : options.start} : {})};
   if (options.text) get('text').value = options.text;
   if (options.prepare) options.prepare(get);  // elements the server drew, set up before the scripts run
   const recognizers = [], requests = [], timers = new Map();

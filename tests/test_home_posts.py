@@ -202,3 +202,39 @@ def test_recent_posts_and_my_posts_leave_out_follow_ups(homepage, monkeypatch):
     page = draw(homepage.client, "/")
     assert "Who pays for the carbon tax?" in feed(page) and "Tell me more" not in feed(page)
     assert "Why?" not in draw(homepage.client, "/my-posts")
+
+
+# John, 9 November: on an issue page the Write/Ask box takes the place of "Write about this issue" and carries the
+# issue to Home: a statement is written about it, and a question is asked about it (as the page's Ask box does).
+SAME_SITE = {"sec-fetch-site": "same-origin"}
+HOME_ASK = '<section class="ask home-ask" id="home-ask" data-ask'
+
+
+def test_the_box_on_an_issue_page_takes_the_place_of_the_link(homepage):
+    page = draw(homepage.client, "/issues/veto")
+    assert '<form class="home-box" method="post" action="/home">' in page
+    assert '<input type="hidden" name="issue" value="veto">' in page and "Write about this" not in page
+
+
+def test_without_asking_the_issue_page_keeps_the_link(homepage, switch):
+    switch(ask_enabled=False)
+    page = draw(homepage.client, "/issues/veto")
+    assert '<a class="write-issue" href="/?issue=veto">Write about this issue</a>' in page and "home-box" not in page
+
+
+def test_the_box_carries_the_issue_to_home(homepage):
+    page = homepage.client.post("/home", data={"start": "1", "text": "Rent caps help.", "issue": "veto"},
+                                headers=SAME_SITE).text
+    assert 'id="about-issue"' in page and 'data-start="/?issue=veto"' in page
+    assert f'{HOME_ASK} data-issue="veto" hidden' in page and ">Rent caps help.</textarea>" in page
+
+
+def test_a_gone_item_still_opens_home(homepage):
+    page = homepage.client.post("/home", data={"start": "1", "text": "x y z", "issue": "gone"}, headers=SAME_SITE).text
+    assert 'id="about-issue"' not in page and re.search(r' data-start[ >]', page)
+    assert f"{HOME_ASK} hidden" in page and ">x y z</textarea>" in page
+
+
+def test_a_reload_from_an_item_asks_about_it(homepage):
+    page = draw(homepage.client, "/?issue=veto")
+    assert f'{HOME_ASK} data-issue="veto" hidden' in page and "data-start" not in page

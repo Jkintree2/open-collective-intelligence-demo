@@ -81,7 +81,9 @@
   // New words in the box: the link and the two buttons were about the text before.
   text.addEventListener('input', () => { swap.hidden = true; unsure.hidden = true; });
   if ('start' in form.dataset && text.value.trim()) {  // brought here by the box on another page
-    history.replaceState(null, '', '/');  // the address was the form's /home; a reload must not send it again
+    // The address was the form's /home; a reload must not send it again. From an item's page it keeps the item
+    // (John, 9 November), so the reading and the card find it as from the old "Write about this" link.
+    history.replaceState(null, '', form.dataset.start || '/');
     send(null);
   }
 })();
