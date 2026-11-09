@@ -468,3 +468,10 @@ def test_the_case_runner_asks_as_the_live_site_runs():
     live = asks.as_live(SETTINGS)
     assert live.switches == {"ask": True, "follow_ups": True, "places": True, "about": True}
     assert live.evidence_check_enabled and live.llm_api_key == SETTINGS.llm_api_key
+
+
+def test_a_follow_up_to_a_question_about_the_site_stays_on_the_site():
+    """QA, 9 November: "Tell me more" after John's question summed up the whole database instead of the site."""
+    rules = " ".join(ask.ABOUT_RULES.split())
+    assert ('A follow-up with no words of its own, such as "Tell me more" or "Why?", after a question about the site '
+            "asks for more about the site: answer it from D4 alone.") in rules
