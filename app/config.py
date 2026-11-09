@@ -78,6 +78,12 @@ class Settings:
     def is_local(self) -> bool:
         return self.app_env == "local"
 
+    @property
+    def switches(self) -> dict[str, bool]:
+        """Phase 3's four switches, as the templates read them (`switches()`) and as Ask's About text follows them."""
+        return {"ask": self.ask_enabled, "follow_ups": self.follow_ups_enabled, "places": self.places_enabled,
+                "about": self.about_enabled}
+
 
 def _site_url_ok(url: str, local: bool) -> bool:
     """https always; plain http only for this machine (parsed hostname, not a prefix) when APP_ENV=local."""

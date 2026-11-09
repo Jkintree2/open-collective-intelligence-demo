@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 
 ARTICLES = ("the", "a", "an")
 NAME_MAX = 300
@@ -156,3 +157,31 @@ def sentences(payload, display_name: str, resolved=None, both_sides: dict | None
         if statement:
             rest.append(f"{statement['name']} {statement['stance']} {about(item)}")
     return claims + rest + ([f"Place: {place}"] if place else [])
+
+
+class _Words(HTMLParser):
+    """The words of a piece of HTML: a block tag ends a block, any other tag keeps only its text."""
+    BLOCKS = {"h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "section", "div", "br", "ul", "ol", "article"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.blocks: list[str] = [""]
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        self.handle_endtag(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.BLOCKS:
+            self.blocks.append("")
+
+    def handle_data(self, data: str) -> None:
+        self.blocks[-1] += data
+
+
+def plain_text(html: str) -> str:
+    """John, 9 November: the About page's words for Ask's instructions. Blocks (headings, paragraphs, list items)
+    are joined by one blank line, runs of white space become one space, and empty blocks go."""
+    words = _Words()
+    words.feed(html)
+    words.close()
+    return "\n\n".join(block for block in (" ".join(raw.split()) for raw in words.blocks) if block)

@@ -2,6 +2,7 @@
 reads nothing from the record but the signed-in account (for the menu) and calls no reading service; the
 three guiding documents come from the same text that app/principles.py puts at the start of the instructions."""
 
+from typing import Any
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -11,6 +12,7 @@ from app import config, principles
 from app.config import Settings
 from app.members import current_member
 from app.pages import page
+from app.text import plain_text
 
 router = APIRouter()
 
@@ -46,16 +48,24 @@ def reading_service(settings: Settings) -> dict[str, str] | None:
     return {"provider": provider(settings.llm_base_url), "version": settings.llm_model}
 
 
+def site_context(settings: Settings) -> dict[str, Any]:
+    """What _about_site.html draws from, on the page and for Ask."""
+    return {"service": reading_service(settings), "no_service": NO_READING_SERVICE,
+            "no_service_cards": NO_READING_SERVICE_CARDS, "evidence_check": settings.evidence_check_enabled,
+            "repository": REPOSITORY}
+
+
+def site_text(settings: Settings) -> str:
+    """The About page's text above the three documents, as plain words for Ask's instructions (John, 9 November):
+    the same partial the page draws, with the switches of `settings`."""
+    from app.main import templates  # main loads the routers last
+    html = templates.env.get_template("_about_site.html").render(**site_context(settings), on=settings.switches)
+    return plain_text(html)
+
+
 @router.get("/about", dependencies=[Depends(about_on)])
 def about(request: Request) -> Response:
     settings = config.get_settings()
     # The page opens without signing in, so require_access never looked; a signed-in member gets the whole menu.
     current_member(request)
-    return page(request, "about.html", {
-        "service": reading_service(settings),
-        "no_service": NO_READING_SERVICE,
-        "no_service_cards": NO_READING_SERVICE_CARDS,
-        "evidence_check": settings.evidence_check_enabled,
-        "repository": REPOSITORY,
-        "documents": principles.DOCUMENTS,
-    })
+    return page(request, "about.html", {**site_context(settings), "documents": principles.DOCUMENTS})

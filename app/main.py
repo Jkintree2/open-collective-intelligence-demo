@@ -79,8 +79,7 @@ templates.env.filters["anchor"] = solution_anchor
 
 def switches() -> dict[str, bool]:
     """Phase 3's switches for templates, read when the page is drawn (tests replace main.settings)."""
-    return {"ask": settings.ask_enabled, "follow_ups": settings.follow_ups_enabled,
-            "places": settings.places_enabled, "about": settings.about_enabled}
+    return settings.switches
 
 
 templates.env.globals["switches"] = switches

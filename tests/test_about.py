@@ -178,3 +178,20 @@ def test_the_sign_in_page_links_here(about):
 
 def test_switched_off_the_sign_in_page_has_no_link(member_app):
     assert 'href="/about"' not in member_app.client.get("/sign-in").text
+
+
+# John, 9 November: the About text above the three documents goes to Ask as plain words (routes_about.site_text),
+# so a question about the site itself can be answered. The page draws the same partial, _about_site.html.
+def test_site_text_is_the_about_page_above_the_documents(about, switch):
+    settings = switch(ask_enabled=True)
+    site = routes_about.site_text(settings)
+    assert site.startswith("What it is for\n\n" + settings.site_name + " is a test of a conversational platform")
+    assert "ask questions of" in site and "\n\nThe language model\n\nDeepSeek, version deepseek-v4-flash." in site
+    assert "\n\nGuiding principles\n\nThe language model is given the Statement of purpose" in site
+    assert routes_about.REPOSITORY in site
+    assert "<" not in site and "{%" not in site and "All human beings are born free" not in site
+
+
+def test_site_text_follows_the_switches(about, switch):
+    site = routes_about.site_text(switch(ask_enabled=False))
+    assert "ask questions of" not in site and "answers questions" not in site

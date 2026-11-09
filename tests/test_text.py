@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from app.text import clean_name, make_key, normalise, relative_time
+from app.text import clean_name, make_key, normalise, plain_text, relative_time
 
 
 def test_leading_the_and_no_article_share_a_key():
@@ -78,3 +78,14 @@ def test_relative_time_singular_units():
     assert relative_time(NOW - timedelta(minutes=1), NOW) == "1 minute ago"
     assert relative_time(NOW - timedelta(hours=1), NOW) == "1 hour ago"
     assert relative_time(NOW - timedelta(days=1), NOW) == "1 day ago"
+
+
+def test_plain_text_keeps_headings_paragraphs_lists_and_link_text():
+    """John, 9 November: the About page's words for Ask's instructions, whatever markup John gives them."""
+    html = ('<h2>Software</h2>\n<p>Code at <a href="https://x.org/r">the repository</a> &amp; more.</p>'
+            '\n<ul><li>One</li><li><strong>Two</strong></li></ul>')
+    assert plain_text(html) == "Software\n\nCode at the repository & more.\n\nOne\n\nTwo"
+
+
+def test_plain_text_leaves_no_empty_blocks_or_runs_of_spaces():
+    assert plain_text("\n\n<p>  A\n   line  </p>\n\n<p></p>\n<p>B<br>C</p>\n") == "A line\n\nB\n\nC"
