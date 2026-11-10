@@ -250,6 +250,8 @@ ORDER BY post.created_at DESC
 LIMIT 60
 ```
 
+Since then Q6 also reads `last_post_id` and the stances on the issue's solutions (GitHub issue 4). Since 10 November 2026 it adds Q59's posts and lives in `app/graph_item_pages.py`.
+
 ### Q7. Feed page
 
 ```cypher
@@ -674,6 +676,23 @@ MATCH (:Person {key: $person_key})-[r:APPROVE|OPPOSE]->(s:Solution)
 WITH s, collect(DISTINCT type(r)) AS kinds
 WHERE size(kinds) = 1
 RETURN s.key AS key, kinds[0] AS stance
+```
+
+**Q59. Posts whose stance was replaced stay listed** (John, 10 November 2026). A post whose only tie to a solution was its stance dropped off the solution's page (Q51) and its issue's page (Q6) once that stance was replaced. One stance per person (D7) deletes the old edge, so a writer's anonymous post opposing a solution vanished when they approved it again in a named post. And `last_post_id` moves on to the latest post that says the same stance, so a middle post vanished too. The post's stored card (`payload`) still says it. So Q6 and Q51 also take every post whose card approves or opposes the solution, or, on an issue page, one of the issue's solutions (or a sub-issue's), and add those ids (`$stance_ids`) to the ids their edges give. Cypher finds the cards that name the key; `graph_item_pages.stance_posts` keeps those whose solution row with that key says approve or oppose. A key is letters, digits and single spaces (`text.normalise`), so the quoted key is exactly how the card's JSON writes it. The scan follows the number of posts. Ask reads Q6 and Q51 for the posts behind an issue or a solution, so it reads these posts too; its stance rows (Q40) are unchanged. Nothing is written: posts that dropped off before this change come back as it deploys. The post shows as it does today, with no chips or lines for a stance it no longer holds (Q7). Q6 moved to `app/graph_item_pages.py` with Q51, and `graph.issue_posts` calls it there.
+
+```cypher
+// Q59 for a solution: WITH [$key] AS keys, then the shared tail.
+// Q59 for an issue: its solutions and its sub-issues' solutions.
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
+WITH i, collect(child) AS children
+UNWIND [i] + children AS x
+MATCH (x)-[:HAVE_PROPOSED]->(s:Solution)
+WITH collect(DISTINCT s.key) AS keys
+// the shared tail
+MATCH (post:Post)
+WHERE any(key IN keys WHERE post.payload CONTAINS '"' + key + '"')
+RETURN post.id AS id, post.payload AS payload, keys
 ```
 
 **Q4, revised** (with `ACCOUNTS_ENABLED` set; until then Q4 as in 0.1). Solutions are ranked by net support. A 0.1 Person who holds both stances counts once each way, so adds nothing net. `$me` is the signed-in account key, or null, which matches nothing.
@@ -1552,9 +1571,11 @@ Shaped like the feed (Q7), newest first. `$limit`: 60, as on an issue page.
 
 ```cypher
 // Q51. $key: the solution. Q53 starts MATCH (x:Evidence {key: $key}) instead.
+// $stance_ids: Q59's posts for Q51 (10 November 2026), empty for Q53.
 MATCH (x:Solution {key: $key})
-UNWIND [(x)-[r]-() | r] AS r
-UNWIND [r.post_id, r.last_post_id] AS pid
+WITH [(x)-[r]-() | r] AS rels
+WITH [r IN rels | r.post_id] + [r IN rels | r.last_post_id] AS pids
+UNWIND pids + $stance_ids AS pid
 WITH DISTINCT pid
 WHERE pid IS NOT NULL
 MATCH (post:Post {id: pid})
