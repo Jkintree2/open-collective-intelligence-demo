@@ -1,8 +1,9 @@
 """GitHub issue 55 (John, 30 October 2026): the reads behind a solution's page and a piece of evidence's page
 (03_schema.md, Q50 to Q54). Read only. Names behind anonymous edges are never read: a proposer or submitter
 who posted anonymously comes back as "Anonymous", and people are counted by account and anonymity as Q3
-counts them (D2)."""
+counts them (D2). Since 10 November 2026 also the issue page's list of posts (Q6)."""
 
+import json
 from typing import Any
 
 from app.graph_runtime import _read
@@ -41,11 +42,9 @@ RETURN s.key AS key, s.name AS name, issues, proposers, proposed_by,
        my_stance, evidence
 """
 
-# Q51 and Q53. The posts that mention a solution or a piece of evidence: every edge that touches it, as Q6
-# reads an issue's (a later post that said the same carries last_post_id). Shaped like the feed.
-_ITEM_POSTS = """
-UNWIND [(x)-[r]-() | r] AS r
-UNWIND [r.post_id, r.last_post_id] AS pid
+# The tail of every list of posts: the ids found, plus $stance_ids (below), newest first. Shaped like the feed.
+_POSTS_BY_ID = """
+UNWIND pids + $stance_ids AS pid
 WITH DISTINCT pid
 WHERE pid IS NOT NULL
 MATCH (post:Post {id: pid})
@@ -54,8 +53,69 @@ RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
 ORDER BY post.created_at DESC
 LIMIT $limit
 """
+
+# Q6. The posts that touched an issue or, on a parent, any of its sub-issues. A position on one of the issue's
+# solutions touches only the solution (GitHub issue 4). A later post that said the same carries last_post_id.
+ISSUE_POSTS = """
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
+WITH i, collect(child) AS children
+UNWIND [i] + children AS x
+WITH x, [(x)-[r]-() | r] + [(x)-[:HAVE_PROPOSED]->(:Solution)<-[r:APPROVE|OPPOSE]-(:Person) | r] AS rels
+UNWIND rels AS r
+UNWIND [r.post_id, r.last_post_id] AS pid
+WITH collect(pid) AS pids
+""" + _POSTS_BY_ID
+
+# Q51 and Q53. The posts that mention a solution or a piece of evidence: every edge that touches it, as Q6
+# reads an issue's.
+_ITEM_POSTS = """
+WITH [(x)-[r]-() | r] AS rels
+WITH [r IN rels | r.post_id] + [r IN rels | r.last_post_id] AS pids
+""" + _POSTS_BY_ID
 SOLUTION_POSTS = "MATCH (x:Solution {key: $key})" + _ITEM_POSTS
 EVIDENCE_POSTS = "MATCH (x:Evidence {key: $key})" + _ITEM_POSTS
+
+# Q59 (John, 10 November 2026). A post whose only tie to a solution is its stance lost its place in Q6 and Q51
+# once that stance was replaced: one stance per person (D7) deletes the old edge, and last_post_id moves on to
+# the latest post that said the same. The post's stored card still says it, so these find every post whose card
+# names the solution; stance_posts keeps those whose card approves or opposes it. A key is letters, digits and
+# single spaces (text.normalise), so the quoted key is exactly how the card's JSON writes it. The scan follows
+# the number of posts, as Q3's feed does.
+_STANCE_CARDS = """
+MATCH (post:Post)
+WHERE any(key IN keys WHERE post.payload CONTAINS '"' + key + '"')
+RETURN post.id AS id, post.payload AS payload, keys
+"""
+SOLUTION_STANCE_CARDS = "WITH [$key] AS keys" + _STANCE_CARDS
+ISSUE_STANCE_CARDS = """
+MATCH (i:Issue {key: $key})
+OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
+WITH i, collect(child) AS children
+UNWIND [i] + children AS x
+MATCH (x)-[:HAVE_PROPOSED]->(s:Solution)
+WITH collect(DISTINCT s.key) AS keys
+""" + _STANCE_CARDS
+
+
+def _took_a_stance(stored: str | None, keys: set[str]) -> bool:
+    try:
+        card = json.loads(stored or "{}")
+    except ValueError:
+        return False
+    rows = card.get("solutions") if isinstance(card, dict) else None
+    return any(isinstance(row, dict) and row.get("key") in keys and row.get("stance") in ("approve", "oppose")
+               for row in rows or [])
+
+
+def stance_posts(query: str, key: str) -> list[str]:
+    """Q59: the ids of the posts whose stored card approves or opposes the solution, or one of the issue's."""
+    return [row["id"] for row in _read(query, key=key) if _took_a_stance(row["payload"], set(row["keys"]))]
+
+
+def issue_posts(key: str, limit: int = 60) -> list[dict[str, Any]]:
+    """Q6, with Q59's posts."""
+    return _read(ISSUE_POSTS, key=key, limit=limit, stance_ids=stance_posts(ISSUE_STANCE_CARDS, key))
 
 # Q52. A piece of evidence's page: who submitted it, what it supports or refutes, in the order this evidence
 # was first cited for each (an issue, a solution with the issue that first took it up, by the date of its
@@ -125,8 +185,8 @@ def solution(key: str, me: str | None = None) -> dict[str, Any] | None:
 
 
 def solution_posts(key: str, limit: int = 60) -> list[dict[str, Any]]:
-    """Q51."""
-    return _read(SOLUTION_POSTS, key=key, limit=limit)
+    """Q51, with Q59's posts."""
+    return _read(SOLUTION_POSTS, key=key, limit=limit, stance_ids=stance_posts(SOLUTION_STANCE_CARDS, key))
 
 
 def evidence(key: str) -> dict[str, Any] | None:
@@ -137,7 +197,7 @@ def evidence(key: str) -> dict[str, Any] | None:
 
 def evidence_posts(key: str, limit: int = 60) -> list[dict[str, Any]]:
     """Q53."""
-    return _read(EVIDENCE_POSTS, key=key, limit=limit)
+    return _read(EVIDENCE_POSTS, key=key, limit=limit, stance_ids=[])
 
 
 def evidence_confidence(key: str) -> list[dict[str, Any]]:

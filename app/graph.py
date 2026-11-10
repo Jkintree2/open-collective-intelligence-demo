@@ -231,24 +231,6 @@ RETURN ev.key AS key, ev.name AS name, ev.url AS url, type(r) AS stance,
 ORDER BY stance, created_at
 """
 
-ISSUE_POSTS = """
-MATCH (i:Issue {key: $key})
-OPTIONAL MATCH (child:Issue)-[:PART_OF]->(i)
-WITH i, collect(child) AS children
-UNWIND [i] + children AS x
-// A position on one of the issue's solutions touches only the solution (GitHub issue 4).
-WITH x, [(x)-[r]-() | r] + [(x)-[:HAVE_PROPOSED]->(:Solution)<-[r:APPROVE|OPPOSE]-(:Person) | r] AS rels
-UNWIND rels AS r
-UNWIND [r.post_id, r.last_post_id] AS pid
-WITH DISTINCT pid
-WHERE pid IS NOT NULL
-MATCH (post:Post {id: pid})
-RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
-       post.anonymous AS anonymous, post.created_at AS created_at, post.seed AS seed
-ORDER BY post.created_at DESC
-LIMIT $limit
-"""
-
 LIST_POSTS = """
 MATCH (post:Post)
 RETURN post.id AS id, post.text AS text, post.display_name AS display_name,
@@ -413,8 +395,9 @@ def list_posts(limit: int = 60) -> list[dict[str, Any]]:
 
 
 def issue_posts(key: str, limit: int = 60) -> list[dict[str, Any]]:
-    """Posts that touched the issue or, on a parent, any of its sub-issues (Q6)."""
-    return _read(ISSUE_POSTS, key=key, limit=limit)
+    """Q6, kept with the other lists of posts in graph_item_pages since 10 November 2026."""
+    from app import graph_item_pages  # it reads through graph_runtime, never this module
+    return graph_item_pages.issue_posts(key, limit)
 
 
 def post_structure(post_ids: list[str]) -> dict[str, list[dict[str, Any]]]:
