@@ -514,3 +514,22 @@ def test_a_wordless_follow_up_on_an_empty_record_is_as_before_without_home(site_
     earlier = ["What does the UDHR say about privacy?"]
     assert ask.answerable_without_record("Tell me more", earlier, site_questions) is answerable
     assert ask.answerable_without_record("What does the UDHR say about privacy?", [], site_questions)
+
+
+# John, 11 November 2026 ("Asking"): two ways an answer the record could give came back as "nothing yet".
+
+def test_a_point_about_a_solution_takes_the_posts_that_proposed_it():
+    """As a point about evidence takes the posts that cited it (case A4), a point citing only a solution takes the
+    posts behind it, so it is not dropped as resting on no post."""
+    digest = replace(DIGEST, solution_posts={"S1": ["P1"]})
+    paragraphs, _ = ask.guard(reply(("Ada proposed taxing carbon at the border.", ["S1"])), digest)
+    assert paragraphs == [{"text": "Ada proposed taxing carbon at the border.", "sources": ["S1", "P1"]}]
+    # A solution with no post in the digest still rests on nothing.
+    paragraphs, counts = ask.guard(reply(("Someone proposed a tax.", ["S1"])), DIGEST)
+    assert paragraphs == [] and counts["paragraphs_dropped"] == 1
+
+
+@pytest.mark.parametrize("question", ["Is abortion a human right?", "Is housing a human right or not?"])
+def test_human_right_names_the_declaration(question):
+    assert ask.names_document(question)
+    assert ask.document_query(question) == 'udhr "universal declaration"'

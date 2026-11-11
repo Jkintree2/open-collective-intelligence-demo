@@ -426,3 +426,13 @@ def test_a_post_found_by_its_words_is_read_though_linked_to_nothing(monkeypatch)
     assert "roe" in read and read["roe"].text.startswith(roe["text"][:40])
     assert {"bare-0", "bare-1", "bare-2"} <= set(read) and not {"bare-3", "bare-4", "bare-5"} & set(read)
     assert len([pid for pid in read if pid in ("unlinked", "roe")]) == 2
+
+
+def test_a_digest_knows_the_posts_behind_each_solution():
+    """John, 11 November 2026: the posts that proposed a solution first, then those that took a stance, three at most,
+    only those that went in."""
+    sols = [solution("tax", [("approve", 5, ["s1"]), ("oppose", 4, ["s2", "s3"])], 1, 2, proposed_in=["p1", "gone"])]
+    posts = [(post(pid, 2), "climate") for pid in ("p1", "s1", "s2", "s3")]
+    built, _ = digest_of("Climate", [ISSUE], sols, [], posts)
+    ids = {source.post_id: sid for sid, source in built.sources.items() if source.kind == "post"}
+    assert built.solution_posts == {"S1": [ids["p1"], ids["s1"], ids["s2"]]}
