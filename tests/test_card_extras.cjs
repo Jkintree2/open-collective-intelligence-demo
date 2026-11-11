@@ -89,3 +89,16 @@ test('with no extras the card is as before', async () => {
   await read(p);
   assert.equal(p.get('issue-rows').children.length, 2);
 });
+
+// Review of 11 November 2026: Enter in a field on the card (a link, a town) submitted the form, which read the
+// statement again (a second paid reading) and put away what the writer had added. The card's own buttons post it.
+test('Enter in a card field keeps the card and starts no reading', async () => {
+  for (const options of [{}, {member: 'Ada Tester', home: true, after: ['home.js'], ociAsk: () => new Promise(() => {})}]) {
+    const p = await setup(undefined, {issues: {}, solutions: {}, evidence: {}}, options);
+    let prevented = [];
+    for (const [key, tagName] of [['Enter', 'INPUT'], ['Enter', 'TEXTAREA'], ['Enter', 'BUTTON'], ['a', 'INPUT']]) {
+      await p.get('card').emit('keydown', {key, target: {tagName}, preventDefault() { prevented.push(`${key} ${tagName}`); }});
+    }
+    assert.deepEqual(prevented, ['Enter INPUT']);  // a name box takes Enter itself, a button is pressed by it
+  }
+});
