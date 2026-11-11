@@ -53,3 +53,22 @@ test('no line without a language model, or when posting the text as it is', asyn
   await plain.get('plain').emit('click'); await plain.flush();
   assert.equal(plain.get('card-message').textContent, '');
 });
+
+// Review of 11 November 2026: when the names in the database could not be fetched as the page loaded (a restart
+// during a deploy), Post never came on and nothing tried again, leaving the plain link as the only way to post.
+test('the card asks for the names again when the first try failed', async () => {
+  let calls = 0;
+  const names = () => (++calls === 1 ? null : {issues: {climate: {name: 'Climate', parent_key: null}}, solutions: {}, evidence: {}});
+  const p = await setup(undefined, names, {});
+  assert.equal(p.win.oci.card.state.candidatesReady, false);
+  await p.type('The river floods every spring.');
+  await p.get('compose').emit('submit');
+  p.requests.find(r => r.url === '/api/extract').resolve({payload: {found: true, language_ok: true,
+    issues: [{name: 'Climate'}], solutions: [], evidence: []}, message: '', source: 'model', extraction_raw: 'RAW',
+    model: 'reader', latency_ms: 5});
+  await p.flush(); await p.flush();
+  assert.equal(calls, 2);
+  assert.equal(p.win.oci.card.state.candidatesReady, true);
+  await p.runTimer(200);
+  assert.ok(p.requests.some(r => r.url === '/api/preview'));
+});

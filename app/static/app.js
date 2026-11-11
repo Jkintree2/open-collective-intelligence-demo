@@ -97,6 +97,9 @@
   find('plain').addEventListener('click', card.openPlain);
   find('discard').addEventListener('click', () => { dictation.stop(); stopReading(); find('card').hidden = true; card.changed(); text.focus(); });
   find('post').addEventListener('click', card.post);
+  // Enter in a field on the card would submit the form, reading the statement again and putting away what the writer
+  // added (review, 11 November 2026); a name box takes Enter itself, and the card's own buttons post it.
+  find('card').addEventListener('keydown', event => { if (event.key === 'Enter' && event.target?.tagName === 'INPUT') event.preventDefault(); });
   // The summary above the form (about_issue.js) chooses positions through this.
   window.oci = {setPositionOnExisting: card.setPositionOnExisting, card, refreshLists};
   window.ociStartReading = read;  // what Read my statement does; Home starts a statement with it

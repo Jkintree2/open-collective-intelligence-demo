@@ -56,7 +56,9 @@ async function setup(speech = 'SpeechRecognition', candidates = {issues: {}, sol
   if (options.ociAsk) win.ociAsk = options.ociAsk;  // ask.js's hook, stubbed by the Home tests
   const fragments = [];  // the list fragments fetched, in order
   const fetch = (url, options = {}) => {
-    if (url === '/api/candidates') return Promise.resolve({ok: true, status: 200, json: async () => candidates});
+    // A function answers each call afresh (null: a reply that is not ours), so a test can fail the first and not the next.
+    if (url === '/api/candidates') { const answer = typeof candidates === 'function' ? candidates() : candidates;
+      return Promise.resolve({ok: true, status: 200, json: async () => answer}); }
     // The feed drawn again after a post or an answer (app.js refreshLists) is read as text, as the page reads it.
     if (url === '/feed') {
       fragments.push(url);

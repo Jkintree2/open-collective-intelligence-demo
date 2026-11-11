@@ -274,6 +274,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   }
   function openCard(payload = {}, message = '', meta = {source: 'manual'}, reapply = true) {
     stopDictation(); stopReading(); state.metadata = meta; state.plain = false;
+    if (!state.candidatesReady) loadCandidates();  // they failed as the page loaded: without them Post never comes on
     card.hidden = false;
     find('card-message').textContent = message;
     find('card-note').textContent = payload.note || '';
@@ -303,8 +304,11 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
   }
   // Posting the text with no structure: the card opens with its issue rows emptied. What the reading found stays
   // with the post, so the back room lists a reading its writer set aside (2 November 2026).
+  // A Post tap still waiting on a preview was for the card as it was, so it is let go, never handed to this one.
   function openPlain() {
-    openCard({}, '', {...state.metadata, source: 'manual'}, false); state.groups.issues.forEach(row => { row.name.value = ''; }); state.plain = true; changed();
+    state.previewSettle?.(false); state.previewSettle = null; state.previewPending = null;
+    openCard({}, '', {...state.metadata, source: 'manual'}, false); state.groups.issues.forEach(row => { row.name.value = ''; }); state.plain = true;
+    find('sentences').replaceChildren(); changed();
   }
   function noteShortened() {
     const note = find('card-note');
