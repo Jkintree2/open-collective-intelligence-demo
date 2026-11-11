@@ -348,3 +348,81 @@ def test_a_name_citing_an_article_comes_before_shorter_names_that_only_name_the_
                                            ("Tell me more about the carbon tax", True), ("What does the UDHR say?", True)])
 def test_a_question_has_words_of_its_own_or_only_follows_another(question, own):
     assert ask.has_own_words(question) is own
+
+
+# John, 11 November 2026 ("Asking"): asked whether anyone had said anything about abortion, Ask answered that the
+# database says nothing yet. The issue the question's words found was read, but its one post, older than the posts
+# of the two issues filled in from the top solutions, was cut by the cap; and a post that named the topic but was
+# posted without an issue was never read at all.
+
+def test_posts_the_question_found_lead_the_digest():
+    posts = [(post("old-other", 1), "climate"), (post("new-other", 9), "climate"), (post("new-stance", 5), "climate")]
+    sols = [solution("tax", [("approve", 5, ["new-stance"])], 1)]
+    _, digest = digest_of(None, [ISSUE], sols, [], posts, lead=["old-other"])
+    assert [p["text"] for p in digest["posts"]] == ["Post old-other.", "Post new-stance.", "Post new-other."]
+    # Inside the lead, stance posts still come first, then the newest.
+    _, digest = digest_of(None, [ISSUE], sols, [], posts, lead=["old-other", "new-stance"])
+    assert [p["text"] for p in digest["posts"]] == ["Post new-stance.", "Post old-other.", "Post new-other."]
+
+
+def abortion_record(monkeypatch, found_posts: list[dict]):
+    """One small issue the question's words find, holding one long post from 3 November and one piece of evidence
+    it cited; two filler issues, from the top solutions, with many newer posts and stances. `found_posts` is what
+    the post search returns."""
+    issues = {"abortion rights": "Abortion rights", "climate": "Climate", "platform": "Platform"}
+    roe = post("roe", 3, "The Supreme Court ruled on abortion in Roe v Wade. " * 12, name="John Kintree")
+    roe["created_at"] = datetime(2026, 11, 3, 9, 0, tzinfo=timezone.utc)
+    newer = {key: [dict(post(f"{key}-{n}", 9, f"{key} post {n} " * 40, name="Ada Okafor"),
+                        created_at=datetime(2026, 11, 10, 9, n, tzinfo=timezone.utc)) for n in range(40)]
+             for key in ("climate", "platform")}
+    by_issue = {"abortion rights": [roe], **newer}
+    top = []
+    for key in ("climate", "platform"):
+        for n in range(5):
+            row = solution(f"{key} solution {n}", [("approve", 9, [f"{key}-s{n}-{m}"]) for m in range(4)], 4)
+            row["issues"] = [{"key": key, "name": issues[key]}]
+            top.append(row)
+    monkeypatch.setattr(ask.graph_search, "search_names", lambda query: [
+        {"label": "Issue", "key": "abortion rights", "name": "Abortion rights", "solution_homes": [],
+         "evidence_homes": []}])
+    monkeypatch.setattr(ask.graph_search, "search_posts", lambda query: [dict(row) for row in found_posts])
+    monkeypatch.setattr(ask.graph, "post_structure", lambda ids: {
+        pid: [{"rel": "CLAIM", "to_key": "abortion rights"}] for pid in ids if pid == "roe"})
+    monkeypatch.setattr(ask.graph, "issue_header", lambda key: {"key": key, "name": issues[key], "children": []})
+    monkeypatch.setattr(ask.graph, "issue_claimants", lambda key: {"people": 1, "claims": 1})
+    monkeypatch.setattr(ask.graph, "issue_posts", lambda key, limit: [dict(p) for p in by_issue[key]])
+    monkeypatch.setattr(ask.graph_own_posts, "post_flags", lambda who, ids: {})
+    monkeypatch.setattr(ask.graph_ask, "issue_stances", lambda key: [r for r in top if r["issues"][0]["key"] == key])
+    monkeypatch.setattr(ask.graph_ask, "issue_evidence", lambda key: [
+        edge("roe evidence", "issue", "abortion rights", post_id="roe")] if key == "abortion rights" else [
+        edge(f"{key} evidence {n}", "issue", key, post_id=f"{key}-{n}") for n in range(12)])
+    monkeypatch.setattr(ask.graph_ask, "top_solutions", lambda limit: top[:limit])
+    for name in ("top_opposed", "top_evidence"):
+        monkeypatch.setattr(ask.graph_ask, name, lambda limit: [])
+    monkeypatch.setattr(ask.graph_ask, "posts_by_ids", lambda ids: [
+        post(pid, 10, "A reason for this stance, written out at some length. " * 4) for pid in ids])
+    return roe
+
+
+def test_a_whole_record_question_reads_the_found_issues_posts_before_the_cap(monkeypatch):
+    abortion_record(monkeypatch, [])
+    built = ask.record_digest("Has anyone said anything about abortion?")
+    assert built.posts_left_out > 0  # the record is over the cap, as the live one was
+    roe = next((sid for sid, source in built.sources.items() if source.post_id == "roe"), None)
+    assert roe is not None and built.sources[roe].issue == "Abortion rights"
+    evidence = next(sid for sid, source in built.sources.items() if source.name == "Roe Evidence")
+    assert built.evidence_posts[evidence] == [roe]
+
+
+def test_a_post_found_by_its_words_is_read_though_linked_to_nothing(monkeypatch):
+    unlinked = dict(post("unlinked", 11, "Abortion should be legal.", name=None, anonymous=True), edited_at=None)
+    others = [dict(post(f"bare-{n}", 10, f"Abortion, said again {n}.", name="Ada Okafor"), edited_at=None)
+              for n in range(6)]
+    roe = abortion_record(monkeypatch, [unlinked, dict(post("roe", 3, "Roe."), edited_at=None)] + others)
+    built = ask.record_digest("Has anyone said anything about abortion?")
+    read = {source.post_id: source for source in built.sources.values() if source.kind == "post"}
+    assert (read["unlinked"].name, read["unlinked"].href, read["unlinked"].issue) == ("Anonymous", None, None)
+    # The post search's first five, in its order; one already read under its issue is not read twice.
+    assert "roe" in read and read["roe"].text.startswith(roe["text"][:40])
+    assert {"bare-0", "bare-1", "bare-2"} <= set(read) and not {"bare-3", "bare-4", "bare-5"} & set(read)
+    assert len([pid for pid in read if pid in ("unlinked", "roe")]) == 2

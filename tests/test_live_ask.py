@@ -240,3 +240,17 @@ def test_an_issue_with_no_evidence_on_evidence_says_none(record):
     assert digest["evidence"] and digest["evidence_backed_by_other_evidence"] == 0
     climate = json.loads(ask.issue_digest(CLIMATE, today=TODAY).text)
     assert climate["evidence_backed_by_other_evidence"] == 1
+
+
+def test_a_bare_post_is_read_by_a_whole_record_question(record):
+    """John, 11 November 2026 ("Asking"): "Abortion should be legal." posted with no issue was never read, and Ask
+    said the database said nothing about abortion. The real indexes find it by its words, and the digest reads it
+    on no issue."""
+    from app import graph_posts
+    post_id = graph_posts.create_raw_post("acct:ada", None, True, None, "Abortion should be legal.")
+    record.driver().execute_query("CALL db.awaitIndexes(60)", database_=record.database())
+    built = ask.record_digest("Has anyone said anything about abortion?", today=TODAY)
+    read = {source.post_id: source for source in built.sources.values() if source.kind == "post"}
+    assert post_id in read
+    assert (read[post_id].name, read[post_id].href, read[post_id].issue) == ("Anonymous", None, None)
+    assert json.loads(built.text)["posts"][0]["text"] == "Abortion should be legal."
