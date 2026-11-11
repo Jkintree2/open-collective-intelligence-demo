@@ -54,3 +54,41 @@ test('Post then plain posts nothing until Post is pressed again', async () => {
   assert.equal(sent.length, 1);
   assert.equal(JSON.parse(sent[0].options.body).plain, true);
 });
+
+// John's "Asking" email, 11 November 2026: the plain card never said the statement would be listed under no issue,
+// so the link read like a plain Post. The plain card now says so, for as long as the card holds nothing.
+const PLAIN = 'Your statement will be posted on its own. It will not be listed under any issue.';
+
+async function readCard() {
+  const p = await setup(undefined, CANDIDATES, {member: 'Ada Tester'});
+  await p.type('Majority votes would work better');
+  await p.get('compose').emit('submit');
+  p.requests.filter(r => r.url === '/api/extract').at(-1).resolve({payload: {found: true, language_ok: true,
+    issues: [{name: 'Climate'}], solutions: [], evidence: []}, message: '', source: 'model', extraction_raw: 'RAW',
+    model: 'reader', latency_ms: 5});
+  await p.flush();
+  return p;
+}
+
+test('the plain card says the statement will be listed under no issue', async () => {
+  const p = await readCard();
+  assert.equal(p.get('card-message').textContent, '');
+  await p.get('plain').emit('click'); await p.flush();
+  assert.equal(p.get('card-message').textContent, PLAIN);
+});
+
+test('the line goes while the plain card holds an issue, and when the statement is read again', async () => {
+  const p = await readCard();
+  await p.get('plain').emit('click'); await p.flush();
+  const row = p.get('issue-rows').children[0];
+  row.children[1].value = 'Climate'; await row.emit('input'); await p.flush();
+  assert.equal(p.get('card-message').textContent, '');  // a card that holds anything is not posted plain
+  row.children[1].value = ''; await row.emit('input'); await p.flush();
+  assert.equal(p.get('card-message').textContent, PLAIN);
+  await p.get('compose').emit('submit');
+  p.requests.filter(r => r.url === '/api/extract').at(-1).resolve({payload: {found: true, language_ok: true,
+    issues: [{name: 'Climate'}], solutions: [], evidence: []}, message: '', source: 'model', extraction_raw: 'RAW',
+    model: 'reader', latency_ms: 5});
+  await p.flush();
+  assert.equal(p.get('card-message').textContent, '');
+});

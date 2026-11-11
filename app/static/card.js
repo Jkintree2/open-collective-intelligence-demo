@@ -13,6 +13,7 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     previewPending: null, previewSettle: null
   };
   const UNREAD = 'Your statement has not been read yet. Press "Read my statement" to fill in the form from it.';
+  const PLAIN = 'Your statement will be posted on its own. It will not be listed under any issue.';  // John, 11 November 2026
   const HELD = {approve: 'You approve this already.', oppose: 'You oppose this already.'};
   const key = value => {
     let result = value.normalize('NFKC').toLowerCase().trim().replace(/^(the|a|an)( |$)/u, '');
@@ -179,8 +180,9 @@ window.ociCard = ({find, request, unavailable, stopDictation, stopReading, updat
     const unread = !noStatement && !state.readTried && !state.plain && !state.editing && form.dataset?.noReading === undefined;
     // The line names the list's heading as the page shows it; the edit page renames it (edit_post.js).
     const NO_STATEMENT = `No statement written. The lines under "${find('sentences-title').textContent}" will be posted as your statement.`;
-    const message = find('card-message'), hint = card.hidden || state.reading ? '' : noStatement && filled ? NO_STATEMENT : unread ? UNREAD : '';
-    if (hint === NO_STATEMENT || [NO_STATEMENT, UNREAD].includes(message.textContent) || (hint && !message.textContent)) message.textContent = hint;
+    // A plain card says the statement goes under no issue, while it holds nothing that would make it more than plain.
+    const message = find('card-message'), hint = card.hidden || state.reading ? '' : noStatement && filled ? NO_STATEMENT : unread ? UNREAD : state.plain && !filled ? PLAIN : '';
+    if (hint === NO_STATEMENT || [NO_STATEMENT, UNREAD, PLAIN].includes(message.textContent) || (hint && !message.textContent)) message.textContent = hint;
     if (card.hidden || !state.candidatesReady || (noStatement && !filled) || [...text.value].length > 4000 || incomplete || state.posting) {
       waiting?.(false); find('post').disabled = true; return;
     }
