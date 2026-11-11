@@ -114,7 +114,7 @@ ON CREATE SET hp.post_id = $post_id, hp.created_at = datetime();
 MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
 MERGE (p)-[r:APPROVE]->(s)
 ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = datetime()
-ON MATCH  SET r.last_post_id = $post_id;
+ON MATCH  SET r.last_post_id = CASE WHEN r.post_id = $post_id THEN r.last_post_id ELSE $post_id END;
 
 // 5. For each evidence item
 MERGE (e:Evidence {key: $evidence_key})
@@ -665,7 +665,7 @@ OPTIONAL MATCH (p)-[r:APPROVE|OPPOSE]->(s)
 DELETE r
 ```
 
-For a post made with `ACCOUNTS_ENABLED` set (always an account's), the write path's statement 4b becomes the same set statement with the post's properties: `ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now ON MATCH SET r.last_post_id = $post_id`, so the one-stance rule holds however an account takes a stance. With `ACCOUNTS_ENABLED` unset, 4b stays the 0.1 statement and the issue page uses the 0.1 Q4 (decision X1): the live site does not change until rollout.
+For a post made with `ACCOUNTS_ENABLED` set (always an account's), the write path's statement 4b becomes the same set statement with the post's properties: `ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now ON MATCH SET r.last_post_id = CASE WHEN r.post_id = $post_id THEN r.last_post_id ELSE $post_id END`, so the one-stance rule holds however an account takes a stance. Since 11 November 2026 (review after John's "Asking" email) the `CASE` keeps `last_post_id` when the post writing is the one that took the stance: a typo fix on that post runs the statement again under its id, and it took the place of the later post that said the same, which lost its chips and lines. `HAVE_PROPOSED` (statement 3) takes the same `CASE`. With `ACCOUNTS_ENABLED` unset, 4b stays the 0.1 statement and the issue page uses the 0.1 Q4 (decision X1): the live site does not change until rollout.
 
 A stance that a post made and a click later replaced or withdrew is gone from that post's "show what was added" list; the statement itself is unchanged.
 

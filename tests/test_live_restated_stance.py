@@ -79,3 +79,24 @@ def test_the_edit_card_still_leaves_out_a_stance_held_before_the_post(live_graph
                                                database_=live_graph.database()).records[0]["payload"]
     edit, own = routes_own_posts.current_card(again, stored)
     assert edit == {"issues": [], "solutions": [], "evidence": []} and own == {}
+
+
+def test_editing_the_first_post_leaves_the_later_post_its_stance(live_graph, main):
+    """Review, 11 November 2026: a typo fix on the post that took a stance ran the stance statement again under its
+    id; the edge was there already, so it took the later post's place as last_post_id, and the later post lost its
+    chips and lines."""
+    from datetime import datetime, timezone
+    from app import graph_own_posts
+    from app.routes_own_posts import current_card, resolve_edit
+    first = post(live_graph, "acct:ada", "Tax carbon", issues=[{"name": "Climate change"}], solutions=[TAX])
+    again = post(live_graph, "acct:ada", "Still for the tax", issues=[{"name": "Climate change"}], solutions=[TAX])
+    chips = lambda: [(chip["label"], chip["name"]) for chip in decorated(main, again)["chips"]]
+    before = chips()
+    assert before
+    row = graph_own_posts.post_owner("acct:ada", first)
+    shown, own = current_card(first, row["payload"])
+    resolved, _ = resolve_edit(CardPayload.model_validate(shown), own)
+    assert graph_own_posts.edit_own_post("acct:ada", first, resolved, text="Tax carbon!", source="manual",
+                                         extraction_raw=None, model=None, latency_ms=None,
+                                         now=datetime.now(timezone.utc))
+    assert chips() == before
