@@ -46,18 +46,29 @@ wouldnt shouldnt ive im youre theyre weve lets
 """
 solution solutions issue issues evidence post posts record records people person reason reasons think
 thinks thought say said says give given gives opinion opinions view views someone anyone everyone nobody
+anything something nothing everything anybody somebody everybody thoughts talked talking mention mentions
+mentioned written wrote
 """.split())
 _EDGES = string.punctuation + "“”‘’«»…"
 
 
 # Endings taken off a word so "opposing" also finds "oppose" and "opposed": the indexes keep words whole.
-_ENDINGS = ("ations", "ation", "itions", "ition", "ings", "ing", "ions", "ion", "ers", "er", "ed", "es", "s")
+_ENDINGS = ("ations", "ation", "itions", "ition", "ings", "ing", "ions", "ion", "ers", "er", "ed", "es")
+# A short plural (John, 11 November 2026): "taxes" must find "tax", "wars" "war" and "cities" "city", which the
+# endings above, keeping four letters, never reached.
+_HISSING = ("s", "x", "z", "ch", "sh")
 
 
 def _stem(word: str) -> str:
+    if word.endswith("ies") and len(word) > 4:
+        return word[:-3] + "y"
+    if word.endswith("es") and word[:-2].endswith(_HISSING) and len(word) >= 5:
+        return word[:-2]
     for ending in _ENDINGS:
         if word.endswith(ending) and len(word) - len(ending) >= 4:
             return word[:-len(ending)]
+    if word.endswith("s") and not word.endswith("ss") and len(word) >= 4:
+        return word[:-1]
     return word
 
 

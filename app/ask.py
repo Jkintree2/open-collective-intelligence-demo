@@ -46,6 +46,7 @@ RECORD_STANCE_POSTS = 40  # posts behind their stances, read by id
 # 2026: "Abortion should be legal." posted without an issue was never read, and Ask said nothing had been said).
 RECORD_FOUND_POSTS = 5
 EVIDENCE_PIECES = 30  # pieces of evidence in one digest (part 1 is never cut, so it is capped)
+SOLUTION_POSTS = 3  # posts a point about a solution borrows when it cites none (guard)
 SNIPPET = 200
 ANONYMOUS = "Anonymous"
 # The Phase 2 reading of a page, in John's words (04_interface.md, revision round).
@@ -91,6 +92,8 @@ class Digest:
     posts_left_out: int = 0
     issue_keys: list[str] = field(default_factory=list)
     evidence_posts: dict[str, list[str]] = field(default_factory=dict)  # E id: the posts in the digest that cited it
+    # S id: the posts in the digest behind it, those that proposed it first, then its stances', three at most
+    solution_posts: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def chars(self) -> int:
@@ -108,7 +111,7 @@ DOCUMENTS = {f"D{n}": Source(f"D{n}", "document", title, href=f"/about#{anchor}"
              for n, (anchor, title, _) in enumerate(GUIDING, 1)}
 _DOCUMENT_TEXT = {f"D{n}": text for n, (_, _, text) in enumerate(GUIDING, 1)}
 # A question that names a document, an article or a principle is answered even when the record holds nothing.
-_NAMES_DOCUMENT = re.compile(r"\b(?:udhr|declaration|human rights|charter|statement of purpose|guiding|"
+_NAMES_DOCUMENT = re.compile(r"\b(?:udhr|declaration|human rights?|charter|statement of purpose|guiding|"
                              r"articles?|principles?)\b", re.IGNORECASE)
 
 
@@ -171,7 +174,7 @@ def issue_query(question: str) -> str | None:
 
 # What a question says to name each guiding document, and the words its solutions are named with. A bare
 # "charter" is left out: "the UN Charter" is not one of them.
-_DOCUMENT_SEARCHES = ((re.compile(r"\b(?:udhr|declaration|human\s+rights)\b", re.IGNORECASE), 'udhr "universal declaration"'),
+_DOCUMENT_SEARCHES = ((re.compile(r"\b(?:udhr|declaration|human\s+rights?)\b", re.IGNORECASE), 'udhr "universal declaration"'),
                       (re.compile(r"\bearth\s+charter\b", re.IGNORECASE), '"earth charter"'),
                       (re.compile(r"\bstatement\s+of\s+purpose\b", re.IGNORECASE), '"statement of purpose"'))
 _ANY_DOCUMENT = re.compile(r"\b(?:guiding|principles?|articles?)\b", re.IGNORECASE)
@@ -457,7 +460,11 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
                                      page=item_page("evidence", keys[item["id"]]))
     cited_by = {item["id"]: list(dict.fromkeys(about["post"] for about in item.get("about", []) if about.get("post")))
                 for item in digest.get("evidence", [])}
-    return Digest(_dumps(digest), sources, len(kept), left_out, [issue["key"] for issue in issues], cited_by)
+    behind = {s_ids[row["key"]]: list(dict.fromkeys(
+        p_ids[pid] for pid in row.get("proposed_in", []) + [pid for stance in row["stances"] for pid in stance["post_ids"]]
+        if pid in kept_ids))[:SOLUTION_POSTS] for row in solutions}
+    return Digest(_dumps(digest), sources, len(kept), left_out, [issue["key"] for issue in issues], cited_by,
+                  {sid: ids for sid, ids in behind.items() if ids})
 
 
 def _posts(key: str) -> list[tuple[dict[str, Any], str]]:
@@ -852,8 +859,10 @@ def guard(reply: dict[str, Any], digest: Digest, *, texts: dict[str, str] = _DOC
                                            for sentence in _SENTENCE_END.split(text))
         cited_documents = [i for i in sources if i in texts]
         if not (posts or count_line or cited_documents):
-            # Case A4, 3 November: a point about evidence that cites no post takes the posts that cited it (rule 3).
-            sources = list(dict.fromkeys(sources + [p for e in sources for p in digest.evidence_posts.get(e, [])
+            # Case A4, 3 November: a point about evidence that cites no post takes the posts that cited it (rule 3);
+            # since 11 November 2026 a point about a solution takes the posts behind it the same way.
+            sources = list(dict.fromkeys(sources + [p for i in sources for p in
+                                                    digest.evidence_posts.get(i) or digest.solution_posts.get(i) or []
                                                     if p in citable]))
             posts = any(i.startswith("P") for i in sources)
         usable = bool(text) and (posts or count_line or bool(cited_documents))
