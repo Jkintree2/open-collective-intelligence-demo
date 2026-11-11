@@ -94,3 +94,24 @@ def test_the_limit_still_holds(live_graph):
     post(live_graph, "acct:ada", "Consensus, no", "oppose")
     assert len(graph_item_pages.solution_posts(SOLUTION_KEY, limit=2)) == 2
     assert len(live_graph.issue_posts(ISSUE_KEY, limit=2)) == 2
+
+
+def test_a_typo_edit_keeps_the_post_on_the_solution_page(live_graph):
+    """Review, 11 November 2026: the edit card holds only the stances the post's edges still carry, so a typo fix on
+    a post whose stance was taken over saved a card without it, and the post fell off the solution's page again."""
+    from app.routes_own_posts import current_card, kept_positions, resolve_edit
+    post(live_graph, "acct:bob", "Decide by consensus", "approve")
+    first = post(live_graph, "acct:ada", "Consensus, yes", "approve")
+    post(live_graph, "acct:ada", "On second thought, no", "oppose")
+    row = graph_own_posts.post_owner("acct:ada", first)
+    shown, own = current_card(first, row["payload"])
+    assert shown["solutions"] == []  # the stance it took is not on its edit card
+    resolved, _ = resolve_edit(CardPayload.model_validate(shown), own)
+    assert graph_own_posts.edit_own_post("acct:ada", first, resolved, text="Consensus, yes!", source="manual",
+                                         extraction_raw=None, model=None, latency_ms=None,
+                                         now=datetime.now(timezone.utc),
+                                         payload_json=kept_positions(row["payload"], shown, resolved))
+    on_solution, on_issue = listed(live_graph)
+    assert first in on_solution and first in on_issue
+    # Nothing was written to the stances: Ada still opposes, once.
+    assert [(r["approves"], r["opposes"]) for r in [graph_item_pages.solution(SOLUTION_KEY)]] == [(1, 1)]
