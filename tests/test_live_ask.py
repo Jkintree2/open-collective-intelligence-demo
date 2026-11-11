@@ -254,3 +254,9 @@ def test_a_bare_post_is_read_by_a_whole_record_question(record):
     assert post_id in read
     assert (read[post_id].name, read[post_id].href, read[post_id].issue) == ("Anonymous", None, None)
     assert json.loads(built.text)["posts"][0]["text"] == "Abortion should be legal."
+
+
+def test_a_plural_question_finds_the_singular_name(record):
+    """John, 11 November 2026: the indexes keep words whole, so "taxes" must look up "tax" itself."""
+    names = {row["name"] for row in graph_search.search_names(search.question_query("What about taxes?"))}
+    assert "Global carbon tax by referendum" in names

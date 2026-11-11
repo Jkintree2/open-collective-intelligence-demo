@@ -103,3 +103,26 @@ def test_principles_alone_search_all_three_documents():
 ])
 def test_a_question_naming_no_document_has_no_document_query(question):
     assert ask.document_query(question) is None
+
+
+@pytest.mark.parametrize("word, stem", [("taxes", "tax"), ("cities", "city"), ("wars", "war"), ("jobs", "job"),
+                                        ("policies", "policy"), ("boxes", "box"), ("classes", "class")])
+def test_a_plural_finds_the_singular_name(word, stem):
+    """John, 11 November 2026: the indexes have no stemmer, and "taxes" became taxe*, which finds no "Carbon tax"."""
+    assert search.question_query(word) == f"({word} {word}* {stem}*)"
+
+
+def test_a_word_that_is_not_a_plural_keeps_its_ending():
+    assert search.question_query("class gas bus") == "(class class*) (gas gas*) (bus bus*)"
+
+
+@pytest.mark.parametrize("word", ["anything", "something", "nothing", "everything", "anybody", "somebody",
+                                  "everybody", "thoughts", "talked", "talking", "mention", "mentions", "mentioned",
+                                  "written", "wrote"])
+def test_words_that_only_ask_are_not_looked_up(word):
+    """John, 11 November 2026: "Has anyone said anything about abortion?" also looked up "anything"."""
+    assert search.question_query(word) is None
+
+
+def test_the_asking_question_looks_up_abortion_only():
+    assert search.question_query("Has anyone said anything about abortion?") == "(abortion abortion* abort*)"
