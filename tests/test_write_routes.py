@@ -39,3 +39,27 @@ def test_every_write_route_checks_it_comes_from_this_site(monkeypatch):
         f"{sorted(WRITE_METHODS & route.methods)} {route.path}" for route in routes
         if not route.path.startswith(OWN_CHECK) and require_same_origin not in set(_calls(route.dependant)))
     assert unchecked == []
+
+
+SAME = {"origin": "http://testserver"}
+
+
+def test_a_failed_save_gives_the_posting_slot_back(member_app, monkeypatch):
+    """Review, 11 November 2026: a save that failed on the server still took the writer's twenty seconds, so pressing
+    Post again said "Please wait a moment before posting again." although nothing had been saved, and the plain link
+    looked like the way out."""
+    member_app.sign_in()
+    tries = []
+
+    def write(*args, **kwargs):
+        tries.append(1)
+        if len(tries) == 1:
+            raise RuntimeError("write failed")
+        return "post-id"
+    monkeypatch.setattr(member_app.main.graph, "merge_post", write)
+    card = {"text": "The river floods every spring.", "issues": [{"name": "Flooding"}]}
+    assert member_app.client.post("/api/posts", json=card, headers=SAME).status_code == 500
+    again = member_app.client.post("/api/posts", json=card, headers=SAME)
+    assert again.status_code == 201 and len(tries) == 2
+    # A save that went in still holds the slot.
+    assert member_app.client.post("/api/posts", json=card, headers=SAME).status_code == 429

@@ -47,3 +47,12 @@ def test_post_spacing_holds_one_source_for_twenty_seconds_and_forgets_it_later()
     assert spacing.take("anon:1", now=110.0)
     assert spacing.take("john", now=120.0)
     assert len(spacing.last) <= 2
+
+
+def test_a_posting_slot_given_back_is_free_at_once():
+    from app.auth import PostSpacing
+    spacing = PostSpacing(20)
+    assert spacing.take("acct:ada", now=0) and not spacing.take("acct:ada", now=1)
+    spacing.give_back("acct:ada")
+    spacing.give_back("acct:nobody")  # one never taken is fine
+    assert spacing.take("acct:ada", now=2)

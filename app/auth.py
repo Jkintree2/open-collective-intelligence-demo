@@ -151,6 +151,11 @@ class PostSpacing:
             self.last[source_key] = now
             return True
 
+    def give_back(self, source_key: str) -> None:
+        """A post that could not be written frees its place, so the writer may press Post again at once."""
+        with self._lock:
+            self.last.pop(source_key, None)
+
 
 post_spacing = PostSpacing()
 
