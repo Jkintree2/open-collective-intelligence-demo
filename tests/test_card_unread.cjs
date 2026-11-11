@@ -44,14 +44,16 @@ test('a reading that could not run does not ask for another one', async () => {
   assert.notEqual(p.get('card-message').textContent, UNREAD);
 });
 
-test('no line without a language model, or when posting the text as it is', async () => {
+// Since John's "Asking" email (11 November 2026) the plain card has a line of its own (tests/test_card_plain.cjs).
+test('no unread line without a language model, or when posting the text as it is', async () => {
   const off = await openFirst({noReading: true});
   await off.type('Majority votes would work better');
   assert.equal(off.get('card-message').textContent, '');
   const plain = await setup('SpeechRecognition', CANDIDATES);
   await plain.type('Majority votes would work better');
   await plain.get('plain').emit('click'); await plain.flush();
-  assert.equal(plain.get('card-message').textContent, '');
+  assert.equal(plain.get('card-message').textContent,
+    'Your statement will be posted on its own. It will not be listed under any issue.');
 });
 
 // Review of 11 November 2026: when the names in the database could not be fetched as the page loaded (a restart
