@@ -99,7 +99,7 @@ MATCH (p:Person {key: $person_key}), (i:Issue {key: $for_issue_key})
 CREATE (p)-[:PROPOSE {post_id: $post_id, anonymous: $anonymous, created_at: $now}]->(s)
 MERGE (i)-[hp:HAVE_PROPOSED]->(s)
 ON CREATE SET hp.post_id = $post_id, hp.created_at = $now
-ON MATCH  SET hp.last_post_id = $post_id
+ON MATCH  SET hp.last_post_id = CASE WHEN hp.post_id = $post_id THEN hp.last_post_id ELSE $post_id END
 """
 
 # {stance} is APPROVE or OPPOSE, substituted from STANCE_TYPES; never from input.
@@ -107,7 +107,7 @@ MERGE_STANCE = """
 MATCH (p:Person {key: $person_key}), (s:Solution {key: $solution_key})
 MERGE (p)-[r:{stance}]->(s)
 ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now
-ON MATCH  SET r.last_post_id = $post_id
+ON MATCH  SET r.last_post_id = CASE WHEN r.post_id = $post_id THEN r.last_post_id ELSE $post_id END
 """
 
 # 4b for a post by an account (D7, Q23): {stance} is APPROVE or OPPOSE, {other} the opposite, from
@@ -122,7 +122,7 @@ DELETE old
 WITH DISTINCT p, s
 MERGE (p)-[r:{stance}]->(s)
 ON CREATE SET r.post_id = $post_id, r.anonymous = $anonymous, r.created_at = $now
-ON MATCH  SET r.last_post_id = $post_id
+ON MATCH  SET r.last_post_id = CASE WHEN r.post_id = $post_id THEN r.last_post_id ELSE $post_id END
 """
 
 MERGE_EVIDENCE_SUBMIT = """

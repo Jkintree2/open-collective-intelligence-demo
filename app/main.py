@@ -722,13 +722,18 @@ def post_card(request: Request, data: PostRequest) -> Response:
             edited = True
     # What the reading service returned is kept whenever it returned something, even when the tester
     # emptied the card or the box, so "it did something weird" can be answered from the one post.
-    post_id = graph.merge_post(person_key, name, anonymous, name,
-                                statement, resolved, source=source,
-                                extraction_raw=data.extraction_raw, model=data.model,
-                                latency_ms=data.latency_ms,
-                                request_id=_request_id(request), edited=edited,
-                                one_stance=settings.accounts_enabled, checks=checks, place=card_place(data),
-                                reading_payload=found)
+    try:
+        post_id = graph.merge_post(person_key, name, anonymous, name,
+                                    statement, resolved, source=source,
+                                    extraction_raw=data.extraction_raw, model=data.model,
+                                    latency_ms=data.latency_ms,
+                                    request_id=_request_id(request), edited=edited,
+                                    one_stance=settings.accounts_enabled, checks=checks, place=card_place(data),
+                                    reading_payload=found)
+    except Exception:
+        # Nothing was saved, so the twenty seconds are not taken (review, 11 November 2026).
+        post_spacing.give_back(person_key)
+        raise
     response = JSONResponse({"id": post_id, "message": "Added to the database"}, status_code=201)
     if member is None:
         if anonymous:

@@ -427,3 +427,63 @@ def test_saving_an_edit_keeps_what_its_reading_found(saving):
     assert [row["name"] for row in json.loads(saving.saved[0][3]["reading_payload"])["issues"]] == ["Sea levels"]
     assert saving.client.post("/api/posts/mine-1", json=card).status_code == 200
     assert saving.saved[1][3]["reading_payload"] is None
+
+
+# Review of 11 November 2026: the edit card is built from the post's live edges, so a stance a later post took
+# over (one stance per person, D7) is not on it, and a typo fix saved a card without it. Q59 reads the stored card,
+# so the post fell off the solution and issue pages again, undoing PR 85 for any edited post.
+REF = "global referendum on the udhr and earth charter"
+GOV = "need for world government"
+TOOK = jsonlib.dumps({"issues": [], "solutions": [{
+    "key": REF, "name": "Global referendum on the UDHR and Earth Charter", "for_issue_key": GOV,
+    "stance": "approve", "existing": True, "stance_only": True}], "evidence": []})
+
+
+@pytest.fixture
+def stance_taken_over(member_app, monkeypatch):
+    now = datetime.now(timezone.utc)
+    record = {"p1": {"id": "p1", "text": "They are the solution.", "anonymous": False, "created_at": now,
+                     "payload": TOOK}}
+    monkeypatch.setattr("app.graph_own_posts.post_owner",
+                        lambda me, pid: {**record[pid], "mine": True} if pid in record else None)
+    g = member_app.main.graph
+    monkeypatch.setattr(g, "post_structure", lambda ids: {i: [] for i in ids})  # its edge carries a later post's id
+    monkeypatch.setattr(g, "issue_header", lambda key: {"key": GOV, "name": "Need for world government",
+                                                        "parent_key": None, "parent_name": None, "children": []}
+                        if key == GOV else None)
+    monkeypatch.setattr(g, "candidates", lambda: Candidates(
+        issues={GOV: {"name": "Need for world government", "parent_key": None}},
+        solutions={REF: "Global referendum on the UDHR and Earth Charter"},
+        solution_issues={REF: ["Need for world government"]}))
+    saved = []
+    monkeypatch.setattr("app.graph_own_posts.edit_own_post",
+                        lambda me, pid, payload, **kw: not saved.append((payload, kw)))
+    member_app.sign_in()
+    member_app.saved = saved
+    return member_app
+
+
+@pytest.mark.parametrize("scripts", [False, True])
+def test_an_edit_keeps_the_positions_its_card_could_not_show(stance_taken_over, scripts):
+    from app import graph_item_pages
+    if scripts:  # edit_post.js sends an empty card as plain
+        stance_taken_over.client.post("/api/posts/p1", json={"text": "They are the solution!", "issues": [],
+                                                             "solutions": [], "evidence": [], "plain": True})
+    else:
+        stance_taken_over.client.post("/posts/p1/edit", data={"text": "They are the solution!"})
+    payload, kw = stance_taken_over.saved[0]
+    assert payload.solutions == []  # nothing is written to the record's stances
+    assert graph_item_pages._took_a_stance(kw["payload_json"], {REF})
+    assert jsonlib.loads(kw["payload_json"])["solutions"] == jsonlib.loads(TOOK)["solutions"]
+
+
+def test_a_position_the_writer_saw_and_took_out_is_not_kept(stance_taken_over, monkeypatch):
+    from app import graph_item_pages
+    g = stance_taken_over.main.graph
+    monkeypatch.setattr(g, "post_structure", lambda ids: {i: [edge("APPROVE", "Person", "acct:ada", "Ada", "Solution",
+                                                                     REF, "Global referendum on the UDHR and Earth Charter",
+                                                                     GOV)] for i in ids})
+    stance_taken_over.client.post("/api/posts/p1", json={"text": "They are the solution!", "issues": [],
+                                                         "solutions": [], "evidence": [], "plain": True})
+    _, kw = stance_taken_over.saved[0]
+    assert not graph_item_pages._took_a_stance(kw["payload_json"], {REF})

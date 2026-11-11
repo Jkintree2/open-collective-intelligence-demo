@@ -179,6 +179,27 @@ def resolve_edit(data: CardPayload, own: dict[str, set[str]]) -> tuple[ResolvedP
     return resolve_payload(incoming, candidates), reading.prepared_card(incoming, candidates)
 
 
+def kept_positions(stored_json: str | None, shown: dict, resolved: ResolvedPayload) -> str:
+    """The card an edit stores (review, 11 November 2026). The edit card is built from the post's live edges, so a
+    stance the post took that a later post took over (one stance per person, D7), or only took again, is not on
+    it; saved without it, the stored card no longer approves or opposes, and Q59 drops the post from the solution
+    and issue pages again. So each approve or oppose row of the stored card whose solution the edit card did not
+    show with a position, and the edit does not hold, is kept on the stored card. A row the writer saw and took out
+    is not. Nothing is written to the record's stances: the stored card only says what the post did."""
+    try:
+        before = json.loads(stored_json or "{}").get("solutions") or []
+    except (ValueError, AttributeError):
+        before = []
+    shown_with = {make_key(row.get("name") or "") for row in shown.get("solutions", [])
+                  if row.get("stance") in ("approve", "oppose")}
+    holds = {row.get("key") for row in resolved.solutions}
+    kept = [row for row in before if isinstance(row, dict) and row.get("stance") in ("approve", "oppose")
+            and row.get("key") not in shown_with and row.get("key") not in holds]
+    card = json.loads(resolved.as_json())
+    card["solutions"] += kept
+    return json.dumps(card, ensure_ascii=False)
+
+
 def _save(member: Member, row: dict, post_id: str, text: str, resolved: ResolvedPayload, card: CardPayload,
           anonymous: bool, items: list, place: dict | None = None, **reading_fields) -> bool:
     from app import main as site
@@ -189,9 +210,10 @@ def _save(member: Member, row: dict, post_id: str, text: str, resolved: Resolved
     checks = edit_checks(post_id, row["payload"], items, resolved, text)
     statement = text or (". ".join(sentences(card, shown or "Anonymous", resolved, sides.statements(checks)))
                          + ".")[:site.TEXT_MAX]
+    stored = kept_positions(row["payload"], current_card(post_id, row["payload"])[0], resolved)
     return graph_own_posts.edit_own_post(member.key, post_id, resolved, text=statement,
                                          now=datetime.now(timezone.utc), anonymous=hidden, display_name=shown,
-                                         checks=checks, place=place, **reading_fields)
+                                         checks=checks, place=place, payload_json=stored, **reading_fields)
 
 
 @router.get("/posts/{post_id}/edit")
