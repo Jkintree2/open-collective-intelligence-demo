@@ -6,8 +6,11 @@ of evidence, P for a post. The three guiding documents at the start of the instr
 1. the issue (its parent and sub-issues), its solutions by net support with their counts and the date
    of each stance, and its evidence with the readings, what each page says about itself and evidence
    on evidence. Asked of the whole record, the top solutions and evidence of the record join them;
-2. the posts that took a stance, newest first (the reasons);
-3. the other posts about the issue (Q6), newest first.
+2. asked of the whole record, the posts the question found first: those about the issues its own words found,
+   and up to RECORD_FOUND_POSTS posts its words found though linked to nothing (John, 11 November 2026), stance
+   posts first, each part newest first;
+3. the posts that took a stance, newest first (the reasons);
+4. the other posts about the issue (Q6), newest first.
 When posts do not fit, the digest says how many were left out. An anonymous post or edge never
 carries a name; emails, countries and postal codes are never read.
 """
@@ -39,6 +42,9 @@ RECORD_TOP = 10
 RECORD_OPPOSED = 5  # the most opposed solutions, read on every whole-record question
 DOCUMENT_SOLUTIONS = 5  # solutions named after a guiding document a whole-record question names (John, 3 November)
 RECORD_STANCE_POSTS = 40  # posts behind their stances, read by id
+# Posts a whole-record question's words find, read first though no issue it picked holds them (John, 11 November
+# 2026: "Abortion should be legal." posted without an issue was never read, and Ask said nothing had been said).
+RECORD_FOUND_POSTS = 5
 EVIDENCE_PIECES = 30  # pieces of evidence in one digest (part 1 is never cut, so it is capped)
 SNIPPET = 200
 ANONYMOUS = "Anonymous"
@@ -257,16 +263,18 @@ def _source_line(row: dict[str, Any], today: date | None) -> str | None:
     return source_words(facts, today=today, video=is_video(row.get("url")))
 
 
-def _ordered_posts(solutions: list[dict[str, Any]], posts: list[tuple[dict[str, Any], str]]
-                   ) -> list[tuple[dict[str, Any], str]]:
-    """Posts that took a stance first, then the rest, each part newest first, no repeats."""
+def _ordered_posts(solutions: list[dict[str, Any]], posts: list[tuple[dict[str, Any], str]],
+                   lead: Iterable[str] = ()) -> list[tuple[dict[str, Any], str]]:
+    """The posts in `lead` (what a whole-record question found), then the rest; in each, posts that took a stance
+    first, then the others, each part newest first, no repeats."""
     took = {pid for solution in solutions for stance in solution["stances"] for pid in stance["post_ids"]}
+    lead = set(lead)
     seen: dict[str, tuple[dict[str, Any], str]] = {}
     for post, home in posts:
         seen.setdefault(post["id"], (post, home))
     newest = sorted(seen.values(), key=lambda pair: pair[0].get("created_at") or datetime.min, reverse=True)
-    return [pair for pair in newest if pair[0]["id"] in took] + \
-           [pair for pair in newest if pair[0]["id"] not in took]
+    # sorted is stable, so each part stays newest first.
+    return sorted(newest, key=lambda pair: (pair[0]["id"] not in lead, pair[0]["id"] not in took))
 
 
 def _home(row: dict[str, Any], asked: list[str]) -> dict[str, Any] | None:
@@ -278,12 +286,13 @@ def _home(row: dict[str, Any], asked: list[str]) -> dict[str, Any] | None:
 
 def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, Any]],
           evidence_rows: list[dict[str, Any]], posts: list[tuple[dict[str, Any], str]], *,
-          cap: int = DIGEST_CHARS, today: date | None = None, asked_about: str | None = None) -> Digest:
+          cap: int = DIGEST_CHARS, today: date | None = None, asked_about: str | None = None,
+          lead: Iterable[str] = ()) -> Digest:
     """The digest from rows already read. `scope` is the issue's name, or None for the whole record;
     `issues` are {key, name, parent, sub_issues, people, claims}; `solutions` Q40 and Q42 rows (repeats
     dropped by key); `evidence_rows` Q41 rows; `posts` (Q6 row, the issue key it was read under).
     `asked_about` names a solution or a piece of evidence asked about on its own page (GitHub issue 55),
-    whose issues then come first in `issues`."""
+    whose issues then come first in `issues`. The posts in `lead` are read before the others (record_digest)."""
     first: dict[str, dict[str, Any]] = {}
     for row in solutions:
         first.setdefault(row["key"], row)
@@ -296,7 +305,7 @@ def build(scope: str, issues: list[dict[str, Any]], solutions: list[dict[str, An
                 e_ids[key] = f"E{len(e_ids) + 1}"
     evidence_rows = [row for row in evidence_rows if row["key"] in e_ids
                      and (row["target_kind"] != "evidence" or row["target_key"] in e_ids)]
-    ordered = _ordered_posts(solutions, posts)
+    ordered = _ordered_posts(solutions, posts, lead)
     p_ids = {post["id"]: f"P{n}" for n, (post, _) in enumerate(ordered, 1)}
     home = issues[0]["key"] if scope and issues else None
 
@@ -532,13 +541,17 @@ def pick_issues(name_rows: list[dict[str, Any]], post_rows: list[dict[str, Any]]
 def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None = None) -> Digest:
     """The digest for a question asked of the whole record: the issues the question's words find (up
     to three, then the homes of the top solutions; issue_query), the top and the most opposed solutions with
-    the posts behind their stances, and the top evidence."""
+    the posts behind their stances, and the top evidence. The posts about the issues the words found, and the
+    first RECORD_FOUND_POSTS posts the words found, are read before the others (John, 11 November 2026)."""
     query = issue_query(question)
     keys: list[str] = []
+    post_rows: list[dict[str, Any]] = []
+    structure: dict[str, list[dict[str, Any]]] = {}
     if query is not None:
         post_rows = graph_search.search_posts(query)
-        keys = pick_issues(graph_search.search_names(query), post_rows,
-                           graph.post_structure([post["id"] for post in post_rows]))
+        structure = graph.post_structure([post["id"] for post in post_rows])
+        keys = pick_issues(graph_search.search_names(query), post_rows, structure)
+    found = list(keys)
     top = graph_ask.top_solutions(RECORD_TOP) + graph_ask.top_opposed(RECORD_OPPOSED)
     for row in top:
         for item in row["issues"]:
@@ -574,7 +587,24 @@ def record_digest(question: str, *, cap: int = DIGEST_CHARS, today: date | None 
     seen_edges = {(row["key"], row["target_key"], row["stance"], row.get("post_id")) for row in evidence}
     evidence += [row for row in graph_ask.top_evidence(RECORD_TOP)
                  if (row["key"], row["target_key"], row["stance"], row.get("post_id")) not in seen_edges]
-    return build(None, issues, solutions + top, evidence, posts, cap=cap, today=today)
+    lead = [post["id"] for post, key in posts if key in found]
+    posts += _found_posts(post_rows[:RECORD_FOUND_POSTS], {post["id"] for post, _ in posts}, structure, asked)
+    lead += [row["id"] for row in post_rows[:RECORD_FOUND_POSTS]]
+    return build(None, issues, solutions + top, evidence, posts, cap=cap, today=today, lead=lead)
+
+
+def _found_posts(rows: list[dict[str, Any]], read: set[str], structure: dict[str, list[dict[str, Any]]],
+                 asked: list[str]) -> list[tuple[dict[str, Any], str]]:
+    """The posts a whole-record question's words found (Q27 rows, shaped like Q6's) that no issue read holds, each
+    with the issue read that it claims, else none: a post linked to nothing is read too, and shown on no issue."""
+    rows = [row for row in rows if row["id"] not in read]
+    flags = graph_own_posts.post_flags(None, [row["id"] for row in rows])
+    out = []
+    for row in rows:
+        row["edited_at"] = flags.get(row["id"], {}).get("edited_at")
+        claims = [edge["to_key"] for edge in structure.get(row["id"], []) if edge["rel"] == "CLAIM"]
+        out.append((row, next((key for key in claims if key in asked), "")))
+    return out
 
 
 # The answering call (05_extraction.md, Phase 3, "Ask the record: the answering call").
