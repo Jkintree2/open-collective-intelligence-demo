@@ -1061,6 +1061,14 @@ linked to the About page. It is cited only for a question about the site itself,
 
 > The database does not say anything about this yet.
 
+**When an issue's, solution's or piece of evidence's page holds nothing on it** (John, 13 November 2026: "maybe the question should automatically be put to the entire database before answering that the database doesn't say anything about it. Either that, or the answer should say that the person might ask the question again from the Home page."). The question is put to the whole database, in the time the page still waits (45 seconds for both calls together; the second is not made with less than 10 left), and counted once. Above an answer found that way, **client-facing, wording to be confirmed by John**:
+
+> This page holds nothing about this yet, so this answer is from the whole database.
+
+It is kept and listed as a question about the whole database, not under the item it was asked on. When the whole database holds nothing either, the line above ("The database does not say anything about this yet.") shows. When the second call could not be made or failed, **client-facing, wording to be confirmed by John** ("Home" for a reader Home is on for, "the Ask page" for every other):
+
+> This page does not say anything about this yet. Ask again from Home to ask the whole database.
+
 **An earlier answer** (`/ask/answers/<id>`, 30 October 2026, John: a listed question links to the answer it got). The heading "An earlier answer", then, for a question asked on an issue that still exists, "Asked about {issue name}" linked; the question and the answer as it was shown, with its sources; then:
 
 > Answered on {day}. The database may have changed since, so ask again for an answer from what it holds now.

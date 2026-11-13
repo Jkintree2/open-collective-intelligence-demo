@@ -958,8 +958,10 @@ def build_messages(question: str, earlier: list[str], digest: Digest, about: str
 
 
 def answer(question: str, earlier: list[str], digest: Digest, settings: Settings, *, site_questions: bool = False,
-           request_id: str | None = None, scope: str = "issue", transport: Any = None) -> Answer:
-    """One attempt, 40 seconds. Without a reading service the route never gets here. Only a reader who gets
+           request_id: str | None = None, scope: str = "issue", transport: Any = None,
+           timeout: float = TIMEOUT) -> Answer:
+    """One attempt, 40 seconds (`timeout`: less for the second call of a question an item's page could not answer;
+    John, 13 November 2026). Without a reading service the route never gets here. Only a reader who gets
     questions about the site (`site_questions`, Home on for them; the builder, 9 November) gets the About page as D4;
     every other reader's Ask is as it was."""
     site_questions = site_questions and settings.about_enabled
@@ -970,7 +972,7 @@ def answer(question: str, earlier: list[str], digest: Digest, settings: Settings
     about = _about_text(settings, request_id) if site_questions else None
     reply = call_model(build_messages(question, earlier, digest, about), settings, request_id=request_id,
                        chars=len(question), transport=transport, parse=parse_answer, event="ask_call",
-                       max_tokens=MAX_TOKENS, timeout=TIMEOUT, attempts=1)
+                       max_tokens=MAX_TOKENS, timeout=timeout, attempts=1)
     entry: dict[str, Any] = {"event": "ask", "request_id": request_id, "scope": scope, "chars": len(question),
                              "history": len(earlier), "issues": len(digest.issue_keys),
                              "digest_chars": digest.chars, "posts_in": digest.posts_in,

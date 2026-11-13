@@ -254,6 +254,8 @@ def test_five_a_minute_for_the_site_and_the_person_is_not_charged(asking, monkey
 
 def test_an_empty_record_answers_the_empty_line_with_no_call_and_no_count(asking, monkeypatch):
     monkeypatch.setattr(ask, "issue_digest", lambda key, **kw: ask.Digest("{}", {}, issue_keys=[key]))
+    # Since 13 November 2026 an issue with nothing to read sends the question on, so the whole database is empty too.
+    monkeypatch.setattr(ask, "record_digest", lambda question, **kw: ask.Digest("{}", {}))
     body = post(asking.client, {"question": "Why?", "issue": "veto"}).json()
     assert body["status"] == "empty" and body["message"] == "The database does not say anything about this yet."
     assert [call for call in asking.calls if call[0] == "answer"] == [] and routes_ask.person_limit.uses == {}
@@ -289,7 +291,8 @@ def test_ask_is_told_whether_the_reader_gets_questions_about_the_site(asking, mo
                         seen.append(kw["site_questions"]) or ask.Answer("empty"))
     switch(about_enabled=True, home_enabled=home_mode)
     post(asking.client, {"question": "Why oppose the veto?", "issue": "veto"})
-    assert seen == [site_questions]
+    # Twice since 13 November 2026: the issue's answer was empty, so the whole database was asked, told the same.
+    assert seen == [site_questions, site_questions]
 
 
 UDHR_LINE = '<a href="/about#udhr">Universal Declaration of Human Rights</a>'
@@ -604,3 +607,93 @@ def test_without_home_for_the_reader_the_box_stays(asking, switch):
     assert '<h2 id="ask-title">Ask about this issue</h2>' in page and '<a href="#ask-title">Ask</a>' in page
     assert '<h3>Questions asked about this issue</h3>' in page and 'class="ask-again">Who would enforce it?</button>' in page
     assert 'id="questions"' not in page and "home-box" not in page
+
+
+# John, 13 November 2026: a question an issue's, solution's or piece of evidence's page cannot answer is put to
+# the whole database before the page says the database holds nothing on it.
+
+WIDENED = "This page holds nothing about this yet, so this answer is from the whole database."
+PAGE_ONLY = "This page does not say anything about this yet. Ask again from the Ask page to ask the whole database."
+EMPTY = "The database does not say anything about this yet."
+
+
+def _answers(monkeypatch, asking, by_scope):
+    """ask.answer stubbed by scope: {"issue": Answer, "record": Answer}."""
+    monkeypatch.setattr(ask, "answer", lambda question, earlier, digest, settings, **kw:
+                        asking.calls.append(("answer", question, kw["scope"], kw.get("timeout"))) or by_scope[kw["scope"]])
+
+
+def test_a_question_the_issue_cannot_answer_is_put_to_the_whole_database(asking, monkeypatch):
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ANSWERED})
+    body = post(asking.client, {"question": "Anything on the Blu City condos?", "issue": "veto"}).json()
+    assert body["status"] == "answered" and body["message"] == WIDENED and body["widened"] is True
+    assert body["paragraphs"] == ANSWERED.paragraphs and body["issue"] == "Security Council veto"
+    assert [call[:3] for call in asking.calls] == [
+        ("issue", "veto"), ("answer", "Anything on the Blu City condos?", "issue"),
+        ("record", "Anything on the Blu City condos?"), ("answer", "Anything on the Blu City condos?", "record")]
+    # One question, one use, though the language model was called twice.
+    assert sum(len(uses) for uses in routes_ask.person_limit.uses.values()) == 1
+    # It is kept as a question about the whole database, not listed under the issue it was asked on.
+    assert asking.kept == [("Anything on the Blu City condos?", None)]
+
+
+def test_the_second_call_gets_only_the_time_the_page_still_waits(asking, monkeypatch):
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ANSWERED})
+    clock = iter([100.0, 112.0])  # the first call took 12 seconds
+    monkeypatch.setattr(routes_ask, "_now", lambda: next(clock))
+    post(asking.client, {"question": "Anything on the Blu City condos?", "issue": "veto"})
+    assert asking.calls[-1][3] == routes_ask.WAIT - 12
+
+
+def test_with_too_little_time_left_the_page_says_to_ask_the_whole_database(asking, monkeypatch):
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ANSWERED})
+    clock = iter([100.0, 138.0])  # the first call took 38 seconds
+    monkeypatch.setattr(routes_ask, "_now", lambda: next(clock))
+    body = post(asking.client, {"question": "Anything on the Blu City condos?", "issue": "veto"}).json()
+    assert body["status"] == "empty" and body["message"] == PAGE_ONLY and "widened" not in body
+    assert [call for call in asking.calls if call[0] == "answer" and call[2] == "record"] == []
+    assert asking.kept == []
+
+
+def test_when_the_second_call_fails_the_page_says_to_ask_the_whole_database(asking, monkeypatch):
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ask.Answer("failed")})
+    body = post(asking.client, {"question": "Anything on the Blu City condos?", "issue": "veto"}).json()
+    assert body["status"] == "empty" and body["message"] == PAGE_ONLY and asking.kept == []
+
+
+def test_with_home_on_the_page_says_to_ask_again_from_home(asking, monkeypatch, switch):
+    switch(home_enabled="on")
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ask.Answer("failed")})
+    body = post(asking.client, {"question": "Anything on the Blu City condos?", "issue": "veto"}).json()
+    assert body["message"] == PAGE_ONLY.replace("the Ask page", "Home")
+
+
+def test_when_the_whole_database_holds_nothing_either_the_empty_line_is_true(asking, monkeypatch):
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ask.Answer("empty")})
+    body = post(asking.client, {"question": "Anything on the Blu City condos?", "issue": "veto"}).json()
+    assert body["status"] == "empty" and body["message"] == EMPTY and asking.kept == []
+
+
+def test_an_item_with_nothing_to_read_goes_straight_to_the_whole_database(asking, monkeypatch):
+    monkeypatch.setattr(ask, "issue_digest", lambda key, **kw: ask.Digest("{}", {}, issue_keys=[key]))
+    body = post(asking.client, {"question": "Anything on the Blu City condos?", "issue": "veto"}).json()
+    assert body["status"] == "answered" and body["message"] == WIDENED and body["widened"] is True
+    assert [call for call in asking.calls if call[0] == "answer"] == [
+        ("answer", "Anything on the Blu City condos?", [], "record")]
+
+
+def test_a_question_asked_of_the_whole_database_is_never_asked_twice(asking, monkeypatch):
+    _answers(monkeypatch, asking, {"record": ask.Answer("empty")})
+    body = post(asking.client, {"question": "Anything on the Blu City condos?"}).json()
+    assert body["status"] == "empty" and body["message"] == EMPTY
+    assert len([call for call in asking.calls if call[0] == "answer"]) == 1
+
+
+def test_an_answer_from_the_page_itself_says_nothing_of_the_whole_database(asking):
+    body = post(asking.client, {"question": "Why is the veto opposed?", "issue": "veto"}).json()
+    assert body["status"] == "answered" and body["message"] is None and "widened" not in body
+
+
+def test_the_new_lines_have_no_dashes_or_forbidden_words():
+    for line in (routes_ask.WIDENED, routes_ask.PAGE_ONLY.format(place="Home")):
+        assert not re.search(r"[-–—]|\b(record|node|edge|graph|model|digest)\b", line, re.IGNORECASE)

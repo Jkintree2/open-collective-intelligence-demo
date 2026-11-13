@@ -242,6 +242,19 @@ test('a question with nothing to answer from is not listed', async () => {
   assert.deepEqual(listedTexts(recent), ['Who opposes it?']);
 });
 
+// John, 13 November 2026: a question the issue's page could not answer is answered from the whole database, with
+// a line saying so above the answer; it is not a question about this issue, so the issue's list does not take it.
+test('an answer from the whole database says so and is not listed under the issue', async () => {
+  const recent = recentList('Who opposes it?');
+  const p = page('veto', [], recent);
+  const line = 'This page holds nothing about this yet, so this answer is from the whole database.';
+  p.ask('Anything on the Blu City condos?');
+  p.requests[0].resolve(json({...ANSWER, message: line, widened: true})); await p.flush();
+  assert.deepEqual(listedTexts(recent), ['Who opposes it?']);
+  assert.equal(p.answers.children[0].find('ask-message').textContent, line);
+  assert.equal(p.answers.children[0].find('ask-paragraph').textContent.startsWith('Two writers'), true);
+});
+
 // QA of v0.3, 8 November: a question with no words of its own ("Tell me more", "Why?") follows another one; the
 // server says so (follow_up) and keeps nothing, so the list does not take it either.
 test('a follow-up with no words of its own is answered but not listed', async () => {
