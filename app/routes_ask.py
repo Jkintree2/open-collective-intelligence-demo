@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from typing import Any
@@ -38,6 +39,19 @@ NO_SERVICE = "Asking needs the language model, which is not set up."
 ANSWERED_ON = "Answered on {day}. The database may have changed since, so ask again for an answer from what it holds now."
 ANSWER_CHANGED = ("A post this answer rested on has been edited or removed since, so the answer is no longer shown. "
                   "Ask again for an answer from what the database holds now.")
+# John, 13 November 2026: a question an issue's, solution's or piece of evidence's page cannot answer is put to the
+# whole database. WIDENED sits above that answer; PAGE_ONLY shows when the second call could not be made or failed.
+WIDENED = "This page holds nothing about this yet, so this answer is from the whole database."
+PAGE_ONLY = "This page does not say anything about this yet. Ask again from {place} to ask the whole database."
+WAIT = 45  # seconds for both calls together; the page waits 50 (ask.js, WAIT_FOR)
+SECOND_CALL_MIN = 10  # with less than this left of WAIT, the second call is not made
+
+
+def _now() -> float:
+    """The clock the two calls are timed by (a test sets it)."""
+    return time.monotonic()
+
+
 _QUESTION_ID = re.compile(r"[0-9a-f]{32}")
 
 # 30 questions a person a day and 300 for the site, held in this process: a restart (every deploy is one)
@@ -153,30 +167,66 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
     settings = config.get_settings()
     if not settings.llm_api_key:
         return 200, {"message": NO_SERVICE}
-    digest = getattr(ask, DIGESTS[about["kind"]])(about["key"]) if about else \
-        ask.record_digest(ask.lookup_question(question, earlier))
+    started = _now()
+    whole = lambda: ask.record_digest(ask.lookup_question(question, earlier))  # noqa: E731
+    digest = getattr(ask, DIGESTS[about["kind"]])(about["key"]) if about else whole()
     if digest is None:
         raise HTTPException(404)
     # Nothing to answer from: the empty line, with no call and no count. A question about a guiding
     # document can still be answered from the document (John, 28 October).
     # Questions about the site (the About page as D4) are for the readers Home is on for (the builder, 9 November).
     site_questions = settings.about_enabled and home.home_on(request)
-    if digest.empty and not ask.answerable_without_record(question, earlier, site_questions):
+    nothing = lambda held: held.empty and not ask.answerable_without_record(question, earlier, site_questions)  # noqa: E731
+    # John, 13 November 2026: an item with nothing to read sends its question straight to the whole database.
+    widened = False
+    if about and nothing(digest):
+        digest, widened = whole(), True
+    if nothing(digest):
         return 200, {"status": "empty", "message": ask.EMPTY, "paragraphs": [], "sources": [], "partial": None,
                      **named}
     if (refused := _take(reader_key(request))) is not None:
         return 429, {"message": refused}
+    request_id = getattr(request.state, "request_id", None)
     result = ask.answer(question, earlier, digest, settings, site_questions=site_questions,
-                        scope=about["kind"] if about else "record", request_id=getattr(request.state, "request_id", None))
+                        scope="record" if widened or not about else about["kind"], request_id=request_id)
+    message = result.message
+    if about and not widened and result.status == "empty":
+        result, widened, message = _widen(request, question, earlier, whole, nothing, started, settings,
+                                          site_questions, result)
+    elif widened and result.status == "answered":
+        message = WIDENED
     partial = ask.PARTIAL if result.partial else None
     question_id, follow_up = None, not ask.has_own_words(question)
     if result.status == "answered" and not follow_up:
-        on = {f"{about['kind']}_key": about["key"]} if about and about["kind"] != "issue" else {}
-        question_id = _keep(request, question, issue, {"paragraphs": result.paragraphs, "partial": partial,
-                                                       "sources": [_kept(source) for source in result.sources]}, **on)
-    return 200, {"status": result.status, "message": result.message, "paragraphs": result.paragraphs,
+        # An answer from the whole database is kept as a question about the whole database.
+        on = {f"{about['kind']}_key": about["key"]} if about and about["kind"] != "issue" and not widened else {}
+        question_id = _keep(request, question, None if widened else issue,
+                            {"paragraphs": result.paragraphs, "partial": partial,
+                             "sources": [_kept(source) for source in result.sources]}, **on)
+    return 200, {"status": result.status, "message": message, "paragraphs": result.paragraphs,
                  "sources": [_shown(source, settings) for source in result.sources],
-                 "partial": partial, **named, "question_id": question_id, "follow_up": follow_up}
+                 "partial": partial, **named, "question_id": question_id, "follow_up": follow_up,
+                 **({"widened": True} if widened and result.status == "answered" else {})}
+
+
+def _widen(request: Request, question: str, earlier: list[str], whole: Any, nothing: Any, started: float,
+           settings: config.Settings, site_questions: bool, first: ask.Answer) -> tuple[ask.Answer, bool, str | None]:
+    """John, 13 November 2026: the page's own answer came back empty, so the question is put to the whole database
+    in the time the page still waits. The answer to show, whether it is from the whole database, and its line:
+    WIDENED above an answer, the empty line when the whole database holds nothing either, and PAGE_ONLY when the
+    second call could not be made or failed. The question is counted once."""
+    page_only = PAGE_ONLY.format(place="Home" if home.home_on(request) else "the Ask page")
+    left = WAIT - (_now() - started)
+    if left < SECOND_CALL_MIN:
+        return first, False, page_only
+    digest = whole()
+    if nothing(digest):
+        return first, True, ask.EMPTY
+    second = ask.answer(question, earlier, digest, settings, site_questions=site_questions, scope="record",
+                        request_id=getattr(request.state, "request_id", None), timeout=min(ask.TIMEOUT, left))
+    if second.status == "answered":
+        return second, True, WIDENED
+    return (first, True, ask.EMPTY) if second.status == "empty" else (first, False, page_only)
 
 
 def _keep(request: Request, question: str, issue: str | None, answer: dict[str, Any], **on: str) -> str | None:

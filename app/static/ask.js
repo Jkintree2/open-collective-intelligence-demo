@@ -129,7 +129,8 @@
       earlier.set(box, asked.slice(-EARLIER));
     }
     // A follow-up with no words of its own ("Tell me more") is answered but kept nowhere, so it is not listed.
-    if (data.status === 'answered' && !data.follow_up) listed(box, question, data.question_id);
+    // An answer from the whole database (John, 13 November 2026) is not a question about this page's item.
+    if (data.status === 'answered' && !data.follow_up && !data.widened) listed(box, question, data.question_id);
     answers.prepend(answerBlock(question, data));
     return data;
   }

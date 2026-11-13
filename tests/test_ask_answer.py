@@ -533,3 +533,14 @@ def test_a_point_about_a_solution_takes_the_posts_that_proposed_it():
 def test_human_right_names_the_declaration(question):
     assert ask.names_document(question)
     assert ask.document_query(question) == 'udhr "universal declaration"'
+
+
+def test_the_second_call_of_a_widened_question_gets_the_time_it_is_given(monkeypatch):
+    """John, 13 November 2026: a question an item's page could not answer is asked again of the whole database,
+    in the time the page still waits."""
+    seen = {}
+    monkeypatch.setattr(ask, "call_model", lambda messages, settings, **kw: seen.update(kw))
+    ask.answer("Why?", [], DIGEST, SETTINGS)
+    assert seen["timeout"] == ask.TIMEOUT
+    ask.answer("Why?", [], DIGEST, SETTINGS, timeout=17.5)
+    assert seen["timeout"] == 17.5
