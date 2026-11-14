@@ -47,6 +47,9 @@ def asking(member_app, switch, monkeypatch):
         member_app.askers.append(person_key)
         return QUESTION_ID
     monkeypatch.setattr(graph_questions, "keep", keep)
+    member_app.unanswered = []
+    monkeypatch.setattr(graph_questions, "keep_unanswered", lambda text, now, *, person_key:
+                        member_app.unanswered.append((text, person_key)))
     monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10: list(member_app.listed))
     member_app.sign_in()
     switch(ask_enabled=True, llm_api_key="test-key")
@@ -337,14 +340,98 @@ def test_an_answered_question_is_kept_without_who_asked(asking):
     assert asking.kept == [("Why the veto?", "veto"), ("Who opposes it?", None)]
 
 
-def test_a_question_not_answered_is_not_kept(asking, monkeypatch, switch):
-    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("failed"))
-    post(asking.client, {"question": "Why?"})
+# John, 14 November 2026 ("Questions stored"): a question the database holds nothing on yet is kept too, for the
+# member who asked it, so it shows in their own lists as context for the statement they write next. It is never
+# listed for anyone else (Q48 leaves it out), and only the empty line keeps it: not a failure, nor the line that says
+# only the page was read.
+POTHOLES = "Are potholes in streets related to the Earth Charter?"
+NOTHING = ask.Digest("{}", {}, issue_keys=[])
+
+
+def test_an_empty_answer_is_kept_for_the_member_home_is_on_for(asking, monkeypatch, switch):
+    switch(home_enabled="on")
     monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("empty"))
-    post(asking.client, {"question": "Why?"})
+    body = post(asking.client, {"question": "Who fixes the potholes?"}).json()
+    assert body["status"] == "empty" and body["message"] == ask.EMPTY and body["question_id"] is None
+    assert asking.unanswered == [("Who fixes the potholes?", "acct:ada")] and asking.kept == []
+
+
+def test_an_empty_record_is_kept_too_with_no_call_and_no_count(asking, monkeypatch, switch):
+    switch(home_enabled="on")
+    monkeypatch.setattr(ask, "record_digest",
+                        lambda question, **kw: asking.calls.append(("record", question)) or NOTHING)
+    body = post(asking.client, {"question": "Who fixes the potholes?"}).json()
+    assert body["status"] == "empty" and body["message"] == ask.EMPTY
+    assert [call for call in asking.calls if call[0] == "answer"] == []
+    assert sum(len(uses) for uses in routes_ask.person_limit.uses.values()) == 0
+    assert asking.unanswered == [("Who fixes the potholes?", "acct:ada")]
+
+
+def test_an_empty_answer_is_not_kept_without_home(asking, monkeypatch, switch):
+    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("empty"))
+    post(asking.client, {"question": "Who fixes the potholes?"})
+    switch(home_enabled="preview", home_preview=("bob@example.org",))
+    post(asking.client, {"question": "Who fixes the potholes?"})
+    # The passphrase site never gets Home, so there is nobody to keep it for.
+    switch(home_enabled="on", accounts_enabled=False)
+    asking.client.post("/enter", data={"passphrase": "gate words", "next": "/"}, follow_redirects=False)
+    assert post(asking.client, {"question": "Who fixes the potholes?"}).json()["message"] == ask.EMPTY
+    assert asking.unanswered == [] and asking.kept == []
+
+
+def test_a_failed_answer_is_not_kept(asking, monkeypatch, switch):
+    switch(home_enabled="on")
+    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("failed"))
+    assert post(asking.client, {"question": "Who fixes the potholes?"}).json()["status"] == "failed"
     switch(llm_api_key="")
-    post(asking.client, {"question": "Why?"})
+    post(asking.client, {"question": "Who fixes the potholes?"})
     post(asking.client, {"question": ""})
+    assert asking.unanswered == [] and asking.kept == []
+
+
+def test_the_page_only_line_is_not_kept(asking, monkeypatch, switch):
+    switch(home_enabled="on")
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ask.Answer("failed")})
+    body = post(asking.client, {"question": POTHOLES, "issue": "veto"}).json()
+    assert body["message"] == PAGE_ONLY.replace("the Ask page", "Home")
+    assert asking.unanswered == [] and asking.kept == []
+
+
+def test_tell_me_more_with_no_answer_is_not_kept(asking, monkeypatch, switch):
+    switch(home_enabled="on")
+    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("empty"))
+    body = post(asking.client, {"question": "Tell me more", "earlier": ["Who fixes the potholes?"]}).json()
+    assert body["message"] == ask.EMPTY
+    monkeypatch.setattr(ask, "record_digest", lambda question, **kw: NOTHING)
+    assert post(asking.client, {"question": "Why?"}).json()["message"] == ask.EMPTY
+    assert asking.unanswered == []
+
+
+def test_the_empty_line_still_shows_when_the_question_cannot_be_kept(asking, monkeypatch, switch, caplog):
+    switch(home_enabled="on")
+    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("empty"))
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("asleep")
+    monkeypatch.setattr(graph_questions, "keep_unanswered", broken)
+    response = post(asking.client, {"question": "Who fixes the potholes?"})
+    assert response.status_code == 200
+    assert response.json()["message"] == ask.EMPTY and response.json()["question_id"] is None
+    assert "question_not_kept" in caplog.text and "potholes" not in caplog.text
+    assert '"kept": "unanswered"' in caplog.text  # a log reader tells it from an answered one
+
+
+def test_an_empty_answer_on_an_issue_page_is_kept_for_the_whole_database(asking, monkeypatch, switch):
+    """The empty line shows only once the whole database was read (John, 13 November), so the question is the whole
+    database's, as an answer found that way is. keep_unanswered takes no item key: it always keeps it so."""
+    switch(home_enabled="on")
+    _answers(monkeypatch, asking, {"issue": ask.Answer("empty"), "record": ask.Answer("empty")})
+    assert post(asking.client, {"question": POTHOLES, "issue": "veto"}).json()["message"] == ask.EMPTY
+    # An issue with nothing to read goes straight to the whole database, which holds nothing either.
+    monkeypatch.setattr(ask, "issue_digest", lambda key, **kw: NOTHING)
+    monkeypatch.setattr(ask, "record_digest", lambda question, **kw: NOTHING)
+    assert post(asking.client, {"question": "Who fixes the potholes?", "issue": "veto"}).json()["message"] == ask.EMPTY
+    assert asking.unanswered == [(POTHOLES, "acct:ada"), ("Who fixes the potholes?", "acct:ada")]
     assert asking.kept == []
 
 
@@ -355,6 +442,7 @@ def test_an_answer_still_shows_when_the_question_cannot_be_kept(asking, monkeypa
     body = post(asking.client, {"question": "Why the veto?"}).json()
     assert body["status"] == "answered" and body["question_id"] is None
     assert "question_not_kept" in caplog.text and "Why the veto?" not in caplog.text
+    assert '"kept": "answered"' in caplog.text
 
 
 # John, 30 October: "Each item in the list of questions asked definitely needs to be a link to the answer."

@@ -95,6 +95,9 @@ def member_app(monkeypatch):
     # them in `own_questions`.
     own_questions = []
     monkeypatch.setattr("app.graph_questions.mine", lambda me, limit: own_questions[:limit])
+    # Q61: the member's own questions with an id and no answer, for their Recent posts on Home.
+    monkeypatch.setattr("app.graph_questions.mine_unanswered", lambda me, limit: [
+        row for row in own_questions if row["id"] and not row["answered"]][:limit])
     # The member's own stances (Q58), for "You approve this already."; a test that needs some puts them in `held`.
     held = {}
     monkeypatch.setattr("app.graph_stances.held_stances", lambda me: dict(held) if me else {})

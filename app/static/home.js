@@ -36,7 +36,9 @@
     went('question');
     const ticket = ++sent;
     const data = await window.ociAsk(box, question);
-    if (data && data.status === 'answered') window.oci.refreshLists().catch(() => {});  // a reload shows them anyway
+    // An answered question, and one the database holds nothing on yet (kept for its asker, John, 14 November), show
+    // in Recent posts at once; a reload shows them anyway.
+    if (data && (data.status === 'answered' || data.status === 'empty')) window.oci.refreshLists().catch(() => {});
     if (ticket !== sent) return;  // sent the other way meanwhile: the reading owns the box now
     if (data && data.status && text.value.trim() === question) text.value = '';  // ready for "Tell me more"
   }
@@ -75,6 +77,7 @@
   document.addEventListener('click', event => {
     const again = event.target.closest && event.target.closest('.home-again');
     if (!again) return;
+    event.preventDefault();  // its form takes it to Home; here it goes straight in the box
     text.value = again.textContent;
     text.focus();
   });

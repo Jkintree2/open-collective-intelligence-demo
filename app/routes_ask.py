@@ -4,8 +4,9 @@ GET /ask is the page for the whole record; the box on each issue page is the sam
 key. ask.js posts to /api/ask and shows the answer in place; without JavaScript the form posts to /ask
 and the answer comes back on the Ask page. A question that was answered is kept, without who asked, for
 the list under the box (John, 28 October), with the answer it got, which GET /ask/answers/<id> shows while
-the posts it cites are as they were (John, 30 October). Digests live only in the request (the browser holds
-the visit's earlier questions)."""
+the posts it cites are as they were (John, 30 October). One the whole database holds nothing on yet is kept for
+the member Home is on for who asked it, for their own lists only (John, 14 November). Digests live only in the
+request (the browser holds the visit's earlier questions)."""
 
 from __future__ import annotations
 
@@ -182,6 +183,7 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
     if about and nothing(digest):
         digest, widened = whole(), True
     if nothing(digest):
+        _keep_unanswered(request, question)
         return 200, {"status": "empty", "message": ask.EMPTY, "paragraphs": [], "sources": [], "partial": None,
                      **named}
     if (refused := _take(reader_key(request))) is not None:
@@ -203,6 +205,8 @@ def run(request: Request, question: str, earlier: list[str], issue: str | None,
         question_id = _keep(request, question, None if widened else issue,
                             {"paragraphs": result.paragraphs, "partial": partial,
                              "sources": [_kept(source) for source in result.sources]}, **on)
+    elif message == ask.EMPTY:
+        _keep_unanswered(request, question)
     return 200, {"status": result.status, "message": message, "paragraphs": result.paragraphs,
                  "sources": [_shown(source, settings) for source in result.sources],
                  "partial": partial, **named, "question_id": question_id, "follow_up": follow_up,
@@ -237,9 +241,27 @@ def _keep(request: Request, question: str, issue: str | None, answer: dict[str, 
     try:
         return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer, person_key=asker, **on)
     except Exception as exc:  # noqa: BLE001
-        log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
-                                "error": type(exc).__name__}))
+        _not_kept(request, "answered", exc)
         return None
+
+
+def _keep_unanswered(request: Request, question: str) -> None:
+    """John, 14 November 2026 ("Questions stored"): a question the whole database holds nothing on yet is kept for the
+    member who asked it, as context for the statement they write next, and shown only on their own lists. Only with
+    Home on for them (otherwise nobody would ever see it), and never one with no words of its own. The empty line is
+    shown whatever happens here."""
+    if not ask.has_own_words(question) or not home.home_on(request):
+        return
+    try:
+        graph_questions.keep_unanswered(question, datetime.now(timezone.utc), person_key=request.state.member.key)
+    except Exception as exc:  # noqa: BLE001
+        _not_kept(request, "unanswered", exc)
+
+
+def _not_kept(request: Request, kept: str, exc: Exception) -> None:
+    """A question that could not be kept, `kept` saying which way ("answered" or "unanswered"); never its words."""
+    log.warning(json.dumps({"event": "question_not_kept", "kept": kept,
+                            "request_id": getattr(request.state, "request_id", None), "error": type(exc).__name__}))
 
 
 def _still_holds(answer: dict[str, Any], asked_at: datetime) -> bool:

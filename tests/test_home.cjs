@@ -193,9 +193,17 @@ test('an answered question has the server draw the feed again', async () => {
   assert.deepEqual(page.fragments, ['/feed']);  // John, 9 November: Recent posts is Home's one list
 });
 
-test('a question with no answer draws nothing again', async () => {
+// John, 14 November ("Questions stored"): a question the database holds nothing on is kept for the member who asked
+// it, so their Recent posts shows it at once, as after an answered one. A failed answer keeps nothing.
+test('a question the database holds nothing on has the server draw the feed again', async () => {
   const page = await home();
-  await answered(page, {status: 'empty', paragraphs: [], sources: []});
+  await answered(page, {status: 'empty', paragraphs: [], sources: [], question_id: null});
+  assert.deepEqual(page.fragments, ['/feed']);
+});
+
+test('a failed answer draws nothing again', async () => {
+  const page = await home();
+  await answered(page, {status: 'failed', paragraphs: [], sources: []});
   assert.deepEqual(page.fragments, []);
 });
 
@@ -211,8 +219,12 @@ test('the Write page and Home both draw only the feed again', async () => {
 test('a question with no answer link in Recent posts is a button that refills the box', async () => {
   const page = await home();
   const button = Object.assign(new Element(), {tag: 'button', className: 'home-again', textContent: 'Is the veto fair?'});
-  for (const listener of page.documentListeners.click) listener({target: {closest: s => (s === '.home-again' ? button : null)}});
+  let prevented = false;
+  // The button submits its own small form to /home, for My posts and for Home without JavaScript; here it must not.
+  const event = {target: {closest: s => (s === '.home-again' ? button : null)}, preventDefault: () => { prevented = true; }};
+  for (const listener of page.documentListeners.click) listener(event);
   assert.equal(page.get('text').value, 'Is the veto fair?');
+  assert.equal(prevented, true);
 });
 
 // Since John's 7 November email nothing is kept on the device: ask.js never touches the browser's storage.

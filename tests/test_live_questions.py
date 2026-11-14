@@ -107,3 +107,116 @@ def test_without_a_member_nobody_is_linked(questions):
                                              database_=questions.database()).records[0]["n"]
     assert total == 0 and graph_questions.mine("acct:ada", 10) == []
     assert len(graph_questions.recent()) == 2
+
+
+# John, 14 November 2026 ("Questions stored"): a question the database holds nothing on yet is kept for the member
+# who asked it (Q60), whole database, with an id and no answer, and only their own list (Q57) shows it; the shared
+# lists (Q48) leave it out until it is answered. A question kept before 30 October (no id, no answer) still lists.
+def question_nodes(questions):
+    return questions.driver().execute_query(
+        "MATCH (q:Question) RETURN q.key AS key, q.id AS id, q.answer AS answer, q.asked AS asked, "
+        "q.asked_at AS asked_at, q.created_at AS created_at, q.issue_key AS issue_key, "
+        "q.solution_key AS solution_key, q.evidence_key AS evidence_key",
+        database_=questions.database()).records
+
+
+def asked_at(questions, key):
+    return [record["at"] for record in questions.driver().execute_query(
+        "MATCH (:Person {key: $key})-[a:ASKED]->(:Question) RETURN a.asked_at AS at", key=key,
+        database_=questions.database()).records]
+
+
+def test_an_unanswered_question_is_the_askers_alone(questions):
+    member(questions, "acct:ada")
+    member(questions, "acct:bob")
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW, person_key="acct:ada")
+    mine = graph_questions.mine("acct:ada", 10)
+    assert [(row["text"], row["answered"], row["asked_at"], row["issue_key"]) for row in mine] == \
+        [("Who fixes the potholes?", False, NOW, None)]
+    assert re.fullmatch(r"[0-9a-f]{32}", mine[0]["id"])
+    assert graph_questions.recent() == [] and graph_questions.mine("acct:bob", 10) == []
+    [node] = question_nodes(questions)
+    assert (node["key"], node["answer"], node["asked"], node["created_at"], node["asked_at"]) == \
+        ("|who fixes the potholes", None, 1, NOW, NOW)
+    assert node["issue_key"] is None and node["solution_key"] is None and node["evidence_key"] is None
+    assert graph_questions.one(node["id"])["answer"] is None  # no answer page (routes_ask: not found)
+
+
+def test_asking_it_again_makes_no_second_question(questions):
+    member(questions, "acct:ada")
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW, person_key="acct:ada")
+    [before] = question_nodes(questions)
+    graph_questions.keep_unanswered("who fixes the  potholes", NOW + timedelta(hours=1), person_key="acct:ada")
+    [after] = question_nodes(questions)
+    assert after == before  # the node is left exactly as it was
+    assert asked_links(questions, "acct:ada") == 1 and asked_at(questions, "acct:ada") == [NOW + timedelta(hours=1)]
+    assert graph_questions.mine("acct:ada", 10)[0]["asked_at"] == NOW + timedelta(hours=1)
+
+
+def test_an_empty_asking_leaves_an_answered_question_as_it_was(questions):
+    member(questions, "acct:ada")
+    member(questions, "acct:bob")
+    qid = graph_questions.keep("Who pays?", None, NOW, FIRST, person_key="acct:bob")
+    [before] = question_nodes(questions)
+    graph_questions.keep_unanswered("Who pays?", NOW + timedelta(hours=2), person_key="acct:ada")
+    [after] = question_nodes(questions)
+    assert after == before and after["id"] == qid and graph_questions.one(qid)["answer"] == FIRST
+    assert [(row["id"], row["answered"]) for row in graph_questions.mine("acct:ada", 10)] == [(qid, True)]
+    assert asked_at(questions, "acct:ada") == [NOW + timedelta(hours=2)]
+    assert [row["id"] for row in graph_questions.recent()] == [qid]
+
+
+def test_once_answered_it_is_listed_for_everyone(questions):
+    member(questions, "acct:ada")
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW, person_key="acct:ada")
+    unanswered = graph_questions.mine("acct:ada", 10)[0]["id"]
+    qid = graph_questions.keep("Who fixes the potholes?", None, NOW + timedelta(hours=1), FIRST)
+    assert qid == unanswered  # the same question, with the id it had, gains its answer
+    [row] = graph_questions.recent()
+    assert (row["id"], row["answered"], row["asked_at"]) == (qid, True, NOW + timedelta(hours=1))
+    assert graph_questions.mine("acct:ada", 10)[0]["answered"] is True
+
+
+def test_a_question_kept_before_answers_were_is_still_listed(questions):
+    questions.driver().execute_query(
+        "CREATE (:Question {key: '|who pays', text: 'Who pays?', issue_key: null, created_at: datetime($now), "
+        "asked_at: datetime($now), asked: 1})", now=NOW.isoformat(), database_=questions.database())
+    member(questions, "acct:ada")
+    graph_questions.keep_unanswered("Is it fair?", NOW + timedelta(hours=1), person_key="acct:ada")
+    assert [(row["text"], row["id"], row["answered"]) for row in graph_questions.recent()] == \
+        [("Who pays?", None, False)]
+
+
+def test_without_the_member_nothing_is_kept(questions):
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW, person_key="acct:nobody")
+    graph_questions.keep_unanswered("   ", NOW, person_key="acct:nobody")
+    assert question_nodes(questions) == []
+
+
+# Review of 4e357cb: Home reads a member's own unanswered questions in one read (Q61): only theirs, only those with an
+# id and no answer (a question kept before 30 October, with neither, stays out), newest first by their own time of
+# asking, at most $limit, in the same row shape as Q48 and Q57.
+def test_q61_reads_only_the_members_own_unanswered_questions_newest_first(questions):
+    member(questions, "acct:ada")
+    member(questions, "acct:bob")
+    questions.driver().execute_query(
+        "MATCH (p:Person {key: 'acct:ada'}) CREATE (p)-[:ASKED {asked_at: datetime($late)}]->"
+        "(:Question {key: '|who pays', text: 'Who pays?', issue_key: null, created_at: datetime($now), "
+        "asked_at: datetime($now), asked: 1})",
+        now=NOW.isoformat(), late=(NOW + timedelta(hours=9)).isoformat(), database_=questions.database())
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW + timedelta(hours=1), person_key="acct:ada")
+    graph_questions.keep("Why the veto?", "veto", NOW + timedelta(hours=8), FIRST, person_key="acct:ada")
+    graph_questions.keep_unanswered("Where are the bins?", NOW + timedelta(hours=3), person_key="acct:ada")
+    graph_questions.keep_unanswered("Is it fair?", NOW + timedelta(hours=7), person_key="acct:bob")
+    # Bob asks Ada's first one too, later; her own time of asking it is what orders her list.
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW + timedelta(hours=6), person_key="acct:bob")
+    rows = graph_questions.mine_unanswered("acct:ada", 10)
+    assert [(row["text"], row["answered"], row["asked_at"]) for row in rows] == \
+        [("Where are the bins?", False, NOW + timedelta(hours=3)),
+         ("Who fixes the potholes?", False, NOW + timedelta(hours=1))]
+    assert set(rows[0]) == set(graph_questions.mine("acct:ada", 1)[0])
+    assert all(re.fullmatch(r"[0-9a-f]{32}", row["id"]) for row in rows)
+    assert [row["text"] for row in graph_questions.mine_unanswered("acct:ada", 1)] == ["Where are the bins?"]
+    assert [row["text"] for row in graph_questions.mine_unanswered("acct:bob", 10)] == \
+        ["Is it fair?", "Who fixes the potholes?"]
+    assert graph_questions.mine_unanswered("acct:nobody", 10) == []

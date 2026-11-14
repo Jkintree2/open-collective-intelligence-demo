@@ -67,7 +67,9 @@ def test_a_question_asked_on_a_solution_or_evidence_names_it(homepage, monkeypat
 def test_a_question_kept_without_an_answer_link_goes_back_in_the_box(homepage, monkeypatch):
     monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: [question("Who pays?", 5, qid=None)])
     listed = feed(draw(homepage.client, "/"))
-    assert '<p class="statement"><button type="button" class="home-again">Who pays?</button></p>' in listed
+    assert ('<form class="statement" method="post" action="/home"><input type="hidden" name="again" value="1">'
+            '<input type="hidden" name="text" value="Who pays?"><button type="submit" class="home-again">Who pays?</button>'
+            '</form>') in listed
 
 
 def test_the_mixed_list_holds_as_many_as_the_feed(homepage, monkeypatch):
@@ -245,3 +247,38 @@ def test_without_javascript_home_carries_the_item_on(homepage):
     page = home(homepage.client, start="1", text="Why the veto?", issue="veto").text
     assert '<input type="hidden" name="issue" value="veto">' in compose_form(page)
     assert 'type="hidden" name="issue"' not in compose_form(draw(homepage.client, "/"))
+
+
+# Review of 4e357cb: a member's own unanswered questions come from one read, Q61 (an id and no answer, newest first
+# by the member's own time of asking, at most as many as the list), not from Q57 read further and further back.
+def test_home_reads_the_members_unanswered_questions_once(monkeypatch):
+    from app import home_lists
+    reads = []
+    shared = [question("Who pays?", 20)]
+    unanswered = question("Who fixes the potholes?", 10, qid="cd" * 16, answered=False)
+    monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: shared[:limit])
+    monkeypatch.setattr(graph_questions, "mine", lambda *a, **kw: pytest.fail("Home does not read Q57"))
+    monkeypatch.setattr(graph_questions, "mine_unanswered",
+                        lambda person_key, limit: reads.append((person_key, limit)) or [unanswered])
+    shown = home_lists.everyones_questions(5, "acct:ada")
+    assert [(row["text"], row["kind"]) for row in shown] == [("Who pays?", "question"),
+                                                             ("Who fixes the potholes?", "question")]
+    assert reads == [("acct:ada", 5)]
+
+
+def test_without_a_member_no_unanswered_questions_are_read(monkeypatch):
+    from app import home_lists
+    monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: [])
+    monkeypatch.setattr(graph_questions, "mine_unanswered", lambda *a, **kw: pytest.fail("nobody to read for"))
+    assert home_lists.everyones_questions(5) == []
+
+
+def test_a_failed_read_of_ones_own_leaves_the_shared_questions(monkeypatch, caplog):
+    from app import home_lists
+
+    def broken(person_key, limit):
+        raise RuntimeError("down")
+    monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: [question("Who pays?", 20)])
+    monkeypatch.setattr(graph_questions, "mine_unanswered", broken)
+    assert [row["text"] for row in home_lists.everyones_questions(5, "acct:ada")] == ["Who pays?"]
+    assert "questions_not_read" in caplog.text
