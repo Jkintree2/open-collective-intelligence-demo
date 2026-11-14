@@ -418,6 +418,7 @@ def test_the_empty_line_still_shows_when_the_question_cannot_be_kept(asking, mon
     assert response.status_code == 200
     assert response.json()["message"] == ask.EMPTY and response.json()["question_id"] is None
     assert "question_not_kept" in caplog.text and "potholes" not in caplog.text
+    assert '"kept": "unanswered"' in caplog.text  # a log reader tells it from an answered one
 
 
 def test_an_empty_answer_on_an_issue_page_is_kept_for_the_whole_database(asking, monkeypatch, switch):
@@ -441,6 +442,7 @@ def test_an_answer_still_shows_when_the_question_cannot_be_kept(asking, monkeypa
     body = post(asking.client, {"question": "Why the veto?"}).json()
     assert body["status"] == "answered" and body["question_id"] is None
     assert "question_not_kept" in caplog.text and "Why the veto?" not in caplog.text
+    assert '"kept": "answered"' in caplog.text
 
 
 # John, 30 October: "Each item in the list of questions asked definitely needs to be a link to the answer."

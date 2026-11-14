@@ -241,8 +241,7 @@ def _keep(request: Request, question: str, issue: str | None, answer: dict[str, 
     try:
         return graph_questions.keep(question, issue, datetime.now(timezone.utc), answer, person_key=asker, **on)
     except Exception as exc:  # noqa: BLE001
-        log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
-                                "error": type(exc).__name__}))
+        _not_kept(request, "answered", exc)
         return None
 
 
@@ -256,8 +255,13 @@ def _keep_unanswered(request: Request, question: str) -> None:
     try:
         graph_questions.keep_unanswered(question, datetime.now(timezone.utc), person_key=request.state.member.key)
     except Exception as exc:  # noqa: BLE001
-        log.warning(json.dumps({"event": "question_not_kept", "request_id": getattr(request.state, "request_id", None),
-                                "error": type(exc).__name__}))
+        _not_kept(request, "unanswered", exc)
+
+
+def _not_kept(request: Request, kept: str, exc: Exception) -> None:
+    """A question that could not be kept, `kept` saying which way ("answered" or "unanswered"); never its words."""
+    log.warning(json.dumps({"event": "question_not_kept", "kept": kept,
+                            "request_id": getattr(request.state, "request_id", None), "error": type(exc).__name__}))
 
 
 def _still_holds(answer: dict[str, Any], asked_at: datetime) -> bool:

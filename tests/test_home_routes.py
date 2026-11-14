@@ -192,8 +192,11 @@ def test_text_never_in_redirect_url(homing):
 
 
 # John, 14 November 2026 ("Questions stored"): a question the database holds nothing on yet shows in the asker's own
-# Recent posts and My posts, as context for the statement written next, and in nobody else's. Q48 leaves it out of
-# the shared lists, so everyone's questions come back empty here; Q57 reads the asker's own.
+# Recent posts and My posts, as context for the statement written next, and in nobody else's. Q57 reads the asker's
+# own, by the reader's key, so another member's Home and My posts never get it. Q48 leaving it out of the shared lists
+# (the list under the Ask box, every item page, everyone's Recent posts) is Cypher, so it is checked against the test
+# database (test_live_questions.py, test_an_unanswered_question_is_the_askers_alone); here everyone's questions are
+# stubbed empty and /ask is not asserted, since with that stub it could not fail.
 def test_an_unanswered_question_shows_in_the_askers_own_lists_only(homing, pages, monkeypatch):
     asked = {}
 
@@ -213,5 +216,5 @@ def test_an_unanswered_question_shows_in_the_askers_own_lists_only(homing, pages
         page = homing.client.get(path).text
         assert again in page and "/ask/answers/" + "cd" * 16 not in page, path
     homing.sign_in(key="acct:bob", name="Bob Tester", email="bob@example.org")
-    for path in ("/", "/my-posts", "/ask"):
+    for path in ("/", "/my-posts"):
         assert "potholes" not in homing.client.get(path).text, path

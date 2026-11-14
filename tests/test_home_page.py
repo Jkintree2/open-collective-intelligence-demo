@@ -98,6 +98,21 @@ def test_questions_are_in_recent_posts_not_a_list_of_their_own(homepage, monkeyp
     assert page.index('id="feed"') < page.index(f'href="/ask/answers/{"ab" * 16}">Why do people oppose the carbon tax?')
 
 
+def test_own_unanswered_question_is_a_button_not_a_link(homepage, monkeypatch):
+    """John, 14 November ("Questions stored"): a question of the member's own that the database held nothing on
+    shows in their Recent posts as the button that puts it back in the box, never as a link to an answer."""
+    from datetime import datetime, timezone
+    mine = [{"text": "Who fixes the potholes?", "issue_key": None, "issue_name": None, "id": "cd" * 16,
+             "answered": False, "solution_key": None, "solution_name": None, "evidence_key": None,
+             "evidence_name": None, "asked_at": datetime(2026, 11, 14, 18, 0, tzinfo=timezone.utc)}]
+    monkeypatch.setattr("app.graph_questions.recent", lambda issue, limit, **on: [])
+    monkeypatch.setattr("app.graph_questions.mine", lambda person_key, limit: mine)
+    page = draw(homepage.client, "/")
+    assert page.index('id="feed"') < page.index(
+        '<button type="button" class="home-again">Who fixes the potholes?</button>')
+    assert "/ask/answers/" not in page
+
+
 def test_gate_reader_has_no_list(live_like, switch):
     from test_phase3_switches import gate_in
     gate_in(live_like, switch, **ALL_ON, home_enabled="on")

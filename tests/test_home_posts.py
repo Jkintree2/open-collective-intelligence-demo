@@ -245,3 +245,49 @@ def test_without_javascript_home_carries_the_item_on(homepage):
     page = home(homepage.client, start="1", text="Why the veto?", issue="veto").text
     assert '<input type="hidden" name="issue" value="veto">' in compose_form(page)
     assert 'type="hidden" name="issue"' not in compose_form(draw(homepage.client, "/"))
+
+
+# Task 1's review: Q57 is cut to the list's length before the unanswered rows are picked out, so newer rows of the
+# member's own could push an unanswered one out of their Recent posts although the mixed list had room for it.
+def _own(rows, reads):
+    def mine(person_key, limit):
+        reads.append(limit)
+        return rows[:limit]
+    return mine
+
+
+def test_an_unanswered_question_reaches_recent_posts_past_newer_rows_no_list_shows(monkeypatch):
+    from app import home_lists
+    tell_me_more = [question("Tell me more", 100 - n, qid=f"{n:032x}") for n in range(5)]  # kept before 9 November
+    unanswered = question("Who fixes the potholes?", 10, qid="cd" * 16, answered=False)
+    reads = []
+    monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: tell_me_more[:limit])
+    monkeypatch.setattr(graph_questions, "mine", _own([*tell_me_more, unanswered], reads))
+    shown = home_lists.mixed([], home_lists.everyones_questions(5, "acct:ada"), 5)
+    assert [row["text"] for row in shown] == ["Who fixes the potholes?"]
+    assert reads[0] == 5 and len(reads) > 1  # read further only because the first read was full
+
+
+def test_q57_is_not_read_further_than_the_list_could_show(monkeypatch):
+    """Five shared questions newer than everything else fill a list of five: the member's older unanswered one could
+    not be shown, so Q57 is read once."""
+    from app import home_lists
+    shared = [question(f"Shared {n}?", 100 - n, qid=f"{n:032x}") for n in range(5)]
+    own = [question(f"Mine {n}?", 50 - n, qid=f"{n + 10:032x}") for n in range(5)]
+    reads = []
+    monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: shared[:limit])
+    monkeypatch.setattr(graph_questions, "mine",
+                        _own([*own, question("Who fixes the potholes?", 10, qid="cd" * 16, answered=False)], reads))
+    shown = home_lists.mixed([], home_lists.everyones_questions(5, "acct:ada"), 5)
+    assert [row["text"] for row in shown] == [f"Shared {n}?" for n in range(5)]
+    assert reads == [5]
+
+
+def test_q57_is_read_once_when_it_holds_less_than_asked(monkeypatch):
+    from app import home_lists
+    reads = []
+    monkeypatch.setattr(graph_questions, "recent", lambda issue, limit, **on: [])
+    monkeypatch.setattr(graph_questions, "mine",
+                        _own([question("Who fixes the potholes?", 10, qid="cd" * 16, answered=False)], reads))
+    assert [row["text"] for row in home_lists.everyones_questions(5, "acct:ada")] == ["Who fixes the potholes?"]
+    assert reads == [5]
