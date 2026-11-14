@@ -6,7 +6,7 @@ Since v0.3 (John, 7 November: "My posts" lists his questions too) a member for w
 question they asked (ASKED, one per member and question, with when they last asked it), so their own list holds it
 on every device; it is never shown with anyone's name. Since John's "Questions stored" (14 November 2026) a question
 the database could not answer yet is kept too, for that member alone: a whole-database Question with an id and no
-answer, which only their own lists (Q57) show until it is answered; the shared lists (Q48) leave it out. One kept
+answer, which only their own lists (Q57, and Q61 for Home) show until it is answered; the shared lists (Q48) leave it out. One kept
 before answers were (30 October) has neither an id nor an answer."""
 
 import json
@@ -48,7 +48,7 @@ MERGE (p)-[a:ASKED]->(q)
 SET a.asked_at = datetime($now)
 """
 
-# Q48 and Q57 end alike: after `WITH q, <when> AS asked_at`, each question with the name of what it was asked on
+# Q48, Q57 and Q61 end alike: after `WITH q, <when> AS asked_at`, each question with the name of what it was asked on
 # while that still exists, newest first.
 _QUESTION_ROWS = """
 OPTIONAL MATCH (i:Issue {key: q.issue_key})
@@ -75,6 +75,15 @@ WITH q, q.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
 # time of asking, not the question's.
 MY_QUESTIONS = """
 MATCH (:Person {key: $person_key})-[a:ASKED]->(q:Question)
+WITH q, a.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
+""" + _QUESTION_ROWS
+
+# Q61 (14 November 2026). One member's own questions with an id and no answer (kept for them by Q60), for their
+# Recent posts on Home, which Q48 leaves them out of: by the member's own time of asking, newest first. A question
+# kept before answers were (neither an id nor an answer) is not one of them.
+MY_UNANSWERED = """
+MATCH (:Person {key: $person_key})-[a:ASKED]->(q:Question)
+WHERE q.id IS NOT NULL AND q.answer IS NULL
 WITH q, a.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
 """ + _QUESTION_ROWS
 
@@ -132,6 +141,11 @@ def recent(issue_key: str | None = None, limit: int = RECENT, *, solution_key: s
 def mine(person_key: str, limit: int) -> list[dict[str, Any]]:
     """Q57: the questions this member asked, newest first."""
     return _read(MY_QUESTIONS, person_key=person_key, limit=limit)
+
+
+def mine_unanswered(person_key: str, limit: int) -> list[dict[str, Any]]:
+    """Q61: this member's own questions the database could not answer yet, newest first."""
+    return _read(MY_UNANSWERED, person_key=person_key, limit=limit)
 
 
 def one(question_id: str) -> dict[str, Any] | None:

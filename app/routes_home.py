@@ -3,7 +3,8 @@ POST /api/home/kind what a text is, then starts the reading or the answer in pla
 to /home: a statement is posted as POST /posts posts it, a question is answered as POST /ask answers it (on the Ask
 page), and when the site can't tell, Home comes back with the text and two buttons. The box on Issues, My statements
 and About, and on an issue's, a solution's or a piece of evidence's page (with that item), posts to /home with start
-set, and Home carries on with the text. With ASK_ENABLED off, every text is a
+set, and Home carries on with the text. A question with no answer link posts to /home with again set, and Home puts
+it back in its box. With ASK_ENABLED off, every text is a
 statement."""
 
 from __future__ import annotations
@@ -42,10 +43,14 @@ def kind(data: KindRequest) -> dict[str, str]:
 def home_form(request: Request, text: str = Form("", max_length=4 * TEXT_MAX), kind: str = Form("", max_length=20),
               anonymous: str | None = Form(None), start: str = Form("", max_length=5),
               issue: str = Form("", max_length=200), solution: str = Form("", max_length=400),
-              evidence: str = Form("", max_length=400)) -> Response:
+              evidence: str = Form("", max_length=400), again: str = Form("", max_length=5)) -> Response:
     """The item fields come from the box on an item's page (John, 9 November), and Home's own form carries them on:
-    Home writes and asks about that item, with or without JavaScript."""
+    Home writes and asks about that item, with or without JavaScript. `again` comes from a question with no answer
+    link in Recent posts or My posts (_question.html): Home with the question back in its box, asked or posted only
+    when the reader sends it, as a tap on Home does with home.js."""
     from app import main, routes_ask  # main loads the routers last
+    if again:
+        return main._render_index(request, text=text[:TEXT_MAX].strip())
     if start:
         return main._render_index(request, text=text[:TEXT_MAX].strip(), start=True,
                                   about=main.about_for(issue, solution, evidence))

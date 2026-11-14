@@ -2,7 +2,7 @@
 mixed newest first, and "My posts" (My statements, renamed while Home is on) holds the member's own the same way.
 Everyone's questions come from Q48; a member's own from Q57, which reads who asked
 (linked since v0.3, so it holds on every device). A member's own unanswered questions, which Q48 leaves out, join
-their Recent posts from Q57, read as far as the mixed list could reach (John, 14 November 2026). A question row
+their Recent posts from Q61, in one read (John, 14 November 2026). A question row
 takes its time of asking as `created_at` and `kind` "question", so it sorts and is drawn beside a post
 (main._decorate_posts gives both their times). A failed read of the questions is logged and leaves the statements
 alone, and a question with no words of its own ("Tell me more", kept before 9 November) is left out of every list,
@@ -37,33 +37,13 @@ def _as_posts(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def everyones_questions(limit: int, person_key: str | None = None) -> list[dict[str, Any]]:
-    """Q48's questions; with `person_key`, the reader's own unanswered ones too (Q57: an id and no answer, which
+    """Q48's questions; with `person_key`, the reader's own unanswered ones too (Q61: an id and no answer, which
     Q48 leaves out), so a question the database held nothing on shows in its asker's Recent posts and nobody else's
     (John, 14 November 2026)."""
     rows = listed(graph_questions.recent, None, limit)
     if person_key:
-        rows += _own_unanswered(person_key, limit, rows)
+        rows += listed(graph_questions.mine_unanswered, person_key, limit)
     return _as_posts(rows)
-
-
-def _own_unanswered(person_key: str, limit: int, shared: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """The reader's own unanswered questions that the mixed list could show. Q57 is cut by all of the member's
-    questions, answered ones and ones no list shows ("Tell me more") included, so a full read is read again, twice as
-    far, until Q57 holds no more or what it leaves out is older than `limit` of the shared questions already in hand,
-    below which the mixed list never reaches. A member's own questions are few, so this ends quickly."""
-    times = sorted((_when(row) for row in shared), reverse=True)
-    floor = times[limit - 1] if len(times) >= limit else None
-    asked = limit
-    while True:
-        try:
-            rows = graph_questions.mine(person_key, asked)
-        except Exception as exc:  # noqa: BLE001
-            log.warning(json.dumps({"event": "questions_not_read", "error": type(exc).__name__}))
-            return []
-        if len(rows) < asked or (floor is not None and _when(rows[-1]) < floor):
-            break
-        asked *= 2
-    return [row for row in rows if row["id"] and not row["answered"] and ask.has_own_words(row["text"])]
 
 
 def my_questions(person_key: str, limit: int) -> list[dict[str, Any]]:
@@ -72,10 +52,6 @@ def my_questions(person_key: str, limit: int) -> list[dict[str, Any]]:
 
 def _aware(at: datetime | None) -> datetime:
     return (at if at.tzinfo else at.replace(tzinfo=timezone.utc)) if at else EARLIEST
-
-
-def _when(row: dict[str, Any]) -> datetime:
-    return _aware(row.get("asked_at"))
 
 
 def _time(item: dict[str, Any]) -> datetime:

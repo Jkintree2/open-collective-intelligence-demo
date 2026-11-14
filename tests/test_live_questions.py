@@ -191,3 +191,32 @@ def test_without_the_member_nothing_is_kept(questions):
     graph_questions.keep_unanswered("Who fixes the potholes?", NOW, person_key="acct:nobody")
     graph_questions.keep_unanswered("   ", NOW, person_key="acct:nobody")
     assert question_nodes(questions) == []
+
+
+# Review of 4e357cb: Home reads a member's own unanswered questions in one read (Q61): only theirs, only those with an
+# id and no answer (a question kept before 30 October, with neither, stays out), newest first by their own time of
+# asking, at most $limit, in the same row shape as Q48 and Q57.
+def test_q61_reads_only_the_members_own_unanswered_questions_newest_first(questions):
+    member(questions, "acct:ada")
+    member(questions, "acct:bob")
+    questions.driver().execute_query(
+        "MATCH (p:Person {key: 'acct:ada'}) CREATE (p)-[:ASKED {asked_at: datetime($late)}]->"
+        "(:Question {key: '|who pays', text: 'Who pays?', issue_key: null, created_at: datetime($now), "
+        "asked_at: datetime($now), asked: 1})",
+        now=NOW.isoformat(), late=(NOW + timedelta(hours=9)).isoformat(), database_=questions.database())
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW + timedelta(hours=1), person_key="acct:ada")
+    graph_questions.keep("Why the veto?", "veto", NOW + timedelta(hours=8), FIRST, person_key="acct:ada")
+    graph_questions.keep_unanswered("Where are the bins?", NOW + timedelta(hours=3), person_key="acct:ada")
+    graph_questions.keep_unanswered("Is it fair?", NOW + timedelta(hours=7), person_key="acct:bob")
+    # Bob asks Ada's first one too, later; her own time of asking it is what orders her list.
+    graph_questions.keep_unanswered("Who fixes the potholes?", NOW + timedelta(hours=6), person_key="acct:bob")
+    rows = graph_questions.mine_unanswered("acct:ada", 10)
+    assert [(row["text"], row["answered"], row["asked_at"]) for row in rows] == \
+        [("Where are the bins?", False, NOW + timedelta(hours=3)),
+         ("Who fixes the potholes?", False, NOW + timedelta(hours=1))]
+    assert set(rows[0]) == set(graph_questions.mine("acct:ada", 1)[0])
+    assert all(re.fullmatch(r"[0-9a-f]{32}", row["id"]) for row in rows)
+    assert [row["text"] for row in graph_questions.mine_unanswered("acct:ada", 1)] == ["Where are the bins?"]
+    assert [row["text"] for row in graph_questions.mine_unanswered("acct:bob", 10)] == \
+        ["Is it fair?", "Who fixes the potholes?"]
+    assert graph_questions.mine_unanswered("acct:nobody", 10) == []

@@ -106,10 +106,10 @@ def test_own_unanswered_question_is_a_button_not_a_link(homepage, monkeypatch):
              "answered": False, "solution_key": None, "solution_name": None, "evidence_key": None,
              "evidence_name": None, "asked_at": datetime(2026, 11, 14, 18, 0, tzinfo=timezone.utc)}]
     monkeypatch.setattr("app.graph_questions.recent", lambda issue, limit, **on: [])
-    monkeypatch.setattr("app.graph_questions.mine", lambda person_key, limit: mine)
+    monkeypatch.setattr("app.graph_questions.mine_unanswered", lambda person_key, limit: mine)
     page = draw(homepage.client, "/")
     assert page.index('id="feed"') < page.index(
-        '<button type="button" class="home-again">Who fixes the potholes?</button>')
+        '<button type="submit" class="home-again">Who fixes the potholes?</button>')
     assert "/ask/answers/" not in page
 
 

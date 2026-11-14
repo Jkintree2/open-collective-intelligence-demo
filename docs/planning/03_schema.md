@@ -12,7 +12,7 @@
 
 > **Extended 8 November 2026 for v0.3 (John's email of 7 November: one "Recent posts" list and "My posts").** Added: the `ASKED` relationship (account to `Question`), written by Q47 while Home is on for the member who asked (Q56), and Q57, a member's own questions; Q48 returns `asked_at`. The Phase 3 rule that a question is kept "never with who asked" holds only for members without Home. See "v0.3: who asked a question" at the end.
 
-> **Extended 14 November 2026 for John's "Questions stored" email.** A question the whole database holds nothing on yet is kept for the member who asked it (Q60), with Home on for them, and shown only on their own lists; Q48 leaves such questions out. No new label, relationship type, property, constraint or index. See "Questions with no answer yet" at the end.
+> **Extended 14 November 2026 for John's "Questions stored" email.** A question the whole database holds nothing on yet is kept for the member who asked it (Q60), with Home on for them, and shown only on their own lists; Q48 leaves such questions out, and Q61 reads a member's own for their Recent posts on Home. No new label, relationship type, property, constraint or index. See "Questions with no answer yet" at the end.
 
 > **Revised 2 November 2026: no new sub-issues** (John: a reason someone gives is evidence, not a sub-issue). A post writes no `PART_OF` (statement 3b is gone, and the payload has no `parent`); tidying only makes a sub-issue top level (Q28). `PART_OF` stays in the schema: the seed's issues block still writes it, a back-room copy holding it still restores, and every query that reads it is unchanged, so a tree already in a record still shows. Merge (Q32) still moves an issue's sub-issues.
 
@@ -1758,7 +1758,7 @@ FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END |
 RETURN q.id AS id
 ```
 
-**Q48** returns `asked_at` as well, so "Recent posts" can place each question among the statements (`app/home_lists.py`, newest first, at most 60 in all). Q48 and Q57 share their tail in `graph_questions.py` (`_QUESTION_ROWS`): each ends `WITH q, <when> AS asked_at ORDER BY asked_at DESC LIMIT $limit`, then the three OPTIONAL MATCH lines and the RETURN below.
+**Q48** returns `asked_at` as well, so "Recent posts" can place each question among the statements (`app/home_lists.py`, newest first, at most 60 in all). Q48 and Q57 (and since 14 November 2026 Q61) share their tail in `graph_questions.py` (`_QUESTION_ROWS`): each ends `WITH q, <when> AS asked_at ORDER BY asked_at DESC LIMIT $limit`, then the three OPTIONAL MATCH lines and the RETURN below.
 
 **Q57. A member's own questions**, newest first by their own `asked_at`:
 
@@ -1785,7 +1785,7 @@ John, 14 November 2026 ("Questions stored"): a question that got "The database d
 * **What it holds.** A `Question` made by Q60 holds `key`, `text`, `created_at`, `asked_at`, `asked = 1` and a new `id`, and no `answer`. That is how it is told from a question kept before 30 October 2026, which has neither an `id` nor an `answer`. `/ask/answers/<id>` answers not found for it, as for any question with no answer.
 * **Already kept.** When a `Question` with the same key exists, answered or from before answers were, Q60 leaves it exactly as it is (answer, `asked`, `asked_at` and `id` included) and only links the member. Asking it again, empty again, makes no second question: the member's `ASKED.asked_at` moves.
 * **Answered later.** Q47 (Q56) on the same key keeps its `id` (`coalesce`) and sets its `answer`; from then on Q48 lists it for everyone and the asker's row links to the answer.
-* **Who sees it.** Q48 (Ask the database, the box on each item's page, everyone's Recent posts) leaves out a question with an `id` and no `answer`. Q57 (the member's own) is unchanged, so My posts shows it, and Home's Recent posts adds the reader's own such questions from Q57 to Q48's (`home_lists.everyones_questions`). It is drawn as an unanswered row is (`_question.html`: the words as a button that puts the question back in the box).
+* **Who sees it.** Q48 (Ask the database, the box on each item's page, everyone's Recent posts) leaves out a question with an `id` and no `answer`. Q57 (the member's own) is unchanged, so My posts shows it, and Home's Recent posts adds the reader's own such questions from Q61 to Q48's (`home_lists.everyones_questions`, one read of each). It is drawn as an unanswered row is (`_question.html`: the words as a button in a small form). A tap puts the question back in Home's box, neither asked nor posted until the member sends it: on Home `home.js` does it in place; on My posts, or without JavaScript, the form posts it to `/home` with `again` set and Home comes back with it in the box.
 * **Undo.** Revert the change. Questions kept meanwhile stay; under the earlier code Q48 lists them as unanswered rows, harmless, and gone from view once answered.
 
 **Q60. Keep a question with no answer yet for the member who asked** (`graph_questions.keep_unanswered`; `$key` is `graph_questions.question_key(text, None)`, `$id` a new uuid4 hex, `$text` at most 500 characters). Without that member nothing is written, since nobody could ever see it.
@@ -1796,6 +1796,21 @@ MERGE (q:Question {key: $key})
 ON CREATE SET q.created_at = datetime($now), q.asked_at = datetime($now), q.asked = 1, q.id = $id, q.text = $text
 MERGE (p)-[a:ASKED]->(q)
 SET a.asked_at = datetime($now)
+```
+
+**Q61. A member's own questions with no answer yet** (`graph_questions.mine_unanswered`; added after the review of the first build, 14 November 2026), for Home's Recent posts: the member's questions with an `id` and no `answer` (those Q60 kept), newest first by the member's own `asked_at`, at most `$limit` (the list's length), in Q57's row shape (`_QUESTION_ROWS`, as below). A question kept before 30 October 2026 (neither) is not one of them; Q48 lists it already. One read on every Home load for a member, in place of reading Q57 further and further back until the mixed list could reach no further.
+
+```cypher
+MATCH (:Person {key: $person_key})-[a:ASKED]->(q:Question)
+WHERE q.id IS NOT NULL AND q.answer IS NULL
+WITH q, a.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
+OPTIONAL MATCH (i:Issue {key: q.issue_key})
+OPTIONAL MATCH (s:Solution {key: q.solution_key})
+OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
+       q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name,
+       asked_at
+ORDER BY asked_at DESC
 ```
 
 **Q48, revised.** One more condition, ahead of the item filters; the rest is as in "v0.3: who asked a question".

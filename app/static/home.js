@@ -77,6 +77,7 @@
   document.addEventListener('click', event => {
     const again = event.target.closest && event.target.closest('.home-again');
     if (!again) return;
+    event.preventDefault();  // its form takes it to Home; here it goes straight in the box
     text.value = again.textContent;
     text.focus();
   });
