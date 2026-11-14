@@ -3,11 +3,15 @@ where a statement is posted as POST /posts posts it, a question is answered as P
 text comes back with two buttons. The box on Issues, My statements and About posts to /home with start set, and
 Home carries on with the text. No database, no language model: the Ask fixture stubs the answer."""
 
+from datetime import datetime, timezone
+
 import pytest
 
+from app import ask, graph_questions
 from app.auth import PostSpacing
 from app.home import kind_of
 from test_ask_routes import ANSWERED, SAME_SITE, asking  # noqa: F401  the Ask fixture, answer stubbed
+from test_phase3_switches import pages  # noqa: F401  a record of one issue and one post
 
 UNSURE = "What we need is a global referendum."
 QUESTION = "Why do people oppose these solutions?"
@@ -185,3 +189,29 @@ def test_text_never_in_redirect_url(homing):
         response = home(homing.client, **fields)
         location = response.headers.get("location", "")
         assert "electricity" not in location and "referendum" not in location and "?" not in location
+
+
+# John, 14 November 2026 ("Questions stored"): a question the database holds nothing on yet shows in the asker's own
+# Recent posts and My posts, as context for the statement written next, and in nobody else's. Q48 leaves it out of
+# the shared lists, so everyone's questions come back empty here; Q57 reads the asker's own.
+def test_an_unanswered_question_shows_in_the_askers_own_lists_only(homing, pages, monkeypatch):
+    asked = {}
+
+    def keep_unanswered(text, now, *, person_key):
+        asked.setdefault(person_key, []).insert(0, {
+            "text": text, "issue_key": None, "issue_name": None, "id": "cd" * 16, "answered": False,
+            "solution_key": None, "solution_name": None, "evidence_key": None, "evidence_name": None,
+            "asked_at": datetime(2026, 11, 14, 18, 0, tzinfo=timezone.utc)})
+    monkeypatch.setattr(graph_questions, "keep_unanswered", keep_unanswered)
+    monkeypatch.setattr(graph_questions, "mine", lambda me, limit: asked.get(me, [])[:limit])
+    monkeypatch.setattr(graph_questions, "recent", lambda issue=None, limit=10, **on: [])
+    monkeypatch.setattr(ask, "answer", lambda *a, **kw: ask.Answer("empty"))
+    body = homing.client.post("/api/ask", json={"question": "Who fixes the potholes?"}, headers=SAME_SITE).json()
+    assert body["status"] == "empty" and body["question_id"] is None
+    again = '<button type="button" class="home-again">Who fixes the potholes?</button>'
+    for path in ("/", "/my-posts"):
+        page = homing.client.get(path).text
+        assert again in page and "/ask/answers/" + "cd" * 16 not in page, path
+    homing.sign_in(key="acct:bob", name="Bob Tester", email="bob@example.org")
+    for path in ("/", "/my-posts", "/ask"):
+        assert "potholes" not in homing.client.get(path).text, path

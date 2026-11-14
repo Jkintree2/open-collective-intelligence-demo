@@ -12,6 +12,8 @@
 
 > **Extended 8 November 2026 for v0.3 (John's email of 7 November: one "Recent posts" list and "My posts").** Added: the `ASKED` relationship (account to `Question`), written by Q47 while Home is on for the member who asked (Q56), and Q57, a member's own questions; Q48 returns `asked_at`. The Phase 3 rule that a question is kept "never with who asked" holds only for members without Home. See "v0.3: who asked a question" at the end.
 
+> **Extended 14 November 2026 for John's "Questions stored" email.** A question the whole database holds nothing on yet is kept for the member who asked it (Q60), with Home on for them, and shown only on their own lists; Q48 leaves such questions out. No new label, relationship type, property, constraint or index. See "Questions with no answer yet" at the end.
+
 > **Revised 2 November 2026: no new sub-issues** (John: a reason someone gives is evidence, not a sub-issue). A post writes no `PART_OF` (statement 3b is gone, and the payload has no `parent`); tidying only makes a sub-issue top level (Q28). `PART_OF` stays in the schema: the seed's issues block still writes it, a back-room copy holding it still restores, and every query that reads it is unchanged, so a tree already in a record still shows. Merge (Q32) still moves an issue's sub-issues.
 
 Neo4j Aura Free, Neo4j 5 Cypher. John's README vocabulary plus only what the kickoff decisions require: sub-issues, an anonymous flag on relationships, a source link on Evidence, timestamps, and a Post node so every edge traces back to the text that produced it.
@@ -1473,7 +1475,7 @@ RETURN post.id AS id, post.text AS text, post.display_name AS display_name, post
 
 ### Q47 to Q49. The questions people asked, and the answer each got
 
-Added 28 October 2026, after the call: John asked for the latest questions under the Ask box, as the Write page lists the latest statements. The one new label of Phase 3, with no relationship type: `Question {key, text, issue_key, created_at, asked_at, asked}`. A question is kept only when Ask answered it (status `answered`), never when it was refused, empty or failed, nor (since 8 November 2026) when it has no words of its own (`ask.has_own_words`: "Tell me more", "Why?"; every list also leaves out such questions kept before), and never with who asked: no `Person`, no account key, no edge (until v0.3: see "v0.3: who asked a question" at the end). `key` is the issue key (empty for the whole database), a bar and the question's words in lower case with spacing and a closing question mark or full stop dropped (`graph_questions.question_key`), so asking the same question again on the same issue moves it to the top and counts it. With `ASK_ENABLED`, startup makes a unique constraint on `Question.key` and a range index on `asked_at`. Copies carry it (`backup.LABEL_KEYS`); a restore needs no switch.
+Added 28 October 2026, after the call: John asked for the latest questions under the Ask box, as the Write page lists the latest statements. The one new label of Phase 3, with no relationship type: `Question {key, text, issue_key, created_at, asked_at, asked}`. A question is kept only when Ask answered it (status `answered`) (since 14 November 2026 also when the whole database holds nothing on it, for the member who asked, with Home on for them: see "Questions with no answer yet" at the end), never when it was refused or failed, nor (since 8 November 2026) when it has no words of its own (`ask.has_own_words`: "Tell me more", "Why?"; every list also leaves out such questions kept before), and never with who asked: no `Person`, no account key, no edge (until v0.3: see "v0.3: who asked a question" at the end). `key` is the issue key (empty for the whole database), a bar and the question's words in lower case with spacing and a closing question mark or full stop dropped (`graph_questions.question_key`), so asking the same question again on the same issue moves it to the top and counts it. With `ASK_ENABLED`, startup makes a unique constraint on `Question.key` and a range index on `asked_at`. Copies carry it (`backup.LABEL_KEYS`); a restore needs no switch.
 
 Since 30 October 2026 (John: "Each item in the list of questions asked definitely needs to be a link to the answer.") a question also keeps `id`, a uuid4 hex given the first time it is answered (a question kept before has none until it is answered again), with a unique constraint `question_id` made beside the other two, and `answer`, the JSON text of the answer it last got: `{"paragraphs": [{"text", "refs"}], "sources": [{"id", "kind", "name", "date", "text", "href", "issue", "post_id"}], "partial": text or null}`, as the page showed it, each post source with its post's id. Asking again replaces it; `asked_at` is when it was answered. `/ask/answers/<id>` shows it only while every post it cites is there, not edited since `asked_at` and under the same name (Q46 by id), because the answer may quote or name a post and must not keep what its writer took back; otherwise it shows the question, a line saying so and Ask again. A copy checks `answer` as text.
 
@@ -1508,7 +1510,7 @@ A question whose issue was merged or renamed keeps its old `issue_key`; it still
 
 ### What is never stored
 
-Digests, an answer to a question that was not answered (refused, empty or failed), the questions of a visit sent with the next one (they stay in the open browser tab), and follow-up questions. A follow-up's answer is stored only as a line the writer added to their statement text, so it is part of the post like any other words. Nothing here is cached across requests, in the database or in process memory, and a kept answer (Q47) is never sent to the language model or reused for a new question.
+Digests, an answer to a question that was not answered (refused, empty or failed; since 14 November 2026 an empty one keeps the question for its asker, never an answer), the questions of a visit sent with the next one (they stay in the open browser tab), and follow-up questions. A follow-up's answer is stored only as a line the writer added to their statement text, so it is part of the post like any other words. Nothing here is cached across requests, in the database or in process memory, and a kept answer (Q47) is never sent to the language model or reused for a new question.
 
 ### Logging
 
@@ -1773,3 +1775,43 @@ ORDER BY asked_at DESC
 ```
 
 My posts asks for one more of each than it shows (Q24 and Q57), mixes them and cuts to fifty, so "Show more" is offered exactly when more exist. A failed read of the questions is logged (`questions_not_read`) and leaves the statements.
+
+## Questions with no answer yet (added 14 November 2026)
+
+John, 14 November 2026 ("Questions stored"): a question that got "The database does not say anything about this yet." did not appear in his Recent posts. "I think that questions should be stored in the database even if they don't relate to anything that is already in the database. Those questions provide some context for the follow-up statement." So such a question is kept for the member who asked it. **No new label, relationship type, property, constraint or index**, and no switch beyond the ones already there.
+
+* **When.** Only when the line shown is the empty line (`ask.EMPTY`): the whole database was read and holds nothing on it, whether the digest was empty (no language model call and no use counted, as before) or the answer came back empty. Only with Home on for the member (`home.home_on`; there is then a member to link, and the passphrase site never has one), and never for a question with no words of its own (`ask.has_own_words`). Not when the answer failed, nor on the line that says only the page was read ("Ask again from Home to ask the whole database."): nothing says the database is empty on it. A failed write is logged (`question_not_kept`) and the empty line still shows; the page's JSON is unchanged (`status: "empty"`, `question_id: null`).
+* **As a question about the whole database.** An empty answer on an issue's, solution's or piece of evidence's page is kept with all three item keys null, as an answer found in the whole database is (13 November 2026): the empty line shows only once the whole database was read.
+* **What it holds.** A `Question` made by Q60 holds `key`, `text`, `created_at`, `asked_at`, `asked = 1` and a new `id`, and no `answer`. That is how it is told from a question kept before 30 October 2026, which has neither an `id` nor an `answer`. `/ask/answers/<id>` answers not found for it, as for any question with no answer.
+* **Already kept.** When a `Question` with the same key exists, answered or from before answers were, Q60 leaves it exactly as it is (answer, `asked`, `asked_at` and `id` included) and only links the member. Asking it again, empty again, makes no second question: the member's `ASKED.asked_at` moves.
+* **Answered later.** Q47 (Q56) on the same key keeps its `id` (`coalesce`) and sets its `answer`; from then on Q48 lists it for everyone and the asker's row links to the answer.
+* **Who sees it.** Q48 (Ask the database, the box on each item's page, everyone's Recent posts) leaves out a question with an `id` and no `answer`. Q57 (the member's own) is unchanged, so My posts shows it, and Home's Recent posts adds the reader's own such questions from Q57 to Q48's (`home_lists.everyones_questions`). It is drawn as an unanswered row is (`_question.html`: the words as a button that puts the question back in the box).
+* **Undo.** Revert the change. Questions kept meanwhile stay; under the earlier code Q48 lists them as unanswered rows, harmless, and gone from view once answered.
+
+**Q60. Keep a question with no answer yet for the member who asked** (`graph_questions.keep_unanswered`; `$key` is `graph_questions.question_key(text, None)`, `$id` a new uuid4 hex, `$text` at most 500 characters). Without that member nothing is written, since nobody could ever see it.
+
+```cypher
+MATCH (p:Person {key: $person_key})
+MERGE (q:Question {key: $key})
+ON CREATE SET q.created_at = datetime($now), q.asked_at = datetime($now), q.asked = 1, q.id = $id, q.text = $text
+MERGE (p)-[a:ASKED]->(q)
+SET a.asked_at = datetime($now)
+```
+
+**Q48, revised.** One more condition, ahead of the item filters; the rest is as in "v0.3: who asked a question".
+
+```cypher
+MATCH (q:Question)
+WHERE NOT (q.answer IS NULL AND q.id IS NOT NULL)
+  AND ($issue_key IS NULL OR q.issue_key = $issue_key)
+  AND ($solution_key IS NULL OR q.solution_key = $solution_key)
+  AND ($evidence_key IS NULL OR q.evidence_key = $evidence_key)
+WITH q, q.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
+OPTIONAL MATCH (i:Issue {key: q.issue_key})
+OPTIONAL MATCH (s:Solution {key: q.solution_key})
+OPTIONAL MATCH (e:Evidence {key: q.evidence_key})
+RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS id, q.answer IS NOT NULL AS answered,
+       q.solution_key AS solution_key, s.name AS solution_name, q.evidence_key AS evidence_key, e.name AS evidence_name,
+       asked_at
+ORDER BY asked_at DESC
+```

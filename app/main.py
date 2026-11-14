@@ -291,10 +291,11 @@ def _about_issue(key: str | None) -> dict | None:
 
 def _feed_posts(request: Request, *, mixed: bool) -> list[dict]:
     """The latest statements; mixed (Home with asking, John, 7 November), with everyone's latest questions too,
-    newest first, as many in all as the feed holds. Only what is shown is decorated."""
+    newest first, as many in all as the feed holds, and the reader's own unanswered questions (John, 14 November).
+    Only what is shown is decorated."""
     posts = graph.list_posts(FEED_LIMIT)
     if mixed:
-        posts = home_lists.mixed(posts, home_lists.everyones_questions(FEED_LIMIT), FEED_LIMIT)
+        posts = home_lists.mixed(posts, home_lists.everyones_questions(FEED_LIMIT, member_key(request)), FEED_LIMIT)
     return _decorate_posts(posts, me=member_key(request))
 
 

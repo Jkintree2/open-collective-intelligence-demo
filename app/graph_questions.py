@@ -1,10 +1,13 @@
 """Phase 3, ask the database: the questions people asked (03_schema.md, Phase 3, Q47 to Q49), for the list
 under the Ask box (John, 28 October), each kept with the answer it got so the list can open it (John, 30
-October). A question is kept only once it was answered. The same question on the same issue is one Question, moved
-to the top, with the newest answer. Since GitHub issue 55 a question asked on a solution's or a piece of evidence's
-page keeps that key instead of an issue's. Since v0.3 (John, 7 November: "My posts" lists his questions too) a member
-for whom Home is on is linked to each question they asked (ASKED, one per member and question, with when they last
-asked it), so their own list holds it on every device; it is never shown with anyone's name."""
+October). The same question on the same issue is one Question, moved to the top, with the newest answer. Since
+GitHub issue 55 a question asked on a solution's or a piece of evidence's page keeps that key instead of an issue's.
+Since v0.3 (John, 7 November: "My posts" lists his questions too) a member for whom Home is on is linked to each
+question they asked (ASKED, one per member and question, with when they last asked it), so their own list holds it
+on every device; it is never shown with anyone's name. Since John's "Questions stored" (14 November 2026) a question
+the database could not answer yet is kept too, for that member alone: a whole-database Question with an id and no
+answer, which only their own lists (Q57) show until it is answered; the shared lists (Q48) leave it out. One kept
+before answers were (30 October) has neither an id nor an answer."""
 
 import json
 import uuid
@@ -33,6 +36,18 @@ FOREACH (_ IN CASE WHEN p IS NULL THEN [] ELSE [1] END |
 RETURN q.id AS id
 """
 
+# Q60 (John, 14 November 2026). A question the database could not answer yet, kept for the member who asked it: a
+# whole-database Question made only when no question has its key, with an id and no answer; one already kept,
+# answered or from before answers were, is left exactly as it is. The member is linked to it, once, with when they
+# last asked it. Without that member nothing is written, since nobody could ever see it.
+KEEP_UNANSWERED = """
+MATCH (p:Person {key: $person_key})
+MERGE (q:Question {key: $key})
+ON CREATE SET q.created_at = datetime($now), q.asked_at = datetime($now), q.asked = 1, q.id = $id, q.text = $text
+MERGE (p)-[a:ASKED]->(q)
+SET a.asked_at = datetime($now)
+"""
+
 # Q48 and Q57 end alike: after `WITH q, <when> AS asked_at`, each question with the name of what it was asked on
 # while that still exists, newest first.
 _QUESTION_ROWS = """
@@ -45,10 +60,12 @@ RETURN q.text AS text, q.issue_key AS issue_key, i.name AS issue_name, q.id AS i
 ORDER BY asked_at DESC
 """
 
-# Q48. The latest questions, everywhere or on one issue, solution or piece of evidence.
+# Q48. The latest questions, everywhere or on one issue, solution or piece of evidence. A question kept unanswered
+# for the member who asked it (Q60: an id, no answer) is theirs alone; one kept before answers were (neither) lists.
 RECENT_QUESTIONS = """
 MATCH (q:Question)
-WHERE ($issue_key IS NULL OR q.issue_key = $issue_key)
+WHERE NOT (q.answer IS NULL AND q.id IS NOT NULL)
+  AND ($issue_key IS NULL OR q.issue_key = $issue_key)
   AND ($solution_key IS NULL OR q.solution_key = $solution_key)
   AND ($evidence_key IS NULL OR q.evidence_key = $evidence_key)
 WITH q, q.asked_at AS asked_at ORDER BY asked_at DESC LIMIT $limit
@@ -94,6 +111,16 @@ def keep(text: str, issue_key: str | None, now: datetime, answer: dict[str, Any]
                   evidence_key=evidence_key, now=now.isoformat(), person_key=person_key,
                   answer=json.dumps(answer, ensure_ascii=False, separators=(",", ":")))
     return rows[0]["id"] if rows else None
+
+
+def keep_unanswered(text: str, now: datetime, *, person_key: str) -> None:
+    """Q60: a question the database could not answer yet, kept as one about the whole database for the member who
+    asked it (routes_ask decides when), and listed only on their own lists until it is answered."""
+    text = " ".join(text.split())[:QUESTION_MAX]
+    if not text:
+        return
+    _write(KEEP_UNANSWERED, key=question_key(text, None), id=uuid.uuid4().hex, text=text, now=now.isoformat(),
+           person_key=person_key)
 
 
 def recent(issue_key: str | None = None, limit: int = RECENT, *, solution_key: str | None = None,
